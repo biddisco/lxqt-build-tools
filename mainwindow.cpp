@@ -36,10 +36,10 @@ GroxMainWindow::GroxMainWindow(QWidget *parent) :
     ui->candlestick_layout->addWidget(stackedStockCharts_,30);
 
     //
-    // Create orderbook plo
+    // Create orderbook plot
     //
     OrderBookPlot_ = new OrderBookPlot();
-    ui->orderbook_layout->addWidget(OrderBookPlot_,30);
+    ui->orderbook_layout->addWidget(OrderBookPlot_, 0);
 
     //
     // setup Qt actions/connections

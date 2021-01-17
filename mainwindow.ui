@@ -1287,7 +1287,7 @@
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources>
-  <include location="../../QtBitcoinTrader/src/QtResource.qrc"/>
+  <include location="grox.qrc"/>
  </resources>
  <connections/>
 </ui>

@@ -112,8 +112,8 @@ set(GROX_SRC
     math/UnsignedIntRange.cpp
     math/XYCoord.cpp
     #
-    patternPlot/OrderBookPlot.cpp
-    patternPlot/OrderBookCurve.cpp
+    plots/OrderBookPlot.cpp
+    plots/OrderBookCurve.cpp
     # patternMatch/AscendingTrianglePatternMatch.cpp
     # patternMatch/CupPatternMatch.cpp
     # patternMatch/CupWithHandlePatternMatch.cpp

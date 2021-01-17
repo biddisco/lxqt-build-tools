@@ -8,7 +8,7 @@
 //
 #include "StackedStockCharts.h"
 #include "PriceAndPatternPlot.h"
-#include "OrderBookPlot.h"
+#include "plots/OrderBookPlot.h"
 
 namespace Ui {
 class GroxMainWindow;
