@@ -210,7 +210,7 @@ target_link_libraries(
 # ---------------------------------------------------
 # test websocket code
 # ---------------------------------------------------
-set(WS_SRC internet/websocket-ssl.cpp internet/test-websocket.cpp)
+set(WS_SRC internet/websocket-ssl.cpp internet/test/test-websocket.cpp)
 
 add_executable(test-websocket ${WS_SRC})
 
@@ -223,7 +223,7 @@ target_link_libraries(
 # ---------------------------------------------------
 # test https code
 # ---------------------------------------------------
-set(HTTPS_SRC internet/https-async.cpp internet/test-https.cpp)
+set(HTTPS_SRC internet/https-async.cpp internet/test/test-https.cpp)
 
 add_executable(test-https ${HTTPS_SRC})
 
@@ -234,7 +234,7 @@ target_link_libraries(test-https PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL pthread)
 # ---------------------------------------------------
 # test AES code
 # ---------------------------------------------------
-set(AES256_SRC internet/evp-encrypt.cpp)
+set(AES256_SRC internet/evp-encrypt.cpp internet/test/test-aes256.cpp)
 
 add_executable(test-aes256 ${AES256_SRC})
 
