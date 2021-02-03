@@ -3,21 +3,20 @@
 #include <QSettings>
 #include <QStandardPaths>
 
+#include <algorithm>
 #include <memory>
 #include <random>
-#include <algorithm>
 
+#include "internet/evp-encrypt.hpp"
 #include "mainwindow.hpp"
 #include "password_dialog.hpp"
 #include "settings.hpp"
-#include "internet/evp-encrypt.hpp"
 
 // ----------------------------------------------------------------------------
 app_settings* global_settings()
 {
     // create a global singleton and return an instance to it
-    static std::unique_ptr<app_settings> settings =
-        std::make_unique<app_settings>();
+    static std::unique_ptr<app_settings> settings = std::make_unique<app_settings>();
     return settings.get();
 }
 
@@ -43,11 +42,8 @@ void init_settings(app_settings* settings)
     settings->hdfFileName = settings->appDataLocation + "/grox.hdf5";
     settings->logFileName = QLatin1String("grox.log").data();
     settings->iniFileName =
-        (settings->configLocation + QLatin1String("/grox.ini"))
-            .toLatin1()
-            .data();
-    std::cout << "Ini: " << settings->iniFileName.toLatin1().data()
-              << std::endl;
+        (settings->configLocation + QLatin1String("/grox.ini")).toLatin1().data();
+    std::cout << "Ini: " << settings->iniFileName.toLatin1().data() << std::endl;
 }
 
 QByteArray base64_encode(const QByteArray& ba)
@@ -72,13 +68,13 @@ secure_string base64_string(QByteArray ba)
     return secure_string(bb.data(), bb.size());
 }
 
-std::string generate_random_alphanumeric_string(int seed, std::size_t len) {
-    static constexpr auto chars =
-        "0123456789"
-        "~`!@#$%^&*()_-+={}[]|';:/?<>,."
-        "!@#$%^&*(){}][:;'/?.>,<'`~| "
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
+std::string generate_random_alphanumeric_string(int seed, std::size_t len)
+{
+    static constexpr auto chars = "0123456789"
+                                  "~`!@#$%^&*()_-+={}[]|';:/?<>,."
+                                  "!@#$%^&*(){}][:;'/?.>,<'`~| "
+                                  "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                  "abcdefghijklmnopqrstuvwxyz";
     auto rng = std::mt19937(seed);
     auto dist = std::uniform_int_distribution{{}, std::strlen(chars) - 1};
     auto result = std::string(len, '\0');
@@ -87,7 +83,7 @@ std::string generate_random_alphanumeric_string(int seed, std::size_t len) {
 }
 
 // ----------------------------------------------------------------------------
-void generate_encrypted_ini_data(password_dialog &npw)
+void generate_encrypted_ini_data(password_dialog& npw)
 {
     app_settings* app_ini = global_settings();
     QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
@@ -99,19 +95,18 @@ void generate_encrypted_ini_data(password_dialog &npw)
     constexpr int rand_size = encryption::BLOCK_SIZE;
     secure_string adummy_string = generate_random_alphanumeric_string(111111, rand_size);
     settings.setValue("EncodedData/randomBytes",
-        QString::fromStdString(
-            base64_encode(adummy_string).toStdString()));
+        QString::fromStdString(base64_encode(adummy_string).toStdString()));
 
     // -----------------------
     // Generate encrypted data
     // -----------------------
     encryption encryptor(app_ini->grox_password, app_ini->randomBytes);
     //
-    app_ini->API_user   = npw.getAPIUser().toStdString();
-    app_ini->API_key    = npw.getAPIKey().toStdString();
+    app_ini->API_user = npw.getAPIUser().toStdString();
+    app_ini->API_key = npw.getAPIKey().toStdString();
     app_ini->API_secret = npw.getAPISecret().toStdString();
-    secure_string API_user   = encryptor.encrypt(app_ini->API_user);
-    secure_string API_key    = encryptor.encrypt(app_ini->API_key);
+    secure_string API_user = encryptor.encrypt(app_ini->API_user);
+    secure_string API_key = encryptor.encrypt(app_ini->API_key);
     secure_string API_secret = encryptor.encrypt(app_ini->API_secret);
     //
     settings.setValue("EncryptedData/API_key",
@@ -121,10 +116,10 @@ void generate_encrypted_ini_data(password_dialog &npw)
     settings.setValue("EncryptedData/API_secret",
         QString::fromStdString(base64_encode(API_secret).toStdString()));
     //
-    app_ini->XRP_name   = npw.getXRPName().toStdString();
+    app_ini->XRP_name = npw.getXRPName().toStdString();
     app_ini->XRP_public = npw.getXRPPublic().toStdString();
     app_ini->XRP_secret = npw.getXRPPrivate().toStdString();
-    secure_string XRP_name   = encryptor.encrypt(app_ini->XRP_name);
+    secure_string XRP_name = encryptor.encrypt(app_ini->XRP_name);
     secure_string XRP_public = encryptor.encrypt(app_ini->XRP_public);
     secure_string XRP_secret = encryptor.encrypt(app_ini->XRP_secret);
     //
@@ -149,10 +144,12 @@ int main(int argc, char* argv[])
     app_settings* app_ini = global_settings();
     QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
     //
-    if (std::getenv("GROX_PASSWORD")!=nullptr) {
+    if (std::getenv("GROX_PASSWORD") != nullptr)
+    {
         app_ini->grox_password = std::getenv("GROX_PASSWORD");
     }
-    else {
+    else
+    {
         std::cout << "Please set GROX_PASSWORD environment var" << std::endl;
         return EXIT_FAILURE;
     }
@@ -162,18 +159,21 @@ int main(int argc, char* argv[])
     app_ini->randomBytes = generate_random_alphanumeric_string(654792, rand_size);
 
     // read random initialization data
-    QByteArray rand = base64_decode(
-        settings.value("EncodedData/randomBytes", "").toByteArray());
+    QByteArray rand =
+        base64_decode(settings.value("EncodedData/randomBytes", "").toByteArray());
 
     // if the randomblock is empty (first time app is run?)
     // then we should ask the user for new password and account details
-    if (rand.size()!=rand_size) {
+    if (rand.size() != rand_size)
+    {
         password_dialog npw;
-        if (npw.exec() == QDialog::Accepted) {
+        if (npw.exec() == QDialog::Accepted)
+        {
             generate_encrypted_ini_data(npw);
         }
     }
-    else {
+    else
+    {
         // ---------------------------------------
         // decode and decrypt base64 keys
         // ---------------------------------------
@@ -182,41 +182,42 @@ int main(int argc, char* argv[])
         // ---------------------------------------
         // Bitstamp exchange details
         // ---------------------------------------
-        QByteArray API_user = base64_decode(
-            settings.value("EncryptedData/API_user", "").toByteArray());
+        QByteArray API_user =
+            base64_decode(settings.value("EncryptedData/API_user", "").toByteArray());
         app_ini->API_user =
             encryptor.decrypt(secure_string(API_user.data(), API_user.size()));
         //
-        QByteArray API_key = base64_decode(
-            settings.value("EncryptedData/API_key", "").toByteArray());
+        QByteArray API_key =
+            base64_decode(settings.value("EncryptedData/API_key", "").toByteArray());
         app_ini->API_key =
             encryptor.decrypt(secure_string(API_key.data(), API_key.size()));
         //
-        QByteArray API_secret = base64_decode(
-            settings.value("EncryptedData/API_secret", "").toByteArray());
+        QByteArray API_secret =
+            base64_decode(settings.value("EncryptedData/API_secret", "").toByteArray());
         app_ini->API_secret =
             encryptor.decrypt(secure_string(API_secret.data(), API_secret.size()));
 
         // ---------------------------------------
         // XRP walllet details
         // ---------------------------------------
-        QByteArray XRP_name = base64_decode(
-            settings.value("EncryptedData/XRP_name", "").toByteArray());
+        QByteArray XRP_name =
+            base64_decode(settings.value("EncryptedData/XRP_name", "").toByteArray());
         app_ini->XRP_name =
             encryptor.decrypt(secure_string(XRP_name.data(), XRP_name.size()));
         //
-        QByteArray XRP_public = base64_decode(
-            settings.value("EncryptedData/XRP_public", "").toByteArray());
+        QByteArray XRP_public =
+            base64_decode(settings.value("EncryptedData/XRP_public", "").toByteArray());
         app_ini->XRP_public =
             encryptor.decrypt(secure_string(XRP_public.data(), XRP_public.size()));
         //
-        QByteArray XRP_secret = base64_decode(
-            settings.value("EncryptedData/XRP_secret", "").toByteArray());
+        QByteArray XRP_secret =
+            base64_decode(settings.value("EncryptedData/XRP_secret", "").toByteArray());
         app_ini->XRP_secret =
             encryptor.decrypt(secure_string(XRP_secret.data(), XRP_secret.size()));
     }
 
-    if (argc>1 && std::string(argv[1])==std::string("decode")) {
+    if (argc > 1 && std::string(argv[1]) == std::string("decode"))
+    {
         std::cout << "\nDecrypted information\n" << std::endl;
         std::cout << "API_user   : " << app_ini->API_user << std::endl;
         std::cout << "API_key    : " << app_ini->API_key << std::endl;
@@ -229,10 +230,9 @@ int main(int argc, char* argv[])
 
     GroxMainWindow mainWindow;
 
-    QObject::connect(&app, SIGNAL(aboutToQuit()), &mainWindow,
-        SLOT(appExitCleanupHandler()));
     QObject::connect(
-        &mainWindow, SIGNAL(quitApplication()), &app, SLOT(quit()));
+        &app, SIGNAL(aboutToQuit()), &mainWindow, SLOT(appExitCleanupHandler()));
+    QObject::connect(&mainWindow, SIGNAL(quitApplication()), &app, SLOT(quit()));
 
     mainWindow.resize(1024, 768);
     mainWindow.show();

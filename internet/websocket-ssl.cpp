@@ -15,11 +15,11 @@
 
 #include <openssl/ssl.h>
 
+#include <boost/asio/strand.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/websocket/ssl.hpp>
-#include <boost/asio/strand.hpp>
 #include <cstdlib>
 #include <functional>
 #include <iostream>
@@ -41,21 +41,18 @@ namespace net {
 
     namespace ws {
 
-    std::shared_ptr<session> create_session(asio::io_context &ioc,
-                                            ssl::context &ctx,
-                                            std::string host,
-                                            std::string port,
-                                            std::string channel,
-                                            std::function<void(std::string &&)> &&callback)
-    {
-        // Launch the asynchronous operation
-        auto session_ptr = std::make_shared<session>(ioc, ctx);
+        std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
+            std::string host, std::string port, std::string channel,
+            std::function<void(std::string&&)>&& callback)
+        {
+            // Launch the asynchronous operation
+            auto session_ptr = std::make_shared<session>(ioc, ctx);
 
-        session_ptr->read_callback = std::move(callback);
+            session_ptr->read_callback = std::move(callback);
 
-        session_ptr->run(host.c_str(), port.c_str(), channel.c_str());
+            session_ptr->run(host.c_str(), port.c_str(), channel.c_str());
 
-        return session_ptr;
-    }
-}}
-
+            return session_ptr;
+        }
+    }    // namespace ws
+}    // namespace net

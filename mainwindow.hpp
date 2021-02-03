@@ -47,8 +47,8 @@ public:
 
     bool isValidSize(QSize* sizeV)
     {
-        if (sizeV->width() < 3 || sizeV->width() > 2000 ||
-            sizeV->height() < 3 || sizeV->height() > 2000)
+        if (sizeV->width() < 3 || sizeV->width() > 2000 || sizeV->height() < 3 ||
+            sizeV->height() > 2000)
             return false;
 
         return true;

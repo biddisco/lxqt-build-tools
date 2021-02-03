@@ -14,7 +14,7 @@ class password_dialog : public QDialog
 
 public:
     password_dialog();
-    password_dialog(const std::array<std::string,6> &strings);
+    password_dialog(const std::array<std::string, 6>& strings);
     ~password_dialog();
     //
     QString getAPIUser();

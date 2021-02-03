@@ -15,11 +15,11 @@
 
 #include <openssl/ssl.h>
 
+#include <boost/asio/strand.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/websocket/ssl.hpp>
-#include <boost/asio/strand.hpp>
 //
 #include <cstdlib>
 #include <functional>
@@ -31,7 +31,7 @@
 #include "internet/websocket-ssl.hpp"
 
 //------------------------------------------------------------------------------
-void new_ticker_data(std::string &&data)
+void new_ticker_data(std::string&& data)
 {
     std::cout << "\n\nReceived\n\n" << data << std::endl;
 }
@@ -41,13 +41,15 @@ void new_ticker_data(std::string &&data)
 int main(int argc, char** argv)
 {
     // Check command line arguments.
-    if(argc != 4 && argc != 5)
+    if (argc != 4 && argc != 5)
     {
-        std::cerr <<
-            "Usage  : bin/test-websocket <host> <port> <target> [<HTTP version: 1.0 or 1.1(default)>]\n" <<
-            "Example:\n" <<
-            "bin/test-websocket ws.bitstamp.net 443 \"{\\\"event\\\": \\\"bts:subscribe\\\",\\\"data\\\": {\\\"channel\\\": \\\"live_trades_xrpusd\\\"}}\" \n"
-//            "\"/api/v2/ohlc/xrpusd/?step=60&limit=10\" \n" <<
+        std::cerr << "Usage  : bin/test-websocket <host> <port> <target> "
+                     "[<HTTP version: 1.0 or 1.1(default)>]\n"
+                  << "Example:\n"
+                  << "bin/test-websocket ws.bitstamp.net 443 \"{\\\"event\\\": "
+                     "\\\"bts:subscribe\\\",\\\"data\\\": {\\\"channel\\\": "
+                     "\\\"live_trades_xrpusd\\\"}}\" \n"
+            //            "\"/api/v2/ohlc/xrpusd/?step=60&limit=10\" \n" <<
             ;
         return EXIT_FAILURE;
     }
@@ -62,25 +64,19 @@ int main(int argc, char** argv)
     net::contexts contexts;
 
     std::shared_ptr<net::ws::session> session = net::ws::create_session(
-                contexts.ioc,
-                contexts.ctx,
-                host,
-                port,
-                channel,
-                new_ticker_data);
+        contexts.ioc, contexts.ctx, host, port, channel, new_ticker_data);
 
     // Run the I/O service on a thread.
-    std::thread websocket_thread([&]()
-        {
-            // The call will return when the socket is closed.
-            contexts.ioc.run();
-        }
-    );
+    std::thread websocket_thread([&]() {
+        // The call will return when the socket is closed.
+        contexts.ioc.run();
+    });
 
     const int sec = 25;
     // wait 5 seconds and collect some data
-    for (int i=0; i<sec; i++) {
-        std::cout << "Closing in " << sec-i << " seconds " << std::endl;
+    for (int i = 0; i < sec; i++)
+    {
+        std::cout << "Closing in " << sec - i << " seconds " << std::endl;
         std::chrono::seconds dura(1);
         std::this_thread::sleep_for(dura);
     }

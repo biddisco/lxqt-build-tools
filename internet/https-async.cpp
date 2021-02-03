@@ -13,10 +13,10 @@
 //
 //------------------------------------------------------------------------------
 
+#include <boost/asio/strand.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
-#include <boost/asio/strand.hpp>
 #include <cstdlib>
 #include <functional>
 #include <iostream>
@@ -35,11 +35,8 @@ void fail(beast::error_code ec, char const* what)
 
 namespace net { namespace https {
 
-    std::shared_ptr<session> create_session(asio::io_context &ioc,
-                                            ssl::context &ctx,
-                                            std::string host,
-                                            std::string port,
-                                            std::function<void(std::string &&)> &&callback)
+    std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
+        std::string host, std::string port, std::function<void(std::string&&)>&& callback)
     {
         // Launch the asynchronous operation
         auto session_ptr = std::make_shared<session>(ioc, ctx);
@@ -50,6 +47,4 @@ namespace net { namespace https {
 
         return session_ptr;
     }
-}}
-
-
+}}    // namespace net::https

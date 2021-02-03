@@ -18,7 +18,7 @@
 #include "hdf5.h"
 
 // ----------------------------------------------------------------------------
-extern void generate_encrypted_ini_data(password_dialog &npw);
+extern void generate_encrypted_ini_data(password_dialog& npw);
 
 // ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)
@@ -102,12 +102,12 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
             //do what you need
             std::cout << "Shift click pressed" << std::endl;
             app_settings* app_ini = global_settings();
-            std::array<std::string,6> strings {
-                app_ini->API_user, app_ini->API_key, app_ini->API_secret,
-                app_ini->XRP_name, app_ini->XRP_public, app_ini->XRP_secret
-            };
+            std::array<std::string, 6> strings{app_ini->API_user, app_ini->API_key,
+                app_ini->API_secret, app_ini->XRP_name, app_ini->XRP_public,
+                app_ini->XRP_secret};
             password_dialog npw = password_dialog(strings);
-            if (npw.exec() == QDialog::Accepted) {
+            if (npw.exec() == QDialog::Accepted)
+            {
                 generate_encrypted_ini_data(npw);
             }
             return true;
@@ -122,14 +122,12 @@ void GroxMainWindow::createMenus()
     ui.connect_button->installEventFilter(this);
 
     connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
-    connect(
-        ui.connect_button, SIGNAL(clicked()), this, SLOT(start_websocket()));
+    connect(ui.connect_button, SIGNAL(clicked()), this, SLOT(start_websocket()));
     connect(this, SIGNAL(new_ticker_data_ui(QString)), ui.json_text_1,
         SLOT(setPlainText(QString)));
     connect(this, SIGNAL(new_order_data_ui(QString)), ui.json_text_3,
         SLOT(setPlainText(QString)));
-    connect(
-        this, SIGNAL(new_order_data_replot()), OrderBookPlot_, SLOT(replot()));
+    connect(this, SIGNAL(new_order_data_replot()), OrderBookPlot_, SLOT(replot()));
     connect(this, SIGNAL(new_ohlc_data_ui()), this, SLOT(new_ohlc_data()));
 }
 
@@ -177,14 +175,14 @@ void GroxMainWindow::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
         auto last_existing = ohlc_samples.back().time;
         auto first_new = new_ohlc_samples.front().time;
 
-        std::cout << "existing " << static_cast<uint64_t>(last_existing)
-                  << " new " << static_cast<uint64_t>(first_new) << std::endl;
+        std::cout << "existing " << static_cast<uint64_t>(last_existing) << " new "
+                  << static_cast<uint64_t>(first_new) << std::endl;
         if (first_new - last_existing == 60)
         {
             std::cout << "merging data" << std::endl;
             ohlc_samples.append(new_ohlc_samples);
-            ohlc_volumes.insert(ohlc_volumes.end(), new_ohlc_volumes.begin(),
-                new_ohlc_volumes.end());
+            ohlc_volumes.insert(
+                ohlc_volumes.end(), new_ohlc_volumes.begin(), new_ohlc_volumes.end());
             if (ohlc_samples.size() != ohlc_volumes.size())
             {
                 throw std::runtime_error("Data merge problem");
@@ -209,8 +207,7 @@ void GroxMainWindow::rest_api_data(GroxMainWindow* mw, std::string&& data)
         // convert json data into vectors of actual data
         // std::cout << "\n\nRest API " << data << std::endl << std::endl << std::endl;
         nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
-        std::vector<ohlc_string> ohlc_strings =
-            jdata.get<std::vector<ohlc_string>>();
+        std::vector<ohlc_string> ohlc_strings = jdata.get<std::vector<ohlc_string>>();
         ;
         //
         QVector<QwtOHLCSample> new_ohlc_samples;
@@ -257,12 +254,11 @@ void bid_ask_string_to_number(nlohmann::json& json, double* x, double* y)
 {
     auto bid_string = json.get<std::array<std::array<std::string, 2>, 100>>();
     auto zip_start = boost::make_zip_iterator(boost::make_tuple(x, y));
-    std::transform(
-        bid_string.begin(), bid_string.end(), zip_start, [](const auto& i) {
-            std::pair<double, double> vals = std::make_pair(
-                std::atof(i[0].c_str()), std::atof(i[1].c_str()));
-            return vals;
-        });
+    std::transform(bid_string.begin(), bid_string.end(), zip_start, [](const auto& i) {
+        std::pair<double, double> vals =
+            std::make_pair(std::atof(i[0].c_str()), std::atof(i[1].c_str()));
+        return vals;
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -288,12 +284,10 @@ void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string&& data)
     // and flip the x axis for the bids/left side of plot
     std::reverse(&data_x[0], &data_x[100]);
     // push this data intp the graph object
-    mw->OrderBookPlot_->plot_curve_->setRawSamples(
-        data_x.begin(), data_z.begin(), 200);
+    mw->OrderBookPlot_->plot_curve_->setRawSamples(data_x.begin(), data_z.begin(), 200);
     // pick x min max limits so they don't jump around constantly
     double xrange = data_x[199] - data_x[0];
-    double xscale =
-        0.5 * std::pow(10, static_cast<int64_t>(std::log10(xrange)));
+    double xscale = 0.5 * std::pow(10, static_cast<int64_t>(std::log10(xrange)));
     double xmin = std::round(data_x[0] / xscale) * xscale;
     double xmax = std::round(data_x[199] / xscale) * xscale;
     mw->OrderBookPlot_->setAxisScale(QwtPlot::xBottom, xmin, xmax);
@@ -327,8 +321,7 @@ void GroxMainWindow::start_websocket()
         std::bind(GroxMainWindow::new_order_data, this, _1));
 
     https_rest = net::https::create_session(io_contexts.ioc, io_contexts.ctx,
-        "www.bitstamp.net", "443",
-        std::bind(GroxMainWindow::rest_api_data, this, _1));
+        "www.bitstamp.net", "443", std::bind(GroxMainWindow::rest_api_data, this, _1));
 
     // Run the I/O service on a thread.
     std::thread websocket_thread([&]() {
@@ -383,9 +376,8 @@ void GroxMainWindow::request_new_candlestick_data(uint64_t unused)
         // send a request for ticker data using the io context thread to make the request
         req = "/api/v2/ohlc/xrpusd/?step=60&start=" + start + "&limit=" + limit;
     }
-    io_contexts.ioc.post([this, req = std::move(req)]() mutable {
-        https_rest->write(std::move(req));
-    });
+    io_contexts.ioc.post(
+        [this, req = std::move(req)]() mutable { https_rest->write(std::move(req)); });
 }
 
 // ----------------------------------------------------------------------------
@@ -397,8 +389,7 @@ void GroxMainWindow::create_data_dir()
     {
         if (!fs::create_directory(app_ini->appDataLocation))
         {
-            throw std::runtime_error(
-                "Failed to create dir " + app_ini->appDataLocation);
+            throw std::runtime_error("Failed to create dir " + app_ini->appDataLocation);
         }
     }
 }
@@ -416,8 +407,8 @@ void GroxMainWindow::validate_ohlc()
         uint64_t t2 = static_cast<uint64_t>(i->time);
         if (t2 - t1 != 60)
         {
-            std::cout << "Validation error at index " << index << " " << t1
-                      << " and " << t2 << "dataseet truncated " << std::endl;
+            std::cout << "Validation error at index " << index << " " << t1 << " and "
+                      << t2 << "dataseet truncated " << std::endl;
             valid = false;
             break;
         }
@@ -441,8 +432,7 @@ void GroxMainWindow::read_hdf5()
         ohlc_samples.clear();
         ohlc_volumes.clear();
         //
-        hid_t file =
-            H5Fopen(app_ini->hdfFileName.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+        hid_t file = H5Fopen(app_ini->hdfFileName.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
         // check if datasets exist
         if (H5Lexists(file, "ohlc", H5P_DEFAULT) > 0)
         {
@@ -455,8 +445,8 @@ void GroxMainWindow::read_hdf5()
             //
             int N = dims1[0] / (sizeof(QwtOHLCSample) / sizeof(double));
             ohlc_samples.resize(N);
-            status = H5Dread(dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                H5P_DEFAULT, ohlc_samples.data());
+            status = H5Dread(dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                ohlc_samples.data());
 
             // read Volume data
             hid_t dset2 = H5Dopen(file, "volume", H5P_DEFAULT);
@@ -469,8 +459,8 @@ void GroxMainWindow::read_hdf5()
                 throw std::runtime_error("Datasets not same size");
             }
             ohlc_volumes.resize(N);
-            status = H5Dread(dset2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                H5P_DEFAULT, ohlc_volumes.data());
+            status = H5Dread(dset2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                ohlc_volumes.data());
 
             // free/close datasets
             status = H5Dclose(dset1);
@@ -487,8 +477,8 @@ void GroxMainWindow::read_hdf5()
         std::cout << "Creating empty: " << app_ini->hdfFileName << std::endl;
 
         // Create a new file using default properties.
-        hid_t file_id = H5Fcreate(app_ini->hdfFileName.c_str(), H5F_ACC_TRUNC,
-            H5P_DEFAULT, H5P_DEFAULT);
+        hid_t file_id = H5Fcreate(
+            app_ini->hdfFileName.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
         herr_t status = H5Fclose(file_id);
     }
     emit new_ohlc_data_ui();
@@ -526,8 +516,7 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
     herr_t status;
 
     // open the file, use UNLIMITED for main dimension so we can extend datasets
-    hid_t file =
-        H5Fopen(app_ini->hdfFileName.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+    hid_t file = H5Fopen(app_ini->hdfFileName.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 
     // create datasets if they do not exist already
     if (H5Lexists(file, "ohlc", H5P_DEFAULT) <= 0)
@@ -542,10 +531,10 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
 
         // write OHLC data,
         hid_t space1 = H5Screate_simple(1, ohlc_dims, max_dims);
-        hid_t dset1 = H5Dcreate(file, "ohlc", H5T_IEEE_F64LE, space1,
-            H5P_DEFAULT, dprop1, H5P_DEFAULT);
-        status = H5Dwrite(dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-            H5P_DEFAULT, samples.data());
+        hid_t dset1 = H5Dcreate(
+            file, "ohlc", H5T_IEEE_F64LE, space1, H5P_DEFAULT, dprop1, H5P_DEFAULT);
+        status = H5Dwrite(
+            dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, samples.data());
 
         // create a property list to set the chunking property on our volume dataset
         hid_t dprop2 = H5Pcreate(H5P_DATASET_CREATE);
@@ -553,10 +542,10 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
 
         // write Volume data
         hid_t space2 = H5Screate_simple(1, vol_dims, max_dims);
-        hid_t dset2 = H5Dcreate(file, "volume", H5T_IEEE_F64LE, space2,
-            H5P_DEFAULT, dprop2, H5P_DEFAULT);
-        status = H5Dwrite(dset2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-            H5P_DEFAULT, volume.data());
+        hid_t dset2 = H5Dcreate(
+            file, "volume", H5T_IEEE_F64LE, space2, H5P_DEFAULT, dprop2, H5P_DEFAULT);
+        status = H5Dwrite(
+            dset2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, volume.data());
         // free/close datasets
         status = H5Dclose(dset1);
         status = H5Dclose(dset2);
@@ -584,13 +573,12 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
         // Select a hyperslab from the file dataspace
         hid_t fspace1 = H5Dget_space(dset1);
         // select hyperslab in new dataset : start, stride(NULL), count, block(NULL)
-        status = H5Sselect_hyperslab(
-            fspace1, H5S_SELECT_SET, offset1, NULL, ext1, NULL);
+        status = H5Sselect_hyperslab(fspace1, H5S_SELECT_SET, offset1, NULL, ext1, NULL);
         // Define memory space that we write our new data from
         hid_t dspace1 = H5Screate_simple(1, ext1, NULL);
         // Write new data to the hyperslab
-        status = H5Dwrite(dset1, H5T_NATIVE_DOUBLE, dspace1, fspace1,
-            H5P_DEFAULT, &samples[offset]);
+        status = H5Dwrite(
+            dset1, H5T_NATIVE_DOUBLE, dspace1, fspace1, H5P_DEFAULT, &samples[offset]);
 
         hid_t dset2 = H5Dopen(file, "volume", H5P_DEFAULT);
         // extend dataset to new size
@@ -598,13 +586,12 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
         // Select a hyperslab from the file dataspace
         hid_t fspace2 = H5Dget_space(dset2);
         // select hyperslab in new dataset : start, stride(NULL), count, block(NULL)
-        status = H5Sselect_hyperslab(
-            fspace2, H5S_SELECT_SET, offset2, NULL, ext2, NULL);
+        status = H5Sselect_hyperslab(fspace2, H5S_SELECT_SET, offset2, NULL, ext2, NULL);
         // Define memory space that we write our new data from
         hid_t dspace2 = H5Screate_simple(1, ext2, NULL);
         // Write new data to the hyperslab
-        status = H5Dwrite(dset2, H5T_NATIVE_DOUBLE, dspace2, fspace2,
-            H5P_DEFAULT, &volume[offset]);
+        status = H5Dwrite(
+            dset2, H5T_NATIVE_DOUBLE, dspace2, fspace2, H5P_DEFAULT, &volume[offset]);
 
         // free/close datasets
         status = H5Dclose(dset1);
