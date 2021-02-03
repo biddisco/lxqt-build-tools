@@ -82,8 +82,16 @@ int main(int argc, char** argv)
         }
     );
 
-    while(!session->ready_) { std::this_thread::yield(); }
-    contexts.ioc.post([&](){ session->write(target, version); });
+    // wait until connection is setup
+    while(!session->ready_) {
+        std::this_thread::yield();
+    }
+
+    // invoke a post on the context thread
+    contexts.ioc.post([&](){
+        std::cout << "IO context::post ok" << std::endl;
+        session->write(target, version);
+    });
 
     // wait 5 seconds and collect some data
     for (int i=0; i<5; i++) {
@@ -94,6 +102,6 @@ int main(int argc, char** argv)
 
     session->shutdown_blocking();
     websocket_thread.join();
-
+    //
     return EXIT_SUCCESS;
 }

@@ -64,7 +64,8 @@ public:
     }
 };
 
-typedef unsigned char byte;
+using byte = unsigned char;
+
 //typedef std::basic_string<char, std::char_traits<char>, zallocator<char> > secure_string;
 using secure_string = std::string;
 using EVP_CIPHER_CTX_free_ptr = std::unique_ptr<EVP_CIPHER_CTX, decltype(&::EVP_CIPHER_CTX_free)>;
@@ -75,16 +76,29 @@ void aes_decrypt(const byte *key, const byte *iv, const secure_string& instring,
 
 struct encryption
 {
-    static const unsigned int KEY_SIZE = 256;
+    static const unsigned int KEY_SIZE = 32;
     static const unsigned int BLOCK_SIZE = 16;
     //
     byte            key[KEY_SIZE];
     byte            iv[BLOCK_SIZE];
-    secure_string   passphrase_;
     //
     encryption(const secure_string &passphrase, secure_string &randbytes);
     ~encryption();
 
+    // core encryption routines
     secure_string encrypt(const secure_string &input);
     secure_string decrypt(const secure_string &input);
+
+    // utility function for signing web request
+    secure_string CalcHmacSHA256(const secure_string &decodedKey, const secure_string &msg);
+
+#ifdef GROX_HAVE_CURL_ENCODING
+    // utility functions for URL encoding non asci chars
+    std::string b2a_hex(char *byte_arr, int n);
+    std::string url_encode(std::string data);
+#endif
+
+#ifdef GROX_HAVE_UUID_ENCODING
+    std::string generate_uuid_string();
+#endif
 };

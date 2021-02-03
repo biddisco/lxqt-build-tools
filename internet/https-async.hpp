@@ -99,6 +99,8 @@ namespace net {
                 if(ec)
                     return msg_fail(ec, "resolve");
 
+                std::cout << "Resolve ok" << std::endl;
+
                 // Set a timeout on the operation
                 beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
 
@@ -116,6 +118,8 @@ namespace net {
                 if(ec)
                     return msg_fail(ec, "connect");
 
+                std::cout << "Connect ok" << std::endl;
+
                 // Perform the SSL handshake
                 stream_.async_handshake(
                     ssl::stream_base::client,
@@ -129,6 +133,9 @@ namespace net {
             {
                 if(ec)
                     return msg_fail(ec, "handshake");
+
+                std::cout << "Handshake ok" << std::endl;
+
                 ready_ = true;
             }
 
@@ -156,6 +163,26 @@ namespace net {
             }
 
             void
+            write(http::request<http::string_body> &request)
+            {
+                if (!ready_) {
+                    throw std::runtime_error("Still processing last request");
+                }
+
+                ready_ = false;
+                // Set a timeout on the operation
+                beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
+
+                std::cout << "https: writing: " << host_ << ":" << request << std::endl;
+
+                // Send the HTTP request to the remote host
+                http::async_write(stream_, request,
+                    beast::bind_front_handler(
+                        &session::on_write,
+                        shared_from_this()));
+            }
+
+            void
             on_write(
                 beast::error_code ec,
                 std::size_t bytes_transferred)
@@ -164,6 +191,8 @@ namespace net {
 
                 if(ec)
                     return msg_fail(ec, "write");
+
+                std::cout << "Write ok" << std::endl;
 
                 // Receive the HTTP response
                 http::async_read(stream_, buffer_, res_,
@@ -181,6 +210,8 @@ namespace net {
 
                 if(ec)
                     return msg_fail(ec, "read");
+
+                std::cout << "Read ok" << std::endl;
 
                 // The make_printable() function helps print a ConstBufferSequence
                 // std::cout << beast::make_printable(res_.data()) << std::endl;

@@ -91,7 +91,7 @@ endif()
 set(GROX_SRC
     main.cpp
     mainwindow.cpp
-    StackedStockCharts.cpp
+    password_dialog.cpp
     #
     internet/evp-encrypt.cpp
     #
@@ -114,6 +114,8 @@ set(GROX_SRC
     #
     plots/OrderBookPlot.cpp
     plots/OrderBookCurve.cpp
+    plots/CombinedPriceVolumeCharts.cpp
+
     # patternMatch/AscendingTrianglePatternMatch.cpp
     # patternMatch/CupPatternMatch.cpp
     # patternMatch/CupWithHandlePatternMatch.cpp
@@ -223,13 +225,57 @@ target_link_libraries(
 # ---------------------------------------------------
 # test https code
 # ---------------------------------------------------
-set(HTTPS_SRC internet/https-async.cpp internet/test/test-https.cpp)
+set(HTTPS_SRC
+    internet/https-async.cpp
+    internet/test/test-https.cpp)
 
 add_executable(test-https ${HTTPS_SRC})
 
 target_include_directories(test-https PUBLIC ${Boost_INCLUDE_DIRS})
 
 target_link_libraries(test-https PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL pthread)
+
+# ---------------------------------------------------
+# test Token authentication
+# ---------------------------------------------------
+set(LOGIN_SRC
+    internet/test/test-login.cpp
+    internet/https-async.cpp
+    internet/evp-encrypt.cpp )
+add_executable(test-login ${LOGIN_SRC})
+
+target_include_directories(test-login PUBLIC ${Boost_INCLUDE_DIRS})
+
+target_link_libraries(test-login
+    PUBLIC
+    ${Boost_LIBRARIES}
+    OpenSSL::SSL
+    curl
+    uuid
+    pthread
+)
+
+target_compile_definitions(test-login
+  PRIVATE
+    GROX_HAVE_CURL_ENCODING
+    GROX_HAVE_UUID_ENCODING
+)
+
+# ---------------------------------------------------
+# Bitstamp official example 
+# ---------------------------------------------------
+set(BITSTAMP_SRC internet/bitstamp-demo.cpp internet/evp-encrypt.cpp)
+add_executable(test-bitstamp ${BITSTAMP_SRC})
+
+target_include_directories(test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS})
+
+target_link_libraries(test-bitstamp
+    PUBLIC
+    ${Boost_LIBRARIES}
+    OpenSSL::SSL
+    curl
+    uuid
+    pthread)
 
 # ---------------------------------------------------
 # test AES code

@@ -4,24 +4,35 @@
 #include <limits>
 #include <stdexcept>
 #include <cstring>
-
+#include <array>
+#include <algorithm>
+//
 #include <openssl/evp.h>
 #include <openssl/rand.h>
-
+#include <openssl/hmac.h>
+//
+#include <uuid/uuid.h>
+#include <curl/curl.h>
+//
 #include "evp-encrypt.hpp"
 
 encryption::encryption(const secure_string &passphrase, secure_string &randbytes)
 {
-    passphrase_ = passphrase.data();
-    if (randbytes.size() < (encryption::KEY_SIZE + encryption::BLOCK_SIZE)) {
-        gen_params(key, iv);
-        randbytes.resize(encryption::KEY_SIZE + encryption::BLOCK_SIZE);
-        std::memcpy(&randbytes[0],                    key, encryption::KEY_SIZE);
-        std::memcpy(&randbytes[encryption::KEY_SIZE], iv,  encryption::BLOCK_SIZE);
+    // copy the passphrase into the key block until N chars are done
+    // wrap around the passphrase if N>len(passphrase)
+    std::generate_n(std::begin(key), encryption::KEY_SIZE, [n = 0, &passphrase]() mutable {
+        return passphrase[n++ % passphrase.size()];
+    });
+
+    if (randbytes.size() < (encryption::BLOCK_SIZE)) {
+        randbytes.resize(encryption::BLOCK_SIZE);
+        int rc = RAND_bytes(iv, encryption::BLOCK_SIZE);
+        if (rc != 1)
+          throw std::runtime_error("RAND_bytes for iv failed");
+        std::memcpy(&randbytes[0], iv,  encryption::BLOCK_SIZE);
     }
     else {
-        std::memcpy(key, &randbytes[0],                    encryption::KEY_SIZE);
-        std::memcpy(iv,  &randbytes[encryption::KEY_SIZE], encryption::BLOCK_SIZE);
+        std::memcpy(iv,  &randbytes[0], encryption::BLOCK_SIZE);
     }
 }
 
@@ -42,15 +53,22 @@ secure_string encryption::decrypt(const secure_string &input) {
     return result;
 }
 
-void gen_params(byte key[encryption::KEY_SIZE], byte iv[encryption::BLOCK_SIZE])
+secure_string encryption::CalcHmacSHA256(const secure_string &key, const secure_string &msg)
 {
-    int rc = RAND_bytes(key, encryption::KEY_SIZE);
-    if (rc != 1)
-      throw std::runtime_error("RAND_bytes key failed");
+    std::array<unsigned char, EVP_MAX_MD_SIZE> hash;
+    unsigned int hashLen;
 
-    rc = RAND_bytes(iv, encryption::BLOCK_SIZE);
-    if (rc != 1)
-      throw std::runtime_error("RAND_bytes for iv failed");
+    HMAC(
+        EVP_sha256(),
+        key.data(),
+        static_cast<int>(key.size()),
+        reinterpret_cast<unsigned char const*>(msg.data()),
+        static_cast<int>(msg.size()),
+        hash.data(),
+        &hashLen
+    );
+
+    return std::string{reinterpret_cast<char const*>(hash.data()), hashLen};
 }
 
 void aes_encrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption::BLOCK_SIZE], const secure_string& ptext, secure_string& ctext)
@@ -101,3 +119,45 @@ void aes_decrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption:
     rtext.resize(out_len1 + out_len2);
 }
 
+#ifdef GROX_HAVE_CURL_ENCODING
+std::string encryption::b2a_hex(char *byte_arr, int n)
+{
+    const static std::string hex_codes = "0123456789abcdef";
+    std::string hex_string;
+    for ( int i = 0; i < n ; ++i ) {
+        unsigned char bin_value = byte_arr[i];
+        hex_string += hex_codes[( bin_value >> 4 ) & 0x0F];
+        hex_string += hex_codes[bin_value & 0x0F];
+    }
+    return hex_string;
+}
+
+std::string encryption::url_encode(std::string data)
+{
+    std::string res = data;
+    CURL *curl = curl_easy_init();
+
+    if(curl) {
+        char *output = curl_easy_escape(curl, data.c_str(), data.length());
+        if(output) {
+            res = output;
+            curl_free(output);
+        }
+    }
+
+    return res;
+}
+#endif
+
+#ifdef GROX_HAVE_UUID_ENCODING
+std::string encryption::generate_uuid_string()
+{
+    using uuid_string_t = char[256];
+    // from https://www.bitstamp.net/api/ on using api with token authorization
+    uuid_t uuid;
+    uuid_string_t nonce;
+    uuid_generate(uuid);
+    uuid_unparse_lower(uuid, nonce);
+    return nonce;
+}
+#endif

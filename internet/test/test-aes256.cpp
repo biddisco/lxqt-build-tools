@@ -10,8 +10,10 @@ int main(int argc, char* argv[])
 
     auto encrypted = encyptor.encrypt(ptext);
     auto decrypted = encyptor.decrypt(encrypted);
+    auto hashed    = encyptor.CalcHmacSHA256("12345abcde54321", "the quick brown fox");
     std::cout << "Original message:\n" << ptext << std::endl;
     std::cout << "Recovered message:\n" << decrypted << std::endl;
+    std::cout << "Hashed message:\n" << hashed << std::endl;
 
     return 0;
 }
