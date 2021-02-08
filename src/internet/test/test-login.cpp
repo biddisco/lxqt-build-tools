@@ -11,8 +11,8 @@
 #include <curl/curl.h>
 #include <uuid/uuid.h>
 //
-#include "internet/evp-encrypt.hpp"
-#include "internet/https-async.hpp"
+#include "src/internet/evp-encrypt.hpp"
+#include "src/internet/https-async.hpp"
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -45,13 +45,17 @@ int main(int argc, char** argv)
     if (argc != 3 && argc != 4)
     {
         std::cerr << "Usage  : bin/test-login "
-                  << "/api/v2/user_transactions/"
-                  << " ?&limit=2\n";
+                  << "/api/v2/user_transactions/ "
+                  << "\"?&limit=2\"" << std::endl;
         return EXIT_FAILURE;
     }
 
-    const std::string api_key = std::getenv("API_KEY");
-    const std::string api_secret = std::getenv("API_SEC");
+    const std::string api_key = std::getenv("API_KEY") ? std::getenv("API_KEY") : "";
+    const std::string api_secret = std::getenv("API_SEC") ? std::getenv("API_SEC") : "";
+    if (api_key.empty() || api_secret.empty()) {
+        std::cout << "Set ENV vars for API_KEY and APi_SEC " << std::endl;
+        return EXIT_FAILURE;
+    }
 
     secure_string randbytes = "asd23asd234gf576cbv";
     encryption encryptor(api_secret, randbytes);

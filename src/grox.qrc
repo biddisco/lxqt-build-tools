@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>../images/xrp.ico</file>
+        <file>../images/xrp.jpg</file>
+    </qresource>
+</RCC>

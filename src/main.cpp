@@ -7,7 +7,7 @@
 #include <memory>
 #include <random>
 
-#include "internet/evp-encrypt.hpp"
+#include "src/internet/evp-encrypt.hpp"
 #include "mainwindow.hpp"
 #include "password_dialog.hpp"
 #include "settings.hpp"

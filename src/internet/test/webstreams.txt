@@ -1,0 +1,15 @@
+#
+# Get current order book : Up to 'Limit' entries
+#
+bin/test-websocket s1.ripple.com 443 "{ \"id\": 4, \"command\": \"book_offers\", \"taker\": \"r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59\", \"taker_gets\": { \"currency\": \"XRP\" }, \"taker_pays\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"limit\": 10 }"
+ 
+#
+# subscribe to stream : Selling XRP for USD
+#
+bin/test-websocket s1.ripple.com 443 "{ \"id\": \"Example subscribe to XRP/GateHub USD order book\", \"command\": \"subscribe\", \"books\": [ { \"taker_pays\": { \"currency\": \"XRP\" }, \"taker_gets\": { \"currency\": \"USD\", \"issuer\": \"rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq\" }, \"snapshot\": true } ] }"
+
+#
+# subscribe to stream : Buying XRP with USD
+#
+bin/test-websocket s1.ripple.com 443 "{ \"id\": \"Example subscribe to XRP/GateHub USD order book\", \"command\": \"subscribe\", \"books\": [ { \"taker_gets\": { \"currency\": \"XRP\" }, \"taker_pays\": { \"currency\": \"USD\", \"issuer\": \"rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq\" }, \"snapshot\": true } ] }"
+

@@ -4,7 +4,7 @@
 #include <QString>
 
 #include <string>
-#include "internet/evp-encrypt.hpp"
+#include "src/internet/evp-encrypt.hpp"
 
 struct app_settings
 {

@@ -12,7 +12,7 @@
 #include "mainwindow.hpp"
 #include "password_dialog.hpp"
 //
-#include "bitstamp/ohlc.h"
+#include "ohlc.h"
 #include "settings.hpp"
 //
 #include "hdf5.h"

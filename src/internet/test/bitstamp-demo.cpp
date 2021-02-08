@@ -8,7 +8,7 @@
 #include <iostream>
 #include <string>
 //
-#include "internet/evp-encrypt.hpp"
+#include "src/internet/evp-encrypt.hpp"
 
 using uuid_string_t = char[256];
 
@@ -51,8 +51,12 @@ std::string url_encode(std::string data)
 
 int main()
 {
-    const std::string api_key = std::getenv("API_KEY");
-    const std::string api_secret = std::getenv("API_SEC");
+    const std::string api_key = std::getenv("API_KEY") ? std::getenv("API_KEY") : "";
+    const std::string api_secret = std::getenv("API_SEC") ? std::getenv("API_SEC") : "";
+    if (api_key.empty() || api_secret.empty()) {
+        std::cout << "Set ENV vars for API_KEY and APi_SEC " << std::endl;
+        return EXIT_FAILURE;
+    }
 
     secure_string randbytes = "asd23asd234gf576cbv";
     encryption encyptor(api_secret, randbytes);

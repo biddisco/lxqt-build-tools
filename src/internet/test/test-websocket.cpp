@@ -28,7 +28,7 @@
 #include <string>
 #include <thread>
 //
-#include "internet/websocket-ssl.hpp"
+#include "src/internet/websocket-ssl.hpp"
 
 //------------------------------------------------------------------------------
 void new_ticker_data(std::string&& data)

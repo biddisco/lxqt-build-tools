@@ -1,17 +1,17 @@
 # ------------------------------------------------------------------------------
 # To build grox, the following might be necessary
 # ------------------------------------------------------------------------------
-# sudo apt install build-essential ibqt5charts5-dev libqt5opengl5-dev
-# libqt5svg5-dev sudo apt install build-essential libhdf5-dev sudo apt install
-# libboost-all-dev
+# sudo apt install build-essential libqt5charts5-dev libqt5opengl5-dev libqt5svg5-dev
+# libhdf5-dev libboost-all-dev
 #
 # Build boost (1.75) on raspberry pi (4) ./bootstrap ./b2 architecture=arm
 # address-model=32 threading=multi link=shared variant=release
 # --prefix=$HOME/apps/boost --without-mpi --without-python --without-graph
 # --without-graph_parallel -j3 install
 #
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.16)
 cmake_policy(SET CMP0048 NEW)
+cmake_policy(SET CMP0077 NEW)
 
 project(
   GROX
@@ -23,6 +23,13 @@ project(
 # CXX standard 17
 # ------------------------------------------------------------------------------
 set(CMAKE_CXX_STANDARD 17)
+
+# ------------------------------------------------------------------------------
+# Options
+# ------------------------------------------------------------------------------
+option(BUILD_SHARED_LIBS "build shared ripple libraries" OFF)
+
+enable_testing()
 
 # ------------------------------------------------------------------------------
 # CMake modules
@@ -45,10 +52,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
     CACHE PATH "Single Directory for all static libraries."
 )
 
-set(BUILD_SHARED_LIBS ON)
-
-enable_testing()
-
+# ------------------------------------------------------------------------------
+# FIND : Qt5
+# ------------------------------------------------------------------------------
 find_package(
   Qt5 REQUIRED QUIET
   COMPONENTS Core
@@ -65,10 +71,10 @@ find_package(HDF5 REQUIRED COMPONENTS C)
 find_package(ZLIB)
 
 # ------------------------------------------------------------------------------
-# Build qwt
+# Build/Download qwt
 # ------------------------------------------------------------------------------
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/qwt)
-  message(STATUS "Using QWT already in tree  QWT library")
+  message(STATUS "Using QWT in source tree")
   set(FETCHCONTENT_SOURCE_DIR_QWT ${CMAKE_CURRENT_SOURCE_DIR}/qwt)
   set(FETCHCONTENT_UPDATES_DISCONNECTED_QWT ON)
 endif()
@@ -85,18 +91,49 @@ if(NOT qwt_POPULATED)
 endif()
 
 # ------------------------------------------------------------------------------
+# Find/Build : Rippled library
+# ------------------------------------------------------------------------------
+# try to find a system version
+find_package(Ripple QUIET)
+
+if(NOT Ripple_FOUND)
+  # flag tells rippled not to link to static boost/etc
+  set(static FALSE)
+  # look in the current source tree
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/rippled/.git)
+    message(STATUS "Using rippled in source tree (${CMAKE_CURRENT_SOURCE_DIR}/rippled)")
+    # use the source in this directory
+    set(FETCHCONTENT_SOURCE_DIR_RIPPLED ${CMAKE_CURRENT_SOURCE_DIR}/rippled)
+    # don't change branches, or pull
+    set(FETCHCONTENT_UPDATES_DISCONNECTED_RIPPLED ON)
+  endif()
+  fetchcontent_declare(
+    rippled
+    GIT_REPOSITORY https://github.com/ripple/rippled.git
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+  )
+  fetchcontent_getproperties(rippled)
+  if(NOT rippled_POPULATED)
+    message(STATUS "Downloading rippled source...")
+    fetchcontent_populate(rippled)
+    add_subdirectory(${rippled_SOURCE_DIR} ${rippled_BINARY_DIR})
+  endif()
+endif()
+
+# ------------------------------------------------------------------------------
 # grox build
 # ------------------------------------------------------------------------------
 
 set(GROX_SRC
-    main.cpp
-    mainwindow.cpp
-    password_dialog.cpp
+    src/main.cpp
+    src/mainwindow.cpp
+    src/password_dialog.cpp
     #
-    internet/evp-encrypt.cpp
+    src/internet/evp-encrypt.cpp
     #
-    internet/websocket-ssl.cpp
-    internet/https-async.cpp
+    src/internet/websocket-ssl.cpp
+    src/internet/https-async.cpp
     #
     chartSegment/ANDSegmentConstraint.cpp
     chartSegment/ChartSegment.cpp
@@ -115,7 +152,6 @@ set(GROX_SRC
     plots/OrderBookPlot.cpp
     plots/OrderBookCurve.cpp
     plots/CombinedPriceVolumeCharts.cpp
-
     # patternMatch/AscendingTrianglePatternMatch.cpp
     # patternMatch/CupPatternMatch.cpp
     # patternMatch/CupWithHandlePatternMatch.cpp
@@ -161,7 +197,7 @@ set(GROX_SRC
 # -----------------------------------------------------------------------------
 # Qt resource files
 # -----------------------------------------------------------------------------
-set(GROX_QRC_SRC grox.qrc)
+set(GROX_QRC_SRC src/grox.qrc)
 
 add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC})
 set_property(TARGET grox PROPERTY CXX_STANDARD 17)
@@ -212,7 +248,7 @@ target_link_libraries(
 # ---------------------------------------------------
 # test websocket code
 # ---------------------------------------------------
-set(WS_SRC internet/websocket-ssl.cpp internet/test/test-websocket.cpp)
+set(WS_SRC src/internet/websocket-ssl.cpp src/internet/test/test-websocket.cpp)
 
 add_executable(test-websocket ${WS_SRC})
 
@@ -225,9 +261,7 @@ target_link_libraries(
 # ---------------------------------------------------
 # test https code
 # ---------------------------------------------------
-set(HTTPS_SRC
-    internet/https-async.cpp
-    internet/test/test-https.cpp)
+set(HTTPS_SRC src/internet/https-async.cpp src/internet/test/test-https.cpp)
 
 add_executable(test-https ${HTTPS_SRC})
 
@@ -238,49 +272,37 @@ target_link_libraries(test-https PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL pthread)
 # ---------------------------------------------------
 # test Token authentication
 # ---------------------------------------------------
-set(LOGIN_SRC
-    internet/test/test-login.cpp
-    internet/https-async.cpp
-    internet/evp-encrypt.cpp )
+set(LOGIN_SRC src/internet/test/test-login.cpp src/internet/https-async.cpp
+              src/internet/evp-encrypt.cpp
+)
 add_executable(test-login ${LOGIN_SRC})
 
 target_include_directories(test-login PUBLIC ${Boost_INCLUDE_DIRS})
 
-target_link_libraries(test-login
-    PUBLIC
-    ${Boost_LIBRARIES}
-    OpenSSL::SSL
-    curl
-    uuid
-    pthread
+target_link_libraries(
+  test-login PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL curl uuid pthread
 )
 
-target_compile_definitions(test-login
-  PRIVATE
-    GROX_HAVE_CURL_ENCODING
-    GROX_HAVE_UUID_ENCODING
+target_compile_definitions(
+  test-login PRIVATE GROX_HAVE_CURL_ENCODING GROX_HAVE_UUID_ENCODING
 )
 
 # ---------------------------------------------------
-# Bitstamp official example 
+# Bitstamp official example
 # ---------------------------------------------------
-set(BITSTAMP_SRC internet/bitstamp-demo.cpp internet/evp-encrypt.cpp)
+set(BITSTAMP_SRC src/internet/test/bitstamp-demo.cpp src/internet/evp-encrypt.cpp)
 add_executable(test-bitstamp ${BITSTAMP_SRC})
 
 target_include_directories(test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS})
 
-target_link_libraries(test-bitstamp
-    PUBLIC
-    ${Boost_LIBRARIES}
-    OpenSSL::SSL
-    curl
-    uuid
-    pthread)
+target_link_libraries(
+  test-bitstamp PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL curl uuid pthread
+)
 
 # ---------------------------------------------------
 # test AES code
 # ---------------------------------------------------
-set(AES256_SRC internet/evp-encrypt.cpp internet/test/test-aes256.cpp)
+set(AES256_SRC src/internet/evp-encrypt.cpp src/internet/test/test-aes256.cpp)
 
 add_executable(test-aes256 ${AES256_SRC})
 
@@ -289,5 +311,10 @@ target_link_libraries(test-aes256 PUBLIC OpenSSL::SSL pthread)
 # ---------------------------------------------------
 # Ripple transaction signing demo
 # ---------------------------------------------------
-set(static OFF)
-add_subdirectory(validator-keys-tool)
+if(TARGET Ripple::xrpl_core)
+  set(SIGN_SRC src/internet/test/ripple-sign-demo.cpp)
+  add_executable(test-ripple-signing ${SIGN_SRC})
+  target_link_libraries(
+    test-ripple-signing PUBLIC Ripple::xrpl_core OpenSSL::SSL pthread
+  )
+endif()

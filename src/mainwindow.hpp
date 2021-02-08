@@ -3,8 +3,8 @@
 #include <QAction>
 #include <QMainWindow>
 //
-#include "internet/https-async.hpp"
-#include "internet/websocket-ssl.hpp"
+#include "src/internet/https-async.hpp"
+#include "src/internet/websocket-ssl.hpp"
 //
 #include "PriceAndPatternPlot.h"
 #include "plots/CombinedPriceVolumeCharts.h"
