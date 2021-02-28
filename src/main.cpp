@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <random>
 
 #include "src/internet/evp-encrypt.hpp"
 #include "mainwindow.hpp"
@@ -68,20 +67,6 @@ secure_string base64_string(QByteArray ba)
     return secure_string(bb.data(), bb.size());
 }
 
-std::string generate_random_alphanumeric_string(int seed, std::size_t len)
-{
-    static constexpr auto chars = "0123456789"
-                                  "~`!@#$%^&*()_-+={}[]|';:/?<>,."
-                                  "!@#$%^&*(){}][:;'/?.>,<'`~| "
-                                  "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                                  "abcdefghijklmnopqrstuvwxyz";
-    auto rng = std::mt19937(seed);
-    auto dist = std::uniform_int_distribution{{}, std::strlen(chars) - 1};
-    auto result = std::string(len, '\0');
-    std::generate_n(begin(result), len, [&]() { return chars[dist(rng)]; });
-    return result;
-}
-
 // ----------------------------------------------------------------------------
 void generate_encrypted_ini_data(password_dialog& npw)
 {
@@ -92,8 +77,7 @@ void generate_encrypted_ini_data(password_dialog& npw)
 
     // we write a dummy random number to ini file
     // if this is present assume that the initial encryption step is valid
-    constexpr int rand_size = encryption::BLOCK_SIZE;
-    secure_string adummy_string = generate_random_alphanumeric_string(111111, rand_size);
+    secure_string adummy_string = generate_random_alphanumeric_string(encryption::BLOCK_SIZE, 111111);
     settings.setValue("EncodedData/randomBytes",
         QString::fromStdString(base64_encode(adummy_string).toStdString()));
 
@@ -154,9 +138,8 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    constexpr int rand_size = encryption::BLOCK_SIZE;
     // we need random data for the encryption block
-    app_ini->randomBytes = generate_random_alphanumeric_string(654792, rand_size);
+    app_ini->randomBytes = generate_random_alphanumeric_string(encryption::BLOCK_SIZE, 654792);
 
     // read random initialization data
     QByteArray rand =
@@ -164,7 +147,7 @@ int main(int argc, char* argv[])
 
     // if the randomblock is empty (first time app is run?)
     // then we should ask the user for new password and account details
-    if (rand.size() != rand_size)
+    if (rand.size() != encryption::BLOCK_SIZE)
     {
         password_dialog npw;
         if (npw.exec() == QDialog::Accepted)

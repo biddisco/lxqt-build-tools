@@ -6,6 +6,8 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <random>
+#include <iomanip>
 //
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -124,8 +126,7 @@ void aes_decrypt(const byte key[encryption::KEY_SIZE],
     rtext.resize(out_len1 + out_len2);
 }
 
-#ifdef GROX_HAVE_CURL_ENCODING
-std::string encryption::b2a_hex(char* byte_arr, int n)
+std::string b2a_hex(char* byte_arr, int n)
 {
     const static std::string hex_codes = "0123456789abcdef";
     std::string hex_string;
@@ -137,25 +138,6 @@ std::string encryption::b2a_hex(char* byte_arr, int n)
     }
     return hex_string;
 }
-
-std::string encryption::url_encode(std::string data)
-{
-    std::string res = data;
-    CURL* curl = curl_easy_init();
-
-    if (curl)
-    {
-        char* output = curl_easy_escape(curl, data.c_str(), data.length());
-        if (output)
-        {
-            res = output;
-            curl_free(output);
-        }
-    }
-
-    return res;
-}
-#endif
 
 #ifdef GROX_HAVE_UUID_ENCODING
 std::string encryption::generate_uuid_string()
@@ -169,3 +151,41 @@ std::string encryption::generate_uuid_string()
     return nonce;
 }
 #endif
+
+std::string generate_random_alphanumeric_string(std::size_t len, std::uint64_t seed)
+{
+    static constexpr auto chars = "0123456789"
+                                  "~`!@#$%^&*()_-+={}[]|';:/?<>,."
+                                  "!@#$%^&*(){}][:;'/?.>,<'`~| "
+                                  "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                  "abcdefghijklmnopqrstuvwxyz";
+    auto rng = std::mt19937(seed);
+    auto dist = std::uniform_int_distribution{{}, std::strlen(chars) - 1};
+    auto result = std::string(len, '\0');
+    std::generate_n(begin(result), len, [&]() { return chars[dist(rng)]; });
+    return result;
+}
+
+std::string url_encode(const std::string &value) {
+    std::ostringstream escaped;
+    escaped.fill('0');
+    escaped << std::hex;
+
+    for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i)
+    {
+        std::string::value_type c = (*i);
+
+        // Keep alphanumeric and other accepted characters intact
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            escaped << c;
+            continue;
+        }
+
+        // Any other characters are percent-encoded
+        escaped << std::uppercase;
+        escaped << '%' << std::setw(2) << int((unsigned char) c);
+        escaped << std::nouppercase;
+    }
+
+    return escaped.str();
+}

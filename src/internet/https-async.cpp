@@ -41,7 +41,7 @@ namespace net { namespace https {
         // Launch the asynchronous operation
         auto session_ptr = std::make_shared<session>(ioc, ctx);
 
-        session_ptr->read_callback = std::move(callback);
+        session_ptr->set_callback(std::move(callback));
 
         session_ptr->run(host.c_str(), port.c_str());
 

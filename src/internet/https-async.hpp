@@ -47,8 +47,13 @@ namespace net { namespace https {
 
     public:
         //
-        std::function<void(std::string&&)> read_callback;
-        std::atomic<bool> ready_;
+        using callback_type = std::function<void(std::string&&)>;
+        callback_type       read_callback_;
+        std::atomic<bool>   ready_;
+
+        void set_callback(callback_type cb) {
+            read_callback_ = cb;
+        }
 
     public:
         explicit session(asio::io_context& ioc, ssl::context& ctx)
@@ -120,7 +125,7 @@ namespace net { namespace https {
             ready_ = true;
         }
 
-        void write(std::string&& target, unsigned version = 11)
+        void write(std::string target, unsigned version = 11)
         {
             if (!ready_)
             {
@@ -192,9 +197,9 @@ namespace net { namespace https {
             ready_ = true;
 
             // trigger the user callback
-            if (read_callback)
+            if (read_callback_)
             {
-                read_callback(std::move(str_buffer));
+                read_callback_(std::move(str_buffer));
             }
         }
 

@@ -50,7 +50,7 @@ namespace net {
         // The SSL context is required, and holds certificates
         ssl::context ctx;
 
-        // creat the objects we need
+        // create the objects we need
         contexts()
           : ioc()
           , ctx{ssl::context::tlsv12_client}

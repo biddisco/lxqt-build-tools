@@ -18,37 +18,6 @@ static size_t write_call_back(void* contents, size_t size, size_t nmemb, void* u
     return size * nmemb;
 }
 
-std::string b2a_hex(char* byte_arr, int n)
-{
-    const static std::string hex_codes = "0123456789abcdef";
-    std::string hex_string;
-    for (int i = 0; i < n; ++i)
-    {
-        unsigned char bin_value = byte_arr[i];
-        hex_string += hex_codes[(bin_value >> 4) & 0x0F];
-        hex_string += hex_codes[bin_value & 0x0F];
-    }
-    return hex_string;
-}
-
-std::string url_encode(std::string data)
-{
-    std::string res = data;
-    CURL* curl = curl_easy_init();
-
-    if (curl)
-    {
-        char* output = curl_easy_escape(curl, data.c_str(), data.length());
-        if (output)
-        {
-            res = output;
-            curl_free(output);
-        }
-    }
-
-    return res;
-}
-
 int main()
 {
     const std::string api_key = std::getenv("API_KEY") ? std::getenv("API_KEY") : "";

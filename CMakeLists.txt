@@ -228,6 +228,14 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
   set(STD_FILESYSTEM_LIB "stdc++fs")
 endif()
 
+target_compile_definitions(grox
+  PRIVATE
+    # needed for UUID generation in web requests
+    GROX_HAVE_UUID_ENCODING
+    # disable support for belle websocket server
+    OB_BELLE_CONFIG_SERVER_OFF
+)
+
 target_link_libraries(
   grox
   PUBLIC qwt
@@ -241,6 +249,7 @@ target_link_libraries(
          ${Boost_LIBRARIES}
          ${HDF5_LIBRARIES}
          ${STD_FILESYSTEM_LIB}
+         uuid
          OpenSSL::SSL
          pthread
 )

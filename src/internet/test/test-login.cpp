@@ -69,14 +69,14 @@ int main(int argc, char** argv)
     std::string x_auth_timestamp = std::to_string(timestamp.count());
     std::string x_auth_version = "v2";
     std::string content_type = "application/x-www-form-urlencoded";
-    std::string payload = encryptor.url_encode("{offset:1}");
+    std::string payload = url_encode("{offset:1}");
 
     std::string http_method = "POST";
     std::string url_host = "www.bitstamp.net";
     std::string url_path = argv[1];     // "/api/v2/user_transactions/";
     std::string url_query = argv[2];    //"?limit=2";
 
-    std::string url_encoded = encryptor.url_encode(url_path + url_query);
+    std::string url_encoded = url_encode(url_path + url_query);
     std::string url_redirected = url_path + url_query;
 
     // full query is signed using Hmac SHA256 algorithm
@@ -95,7 +95,7 @@ int main(int argc, char** argv)
     auto signed_hmac = encryptor.CalcHmacSHA256(api_secret, data_to_sign);
     assert(signed_hmac.size() == 32);
     std::string x_auth_signature =
-        encryptor.b2a_hex(signed_hmac.data(), signed_hmac.size());
+        b2a_hex(signed_hmac.data(), signed_hmac.size());
 
     http::request<http::string_body> request(http::verb::post, url_redirected, 11);
     request.set(http::field::host, host);
@@ -130,7 +130,7 @@ int main(int argc, char** argv)
     // invoke a post on the context thread
     contexts.ioc.post([&]() {
         std::cout << "IO context::post ok" << std::endl;
-        session->write(request);
+        session->write(/*std::move(*/request/*)*/);
     });
 
     // wait 5 seconds and collect some data

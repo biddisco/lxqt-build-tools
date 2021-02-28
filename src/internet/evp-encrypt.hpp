@@ -9,6 +9,19 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
+// ------------------------------------------------------------------
+// utility functions
+// ------------------------------------------------------------------
+// generate random chars with length, seed
+std::string generate_random_alphanumeric_string(std::size_t /*len*/, std::uint64_t /*seed*/);
+
+// encode a URL by escaping necessary chars
+std::string url_encode(const std::string &);
+std::string b2a_hex(char* /*byte_arr*/, int /*n*/);
+
+// ------------------------------------------------------------------
+// allocator that cleans up memory
+// ------------------------------------------------------------------
 template <typename T>
 struct zallocator
 {
@@ -108,12 +121,6 @@ struct encryption
     // utility function for signing web request
     secure_string CalcHmacSHA256(
         const secure_string& decodedKey, const secure_string& msg);
-
-#ifdef GROX_HAVE_CURL_ENCODING
-    // utility functions for URL encoding non asci chars
-    std::string b2a_hex(char* byte_arr, int n);
-    std::string url_encode(std::string data);
-#endif
 
 #ifdef GROX_HAVE_UUID_ENCODING
     std::string generate_uuid_string();
