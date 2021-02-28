@@ -52,7 +52,8 @@ int main(int argc, char** argv)
 
     const std::string api_key = std::getenv("API_KEY") ? std::getenv("API_KEY") : "";
     const std::string api_secret = std::getenv("API_SEC") ? std::getenv("API_SEC") : "";
-    if (api_key.empty() || api_secret.empty()) {
+    if (api_key.empty() || api_secret.empty())
+    {
         std::cout << "Set ENV vars for API_KEY and APi_SEC " << std::endl;
         return EXIT_FAILURE;
     }
@@ -94,8 +95,7 @@ int main(int argc, char** argv)
     // generated signature
     auto signed_hmac = encryptor.CalcHmacSHA256(api_secret, data_to_sign);
     assert(signed_hmac.size() == 32);
-    std::string x_auth_signature =
-        b2a_hex(signed_hmac.data(), signed_hmac.size());
+    std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
 
     http::request<http::string_body> request(http::verb::post, url_redirected, 11);
     request.set(http::field::host, host);
@@ -130,7 +130,7 @@ int main(int argc, char** argv)
     // invoke a post on the context thread
     contexts.ioc.post([&]() {
         std::cout << "IO context::post ok" << std::endl;
-        session->write(/*std::move(*/request/*)*/);
+        session->write(/*std::move(*/ request /*)*/);
     });
 
     // wait 5 seconds and collect some data

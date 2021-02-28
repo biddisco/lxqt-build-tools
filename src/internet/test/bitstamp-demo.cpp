@@ -22,7 +22,8 @@ int main()
 {
     const std::string api_key = std::getenv("API_KEY") ? std::getenv("API_KEY") : "";
     const std::string api_secret = std::getenv("API_SEC") ? std::getenv("API_SEC") : "";
-    if (api_key.empty() || api_secret.empty()) {
+    if (api_key.empty() || api_secret.empty())
+    {
         std::cout << "Set ENV vars for API_KEY and APi_SEC " << std::endl;
         return EXIT_FAILURE;
     }

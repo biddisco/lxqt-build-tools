@@ -1,13 +1,13 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <random>
 #include <stdexcept>
 #include <string>
-#include <random>
-#include <iomanip>
 //
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -166,7 +166,8 @@ std::string generate_random_alphanumeric_string(std::size_t len, std::uint64_t s
     return result;
 }
 
-std::string url_encode(const std::string &value) {
+std::string url_encode(const std::string& value)
+{
     std::ostringstream escaped;
     escaped.fill('0');
     escaped << std::hex;
@@ -176,7 +177,8 @@ std::string url_encode(const std::string &value) {
         std::string::value_type c = (*i);
 
         // Keep alphanumeric and other accepted characters intact
-        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
+        {
             escaped << c;
             continue;
         }

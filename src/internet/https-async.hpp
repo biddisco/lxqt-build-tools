@@ -48,10 +48,11 @@ namespace net { namespace https {
     public:
         //
         using callback_type = std::function<void(std::string&&)>;
-        callback_type       read_callback_;
-        std::atomic<bool>   ready_;
+        callback_type read_callback_;
+        std::atomic<bool> ready_;
 
-        void set_callback(callback_type cb) {
+        void set_callback(callback_type cb)
+        {
             read_callback_ = cb;
         }
 
