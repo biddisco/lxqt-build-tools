@@ -3,6 +3,11 @@
 #include <QAction>
 #include <QMainWindow>
 //
+#ifndef Q_MOC_RUN
+// MOC chokes on keyword "signals" used by belle
+# include "extern/belle/include/belle.hh"
+#endif
+//
 #include "src/internet/https-async.hpp"
 #include "src/internet/websocket-ssl.hpp"
 //
@@ -11,6 +16,8 @@
 #include "plots/OrderBookPlot.h"
 //
 #include "ui_mainwindow.h"
+//
+#include "settings.hpp"
 
 class GroxMainWindow : public QMainWindow
 {
@@ -23,6 +30,8 @@ class GroxMainWindow : public QMainWindow
     std::vector<double> ohlc_volumes;
     bool repeat_ohlc_;
 
+//    http::request<http::string_body> bitstamp_request_;
+
 public:
     explicit GroxMainWindow(QWidget* parent = nullptr);
     ~GroxMainWindow();
@@ -32,7 +41,10 @@ public:
 
     static void new_ticker_data(GroxMainWindow*, std::string&&);
     static void new_order_data(GroxMainWindow*, std::string&&);
-    static void rest_api_data(GroxMainWindow*, std::string&&);
+    //
+    void receive_ohlc_data(std::string&&);
+    void bitstamp_account_data(std::string&&);
+    void ledger_reply(std::string&&);
 
     void create_data_dir();
     void read_hdf5();
@@ -40,6 +52,11 @@ public:
         const std::vector<double>& volume, const uint64_t update = 0);
     void request_new_candlestick_data(uint64_t start_t);
     void validate_ohlc();
+
+    // ----------------------------------------------------------------------------
+    void bitstamp_request(const std::string &url_path, const std::string &url_query);
+    void update_accounts(app_settings* app_ini);
+    void ledger_balance();
 
     // ----------------------------------------------------------------------------
     void merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
@@ -65,6 +82,23 @@ public slots:
     void appExitCleanupHandler();
     void start_websocket();
     void new_ohlc_data();
+    void update_accounts();
+
+    // ----------------------------------
+    void transfer_setup_xrp(double);
+    void transfer_setup_usd(double);
+    //
+    void xrp_dir_clicked();
+    void q1x_clicked();
+    void q2x_clicked();
+    void q3x_clicked();
+    void q4x_clicked();
+    //
+    void usd_dir_clicked();
+    void q1u_clicked();
+    void q2u_clicked();
+    void q3u_clicked();
+    void q4u_clicked();
 
 private:
     Ui::GroxMainWindow ui;
@@ -72,10 +106,18 @@ private:
 
     // instances we need for websocket connnections
     net::contexts io_contexts;
+    // websocket for bitstamp trade feed
     std::shared_ptr<net::ws::session> ws_trades;
+    // websocket for bitstamp bid/ask order book
     std::shared_ptr<net::ws::session> ws_bidask;
-    std::shared_ptr<net::https::session> https_rest;
+//    // https session ffor rest API calls
+//    std::shared_ptr<net::https::session> https_rest;
+    //
     std::thread websocket_thread;
+
+    // An https client object for queuing/dispatching requests
+    OB::Belle::Client belle_https_bitstamp;
+    OB::Belle::Client belle_https_ripple;
 };
 
 static GroxMainWindow* mainwindow;

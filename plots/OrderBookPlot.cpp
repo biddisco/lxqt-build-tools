@@ -7,6 +7,7 @@
 #include <qwt_plot_barchart.h>
 #include <qwt_plot_curve.h>
 #include <qwt_plot_grid.h>
+#include <qwt_plot_layout.h>
 #include <qwt_plot_legenditem.h>
 #include <qwt_plot_magnifier.h>
 #include <qwt_plot_panner.h>
@@ -33,7 +34,7 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
 
     // The following is needed to properly adjust the RHS of the X axis. Otherwise,
     // there is space on the RHS.
-    //    axisScaleEngine(QwtPlot::xBottom)->setAttribute(QwtScaleEngine::Floating, true);
+    axisScaleEngine(QwtPlot::xBottom)->setAttribute(QwtScaleEngine::Floating, true);
 
     // LeftButton for the zooming
     // MidButton for the panning

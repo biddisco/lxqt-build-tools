@@ -327,3 +327,34 @@ if(TARGET Ripple::xrpl_core)
     test-ripple-signing PUBLIC Ripple::xrpl_core OpenSSL::SSL pthread
   )
 endif()
+
+# ---------------------------------------------------
+# belle - client test against bitstamp API
+# ---------------------------------------------------
+add_executable(test-belle-client src/internet/test/test-belle-client.cpp)
+target_include_directories(test-belle-client PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
+target_link_libraries(test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
+
+# ---------------------------------------------------
+# belle - client test against bitstamp API
+# ---------------------------------------------------
+add_executable(test-belle-client-request src/internet/test/test-belle-client-request.cpp)
+target_include_directories(test-belle-client-request PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
+target_link_libraries(test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
+
+# ---------------------------------------------------
+# belle - example original https test client/server
+# ---------------------------------------------------
+add_executable(test-belle-https-client ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/client/https/src/main.cc)
+target_include_directories(test-belle-https-client PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
+target_link_libraries(test-belle-https-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
+target_compile_definitions(test-belle-https-client
+    PRIVATE BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
+)
+
+add_executable(test-belle-https-server ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/server/https/src/main.cc)
+target_include_directories(test-belle-https-server PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
+target_link_libraries(test-belle-https-server PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
+target_compile_definitions(test-belle-https-server
+    PRIVATE BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
+)

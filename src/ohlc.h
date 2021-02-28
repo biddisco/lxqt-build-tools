@@ -111,3 +111,32 @@ struct live_order_book {
 Q_DECLARE_METATYPE(live_order_book)
 Q_DECLARE_METATYPE(std::vector<live_order_book>*)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_order_book, bids, asks, timestamp, microtimestamp);
+
+struct xrp_balances {
+    std::string currency;
+    std::string value;
+    std::optional<std::string> counterparty = std::nullopt;
+};
+
+// Due to std::optional, we must provide serialization ourselves
+void to_json(json& j, const xrp_balances& p) {
+    j = json{ {"currency", p.currency},
+              {"value", p.value} };
+    if (p.counterparty != std::nullopt)
+    {
+        j["counterparty"] = p.counterparty.value();
+    }
+}
+
+void from_json(const nlohmann::json &j, xrp_balances &p)
+{
+    p.currency = j.at("currency").get< std::string >();
+    p.value    = j.at("value").get< std::string >();
+    if (j.count("counterparty") != 0)
+    {
+        p.counterparty = j.at("counterparty").get< std::string >();
+    }
+}
+
+Q_DECLARE_METATYPE(xrp_balances)
+Q_DECLARE_METATYPE(std::vector<xrp_balances>*)

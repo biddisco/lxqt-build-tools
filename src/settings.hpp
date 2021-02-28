@@ -26,7 +26,25 @@ struct app_settings
     //
     secure_string grox_password;
     secure_string randomBytes;
-
+    //
+    double bitstamp_xrp_fee;
+    //
+    double bitstamp_xrp_balance;
+    double bitstamp_xrp_available;
+    double bitstamp_xrp_reserved;
+    //
+    double bitstamp_usd_balance;
+    double bitstamp_usd_available;
+    double bitstamp_usd_reserved;
+    //
+    double ledger_xrp_balance;
+    double ledger_xrp_available;
+    double ledger_xrp_reserved;
+    //
+    double ledger_usd_balance;
+    double ledger_usd_available;
+    double ledger_usd_reserved;
+    //
     //    tempLocation = QStandardPaths::standardLocations(QStandardPaths::TempLocation).first().replace('\\', '/') + "/";
     //    desktopLocation = QStandardPaths::standardLocations(QStandardPaths::DesktopLocation).first().replace('\\', '/') + "/";
     //    logFileName = QLatin1String("QtBitcoinTrader.log");

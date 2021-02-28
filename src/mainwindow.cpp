@@ -8,9 +8,13 @@
 #include <filesystem>
 //
 #include <boost/iterator/zip_iterator.hpp>
+#include <boost/format.hpp>
 //
 #include "mainwindow.hpp"
 #include "password_dialog.hpp"
+//
+#include "src/internet/evp-encrypt.hpp"
+#include "src/internet/https-async.hpp"
 //
 #include "ohlc.h"
 #include "settings.hpp"
@@ -19,6 +23,16 @@
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
+
+namespace Belle = OB::Belle;
+void on_http_error(Belle::Client& belle_https_bitstamp)
+{
+  // set the http on error callback
+  belle_https_bitstamp.on_http_error([](auto& ctx)
+  {
+    std::cerr << "Error: " << ctx.ec.message() << "\n\n";
+  });
+}
 
 // ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)
@@ -50,15 +64,24 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     createActions();
     createMenus();
-
+    //
     read_hdf5();
     //
     // just an experiment to display an image
     //
     // scale pixmap to fit in label'size and keep ratio of pixmap
     QPixmap pix(":/images/xrp.jpg");
-    pix = pix.scaled(ui.image_label->size(), Qt::KeepAspectRatio);
-    ui.image_label->setPixmap(pix);
+//    pix = pix.scaled(ui.image_label->size(), Qt::KeepAspectRatio);
+//    ui.image_label->setPixmap(pix);
+    //
+    belle_https_bitstamp.address("www.bitstamp.net");
+    belle_https_bitstamp.port(443);
+    belle_https_bitstamp.ssl(true);
+    belle_https_ripple.address("data.ripple.com");
+    belle_https_ripple.port(443);
+    belle_https_ripple.ssl(true);
+    on_http_error(belle_https_bitstamp);
+    on_http_error(belle_https_ripple);
 }
 
 // ----------------------------------------------------------------------------
@@ -86,9 +109,12 @@ void GroxMainWindow::appExitCleanupHandler()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::createActions()
 {
-    actionQuit = ui.menubar->addAction(tr("Quit"));
-    actionQuit->setMenuRole(QAction::QuitRole);
-    actionQuit->setShortcut(QKeySequence::Quit);
+    new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q), this, SLOT(close()));
+    new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_C), this, SLOT(start_websocket()));
+//    //
+//    actionQuit = ui.menubar->addAction(tr("Quit"));
+//    actionQuit->setMenuRole(QAction::QuitRole);
+//    actionQuit->setShortcut(QKeySequence::Quit);
 }
 
 // ----------------------------------------------------------------------------
@@ -121,7 +147,7 @@ void GroxMainWindow::createMenus()
 {
     ui.connect_button->installEventFilter(this);
 
-    connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
+//    connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
     connect(ui.connect_button, SIGNAL(clicked()), this, SLOT(start_websocket()));
     connect(this, SIGNAL(new_ticker_data_ui(QString)), ui.json_text_1,
         SLOT(setPlainText(QString)));
@@ -129,6 +155,20 @@ void GroxMainWindow::createMenus()
         SLOT(setPlainText(QString)));
     connect(this, SIGNAL(new_order_data_replot()), OrderBookPlot_, SLOT(replot()));
     connect(this, SIGNAL(new_ohlc_data_ui()), this, SLOT(new_ohlc_data()));
+
+    connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_accounts()));
+
+    connect(ui.xrp_dir, SIGNAL(clicked()), this, SLOT(xrp_dir_clicked()));
+    connect(ui.usd_dir, SIGNAL(clicked()), this, SLOT(usd_dir_clicked()));
+    connect(ui.q1x, SIGNAL(clicked()), this, SLOT(q1x_clicked()));
+    connect(ui.q2x, SIGNAL(clicked()), this, SLOT(q2x_clicked()));
+    connect(ui.q3x, SIGNAL(clicked()), this, SLOT(q3x_clicked()));
+    connect(ui.q4x, SIGNAL(clicked()), this, SLOT(q4x_clicked()));
+    //
+    connect(ui.q1u, SIGNAL(clicked()), this, SLOT(q1u_clicked()));
+    connect(ui.q2u, SIGNAL(clicked()), this, SLOT(q2u_clicked()));
+    connect(ui.q3u, SIGNAL(clicked()), this, SLOT(q3u_clicked()));
+    connect(ui.q4u, SIGNAL(clicked()), this, SLOT(q4u_clicked()));
 }
 
 // ----------------------------------------------------------------------------
@@ -146,7 +186,6 @@ void GroxMainWindow::new_ticker_data(GroxMainWindow* mw, std::string&& data)
     // std::cout << jdata.dump(4) << std::endl;
 
     live_trades json_trades = jdata.get<live_trades>();
-    ;
 
     // convert json data to trade structs
     //    live_trades_string json_strings;
@@ -200,15 +239,13 @@ void GroxMainWindow::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::rest_api_data(GroxMainWindow* mw, std::string&& data)
+void GroxMainWindow::receive_ohlc_data(std::string&& data)
 {
     try
     {
         // convert json data into vectors of actual data
-        // std::cout << "\n\nRest API " << data << std::endl << std::endl << std::endl;
         nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
         std::vector<ohlc_string> ohlc_strings = jdata.get<std::vector<ohlc_string>>();
-        ;
         //
         QVector<QwtOHLCSample> new_ohlc_samples;
         std::vector<double> new_ohlc_volumes;
@@ -224,13 +261,13 @@ void GroxMainWindow::rest_api_data(GroxMainWindow* mw, std::string&& data)
                 temp.timestamp, temp.open, temp.high, temp.low, temp.close));
             new_ohlc_volumes.push_back(temp.volume);
         }
-        std::cout << "Received " << ohlc_strings.size() << " new OHLC samples"
-                  << std::endl;
-        mw->merge_data(new_ohlc_samples, new_ohlc_volumes);
+        std::cout << "Received " << ohlc_strings.size()
+                  << " new OHLC samples" << std::endl;
+        merge_data(new_ohlc_samples, new_ohlc_volumes);
 
-        if (mw->repeat_ohlc_)
+        if (repeat_ohlc_)
         {
-            mw->request_new_candlestick_data(0);
+            request_new_candlestick_data(0);
         }
     }
     catch (std::exception& e)
@@ -305,6 +342,176 @@ void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string&& data)
 }
 
 // ----------------------------------------------------------------------------
+void GroxMainWindow::ledger_reply(std::string&& data)
+{
+    nlohmann::json jdata = json::parse(data)["balances"];
+    std::cout << jdata.dump(4) << std::endl;
+    std::vector<xrp_balances> balances = jdata.get<std::vector<xrp_balances>>();
+    //
+    app_settings* app_ini = global_settings();
+    //
+    for (const auto &b : balances) {
+        if (b.currency=="XRP") {
+            app_ini->ledger_xrp_available = std::atof(b.value.c_str());
+            app_ini->ledger_xrp_balance = std::atof(b.value.c_str());
+            app_ini->ledger_xrp_reserved = 0;
+        }
+        else if (b.currency=="USD" && b.counterparty=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
+            app_ini->ledger_usd_available = std::atof(b.value.c_str());
+            app_ini->ledger_usd_balance = std::atof(b.value.c_str());
+            app_ini->ledger_usd_reserved = 0;
+        }
+    }
+    //
+    update_accounts(app_ini);
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::bitstamp_account_data(std::string&& data)
+{
+//    std::cout << "Response : " << data << std::endl;
+    //
+    nlohmann::json jdata = json::parse(data);
+    // std::cout << jdata.dump(4) << std::endl;
+    //
+    app_settings* app_ini = global_settings();
+    //
+    app_ini->bitstamp_xrp_fee       = std::stod(jdata["xrpusd_fee"].get<std::string>());
+    app_ini->bitstamp_xrp_balance   = std::stod(jdata["xrp_balance"].get<std::string>());
+    app_ini->bitstamp_xrp_available = std::stod(jdata["xrp_available"].get<std::string>());
+    app_ini->bitstamp_xrp_reserved  = std::stod(jdata["xrp_reserved"].get<std::string>());
+    app_ini->bitstamp_usd_balance   = std::stod(jdata["usd_balance"].get<std::string>());
+    app_ini->bitstamp_usd_available = std::stod(jdata["usd_available"].get<std::string>());
+    app_ini->bitstamp_usd_reserved  = std::stod(jdata["usd_reserved"].get<std::string>());
+    //
+    update_accounts(app_ini);
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::update_accounts(app_settings* app_ini)
+{
+    ui.bitstamp_xrp_fee->setText(boost::str(boost::format("fee %.4f%%") % app_ini->bitstamp_xrp_fee).c_str());
+    //
+    ui.bitstamp_balance_xrp->setText(boost::str(boost::format("%.6f") % app_ini->bitstamp_xrp_balance).c_str());
+    ui.bitstamp_avail_xrp->setText(boost::str(boost::format("%.6f") % app_ini->bitstamp_xrp_available).c_str());
+    ui.bitstamp_reserved_xrp->setText(boost::str(boost::format("%.6f") % app_ini->bitstamp_xrp_reserved).c_str());
+    //
+    ui.bitstamp_balance_usd->setText(boost::str(boost::format("%.2f") % app_ini->bitstamp_usd_balance).c_str());
+    ui.bitstamp_avail_usd->setText(boost::str(boost::format("%.2f") % app_ini->bitstamp_usd_available).c_str());
+    ui.bitstamp_reserved_usd->setText(boost::str(boost::format("%.2f") % app_ini->bitstamp_usd_reserved).c_str());
+    //
+    ui.ledger_balance_xrp->setText(boost::str(boost::format("%.6f") % app_ini->ledger_xrp_available).c_str());
+    ui.ledger_balance_usd->setText(boost::str(boost::format("%.2f") % app_ini->ledger_usd_available).c_str());
+
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::ledger_balance()
+{
+    app_settings* app_ini = global_settings();
+    std::string target = "/v2/accounts/" + app_ini->XRP_public + "/balances";
+
+    belle_https_ripple.on_http(target, [this](auto& ctx)
+    {
+      // check http status code
+      if (ctx.res.result() != Belle::Status::ok)
+      {
+        // print the response status code and reason
+        std::cerr << "HTTPS Error: "
+                  << ctx.res.result_int()
+                  << " " << ctx.res.reason() << "\n\n";
+        return;
+      }
+      // debug : print the response headers and body
+      std::cout << "Ledger response " << ctx.res.body() << "\n";
+      this->ledger_reply(std::move(ctx.res.body()));
+    });
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::bitstamp_request(const std::string &url_path, const std::string &url_query)
+{
+    app_settings* app_ini = global_settings();
+    static std::string const url_host = "www.bitstamp.net";
+
+    secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
+    encryption encryptor(app_ini->API_key, randbytes);
+    //
+    std::chrono::milliseconds timestamp =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch());
+    // setup REST request fields
+    std::string x_auth = "BITSTAMP " + app_ini->API_key;
+    std::string x_auth_nonce = encryptor.generate_uuid_string();
+    std::string x_auth_timestamp = std::to_string(timestamp.count());
+    std::string x_auth_version = "v2";
+    std::string content_type = "application/x-www-form-urlencoded";
+    std::string payload = url_encode("{offset:1}");
+
+    std::string url_encoded = url_encode(url_path + url_query);
+    std::string url_redirected = url_path + url_query;
+    std::string http_method = "POST";
+
+    // full query is signed using Hmac SHA256 algorithm
+    std::string data_to_sign = "";
+    data_to_sign.append(x_auth);
+    data_to_sign.append(http_method);
+    data_to_sign.append(url_host);
+    data_to_sign.append(url_path);
+    data_to_sign.append(url_query);
+    data_to_sign.append(content_type);
+    data_to_sign.append(x_auth_nonce);
+    data_to_sign.append(x_auth_timestamp);
+    data_to_sign.append(x_auth_version);
+    data_to_sign.append(payload);
+    // generated signature
+    auto signed_hmac = encryptor.CalcHmacSHA256(app_ini->API_secret, data_to_sign);
+    assert(signed_hmac.size() == 32);
+    std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
+
+    Belle::Request b_request;
+    b_request = Belle::Request(http::verb::post, url_redirected, 11);
+    b_request.target(url_redirected);
+    b_request.set(http::field::host, url_host);
+    b_request.set(http::field::content_type, content_type);
+    b_request.set("X-Auth", x_auth);
+    b_request.set("X-Auth-Signature", x_auth_signature);
+    b_request.set("X-Auth-Nonce", x_auth_nonce);
+    b_request.set("X-Auth-Timestamp", x_auth_timestamp);
+    b_request.set("X-Auth-Version", x_auth_version);
+    //
+    b_request.body() = payload;
+    b_request.prepare_payload();
+
+
+    belle_https_bitstamp.on_http(/*Belle::Method::post, */b_request, [this](auto& ctx)
+    {
+      // check http status code
+      if (ctx.res.result() != Belle::Status::ok)
+      {
+        // print the response status code and reason
+        std::cerr << "HTTPS Error: "
+                  << ctx.res.result_int()
+                  << " " << ctx.res.reason() << "\n\n";
+        return;
+      }
+      // debug : print the response headers and body
+      std::cerr << "Request response " << ctx.res.body() << "\n";
+      this->bitstamp_account_data(std::move(ctx.res.body()));
+    });
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::update_accounts()
+{
+    std::cout << "Updating accounts" << std::endl;
+    bitstamp_request("/api/v2/balance/", "");
+    ledger_balance();
+    /*auto completed = */belle_https_bitstamp.connect();
+    belle_https_ripple.connect();
+}
+
+// ----------------------------------------------------------------------------
 void GroxMainWindow::start_websocket()
 {
     using namespace std::placeholders;
@@ -320,23 +527,19 @@ void GroxMainWindow::start_websocket()
         "\"order_book_xrpusd\"}}",
         std::bind(GroxMainWindow::new_order_data, this, _1));
 
-    https_rest = net::https::create_session(io_contexts.ioc, io_contexts.ctx,
-        "www.bitstamp.net", "443", std::bind(GroxMainWindow::rest_api_data, this, _1));
-
     // Run the I/O service on a thread.
-    std::thread websocket_thread([&]() {
+    websocket_thread = std::thread([&]() {
         // The call will return when the socket is closed.
         io_contexts.ioc.run();
     });
     websocket_thread.detach();
 
-    // wait for https connection to finish setting up
-    while (!https_rest->ready_)
-    {
-        std::this_thread::yield();
-    }
     //
     request_new_candlestick_data(0);
+    update_accounts();
+    /*auto completed = */
+    belle_https_bitstamp.connect();
+    belle_https_ripple.connect();
 }
 
 // ----------------------------------------------------------------------------
@@ -376,8 +579,22 @@ void GroxMainWindow::request_new_candlestick_data(uint64_t unused)
         // send a request for ticker data using the io context thread to make the request
         req = "/api/v2/ohlc/xrpusd/?step=60&start=" + start + "&limit=" + limit;
     }
-    io_contexts.ioc.post(
-        [this, req = std::move(req)]() mutable { https_rest->write(std::move(req)); });
+
+    belle_https_bitstamp.on_http(req, [this](auto& ctx)
+    {
+      // check http status code
+      if (ctx.res.result() != Belle::Status::ok)
+      {
+        // print the response status code and reason
+        std::cerr << "HTTPS Error: "
+                  << ctx.res.result_int()
+                  << " " << ctx.res.reason() << "\n\n";
+        return;
+      }
+      // debug : print the response headers and body
+      std::cout << "Candlestick response " << ctx.res.body() << "\n";
+      this->receive_ohlc_data(std::move(ctx.res.body()));
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -607,3 +824,60 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
 
     std::cout << "Dataset size: " << ohlc_samples.size() << std::endl;
 }
+
+// ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::xrp_dir_clicked() {
+    if (ui.xrp_dir->arrowType()==Qt::ArrowType::DownArrow) {
+        ui.xrp_dir->setArrowType(Qt::ArrowType::UpArrow);
+    }
+    else {
+        ui.xrp_dir->setArrowType(Qt::ArrowType::DownArrow);
+    }
+}
+
+void GroxMainWindow::usd_dir_clicked() {
+    if (ui.usd_dir->arrowType()==Qt::ArrowType::DownArrow) {
+        ui.usd_dir->setArrowType(Qt::ArrowType::UpArrow);
+    }
+    else {
+        ui.usd_dir->setArrowType(Qt::ArrowType::DownArrow);
+    }
+}
+
+void GroxMainWindow::transfer_setup_xrp(double fraction) {
+    app_settings* app_ini = global_settings();
+    if (ui.xrp_dir->arrowType()==Qt::ArrowType::UpArrow) {
+        double amt = fraction * app_ini->bitstamp_xrp_available;
+        ui.xrp_xfer->setText(boost::str(boost::format("%.6f") % amt).c_str());
+    }
+    else {
+        double amt = fraction * app_ini->ledger_xrp_available;
+        ui.xrp_xfer->setText(boost::str(boost::format("%.6f") % amt).c_str());
+    }
+}
+
+void GroxMainWindow::transfer_setup_usd(double fraction) {
+    app_settings* app_ini = global_settings();
+    if (ui.usd_dir->arrowType()==Qt::ArrowType::UpArrow) {
+        double amt = fraction * app_ini->bitstamp_usd_available;
+        ui.usd_xfer->setText(boost::str(boost::format("%.6f") % amt).c_str());
+    }
+    else {
+        double amt = fraction * app_ini->ledger_usd_available;
+        ui.usd_xfer->setText(boost::str(boost::format("%.6f") % amt).c_str());
+    }
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::q1x_clicked() { transfer_setup_xrp(0.25); }
+void GroxMainWindow::q2x_clicked() { transfer_setup_xrp(0.50); }
+void GroxMainWindow::q3x_clicked() { transfer_setup_xrp(0.75); }
+void GroxMainWindow::q4x_clicked() { transfer_setup_xrp(1.00); }
+//
+// ----------------------------------------------------------------------------
+void GroxMainWindow::q1u_clicked() { transfer_setup_usd(0.25); }
+void GroxMainWindow::q2u_clicked() { transfer_setup_usd(0.50); }
+void GroxMainWindow::q3u_clicked() { transfer_setup_usd(0.75); }
+void GroxMainWindow::q4u_clicked() { transfer_setup_usd(1.00); }
