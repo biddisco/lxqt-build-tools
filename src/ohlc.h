@@ -112,31 +112,75 @@ Q_DECLARE_METATYPE(live_order_book)
 Q_DECLARE_METATYPE(std::vector<live_order_book>*)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_order_book, bids, asks, timestamp, microtimestamp);
 
-struct xrp_balances {
+struct xrp_amount {
     std::string currency;
-    std::string value;
-    std::optional<std::string> counterparty = std::nullopt;
+    double      value;
+    std::optional<std::string> issuer = std::nullopt;
 };
 
 // Due to std::optional, we must provide serialization ourselves
-void to_json(json& j, const xrp_balances& p) {
+void to_json(json& j, const xrp_amount& p) {
     j = json{ {"currency", p.currency},
               {"value", p.value} };
-    if (p.counterparty != std::nullopt)
+    if (p.issuer != std::nullopt)
     {
-        j["counterparty"] = p.counterparty.value();
+        j["issuer"] = p.issuer.value();
     }
 }
 
-void from_json(const nlohmann::json &j, xrp_balances &p)
+void from_json(const nlohmann::json &j, xrp_amount &p)
 {
     p.currency = j.at("currency").get< std::string >();
-    p.value    = j.at("value").get< std::string >();
+    p.value    = std::stod(j.at("value").get< std::string >());
+
+    // allow issuer or counterparty string id
     if (j.count("counterparty") != 0)
     {
-        p.counterparty = j.at("counterparty").get< std::string >();
+        p.issuer = j.at("counterparty").get< std::string >();
+    }
+    else if (j.count("issuer") != 0)
+    {
+        p.issuer = j.at("issuer").get< std::string >();
     }
 }
 
-Q_DECLARE_METATYPE(xrp_balances)
-Q_DECLARE_METATYPE(std::vector<xrp_balances>*)
+Q_DECLARE_METATYPE(xrp_amount)
+Q_DECLARE_METATYPE(std::vector<xrp_amount>*)
+
+struct xrpl_buy_xrp {
+    std::string Account;
+    double      TakerGets;
+    xrp_amount  TakerPays;
+};
+
+struct xrpl_sell_xrp {
+    std::string Account;
+    double      TakerPays;
+    xrp_amount  TakerGets;
+};
+
+void to_json(json& j, const xrpl_buy_xrp& p) {
+    j["Account"]   = p.Account;
+    j["TakerGets"] = p.TakerGets;
+    to_json(j["TakerPays"], p.TakerPays);
+}
+
+void from_json(const nlohmann::json &j, xrpl_buy_xrp &p)
+{
+    p.Account   = j.at("Account").get< std::string >();
+    p.TakerGets = std::stod(j.at("TakerGets").get< std::string >());
+    p.TakerPays = j.at("TakerPays").get< xrp_amount >();
+}
+
+void to_json(json& j, const xrpl_sell_xrp& p) {
+    j["Account"]   = p.Account;
+    j["TakerPays"] = p.TakerPays;
+    to_json(j["TakerGets"], p.TakerGets);
+}
+
+void from_json(const nlohmann::json &j, xrpl_sell_xrp &p)
+{
+    p.Account   = j.at("Account").get< std::string >();
+    p.TakerGets = j.at("TakerGets").get< xrp_amount >();
+    p.TakerPays = std::stod(j.at("TakerPays").get< std::string >());
+}

@@ -45,18 +45,21 @@ public:
     void receive_ohlc_data(std::string&&);
     void bitstamp_account_data(std::string&&);
     void ledger_reply(std::string&&);
+    void ledger_book_buy_xrp(std::string&& data);
+    void ledger_book_sell_xrp(std::string&& data);
 
     void create_data_dir();
     void read_hdf5();
     void write_hdf5(const QVector<QwtOHLCSample>& samples,
         const std::vector<double>& volume, const uint64_t update = 0);
-    void request_new_candlestick_data(uint64_t start_t);
+    void request_new_candlestick_data(uint64_t start_t=0);
     void validate_ohlc();
 
     // ----------------------------------------------------------------------------
     void bitstamp_request(const std::string &url_path, const std::string &url_query);
     void update_accounts(app_settings* app_ini);
     void ledger_balance();
+    void xrpl_order_book(bool buy_xrp);
 
     // ----------------------------------------------------------------------------
     void merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,

@@ -20,6 +20,8 @@
 #include "settings.hpp"
 //
 #include "hdf5.h"
+//
+#define DEBUG_ONLY(x)
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
@@ -126,7 +128,7 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
         if (mouseEvent->modifiers() == Qt::ShiftModifier)
         {
             //do what you need
-            std::cout << "Shift click pressed" << std::endl;
+            DEBUG_ONLY(std::cout << "Shift click pressed" << std::endl);
             app_settings* app_ini = global_settings();
             std::array<std::string, 6> strings{app_ini->API_user, app_ini->API_key,
                 app_ini->API_secret, app_ini->XRP_name, app_ini->XRP_public,
@@ -174,7 +176,7 @@ void GroxMainWindow::createMenus()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::new_ticker_data(GroxMainWindow* mw, std::string&& data)
 {
-    // std::cout << "\n\nReceived " << data << std::endl;
+    DEBUG_ONLY(std::cout << "\n\nReceived " << data << std::endl);
 
     if (data.rfind("{\"data\":", 0) != 0)
     {
@@ -183,7 +185,7 @@ void GroxMainWindow::new_ticker_data(GroxMainWindow* mw, std::string&& data)
     nlohmann::json jdata = json::parse(data);
     // extract the main subgroup
     jdata = jdata["data"];
-    // std::cout << jdata.dump(4) << std::endl;
+    DEBUG_ONLY(std::cout << jdata.dump(4) << std::endl);
 
     live_trades json_trades = jdata.get<live_trades>();
 
@@ -261,21 +263,19 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
                 temp.timestamp, temp.open, temp.high, temp.low, temp.close));
             new_ohlc_volumes.push_back(temp.volume);
         }
-        std::cout << "Received " << ohlc_strings.size()
-                  << " new OHLC samples" << std::endl;
+        DEBUG_ONLY(std::cout << "Received " << ohlc_strings.size()
+                  << " new OHLC samples" << std::endl);
         merge_data(new_ohlc_samples, new_ohlc_volumes);
 
         if (repeat_ohlc_)
         {
-            request_new_candlestick_data(0);
+            request_new_candlestick_data();
         }
     }
     catch (std::exception& e)
     {
-        std::cout << "JSON error decoding OHLC data: " << e.what() << "\n"
-                  << data << std::endl
-                  << std::endl
-                  << std::endl;
+        std::cerr << "JSON error decoding OHLC data: " << e.what() << "\n"
+                  << data << std::endl << std::endl;
     }
 }
 
@@ -301,7 +301,7 @@ void bid_ask_string_to_number(nlohmann::json& json, double* x, double* y)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string&& data)
 {
-    // std::cout << "\n\nReceived " << data << std::endl << std::endl << std::endl;
+    DEBUG_ONLY(std::cout << "\n\nReceived " << data << std::endl << std::endl << std::endl);
     if (data.rfind("{\"data\":", 0) != 0)
     {
         return;
@@ -345,21 +345,21 @@ void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string&& data)
 void GroxMainWindow::ledger_reply(std::string&& data)
 {
     nlohmann::json jdata = json::parse(data)["balances"];
-    std::cout << jdata.dump(4) << std::endl;
-    std::vector<xrp_balances> balances = jdata.get<std::vector<xrp_balances>>();
+    DEBUG_ONLY(std::cout << jdata.dump(4) << std::endl);
+    std::vector<xrp_amount> balances = jdata.get<std::vector<xrp_amount>>();
     //
     app_settings* app_ini = global_settings();
     //
     for (const auto &b : balances) {
         if (b.currency=="XRP") {
-            app_ini->ledger_xrp_available = std::atof(b.value.c_str());
-            app_ini->ledger_xrp_balance = std::atof(b.value.c_str());
-            app_ini->ledger_xrp_reserved = 0;
+            app_ini->ledger_xrp_available = b.value;
+            app_ini->ledger_xrp_balance   = b.value;
+            app_ini->ledger_xrp_reserved  = 0;
         }
-        else if (b.currency=="USD" && b.counterparty=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
-            app_ini->ledger_usd_available = std::atof(b.value.c_str());
-            app_ini->ledger_usd_balance = std::atof(b.value.c_str());
-            app_ini->ledger_usd_reserved = 0;
+        else if (b.currency=="USD" && b.issuer=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
+            app_ini->ledger_usd_available = b.value;
+            app_ini->ledger_usd_balance   = b.value;
+            app_ini->ledger_usd_reserved  = 0;
         }
     }
     //
@@ -369,10 +369,10 @@ void GroxMainWindow::ledger_reply(std::string&& data)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::bitstamp_account_data(std::string&& data)
 {
-//    std::cout << "Response : " << data << std::endl;
+    DEBUG_ONLY(std::cout << "Response : " << data << std::endl);
     //
     nlohmann::json jdata = json::parse(data);
-    // std::cout << jdata.dump(4) << std::endl;
+    DEBUG_ONLY(std::cout << jdata.dump(4) << std::endl);
     //
     app_settings* app_ini = global_settings();
     //
@@ -423,9 +423,53 @@ void GroxMainWindow::ledger_balance()
         return;
       }
       // debug : print the response headers and body
-      std::cout << "Ledger response " << ctx.res.body() << "\n";
+      DEBUG_ONLY(std::cout << "Ledger response " << ctx.res.body() << "\n");
       this->ledger_reply(std::move(ctx.res.body()));
     });
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::ledger_book_sell_xrp(std::string&& data)
+{
+    DEBUG_ONLY(std::cout << "Response : " << data << std::endl);
+    //
+    nlohmann::json jdata = json::parse(data);
+    auto joffers = jdata["result"]["offers"];
+    DEBUG_ONLY(std::cout << joffers.dump(4) << std::endl);
+    //
+//    app_settings* app_ini = global_settings();
+    std::cout << "\n\nXRP Sell orders \n\n";
+    //
+    auto offers = joffers.get<std::vector<xrpl_buy_xrp>>();
+    for (auto const &o : offers) {
+        double conv = 1E6*(o.TakerPays.value / o.TakerGets);
+        std::cout << "rate : " << std::setw(10) << std::setprecision(7) << conv << "\t"
+                  << o.Account << "\t"
+                  << std::setw(10) << std::setprecision(11) << 1E-6*o.TakerGets << " "
+                  << "$" << std::setw(10) << std::setprecision(11) << o.TakerPays.value << std::endl;
+    }
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::ledger_book_buy_xrp(std::string&& data)
+{
+    DEBUG_ONLY(std::cout << "Response : " << data << std::endl);
+    //
+    nlohmann::json jdata = json::parse(data);
+    auto joffers = jdata["result"]["offers"];
+    DEBUG_ONLY(joffers.dump(4) << std::endl);
+    //
+//    app_settings* app_ini = global_settings();
+    std::cout << "\n\nXRP Buy orders \n\n";
+    //
+    auto offers = joffers.get<std::vector<xrpl_sell_xrp>>();
+    for (auto const &o : offers) {
+        double conv = 1E6*(o.TakerGets.value/ o.TakerPays);
+        std::cout << "rate : " << std::setw(10) << std::setprecision(7) << conv << "\t"
+                  << o.Account << "\t"
+                  << std::setw(10) << std::setprecision(11) << 1E-6*o.TakerPays << " "
+                  << "$" << std::setw(10) << std::setprecision(11) << o.TakerGets.value << std::endl;
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -496,9 +540,78 @@ void GroxMainWindow::bitstamp_request(const std::string &url_path, const std::st
         return;
       }
       // debug : print the response headers and body
-      std::cerr << "Request response " << ctx.res.body() << "\n";
+      DEBUG_ONLY(std::cout << "Request response " << ctx.res.body() << "\n");
       this->bitstamp_account_data(std::move(ctx.res.body()));
     });
+}
+
+void GroxMainWindow::xrpl_order_book(bool buy_xrp)
+{
+    // curl command to query : buy xrp for USD.bitstamp
+    // curl -H 'Content-Type: application/json' -d '{"method":"book_offers","params":[{"taker_gets":{"currency":"XRP"},"taker_pays":{"currency":"USD","issuer":"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"},"limit":10}]}' https://s1.ripple.com:51234/
+
+    // init client with remote address, port, and ssl enabled
+    Belle::Client app{"s1.ripple.com", 51234, true};
+    on_http_error(app);
+
+    // init an http request object
+    Belle::Request req;
+
+    nlohmann::json content;
+    content["method"] = "book_offers";
+
+    nlohmann::json paramlist;
+    if (buy_xrp) {
+        // order to buy XRP : the taker of this offer will pay XRP for my USD
+        paramlist["taker_gets"]["currency"] = "USD";
+        paramlist["taker_gets"]["issuer"]   = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+        paramlist["taker_pays"]["currency"] = "XRP";
+    }
+    else {
+        // order to sell XRP : the taker of this offer will pay USD for my XRP
+        paramlist["taker_gets"]["currency"] = "XRP";
+        paramlist["taker_pays"]["currency"] = "USD";
+        paramlist["taker_pays"]["issuer"]   = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+    }
+    paramlist["limit"] = 100;
+
+    content["params"] = nlohmann::json::array({paramlist});
+
+    // set the method
+    req.method(Belle::Method::post);
+    req.set(Belle::Header::host, "s1.ripple.com");
+    req.set(Belle::Header::user_agent, "mystery");
+    req.set(Belle::Header::content_type, "application/json");
+    req.set(Belle::Header::accept, "application/json");
+    req.set(Belle::Header::connection, "close");
+    // set the target path
+    req.target("/");
+    req.body() = content.dump();
+    req.prepare_payload();
+
+    app.on_http(req.move(), [this, buy_xrp](auto& ctx) {
+        // check http status code
+        if (ctx.res.result() != Belle::Status::ok)
+        {
+            // print the response status code and reason
+            std::cerr << "Error: " << ctx.res.result_int() << " " << ctx.res.reason()
+                      << "\n\n";
+            return;
+        }
+        // debug : print the response headers and body
+        DEBUG_ONLY(std::cout << "Request response " << ctx.res.body() << "\n");
+        if (buy_xrp)
+            this->ledger_book_buy_xrp(std::move(ctx.res.body()));
+        else
+        this->ledger_book_sell_xrp(std::move(ctx.res.body()));
+    });
+
+    // save the number of requests in the queue
+    auto total = app.queue().size();
+
+    // start the client and save the number of completed requests
+    auto completed = app.connect();
+    DEBUG_ONLY(std::cout << "Completed " << completed << std::endl);
 }
 
 // ----------------------------------------------------------------------------
@@ -535,15 +648,17 @@ void GroxMainWindow::start_websocket()
     websocket_thread.detach();
 
     //
-    request_new_candlestick_data(0);
+    request_new_candlestick_data();
     update_accounts();
+    xrpl_order_book(true);
+    xrpl_order_book(false);
     /*auto completed = */
     belle_https_bitstamp.connect();
     belle_https_ripple.connect();
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::request_new_candlestick_data(uint64_t unused)
+void GroxMainWindow::request_new_candlestick_data(uint64_t /*unused*/)
 {
     // what is the last sample we currently have
     uint64_t start_t = 0;
@@ -592,7 +707,7 @@ void GroxMainWindow::request_new_candlestick_data(uint64_t unused)
         return;
       }
       // debug : print the response headers and body
-      std::cout << "Candlestick response " << ctx.res.body() << "\n";
+      DEBUG_ONLY(std::cout << "Candlestick response " << ctx.res.body() << "\n");
       this->receive_ohlc_data(std::move(ctx.res.body()));
     });
 }
