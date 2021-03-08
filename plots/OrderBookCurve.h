@@ -11,10 +11,10 @@ public:
     virtual void  drawLines (QPainter *p, const QwtScaleMap &xMap,
                              const QwtScaleMap &yMap, const QRectF &canvasRect, int from, int to) const;
 
-    void setSegmentInfo(int segmentStartIndex, int segmentFinisIndex, const QColor & color);
+    void setSegmentInfo(int segmentStartIndex, int segmentFinisIndex, const QColor & color, double thickness);
 
 private:
-    QList<QColor>   m_segColor;
+    QList<QPen>     m_segPen;
     QList<int>      m_segStart;
     QList<int>      m_segFinish;
  };

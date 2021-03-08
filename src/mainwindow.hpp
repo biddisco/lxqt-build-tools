@@ -18,6 +18,7 @@
 #include "ui_mainwindow.h"
 //
 #include "settings.hpp"
+#include "order_book.hpp"
 
 class GroxMainWindow : public QMainWindow
 {
@@ -25,10 +26,11 @@ class GroxMainWindow : public QMainWindow
 
     CombinedPriceVolumeCharts* CombinedPriceVolumeCharts_;
     PriceAndPatternPlot* priceAndPatternPlot_;
-    OrderBookPlot* OrderBookPlot_;
     QVector<QwtOHLCSample> ohlc_samples;
     std::vector<double> ohlc_volumes;
     bool repeat_ohlc_;
+    order_book *bistamp_orderbook_;
+    order_book *ledger_orderbook_;
 
 //    http::request<http::string_body> bitstamp_request_;
 
@@ -40,13 +42,15 @@ public:
     bool eventFilter(QObject* obj, QEvent* event);
 
     static void new_ticker_data(GroxMainWindow*, std::string&&);
-    static void new_order_data(GroxMainWindow*, std::string&&);
+    static void new_order_data(GroxMainWindow*, std::string_view);
+    static void new_ledger_order_data(GroxMainWindow*, std::string_view);
     //
     void receive_ohlc_data(std::string&&);
     void bitstamp_account_data(std::string&&);
     void ledger_reply(std::string&&);
-    void ledger_book_buy_xrp(std::string&& data);
-    void ledger_book_sell_xrp(std::string&& data);
+    void ledger_book_buy_xrp(std::string_view);
+    void ledger_book_sell_xrp(std::string_view);
+    void ledger_order_book(bool buy_xrp);
 
     void create_data_dir();
     void read_hdf5();
@@ -59,7 +63,6 @@ public:
     void bitstamp_request(const std::string &url_path, const std::string &url_query);
     void update_accounts(app_settings* app_ini);
     void ledger_balance();
-    void xrpl_order_book(bool buy_xrp);
 
     // ----------------------------------------------------------------------------
     void merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
@@ -78,7 +81,8 @@ signals:
     void quitApplication();
     void new_ticker_data_ui(QString);
     void new_order_data_ui(QString);
-    void new_order_data_replot();
+    void bitstamp_orderbook_replot();
+    void ledger_orderbook_replot();
     void new_ohlc_data_ui();
 
 public slots:
@@ -113,6 +117,9 @@ private:
     std::shared_ptr<net::ws::session> ws_trades;
     // websocket for bitstamp bid/ask order book
     std::shared_ptr<net::ws::session> ws_bidask;
+    // websocket for ledger order book trades
+    std::shared_ptr<net::ws::session> ws_ledger_orderbook;
+
 //    // https session ffor rest API calls
 //    std::shared_ptr<net::https::session> https_rest;
     //

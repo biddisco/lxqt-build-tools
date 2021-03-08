@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>935</width>
-    <height>498</height>
+    <width>901</width>
+    <height>607</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,7 +26,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="chart_tab">
          <attribute name="title">
@@ -660,7 +660,28 @@
               </property>
               <layout class="QGridLayout" name="gridLayout">
                <item row="1" column="0">
-                <layout class="QVBoxLayout" name="orderbook_layout"/>
+                <layout class="QVBoxLayout" name="orderbook_layout_1"/>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QFrame" name="order_frame_2">
+              <property name="minimumSize">
+               <size>
+                <width>128</width>
+                <height>128</height>
+               </size>
+              </property>
+              <property name="frameShape">
+               <enum>QFrame::StyledPanel</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_6">
+               <item row="1" column="0">
+                <layout class="QVBoxLayout" name="orderbook_layout_2"/>
                </item>
               </layout>
              </widget>
@@ -700,7 +721,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>935</width>
+     <width>901</width>
      <height>22</height>
     </rect>
    </property>

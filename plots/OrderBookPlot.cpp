@@ -93,10 +93,13 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
     palette2.setColor(QPalette::Text, Qt::lightGray);          // for ticks' labels
     axisWidget(Axis::yLeft)->setPalette(palette2);
 
-    plot_curve_ = new OrderBookCurve();
-    plot_curve_->setSegmentInfo(0, 100, QColor("green"));
-    plot_curve_->setSegmentInfo(100, 200, QColor("red"));
-    plot_curve_->attach(this);
+    // 2nd y axis
+    QPalette palette3 = axisWidget(Axis::yRight)->palette();
+    palette3.setColor(QPalette::WindowText, Qt::lightGray);    // for ticks
+    palette3.setColor(QPalette::Text, Qt::lightGray);          // for ticks' labels
+    axisWidget(Axis::yRight)->setPalette(palette3);
+
+    enableAxis(QwtPlot::yRight);
 }
 
 void OrderBookPlot::clearPlot()

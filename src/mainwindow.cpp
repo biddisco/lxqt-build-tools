@@ -7,7 +7,6 @@
 //
 #include <filesystem>
 //
-#include <boost/iterator/zip_iterator.hpp>
 #include <boost/format.hpp>
 //
 #include "mainwindow.hpp"
@@ -16,7 +15,7 @@
 #include "src/internet/evp-encrypt.hpp"
 #include "src/internet/https-async.hpp"
 //
-#include "ohlc.h"
+#include "ohlc.hpp"
 #include "settings.hpp"
 //
 #include "hdf5.h"
@@ -58,8 +57,10 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     // Create orderbook plot
     //
-    OrderBookPlot_ = new OrderBookPlot();
-    ui.orderbook_layout->addWidget(OrderBookPlot_, 0);
+    std::shared_ptr<OrderBookPlot> obp = std::make_shared<OrderBookPlot>();
+    ui.orderbook_layout_1->addWidget(obp.get(), 0);
+    bistamp_orderbook_ = new order_book(obp, false);
+    ledger_orderbook_ = new order_book(obp, true);
 
     //
     // setup Qt actions/connections
@@ -89,8 +90,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 // ----------------------------------------------------------------------------
 GroxMainWindow::~GroxMainWindow()
 {
-    delete OrderBookPlot_;
     delete CombinedPriceVolumeCharts_;
+    delete bistamp_orderbook_;
+    delete ledger_orderbook_;
 }
 
 // ----------------------------------------------------------------------------
@@ -105,6 +107,8 @@ void GroxMainWindow::appExitCleanupHandler()
         ws_trades->shutdown_blocking();
     if (ws_bidask)
         ws_bidask->shutdown_blocking();
+    if (ws_ledger_orderbook)
+        ws_ledger_orderbook->shutdown_blocking();
     qDebug() << "websockets: shutdown complete";
 }
 
@@ -155,7 +159,9 @@ void GroxMainWindow::createMenus()
         SLOT(setPlainText(QString)));
     connect(this, SIGNAL(new_order_data_ui(QString)), ui.json_text_3,
         SLOT(setPlainText(QString)));
-    connect(this, SIGNAL(new_order_data_replot()), OrderBookPlot_, SLOT(replot()));
+
+    connect(this, SIGNAL(bitstamp_orderbook_replot()), bistamp_orderbook_->OrderBookPlot_.get(), SLOT(replot()));
+    connect(this, SIGNAL(ledger_orderbook_replot()), ledger_orderbook_->OrderBookPlot_.get(), SLOT(replot()));
     connect(this, SIGNAL(new_ohlc_data_ui()), this, SLOT(new_ohlc_data()));
 
     connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_accounts()));
@@ -287,58 +293,27 @@ void GroxMainWindow::new_ohlc_data()
 }
 
 // ----------------------------------------------------------------------------
-void bid_ask_string_to_number(nlohmann::json& json, double* x, double* y)
+void GroxMainWindow::new_ledger_order_data(GroxMainWindow* mw, std::string_view data)
 {
-    auto bid_string = json.get<std::array<std::array<std::string, 2>, 100>>();
-    auto zip_start = boost::make_zip_iterator(boost::make_tuple(x, y));
-    std::transform(bid_string.begin(), bid_string.end(), zip_start, [](const auto& i) {
-        std::pair<double, double> vals =
-            std::make_pair(std::atof(i[0].c_str()), std::atof(i[1].c_str()));
-        return vals;
-    });
+    if (startswith(data, "{\"result\":")) {
+        mw->ledger_orderbook_->accept_json_ledger_snapshot(data);
+    }
+    else if (startswith(data, "{\"engine_result\":")) {
+        mw->ledger_orderbook_->accept_json_ledger_transaction(data);
+    }
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string&& data)
+void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string_view data)
 {
     DEBUG_ONLY(std::cout << "\n\nReceived " << data << std::endl << std::endl << std::endl);
-    if (data.rfind("{\"data\":", 0) != 0)
-    {
-        return;
-    }
-    nlohmann::json jdata = json::parse(data)["data"];
-    static std::array<double, 200> data_x;
-    static std::array<double, 200> data_y;
-    static std::array<double, 200> data_z;
 
-    // convert orders into a layout we can visualize nicely
-    bid_ask_string_to_number(jdata["bids"], &data_x[0], &data_y[0]);
-    bid_ask_string_to_number(jdata["asks"], &data_x[100], &data_y[100]);
-    // partial sum the 100 asks and bids, store in new y axis z array (left/bids part in reverse order)
-    std::partial_sum(
-        &data_y[0], &data_y[100], std::reverse_iterator<double*>(&data_z[100]));
-    std::partial_sum(&data_y[100], &data_y[200], &data_z[100]);
-    // and flip the x axis for the bids/left side of plot
-    std::reverse(&data_x[0], &data_x[100]);
-    // push this data intp the graph object
-    mw->OrderBookPlot_->plot_curve_->setRawSamples(data_x.begin(), data_z.begin(), 200);
-    // pick x min max limits so they don't jump around constantly
-    double xrange = data_x[199] - data_x[0];
-    double xscale = 0.5 * std::pow(10, static_cast<int64_t>(std::log10(xrange)));
-    double xmin = std::round(data_x[0] / xscale) * xscale;
-    double xmax = std::round(data_x[199] / xscale) * xscale;
-    mw->OrderBookPlot_->setAxisScale(QwtPlot::xBottom, xmin, xmax);
-    // pick y min max limits so they don't jump around constantly
-    double yrange = std::max(data_z[0], data_z[199]);
-    double yscale = std::pow(10, static_cast<int64_t>(std::log10(yrange)));
-    double ymin = 0.0;
-    double ymax = (std::round(yrange / yscale)) * yscale;
-    mw->OrderBookPlot_->setAxisScale(QwtPlot::yLeft, ymin, ymax);
+    mw->bistamp_orderbook_->accept_json_bitstamp(data);
 
-    emit mw->new_order_data_replot();
+    emit mw->bitstamp_orderbook_replot();
 
-    QString datastring = QString::fromStdString(jdata.dump(4));
-    emit mw->new_order_data_ui(datastring);
+//    QString datastring = QString::fromStdString(jdata.dump(4));
+//    emit mw->new_order_data_ui(datastring);
 }
 
 // ----------------------------------------------------------------------------
@@ -351,12 +326,12 @@ void GroxMainWindow::ledger_reply(std::string&& data)
     app_settings* app_ini = global_settings();
     //
     for (const auto &b : balances) {
-        if (b.currency=="XRP") {
+        if (b.currency==currency_type::xrp) {
             app_ini->ledger_xrp_available = b.value;
             app_ini->ledger_xrp_balance   = b.value;
             app_ini->ledger_xrp_reserved  = 0;
         }
-        else if (b.currency=="USD" && b.issuer=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
+        else if (b.currency==currency_type::usd_bitstamp) {
             app_ini->ledger_usd_available = b.value;
             app_ini->ledger_usd_balance   = b.value;
             app_ini->ledger_usd_reserved  = 0;
@@ -402,7 +377,6 @@ void GroxMainWindow::update_accounts(app_settings* app_ini)
     //
     ui.ledger_balance_xrp->setText(boost::str(boost::format("%.6f") % app_ini->ledger_xrp_available).c_str());
     ui.ledger_balance_usd->setText(boost::str(boost::format("%.2f") % app_ini->ledger_usd_available).c_str());
-
 }
 
 // ----------------------------------------------------------------------------
@@ -429,47 +403,92 @@ void GroxMainWindow::ledger_balance()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::ledger_book_sell_xrp(std::string&& data)
+void GroxMainWindow::ledger_book_sell_xrp(std::string_view data)
 {
     DEBUG_ONLY(std::cout << "Response : " << data << std::endl);
     //
-    nlohmann::json jdata = json::parse(data);
-    auto joffers = jdata["result"]["offers"];
-    DEBUG_ONLY(std::cout << joffers.dump(4) << std::endl);
-    //
-//    app_settings* app_ini = global_settings();
-    std::cout << "\n\nXRP Sell orders \n\n";
-    //
-    auto offers = joffers.get<std::vector<xrpl_buy_xrp>>();
-    for (auto const &o : offers) {
-        double conv = 1E6*(o.TakerPays.value / o.TakerGets);
-        std::cout << "rate : " << std::setw(10) << std::setprecision(7) << conv << "\t"
-                  << o.Account << "\t"
-                  << std::setw(10) << std::setprecision(11) << 1E-6*o.TakerGets << " "
-                  << "$" << std::setw(10) << std::setprecision(11) << o.TakerPays.value << std::endl;
-    }
+    ledger_orderbook_->accept_json_ledger_sell(data);
+    emit ledger_orderbook_replot();
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::ledger_book_buy_xrp(std::string&& data)
+void GroxMainWindow::ledger_book_buy_xrp(std::string_view data)
 {
     DEBUG_ONLY(std::cout << "Response : " << data << std::endl);
     //
-    nlohmann::json jdata = json::parse(data);
-    auto joffers = jdata["result"]["offers"];
-    DEBUG_ONLY(joffers.dump(4) << std::endl);
-    //
-//    app_settings* app_ini = global_settings();
-    std::cout << "\n\nXRP Buy orders \n\n";
-    //
-    auto offers = joffers.get<std::vector<xrpl_sell_xrp>>();
-    for (auto const &o : offers) {
-        double conv = 1E6*(o.TakerGets.value/ o.TakerPays);
-        std::cout << "rate : " << std::setw(10) << std::setprecision(7) << conv << "\t"
-                  << o.Account << "\t"
-                  << std::setw(10) << std::setprecision(11) << 1E-6*o.TakerPays << " "
-                  << "$" << std::setw(10) << std::setprecision(11) << o.TakerGets.value << std::endl;
+    ledger_orderbook_->accept_json_ledger_buy(data);
+    emit ledger_orderbook_replot();
+}
+
+// ----------------------------------------------------------------------------
+// this function not yet working
+void GroxMainWindow::ledger_order_book(bool buy_xrp)
+{
+    // curl command to query : buy xrp for USD.bitstamp
+    // curl -H 'Content-Type: application/json' -d '{"method":"book_offers","params":[{"taker_gets":{"currency":"XRP"},"taker_pays":{"currency":"USD","issuer":"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"},"limit":10}]}' https://s1.ripple.com:51234/
+
+    // init client with remote address, port, and ssl enabled
+    Belle::Client app{"s1.ripple.com", 51234, true};
+    on_http_error(app);
+
+    // init an http request object
+    Belle::Request req;
+
+    nlohmann::json content;
+    content["method"] = "book_offers";
+
+    nlohmann::json paramlist;
+    if (buy_xrp) {
+        // order to buy XRP : the taker of this offer will pay XRP for my USD
+        paramlist["taker_gets"]["currency"] = "USD";
+        paramlist["taker_gets"]["issuer"]   = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+        paramlist["taker_pays"]["currency"] = "XRP";
     }
+    else {
+        // order to sell XRP : the taker of this offer will pay USD for my XRP
+        paramlist["taker_gets"]["currency"] = "XRP";
+        paramlist["taker_pays"]["currency"] = "USD";
+        paramlist["taker_pays"]["issuer"]   = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+    }
+    paramlist["limit"] = 100;
+
+    content["params"] = nlohmann::json::array({paramlist});
+
+    // set the method
+    req.method(Belle::Method::post);
+    req.set(Belle::Header::host, "s1.ripple.com");
+    req.set(Belle::Header::user_agent, "mystery");
+    req.set(Belle::Header::content_type, "application/json");
+    req.set(Belle::Header::accept, "application/json");
+    req.set(Belle::Header::connection, "close");
+    // set the target path
+    req.target("/");
+    req.body() = content.dump();
+    req.prepare_payload();
+
+    app.on_http(req.move(), [this, buy_xrp](auto& ctx) {
+        // check http status code
+        if (ctx.res.result() != Belle::Status::ok)
+        {
+            // print the response status code and reason
+            std::cerr << "Error: " << ctx.res.result_int() << " " << ctx.res.reason()
+                      << "\n\n";
+            return;
+        }
+        // debug : print the response headers and body
+        DEBUG_ONLY(std::cout << "Request response " << ctx.res.body() << "\n");
+        if (buy_xrp)
+            this->ledger_book_buy_xrp(std::move(ctx.res.body()));
+        else
+        this->ledger_book_sell_xrp(std::move(ctx.res.body()));
+    });
+
+    // save the number of requests in the queue
+    auto total = app.queue().size();
+
+    // start the client and save the number of completed requests
+    auto completed = app.connect();
+    DEBUG_ONLY(std::cout << "Completed " << completed << std::endl);
 }
 
 // ----------------------------------------------------------------------------
@@ -545,75 +564,6 @@ void GroxMainWindow::bitstamp_request(const std::string &url_path, const std::st
     });
 }
 
-void GroxMainWindow::xrpl_order_book(bool buy_xrp)
-{
-    // curl command to query : buy xrp for USD.bitstamp
-    // curl -H 'Content-Type: application/json' -d '{"method":"book_offers","params":[{"taker_gets":{"currency":"XRP"},"taker_pays":{"currency":"USD","issuer":"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"},"limit":10}]}' https://s1.ripple.com:51234/
-
-    // init client with remote address, port, and ssl enabled
-    Belle::Client app{"s1.ripple.com", 51234, true};
-    on_http_error(app);
-
-    // init an http request object
-    Belle::Request req;
-
-    nlohmann::json content;
-    content["method"] = "book_offers";
-
-    nlohmann::json paramlist;
-    if (buy_xrp) {
-        // order to buy XRP : the taker of this offer will pay XRP for my USD
-        paramlist["taker_gets"]["currency"] = "USD";
-        paramlist["taker_gets"]["issuer"]   = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
-        paramlist["taker_pays"]["currency"] = "XRP";
-    }
-    else {
-        // order to sell XRP : the taker of this offer will pay USD for my XRP
-        paramlist["taker_gets"]["currency"] = "XRP";
-        paramlist["taker_pays"]["currency"] = "USD";
-        paramlist["taker_pays"]["issuer"]   = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
-    }
-    paramlist["limit"] = 100;
-
-    content["params"] = nlohmann::json::array({paramlist});
-
-    // set the method
-    req.method(Belle::Method::post);
-    req.set(Belle::Header::host, "s1.ripple.com");
-    req.set(Belle::Header::user_agent, "mystery");
-    req.set(Belle::Header::content_type, "application/json");
-    req.set(Belle::Header::accept, "application/json");
-    req.set(Belle::Header::connection, "close");
-    // set the target path
-    req.target("/");
-    req.body() = content.dump();
-    req.prepare_payload();
-
-    app.on_http(req.move(), [this, buy_xrp](auto& ctx) {
-        // check http status code
-        if (ctx.res.result() != Belle::Status::ok)
-        {
-            // print the response status code and reason
-            std::cerr << "Error: " << ctx.res.result_int() << " " << ctx.res.reason()
-                      << "\n\n";
-            return;
-        }
-        // debug : print the response headers and body
-        DEBUG_ONLY(std::cout << "Request response " << ctx.res.body() << "\n");
-        if (buy_xrp)
-            this->ledger_book_buy_xrp(std::move(ctx.res.body()));
-        else
-        this->ledger_book_sell_xrp(std::move(ctx.res.body()));
-    });
-
-    // save the number of requests in the queue
-    auto total = app.queue().size();
-
-    // start the client and save the number of completed requests
-    auto completed = app.connect();
-    DEBUG_ONLY(std::cout << "Completed " << completed << std::endl);
-}
-
 // ----------------------------------------------------------------------------
 void GroxMainWindow::update_accounts()
 {
@@ -640,6 +590,12 @@ void GroxMainWindow::start_websocket()
         "\"order_book_xrpusd\"}}",
         std::bind(GroxMainWindow::new_order_data, this, _1));
 
+    ws_ledger_orderbook = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
+      "s1.ripple.com", "443",
+//      "{ \"id\": \"Example\", \"command\": \"subscribe\", \"books\": [ { \"taker_pays\": { \"currency\": \"XRP\" }, \"taker_gets\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true }, { \"taker_gets\": { \"currency\": \"XRP\" }, \"taker_pays\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true } ] }",
+      "{ \"command\": \"subscribe\", \"books\": [ { \"taker_pays\": { \"currency\": \"XRP\" }, \"taker_gets\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true }, { \"taker_gets\": { \"currency\": \"XRP\" }, \"taker_pays\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true } ] }",
+      std::bind(GroxMainWindow::new_ledger_order_data, this, _1));
+
     // Run the I/O service on a thread.
     websocket_thread = std::thread([&]() {
         // The call will return when the socket is closed.
@@ -650,8 +606,8 @@ void GroxMainWindow::start_websocket()
     //
     request_new_candlestick_data();
     update_accounts();
-    xrpl_order_book(true);
-    xrpl_order_book(false);
+    ledger_order_book(true);
+    ledger_order_book(false);
     /*auto completed = */
     belle_https_bitstamp.connect();
     belle_https_ripple.connect();

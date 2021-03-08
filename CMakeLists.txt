@@ -135,6 +135,11 @@ set(GROX_SRC
     src/internet/websocket-ssl.cpp
     src/internet/https-async.cpp
     #
+    src/ohlc.cpp
+    src/order_book.cpp
+    #
+    #
+    #
     chartSegment/ANDSegmentConstraint.cpp
     chartSegment/ChartSegment.cpp
     chartSegment/SegmentValsCloseToLinearEq.cpp
@@ -341,6 +346,13 @@ target_link_libraries(test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRAR
 add_executable(test-belle-client-request src/internet/test/test-belle-client-request.cpp)
 target_include_directories(test-belle-client-request PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
 target_link_libraries(test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
+
+# ---------------------------------------------------
+# belle - websocket test against ripple API
+# ---------------------------------------------------
+add_executable(test-belle-websocket src/internet/test/test-belle-websocket.cpp)
+target_include_directories(test-belle-websocket PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
+target_link_libraries(test-belle-websocket PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
 
 # ---------------------------------------------------
 # belle - example original https test client/server

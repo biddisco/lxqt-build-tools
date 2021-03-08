@@ -16,13 +16,13 @@ OrderBookCurve::OrderBookCurve(const QString& title)
 void OrderBookCurve::drawLines(QPainter* p, const QwtScaleMap& xMap,
     const QwtScaleMap& yMap, const QRectF& canvasRect, int from, int to) const
 {
-    const int numOfSegments = m_segColor.size();
+    const int numOfSegments = m_segPen.size();
     if (numOfSegments)
     {
         p->save();
         for (int i = 0; i < numOfSegments; ++i)
         {
-            p->setPen(m_segColor[i]);
+            p->setPen(m_segPen[i]);
             QwtPlotCurve::drawLines(
                 p, xMap, yMap, canvasRect, m_segStart[i], m_segFinish[i]);
         }
@@ -33,9 +33,12 @@ void OrderBookCurve::drawLines(QPainter* p, const QwtScaleMap& xMap,
 }
 
 void OrderBookCurve::setSegmentInfo(
-    int segmentStartIndex, int segmentFinisIndex, const QColor& color)
+    int segmentStartIndex, int segmentFinisIndex, const QColor& color, double thickness)
 {
-    m_segColor.push_back(color);
+    QPen pen(color);
+    pen.setWidth(thickness);
+    pen.setCosmetic(true);
+    m_segPen.push_back(pen);
     m_segStart.push_back(segmentStartIndex);
     m_segFinish.push_back(segmentFinisIndex);
 }
