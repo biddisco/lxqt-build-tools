@@ -87,17 +87,32 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
     palette1.setColor(QPalette::Text, Qt::lightGray);       // tick labels
     axisWidget(Axis::xBottom)->setPalette(palette1);
 
+    QwtText axisTitleX( "Price" );
+    axisTitleX.setRenderFlags( Qt::AlignRight | Qt::AlignVCenter );
+    axisTitleX.setFont( this->axisTitle( QwtPlot::xBottom ).font() );
+    this->setAxisTitle( QwtPlot::xBottom, axisTitleX );
+
     // y axis
     QPalette palette2 = axisWidget(Axis::yLeft)->palette();
     palette2.setColor(QPalette::WindowText, Qt::green);    // ticks
     palette2.setColor(QPalette::Text, Qt::red);            // tick labels
     axisWidget(Axis::yLeft)->setPalette(palette2);
 
+    QwtText axisTitleY( "Bitstamp" );
+    axisTitleY.setRenderFlags( Qt::AlignLeft | Qt::AlignTop );
+    axisTitleY.setFont( this->axisTitle( QwtPlot::yLeft).font() );
+    this->setAxisTitle( QwtPlot::yLeft, axisTitleY );
+
     // 2nd y axis
     QPalette palette3 = axisWidget(Axis::yRight)->palette();
     palette3.setColor(QPalette::WindowText, Qt::darkYellow); // tick
     palette3.setColor(QPalette::Text, Qt::darkMagenta);      // tick labels
     axisWidget(Axis::yRight)->setPalette(palette3);
+
+    QwtText axisTitleY2( "XRPL" );
+    axisTitleY2.setRenderFlags( Qt::AlignRight | Qt::AlignTop );
+    axisTitleY2.setFont( this->axisTitle( QwtPlot::yRight).font() );
+    this->setAxisTitle( QwtPlot::yRight, axisTitleY2 );
 
     enableAxis(QwtPlot::yRight);
 }
