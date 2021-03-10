@@ -126,7 +126,7 @@ class order_book {
         //
         OrderBookPlot_->setAxisScale(QwtPlot::xBottom, prev_xmin, prev_xmax);
         OrderBookPlot_->setAxisScale(QwtPlot::yLeft,  ymin, prev_ymax);
-        OrderBookPlot_->setAxisScale(QwtPlot::yRight, ymin, prev_ymax/10.0);
+        OrderBookPlot_->setAxisScale(QwtPlot::yRight, ymin, prev_ymax/5.0);
     }
 
     // ----------------------------------------------------------------------------
