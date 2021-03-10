@@ -29,8 +29,8 @@ class GroxMainWindow : public QMainWindow
     QVector<QwtOHLCSample> ohlc_samples;
     std::vector<double> ohlc_volumes;
     bool repeat_ohlc_;
-    order_book *bistamp_orderbook_;
-    order_book *ledger_orderbook_;
+    bitstamp_order_book *bistamp_orderbook_;
+    xrpl_order_book *ledger_orderbook_;
 
 //    http::request<http::string_body> bitstamp_request_;
 
@@ -48,8 +48,6 @@ public:
     void receive_ohlc_data(std::string&&);
     void bitstamp_account_data(std::string&&);
     void ledger_reply(std::string&&);
-    void ledger_book_buy_xrp(std::string_view);
-    void ledger_book_sell_xrp(std::string_view);
     void ledger_order_book(bool buy_xrp);
 
     void create_data_dir();

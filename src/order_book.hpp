@@ -38,72 +38,89 @@ using offer_map = std::unordered_map<std::string, bid_ask_vectors>;
 using offer_pair = std::pair<std::string, bid_ask_vectors>;
 //
 // ----------------------------------------------------------------------------
-// order_book
+// Orders are processed into simple lists of amount, running total
 // ----------------------------------------------------------------------------
+struct offer_data {
+    std::vector<float> rate;
+    std::vector<float> size;
+    std::vector<float> total;
+    //
+    void clear() {
+        rate.clear();
+        size.clear();
+        total.clear();
+    }
+};
 
-class order_book {
-  public:
-    //
+// ----------------------------------------------------------------------------
+// Base order book class provides access to top bids/asks
+// plotting and other representations of the orders
+// ----------------------------------------------------------------------------
+struct order_book_base
+{
+    // Sorted order book entries
+    offer_data bids;
+    offer_data asks;
+
+    // Graph plotting objects
     std::shared_ptr<OrderBookPlot> OrderBookPlot_;
-    OrderBookCurve *plot_curve_;
-    //
-    std::array<double, 200> data_x;
-    std::array<double, 200> data_y;
-    std::array<double, 200> data_z;
-    //
+    OrderBookCurve *bid_curve_;
+    OrderBookCurve *ask_curve_;
+
+    // Graph min/max setting
     double prev_xmin;
     double prev_xmax;
     double prev_ymax;
-    //
-    offer_map orders;
+
+    // Text representation of order book
     std::string order_text;
     //
-    order_book(std::shared_ptr<OrderBookPlot> obp, bool secondaxis)
+    order_book_base(std::shared_ptr<OrderBookPlot> obp, bool secondaxis)
     {
         OrderBookPlot_ = obp;
-        //
-        std::fill(std::begin(data_x), std::end(data_x), 0);
-        std::fill(std::begin(data_y), std::end(data_y), 0);
-        std::fill(std::begin(data_z), std::end(data_z), 0);
         //
         prev_xmin = 0;
         prev_xmax = 0;
         prev_ymax = 0;
         //
-        plot_curve_ = new OrderBookCurve();
+        bid_curve_ = new OrderBookCurve();
+        ask_curve_ = new OrderBookCurve();
         //
         if (secondaxis) {
-            plot_curve_->setSegmentInfo(0  , 100, Qt::darkYellow, 3);
-            plot_curve_->setSegmentInfo(100, 200, Qt::darkMagenta,3);
-            plot_curve_->setYAxis(QwtPlot::yRight);
+            bid_curve_->setSegmentInfo(0, 100, Qt::darkYellow, 3);
+            ask_curve_->setSegmentInfo(0, 100, Qt::darkMagenta,3);
+            bid_curve_->setYAxis(QwtPlot::yRight);
+            ask_curve_->setYAxis(QwtPlot::yRight);
         }
         else {
-            plot_curve_->setSegmentInfo(0  , 100, Qt::green, 2);
-            plot_curve_->setSegmentInfo(100, 200, Qt::red, 2);
+            bid_curve_->setSegmentInfo(0, 100, Qt::green, 3);
+            ask_curve_->setSegmentInfo(0, 100, Qt::red,3);
+            bid_curve_->setYAxis(QwtPlot::yLeft);
+            ask_curve_->setYAxis(QwtPlot::yLeft);
         }
-        plot_curve_->attach(obp.get());
+        bid_curve_->attach(obp.get());
+        ask_curve_->attach(obp.get());
     }
 
-    ~order_book() {
-        // release shared_ptr reference
-        OrderBookPlot_ = nullptr;
-    }
-    //
-    void set_raw_samples(const std::array<double, 200> &x, const std::array<double, 200> y)
+    ~order_book_base()
     {
-    // mw->OrderBookPlot_->plot_curve_->setRawSamples(data_x.begin(), data_z.begin(), 200);
+        // release shared_ptr reference early
+        OrderBookPlot_ = nullptr;
+
+        // owned by plot?
+        // delete plot_curve_;
     }
 
     void update_graph_limits()
     {
         // pick x min max limits so they don't jump around constantly
-        double xrange = data_x[199] - data_x[0];
+        double xrange = asks.rate.back() - bids.rate.back();
         double xscale = 0.25 * std::pow(10, static_cast<int>(std::log10(xrange)));
-        double xmin = std::floor(data_x[0] / xscale) * xscale;
-        double xmax = std::ceil(data_x[199] / xscale) * xscale;
+        double xmin = std::floor(bids.rate.back() / xscale) * xscale;
+        double xmax = std::ceil(asks.rate.back() / xscale) * xscale;
         //
         // pick y min max limits so they don't jump around constantly
-        double yrange = std::max(data_z[0], data_z[199]);
+        double yrange = std::max(bids.total.back(), asks.total.back());
         double yscale = 0.25 * std::pow(10, static_cast<int64_t>(std::log10(yrange)));
         double ymin = 0.0;
         double ymax = (std::ceil(yrange / yscale)) * yscale;
@@ -129,134 +146,105 @@ class order_book {
         OrderBookPlot_->setAxisScale(QwtPlot::yRight, ymin, prev_ymax/5.0);
     }
 
+    // produces a simple string representation of the order book
+    // from the bid/ask lists
+    std::string order_book_string()
+    {
+        // string header line
+        std::stringstream temp;
+        // title format string
+        boost::format title("%10s %10s %10s | %10s %10s %10s\n");
+        temp << title % "Total" % "Size" % "Bid" % "Ask" % "Size" % "Total";
+        // numeric entries format string
+        boost::format num("%10.0f %10.2f %10.4f | %10.4f %10.2f %10.0f\n");
+        // iterate over bids/asks
+        auto zipped = ranges::view::zip(bids.total, bids.size, bids.rate, asks.rate, asks.size, asks.total);
+        for (auto const & z : zipped)
+        {
+            temp << num % std::get<0>(z) % std::get<1>(z) % std::get<2>(z) % std::get<3>(z) % std::get<4>(z) % std::get<5>(z);
+        }
+        //
+        return temp.str();
+    }
+};
+
+// ----------------------------------------------------------------------------
+// Bitstamp specific order book processing routines
+// ----------------------------------------------------------------------------
+struct bitstamp_order_book : order_book_base
+{
+    using order_book_base::order_book_base;
+
     // ----------------------------------------------------------------------------
     // accept json reply from bitstamp order book query and turn into numeric arrays
-    void accept_json_bitstamp(std::string_view data)
+    bool accept_json_bitstamp(std::string_view data)
     {
-        if (!startswith(data, "{\"data\":")) return;
-        //
+        if (!startswith(data, "{\"data\":")) return false;
         nlohmann::json jdata = json::parse(data)["data"];
-
+        //
         // convert orders into a layout we can visualize nicely
-        bid_ask_string_to_number(jdata["bids"], &data_x[0],   &data_y[0]);
-        bid_ask_string_to_number(jdata["asks"], &data_x[100], &data_y[100]);
-        // partial sum the 100 asks and bids, store in new y axis z array (left/bids part in reverse order)
-        std::partial_sum(
-            &data_y[0], &data_y[100], std::reverse_iterator<double*>(&data_z[100]));
-        std::partial_sum(&data_y[100], &data_y[200], &data_z[100]);
-        // and flip the x axis for the bids/left side of plot
-        std::reverse(&data_x[0], &data_x[100]);
+        bid_ask_string_to_number(jdata["bids"], bids);
+        bid_ask_string_to_number(jdata["asks"], asks);
+        //
+        std::partial_sum(bids.size.begin(), bids.size.end(), bids.total.begin());
+        std::partial_sum(asks.size.begin(), asks.size.end(), asks.total.begin());
 
-        // push this data intp the graph object
-        plot_curve_->setRawSamples(data_x.begin(), data_z.begin(), 200);
+        // push this data into the graph object
+        bid_curve_->setRawSamples(&bids.rate[0], &bids.total[0], 100);
+        ask_curve_->setRawSamples(&asks.rate[0], &asks.total[0], 100);
         //
         update_graph_limits();
+        return true;
     }
 
-    // this function is no longer needed, but kept for future use
-    void accept_json_ledger_sell(std::string_view data)
+private:
+    // ----------------------------------------------------------------------------
+    // bitstamp data arrives as strings instead of numbers
+    // these must be converted to numeric arrays
+    void bid_ask_string_to_number(nlohmann::json& json, offer_data &data)
     {
-        return;
-
-        if (!startswith(data, "{\"result\":")) return;
+        auto bid_string = json.get<std::array<std::array<std::string, 2>, 100>>();
         //
-        nlohmann::json jdata = json::parse(data);
-        auto joffers = jdata["result"]["offers"];
+        data.rate.resize(bid_string.size(), 0);
+        data.size.resize(bid_string.size(), 0);
+        data.total.resize(bid_string.size(), 0);
         //
-        std::cout << "\n\nXRP Sell orders \n\n";
-        //
-        int index = 100;
-        auto offers = joffers.get<std::vector<xrpl_offer>>();
-        for (auto const &o : offers) {
-            double xrp = o.TakerGets.value*1E-6;
-            double usd = o.TakerPays.value;
-            double conv = usd / xrp;
-            std::cout << "rate : " << std::setw(10) << std::setprecision(7) << conv << "\t"
-                      << o.Account << "\t"
-                      << std::setw(10) << std::setprecision(11) << xrp << " "
-                      << "$" << std::setw(10) << std::setprecision(11) << usd << std::endl;
-            //
-            data_x[index] = conv;
-            data_y[index] = xrp;
-            if (++index>=200) break;
-        }
-        // pad out in case there were less than 100 entries in the json
-        for (; index<200; ++index) {
-            data_x[index] = data_x[index-1];
-            data_y[index] = 0;
-        }
-        // partial sum the 100 asks and bids, store in new y axis z array (left/bids part in reverse order)
-        std::partial_sum(&data_y[100], &data_y[200], &data_z[100]);
-        std::partial_sum(
-            &data_y[0], &data_y[100], std::reverse_iterator<double*>(&data_z[100]));
-
-        // push this data intp the graph object
-        plot_curve_->setRawSamples(data_x.begin(), data_z.begin(), 200);
-        //
-//        update_graph_limits();
+        std::transform(bid_string.begin(), bid_string.end(), ranges::view::zip(data.rate, data.size).begin(), [](const auto& i) {
+            return std::pair<double, double>{ std::stod(i[0]), std::stod(i[1]) };
+        });
     }
+};
 
-    // this function is no longer needed, but kept for future use
-    void accept_json_ledger_buy(std::string_view data)
+// ----------------------------------------------------------------------------
+// XRP ledger specific order book processing routines
+// ----------------------------------------------------------------------------
+struct xrpl_order_book : order_book_base
+{
+    using order_book_base::order_book_base;
+    //
+    offer_map orders;
+    //
+    xrpl_order_book(std::shared_ptr<OrderBookPlot> obp, bool secondaxis)
+        : order_book_base(obp, secondaxis)
     {
-        return;
-
-        nlohmann::json jdata = json::parse(data);
-        auto joffers = jdata["result"]["offers"];
-        DEBUG_ONLY(joffers.dump(4) << std::endl);
-        //
-    //    app_settings* app_ini = global_settings();
-        std::cout << "\n\nXRP Buy orders \n\n";
-        //
-        int index = 0;
-        auto offers = joffers.get<std::vector<xrpl_offer>>();
-        for (auto const &o : offers) {
-            double xrp = o.TakerPays.value*1E-6;
-            double usd = o.TakerGets.value;
-            double conv = usd / xrp;
-            std::cout << "rate : " << std::setw(10) << std::setprecision(7) << conv << "\t"
-                      << o.Account << "\t"
-                      << std::setw(10) << std::setprecision(11) << xrp << " "
-                      << "$" << std::setw(10) << std::setprecision(11) << usd << std::endl;
-            //
-            data_x[99-index] = conv;
-            data_y[99-index] = xrp;
-            if (++index>=100) break;
-        }
-        // pad out in case there were less than 100 entries in the json
-        for (; index<100; ++index) {
-            data_x[99-index] = data_x[100-index];
-            data_y[99-index] = data_y[100-index];
-        }
-        if (data_x[100]==0) {
-            std::fill(&data_x[100], &data_x[200], data_x[99]);
-        }
-        // partial sum the 100 asks and bids, store in new y axis z array (left/bids part in reverse order)
-        std::partial_sum(
-            &data_y[0], &data_y[100], std::reverse_iterator<double*>(&data_z[100]));
-
-        // push this data intp the graph object
-        plot_curve_->setRawSamples(data_x.begin(), data_z.begin(), 200);
-        //
-//        update_graph_limits();
     }
 
+    // When subscribing to the ledger order book webstream
+    //  a snapshot is inculded initiall with the current state
+    // This function converts the json into our order book
     void accept_json_ledger_snapshot(std::string_view data)
     {
         nlohmann::json jdata = json::parse(data);
         auto joffers = jdata["result"]["offers"];
         DEBUG_ONLY(joffers.dump(4) << std::endl);
         //
-        int index = 0;
         auto offers = joffers.get<std::vector<xrpl_offer>>();
         //
-        std::vector<double> bid_x, bid_y;
-        std::vector<double> ask_x, ask_y;
-        bid_x.reserve(600);
-        bid_y.reserve(600);
-        ask_x.reserve(600);
-        ask_y.reserve(600);
+        bids.clear();
+        asks.clear();
         //
+        double btotal = 0;
+        double atotal = 0;
         for (auto const &o : offers) {
 
             // build viz of bids/asks
@@ -269,8 +257,10 @@ class order_book {
                 if (xrp==0 || usd==0) continue;
                 //
                 conv = usd / xrp;
-                bid_x.push_back(conv);
-                bid_y.push_back(xrp);
+                btotal += xrp;
+                bids.rate.push_back(conv);
+                bids.size.push_back(xrp);
+                bids.total.push_back(btotal);
             }
             // ask for $usd in return for xrp
             else if (o.TakerPays.currency==currency_type::usd_bitstamp) {
@@ -280,8 +270,10 @@ class order_book {
                 if (xrp==0 || usd==0) continue;
                 //
                 conv = usd / xrp;
-                ask_x.push_back(conv);
-                ask_y.push_back(xrp);
+                atotal += xrp;
+                asks.rate.push_back(conv);
+                asks.size.push_back(xrp);
+                asks.total.push_back(atotal);
             }
             else {
                 throw std::runtime_error("Unsupported currency");
@@ -295,28 +287,28 @@ class order_book {
                       << std::setw(12) << std::setprecision(11) << xrp << " "
                       << "$" << std::setw(12) << std::setprecision(11) << usd);
         }
-
+/*
         // take the top 100 xrp buy orders and transform them to a plot format
         // partial sum the first 100 buy/bids, store in z array reverse order
-        std::array<double, 200>::reverse_iterator revx(&data_x[100]);
-        std::array<double, 200>::reverse_iterator revz(&data_z[100]);
+        std::array<double, 200>::reverse_iterator revx(&graph_x[100]);
+        std::array<double, 200>::reverse_iterator revz(&graph_z[100]);
         std::copy(&bid_x[0], &bid_x[100], revx);
         std::partial_sum(&bid_y[0], &bid_y[100], revz);
 
         // copy the ask/sell data directly
-        std::copy(&ask_x[0], &ask_x[100], &data_x[100]);
-        std::partial_sum(&ask_y[0], &ask_y[100], &data_z[100]);
-
+        std::copy(&ask_x[0], &ask_x[100], &graph_x[100]);
+        std::partial_sum(&ask_y[0], &ask_y[100], &graph_z[100]);
+*/
         // push this data into the graph object
-        plot_curve_->setRawSamples(data_x.begin(), data_z.begin(), 200);
-        //
-//        update_graph_limits();
+        bid_curve_->setRawSamples(&bids.rate[0], &bids.total[0], 100);
+        ask_curve_->setRawSamples(&asks.rate[0], &asks.total[0], 100);
     }
 
     void ledger_map_to_plot()
     {
         std::vector<double> bid_x, bid_y;
         std::vector<double> ask_x, ask_y;
+        //
         bid_x.reserve(600);
         bid_y.reserve(600);
         ask_x.reserve(600);
@@ -327,21 +319,21 @@ class order_book {
         //
         for (auto const& [acct, bid_ask] : orders)
         {
-            const std::vector<xrpl_offer> &bids = bid_ask.first;
-            const std::vector<xrpl_offer> &asks = bid_ask.second;
+            const std::vector<xrpl_offer> &acc_bids = bid_ask.first;
+            const std::vector<xrpl_offer> &acc_asks = bid_ask.second;
             //
             DEBUG_ONLY(acct
                         << " bids : " << bids.size()
                         << " asks : " << asks.size());
 
-            for (const auto &o : bids) {
+            for (const auto &o : acc_bids) {
                 xrp = o.TakerPays.value*1E-6;
                 usd = o.TakerGets.value;
                 conv = usd / xrp;
                 bid_x.push_back(conv);
                 bid_y.push_back(xrp);
             }
-            for (const auto &o : asks) {
+            for (const auto &o : acc_asks) {
                 xrp = o.TakerGets.value*1E-6;
                 usd = o.TakerPays.value;
                 conv = usd / xrp;
@@ -362,27 +354,18 @@ class order_book {
 
         // take the top 100 xrp buy orders and transform them to a plot format
         // partial sum the first 100 buy/bids, store in z array reverse order
-        std::array<double, 200>::reverse_iterator revx(&data_x[100]);
-        std::array<double, 200>::reverse_iterator revz(&data_z[100]);
-        std::copy(&bid_x[0], &bid_x[100], revx);
-        std::partial_sum(&bid_y[0], &bid_y[100], revz);
+        std::copy(&bid_x[0], &bid_x[100], bids.rate.begin());
+        std::partial_sum(&bid_y[0], &bid_y[100], bids.total.begin());
 
         // copy the ask/sell data directly
-        std::copy(&ask_x[0], &ask_x[100], &data_x[100]);
-        std::partial_sum(&ask_y[0], &ask_y[100], &data_z[100]);
+        std::copy(&ask_x[0], &ask_x[100], asks.rate.begin());
+        std::partial_sum(&ask_y[0], &ask_y[100], asks.total.begin());
 
-        //
-        std::stringstream temp;
-        boost::format title("%12s %12s %12s | %12s %12s %12s\n");
-        temp << title % "Total" % "Size" % "Bid" % "Ask" % "Size" % "Total";
-        for (int i=0; i<50; ++i) {
-            boost::format num("%12.0f %12.2f %12.4f | %12.4f %12.2f %12.0f\n");
-            temp << num % data_z[99-i] % bid_y[i] % bid_x[i] % ask_x[i] % ask_y[i] % data_z[100+i];
-        }
-        order_text = temp.str();
+        order_text = order_book_string();
 
         // push this data into the graph object
-        plot_curve_->setRawSamples(data_x.begin(), data_z.begin(), 200);
+        bid_curve_->setRawSamples(&bids.rate[0], &bids.total[0], 100);
+        ask_curve_->setRawSamples(&asks.rate[0], &asks.total[0], 100);
     }
 
     void accept_json_ledger_transaction(std::string_view data)
@@ -397,14 +380,6 @@ class order_book {
         nlohmann::json transaction = jdata["transaction"];
         DEBUG_ONLY(transaction.dump(4) << std::endl);
 
-        // ------------------------
-        // Debug
-        // ------------------------
-        std::string acct = transaction.at("Account").get< std::string >();
-//        std::cout << "Transaction : " << transaction.dump(4) << std::endl;
-//        std::cout << "Affected : " << affected.dump(4) << std::endl;
-        // ------------------------
-
         std::string ttype = transaction.at("TransactionType").get< std::string >();
         if (ttype=="OfferCreate" || ttype=="OfferCancel" || ttype=="Payment")
         {
@@ -413,8 +388,8 @@ class order_book {
             }
             catch (std::exception& e)
             {
-                std::cout << "Transaction : " << transaction.dump(4) << std::endl;
-                std::cout << "Affected : " << affected.dump(4) << std::endl;
+                std::cerr << "Error : Transaction : " << transaction.dump(4) << std::endl;
+                std::cerr << "Error : Affected : " << affected.dump(4) << std::endl;
                 throw e;
             }
         }
@@ -602,69 +577,5 @@ class order_book {
             throw std::runtime_error("Error in handle_offer_change");
         }
     }
-/*
-    void offer_create(const xrpl_offer &offer, const nlohmann::json &affected)
-    {
-        bool ok = true;
-        for (auto& el : affected.items())
-        {
-            if (el.value().contains("CreatedNode")) {
-                const auto &node = el.value()["CreatedNode"];
-                std::string ltype = node["LedgerEntryType"].get< std::string >();
-                if (ltype=="Offer") {
-                    xrpl_offer offer2 = node["NewFields"].get< xrpl_offer >();
-                    if (offer == offer2) {
-                        ok = insert_offer(offer);
-                        if (!ok) std::cerr << "error offer_create insert_offer" << std::endl;
-                    }
-                    else {
-                        // this offer has been partially filled, update it
-                        ok = update_offer(offer, offer2);
-                        if (!ok) std::cerr << "error offer_create update_offer" << std::endl;
-                    }
-                }
-            }
-        }
-        if (!ok) {
-            std::cerr << "Error : Affected : " << affected.dump(4) << std::endl;
-            throw std::runtime_error("Error in offer_create");
-        }
-    }
 
-    void offer_cancel(const nlohmann::json &affected)
-    {
-        //std::cout << "offer_cancel " << affected.size() << std::endl;
-        for (auto& el : affected.items())
-        {
-            //std::cout << el.value().dump(4) << std::endl << std::endl;
-            if (el.value().contains("DeletedNode")) {
-                const auto &node = el.value()["DeletedNode"];
-                std::string ltype = node["LedgerEntryType"].get< std::string >();
-                if (ltype=="Offer") {
-                    xrpl_offer offer = node["FinalFields"].get< xrpl_offer >();
-                    if (delete_offer(offer)) {
-                        std::cout << "offer_cancel read and deleted" << std::endl;
-                    }
-                    else {
-                        throw std::runtime_error("offer_cancel error");
-                    }
-                }
-            }
-        }
-    }
-*/
-  private:
-    // ----------------------------------------------------------------------------
-    // bitstamp data arrives as strings instead of numbers
-    // these must be converted to numeric arrays
-    void bid_ask_string_to_number(nlohmann::json& json, double* x, double* y)
-    {
-        auto bid_string = json.get<std::array<std::array<std::string, 2>, 100>>();
-        auto zip_start = boost::make_zip_iterator(boost::make_tuple(x, y));
-        std::transform(bid_string.begin(), bid_string.end(), zip_start, [](const auto& i) {
-            std::pair<double, double> vals =
-                std::make_pair(std::atof(i[0].c_str()), std::atof(i[1].c_str()));
-            return vals;
-        });
-    }
 };

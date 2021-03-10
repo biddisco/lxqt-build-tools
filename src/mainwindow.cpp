@@ -59,8 +59,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     std::shared_ptr<OrderBookPlot> obp = std::make_shared<OrderBookPlot>();
     ui.orderbook_layout_1->addWidget(obp.get(), 0);
-    bistamp_orderbook_ = new order_book(obp, false);
-    ledger_orderbook_ = new order_book(obp, true);
+    bistamp_orderbook_ = new bitstamp_order_book(obp, false);
+    ledger_orderbook_ = new xrpl_order_book(obp, true);
 
     //
     // setup Qt actions/connections
@@ -312,9 +312,8 @@ void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string_view data)
 {
     DEBUG_ONLY(std::cout << "\n\nReceived " << data << std::endl << std::endl << std::endl);
 
-    mw->bistamp_orderbook_->accept_json_bitstamp(data);
-
-    emit mw->bitstamp_orderbook_replot();
+    if (mw->bistamp_orderbook_->accept_json_bitstamp(data))
+        emit mw->bitstamp_orderbook_replot();
 }
 
 // ----------------------------------------------------------------------------
@@ -404,24 +403,6 @@ void GroxMainWindow::ledger_balance()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::ledger_book_sell_xrp(std::string_view data)
-{
-    DEBUG_ONLY(std::cout << "Response : " << data << std::endl);
-    //
-    ledger_orderbook_->accept_json_ledger_sell(data);
-    emit ledger_orderbook_replot();
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::ledger_book_buy_xrp(std::string_view data)
-{
-    DEBUG_ONLY(std::cout << "Response : " << data << std::endl);
-    //
-    ledger_orderbook_->accept_json_ledger_buy(data);
-    emit ledger_orderbook_replot();
-}
-
-// ----------------------------------------------------------------------------
 // this function not yet working
 void GroxMainWindow::ledger_order_book(bool buy_xrp)
 {
@@ -478,10 +459,10 @@ void GroxMainWindow::ledger_order_book(bool buy_xrp)
         }
         // debug : print the response headers and body
         DEBUG_ONLY(std::cout << "Request response " << ctx.res.body() << "\n");
-        if (buy_xrp)
-            this->ledger_book_buy_xrp(std::move(ctx.res.body()));
-        else
-        this->ledger_book_sell_xrp(std::move(ctx.res.body()));
+//        if (buy_xrp)
+//            this->ledger_book_buy_xrp(std::move(ctx.res.body()));
+//        else
+//            this->ledger_book_sell_xrp(std::move(ctx.res.body()));
     });
 
     // save the number of requests in the queue
