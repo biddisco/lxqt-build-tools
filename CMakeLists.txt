@@ -90,6 +90,9 @@ if(NOT qwt_POPULATED)
   add_subdirectory(${qwt_SOURCE_DIR} ${qwt_BINARY_DIR})
 endif()
 
+add_subdirectory(extern/range-v3)
+
+
 # ------------------------------------------------------------------------------
 # Find/Build : Rippled library
 # ------------------------------------------------------------------------------
@@ -253,6 +256,7 @@ target_link_libraries(
          Qt5::Concurrent
          ${Boost_LIBRARIES}
          ${HDF5_LIBRARIES}
+         range-v3
          ${STD_FILESYSTEM_LIB}
          uuid
          OpenSSL::SSL

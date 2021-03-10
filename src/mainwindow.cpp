@@ -155,13 +155,14 @@ void GroxMainWindow::createMenus()
 
 //    connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
     connect(ui.connect_button, SIGNAL(clicked()), this, SLOT(start_websocket()));
-    connect(this, SIGNAL(new_ticker_data_ui(QString)), ui.json_text_1,
-        SLOT(setPlainText(QString)));
-    connect(this, SIGNAL(new_order_data_ui(QString)), ui.json_text_3,
+
+    connect(this, SIGNAL(new_order_data_ui(QString)), ui.order_book_text,
         SLOT(setPlainText(QString)));
 
     connect(this, SIGNAL(bitstamp_orderbook_replot()), bistamp_orderbook_->OrderBookPlot_.get(), SLOT(replot()));
     connect(this, SIGNAL(ledger_orderbook_replot()), ledger_orderbook_->OrderBookPlot_.get(), SLOT(replot()));
+
+
     connect(this, SIGNAL(new_ohlc_data_ui()), this, SLOT(new_ohlc_data()));
 
     connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_accounts()));
@@ -301,6 +302,9 @@ void GroxMainWindow::new_ledger_order_data(GroxMainWindow* mw, std::string_view 
     else if (startswith(data, "{\"engine_result\":")) {
         mw->ledger_orderbook_->accept_json_ledger_transaction(data);
     }
+
+    QString datastring = QString::fromStdString(mw->ledger_orderbook_->order_text);
+    emit mw->new_order_data_ui(datastring);
 }
 
 // ----------------------------------------------------------------------------
@@ -311,9 +315,6 @@ void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string_view data)
     mw->bistamp_orderbook_->accept_json_bitstamp(data);
 
     emit mw->bitstamp_orderbook_replot();
-
-//    QString datastring = QString::fromStdString(jdata.dump(4));
-//    emit mw->new_order_data_ui(datastring);
 }
 
 // ----------------------------------------------------------------------------

@@ -3,9 +3,27 @@
 //
 #include <vector>
 #include <string>
+#include <iostream>
 //
 #include "nlohmann/json.hpp"
 #include "ohlc.hpp"
+
+std::ostream& operator<<(std::ostream& os, const xrp_amount &x) {
+    os << "Value: " << x.value << " " << "Currency: ";
+    if (x.currency==currency_type::xrp) os << "xrp";
+    else if (x.currency==currency_type::usd_bitstamp) os << "usd_bitstamp";
+    else if (x.currency==currency_type::usd_gatehub) os << "usd_gatehub";
+    else os << "other";
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const xrpl_offer &x) {
+    os << "Account: " << x.Account << " "
+       << "BookDirectory: " << x.BookDirectory << " "
+       << "TakerPays: " << x.TakerPays << " "
+       << "TakerGets: " << x.TakerGets;
+    return os;
+}
 
 // ----------------------------------------------------------------------------
 // ohlc data
@@ -84,14 +102,28 @@ void from_json(const nlohmann::json &j, xrp_amount &p)
             p.currency = currency_type::usd_gatehub;
         }
         else {
-            throw std::runtime_error("Unsupported currency");
+            p.currency = currency_type::other;
         }
     }
 }
 
 void from_json(const nlohmann::json &j, xrpl_offer &p)
 {
-    p.Account   = j.at("Account").get< std::string >();
-    p.TakerGets = j.at("TakerGets").get< xrp_amount >();
-    p.TakerPays = j.at("TakerPays").get< xrp_amount >();
+    bool ok = true;
+    p.Account       = j.at("Account").get< std::string >();
+    p.BookDirectory = j.at("BookDirectory").get< std::string >();
+    p.TakerGets     = j.at("TakerGets").get< xrp_amount >();
+    p.TakerPays     = j.at("TakerPays").get< xrp_amount >();
+    if (j.contains("taker_gets_funded")) {
+        xrpl_offer temp = p;
+        temp.TakerGets = j.at("taker_gets_funded").get< xrp_amount >();
+        temp.TakerPays = j.at("taker_pays_funded").get< xrp_amount >();
+        if (temp.TakerGets.value>0 && temp.TakerPays.value>0) {
+            p = temp;
+        }
+        else {
+//            std::cout << "taker_gets_funded " << j.at("taker_gets_funded").dump(4) << std::endl
+//                      << "taker_pays_funded " << j.at("taker_pays_funded").dump(4) << std::endl;
+        }
+    }
 }

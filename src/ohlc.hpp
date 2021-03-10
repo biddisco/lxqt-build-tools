@@ -123,6 +123,11 @@ struct xrp_amount {
     double        value;
     currency_type currency;
     //std::optional<std::string> issuer = std::nullopt;
+    //
+    bool operator == (const xrp_amount& other) const {
+        return (value    == other.value) &&
+               (currency == other.currency);
+    }
 };
 
 Q_DECLARE_METATYPE(xrp_amount)
@@ -130,9 +135,28 @@ Q_DECLARE_METATYPE(std::vector<xrp_amount>*)
 
 struct xrpl_offer {
     std::string Account;
+    std::string BookDirectory;
     xrp_amount  TakerGets;
     xrp_amount  TakerPays;
+    //
+    bool operator == (const xrpl_offer& other) const {
+        return BookDirectory == other.BookDirectory;
+//        return (Account   == other.Account) &&
+//               (TakerGets == other.TakerGets) &&
+//               (TakerPays == other.TakerPays);
+    }
+
+    bool grox_compatible()
+    {
+        return ((TakerGets.currency == currency_type::xrp &&
+                 TakerPays.currency == currency_type::usd_bitstamp) ||
+                (TakerPays.currency == currency_type::xrp &&
+                 TakerGets.currency == currency_type::usd_bitstamp));
+    }
 };
+
+std::ostream& operator<<(std::ostream& os, const xrpl_offer &);
+std::ostream& operator<<(std::ostream& os, const xrp_amount &);
 
 void to_json(json& j, const xrp_amount& p);
 void from_json(const nlohmann::json &j, xrp_amount &p);

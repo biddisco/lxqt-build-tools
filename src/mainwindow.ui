@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>901</width>
-    <height>607</height>
+    <width>895</width>
+    <height>660</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,7 +26,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>2</number>
         </property>
         <widget class="QWidget" name="chart_tab">
          <attribute name="title">
@@ -641,15 +641,33 @@
          <attribute name="title">
           <string>Order Book</string>
          </attribute>
-         <layout class="QHBoxLayout" name="horizontalLayout_4">
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout">
-            <item>
+         <layout class="QGridLayout" name="gridLayout_6">
+          <item row="0" column="0">
+           <widget class="QSplitter" name="splitter_4">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <widget class="QSplitter" name="splitter_3">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
              <widget class="QFrame" name="order_frame">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <horstretch>9</horstretch>
+                <verstretch>1</verstretch>
+               </sizepolicy>
+              </property>
               <property name="minimumSize">
                <size>
-                <width>128</width>
-                <height>128</height>
+                <width>256</width>
+                <height>256</height>
                </size>
               </property>
               <property name="frameShape">
@@ -660,18 +678,16 @@
               </property>
               <layout class="QGridLayout" name="gridLayout">
                <item row="1" column="0">
-                <layout class="QVBoxLayout" name="orderbook_layout_1"/>
+                <layout class="QVBoxLayout" name="orderbook_layout_1" stretch=""/>
                </item>
               </layout>
              </widget>
-            </item>
-            <item>
-             <widget class="QFrame" name="order_frame_2">
-              <property name="minimumSize">
-               <size>
-                <width>128</width>
-                <height>128</height>
-               </size>
+             <widget class="QFrame" name="frame">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
               </property>
               <property name="frameShape">
                <enum>QFrame::StyledPanel</enum>
@@ -679,34 +695,40 @@
               <property name="frameShadow">
                <enum>QFrame::Raised</enum>
               </property>
-              <layout class="QGridLayout" name="gridLayout_6">
-               <item row="1" column="0">
-                <layout class="QVBoxLayout" name="orderbook_layout_2"/>
-               </item>
-              </layout>
              </widget>
-            </item>
-            <item>
-             <widget class="QPlainTextEdit" name="json_text_1">
+            </widget>
+            <widget class="QSplitter" name="splitter">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <widget class="QPlainTextEdit" name="order_book_text">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <horstretch>1</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="font">
+               <font>
+                <family>Courier</family>
+               </font>
+              </property>
+             </widget>
+             <widget class="QPlainTextEdit" name="order_book_text_2">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPlainTextEdit" name="json_text_3">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
+              <property name="font">
+               <font>
+                <family>Courier</family>
+               </font>
               </property>
              </widget>
-            </item>
-           </layout>
+            </widget>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -721,7 +743,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>901</width>
+     <width>895</width>
      <height>22</height>
     </rect>
    </property>

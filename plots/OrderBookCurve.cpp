@@ -24,7 +24,7 @@ void OrderBookCurve::drawLines(QPainter* p, const QwtScaleMap& xMap,
         {
             p->setPen(m_segPen[i]);
             QwtPlotCurve::drawLines(
-                p, xMap, yMap, canvasRect, m_segStart[i], m_segFinish[i]);
+                p, xMap, yMap, canvasRect, m_segStart[i], m_segFinish[i]-1);
         }
         p->restore();
     }

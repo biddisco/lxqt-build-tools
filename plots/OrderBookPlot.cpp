@@ -83,20 +83,20 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
 
     // x axis
     QPalette palette1 = axisWidget(Axis::xBottom)->palette();
-    palette1.setColor(QPalette::WindowText, Qt::lightGray);    // for ticks
-    palette1.setColor(QPalette::Text, Qt::lightGray);          // for ticks' labels
+    palette1.setColor(QPalette::WindowText, Qt::lightGray); // ticks
+    palette1.setColor(QPalette::Text, Qt::lightGray);       // tick labels
     axisWidget(Axis::xBottom)->setPalette(palette1);
 
     // y axis
     QPalette palette2 = axisWidget(Axis::yLeft)->palette();
-    palette2.setColor(QPalette::WindowText, Qt::lightGray);    // for ticks
-    palette2.setColor(QPalette::Text, Qt::lightGray);          // for ticks' labels
+    palette2.setColor(QPalette::WindowText, Qt::green);    // ticks
+    palette2.setColor(QPalette::Text, Qt::red);            // tick labels
     axisWidget(Axis::yLeft)->setPalette(palette2);
 
     // 2nd y axis
     QPalette palette3 = axisWidget(Axis::yRight)->palette();
-    palette3.setColor(QPalette::WindowText, Qt::lightGray);    // for ticks
-    palette3.setColor(QPalette::Text, Qt::lightGray);          // for ticks' labels
+    palette3.setColor(QPalette::WindowText, Qt::darkYellow); // tick
+    palette3.setColor(QPalette::Text, Qt::darkMagenta);      // tick labels
     axisWidget(Axis::yRight)->setPalette(palette3);
 
     enableAxis(QwtPlot::yRight);
