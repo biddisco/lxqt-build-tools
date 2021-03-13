@@ -465,28 +465,42 @@ void xrpl_order_book::ledger_map_to_order_book()
             std::sort(acc_bids.begin(), acc_bids.end(), std::greater<xrpl_offer>{});
             clamp_offers_to_funds(acc_bids, currency_type::usd_bitstamp, acct);
         }
+        double tiny_offers = 0;
         for (const auto& o : acc_bids)
         {
+            auto xrp_amount = o.amount(currency_type::xrp) * 1E-6;
             // skip unfunded or very small offers
-            if (o.unfunded(0.1)) continue;
+            if (o.unfunded(0.1)) {
+                tiny_offers += xrp_amount;
+                continue;
+            }
             //
             bids.rate.push_back(o.rate());
-            bids.orig.push_back(o.amount(currency_type::xrp) * 1E-6);
+            bids.orig.push_back(xrp_amount + tiny_offers);
             bids.size.push_back(o.funded_offer / o.rate());
+            tiny_offers = 0;
         }
 
         if (acc_asks.size()>0) {
             std::sort(acc_asks.begin(), acc_asks.end(), std::less<xrpl_offer>{});
             clamp_offers_to_funds(acc_asks, currency_type::xrp, acct);
         }
+        tiny_offers = 0;
         for (const auto& o : acc_asks)
         {
+            auto xrp_amount = o.amount(currency_type::xrp) * 1E-6;
+            // skip unfunded or very small offers
+            if (o.unfunded(0.1)) {
+                tiny_offers += xrp_amount;
+                continue;
+            }
             // skip unfunded or very small offers
             if (o.unfunded(0.1 * 1E6)) continue;
             //
             asks.rate.push_back(o.rate());
-            asks.orig.push_back(o.amount(currency_type::xrp) * 1E-6);
+            asks.orig.push_back(xrp_amount + tiny_offers);
             asks.size.push_back(o.funded_offer * 1E-6);
+            tiny_offers = 0;
         }
     }
 
