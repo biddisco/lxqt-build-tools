@@ -54,6 +54,15 @@ void OrderBookCurve::setSegmentInfo(
     m_segFinish.push_back(segmentFinisIndex);
 }
 
+void OrderBookCurve::clear_samples()
+{
+    // when we are changing daya
+    std::lock_guard<std::mutex> lock(paint_mutex_);
+    //
+    QwtPlotCurve::setRawSamples(
+                static_cast<float*>(nullptr), static_cast<float*>(nullptr), 0);
+}
+
 void OrderBookCurve::setRawSamples_locked(
     std::vector<float> const &xData, std::vector<float> const &yData)
 {

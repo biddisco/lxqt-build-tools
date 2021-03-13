@@ -417,75 +417,54 @@ void xrpl_order_book::accept_json_ledger_snapshot(std::string_view data)
 // plot and txt display forms
 void xrpl_order_book::ledger_map_to_order_book()
 {
+    // make sure graph doesn't try to plot data during an update
+    bid_curve_->clear_samples();
+    ask_curve_->clear_samples();
+    //
     bids.clear();
     asks.clear();
     //
+    auto clamp_offers_to_funds =
+            [](std::vector<xrpl_offer>& offers,
+            currency_type curr,
+            const std::string &acct)
+    {
+        // for debugging
+        //std::stringstream temp;
+        //temp << acct << " : Offers : ";
+        //for (auto &o : offers) { temp << o.owner_funds << ", "; }
+        //std::cout << temp.str() << std::endl;
+
+        // the first offer always holds the max funds available
+        double funds_avail = offers[0].owner_funds;
+        if (funds_avail==-1) {
+            throw std::runtime_error("bid fund tracking error");
+        }
+        for (auto &o : offers) {
+            // used only in building bid/ask order books
+            double amount = o.amount(curr);
+            if (amount <= funds_avail) {
+                o.funded_offer = amount;
+            }
+            else {
+                o.funded_offer = std::max(0.0, funds_avail);
+            }
+            funds_avail -= amount;
+        }
+    };
+
     for (auto & [acct, bid_ask] : orders)
     {
         std::vector<xrpl_offer>& acc_bids = std::get<bid_index>(bid_ask);
         std::vector<xrpl_offer>& acc_asks = std::get<ask_index>(bid_ask);
-
-        if (acc_asks.size()>0) {
-            // the account may not be fully funded, so the offers may be invalid
-            // sort offers into order based on increasing rate
-            std::sort(acc_asks.begin(), acc_asks.end(), std::less<xrpl_offer>{});
-
-            // for debugging
-//            std::stringstream temp;
-//            temp << acct << " : Asks : ";
-//            for (auto &o : acc_asks) { temp << o.owner_funds << ", "; }
-//            std::cout << temp.str() << std::endl;
-
-            // the first offer always holds the max funds available
-            double funds_avail = acc_asks[0].owner_funds;
-            if (funds_avail==-1) {
-                throw std::runtime_error("bid fund tracking error");
-            }
-            for (auto &o : acc_asks) {
-                // used only in building bid/ask order books
-                double amount = o.amount(currency_type::xrp);
-                if (amount <= funds_avail) {
-                    o.funded_offer = amount;
-                }
-                else {
-                    o.funded_offer = std::max(0.0, funds_avail);
-                }
-                funds_avail -= amount;
-            }
-        }
-
-        if (acc_bids.size()>0) {
-            // the account may not be fully funded, so the offers may be invalid
-            // sort offers into order based on decreasing rate
-            std::sort(acc_bids.begin(), acc_bids.end(), std::greater<xrpl_offer>{});
-
-            // for debugging
-//            std::stringstream temp;
-//            temp << acct << " : Bids : ";
-//            for (auto &o : acc_bids) { temp << o.owner_funds << ", "; }
-//            std::cout << temp.str() << std::endl;
-
-            // the first offer always holds the max funds available
-            double funds_avail = acc_bids[0].owner_funds;
-            if (funds_avail==-1) {
-                throw std::runtime_error("bid fund tracking error");
-            }
-            for (auto &o : acc_bids) {
-                // used only in building bid/ask order books
-                double amount = o.amount(currency_type::usd_bitstamp);
-                if (amount <= funds_avail) {
-                    o.funded_offer = amount;
-                }
-                else {
-                    o.funded_offer = std::max(0.0, funds_avail);
-                }
-                funds_avail -= amount;
-            }
-        }
-
         //
         DEBUG_ONLY(acct << " bids : " << bids.size() << " asks : " << asks.size());
 
+        // the account may not be fully funded, so the offers may be invalid
+        if (acc_bids.size()>0) {
+            std::sort(acc_bids.begin(), acc_bids.end(), std::greater<xrpl_offer>{});
+            clamp_offers_to_funds(acc_bids, currency_type::usd_bitstamp, acct);
+        }
         for (const auto& o : acc_bids)
         {
             // skip unfunded or very small offers
@@ -494,6 +473,11 @@ void xrpl_order_book::ledger_map_to_order_book()
             bids.rate.push_back(o.rate());
             bids.orig.push_back(o.amount(currency_type::xrp) * 1E-6);
             bids.size.push_back(o.funded_offer / o.rate());
+        }
+
+        if (acc_asks.size()>0) {
+            std::sort(acc_asks.begin(), acc_asks.end(), std::less<xrpl_offer>{});
+            clamp_offers_to_funds(acc_asks, currency_type::xrp, acct);
         }
         for (const auto& o : acc_asks)
         {

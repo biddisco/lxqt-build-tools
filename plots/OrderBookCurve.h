@@ -14,6 +14,7 @@ public:
 
     void setSegmentInfo(int segmentStartIndex, int segmentFinisIndex, const QColor & color, double thickness);
 
+    void clear_samples();
     void setRawSamples_locked(
         std::vector<float> const &xData, std::vector<float> const &yData);
 
