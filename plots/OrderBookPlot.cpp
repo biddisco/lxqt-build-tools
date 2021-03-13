@@ -24,7 +24,7 @@
 OrderBookPlot::OrderBookPlot(QWidget* parent)
   : QwtPlot(parent)
 {
-    setTitle("");
+    //setTitle("a title");
 
     QwtLinearScaleEngine* scaleEngine = new QwtLinearScaleEngine(10);
 
@@ -65,9 +65,9 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
     setMinimumSize(0, 0);
 
     // Attach a legend internal to the plot
-    //    QwtPlotLegendItem *legend = new QwtPlotLegendItem();
-    //    legend->setAlignmentInCanvas(Qt::Alignment(Qt::AlignTop | Qt::AlignLeft));
-    //    legend->attach(this);
+    QwtPlotLegendItem *legend = new QwtPlotLegendItem();
+    legend->setAlignmentInCanvas(Qt::Alignment(Qt::AlignTop | Qt::AlignLeft));
+    legend->attach(this);
 
     // main canvas color - dark, but not black
     static const QColor c(0x28, 0x28, 0x28);
@@ -81,6 +81,9 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
     canvas()->setPalette(palette0);
     setPalette(palette0);
 
+    // Font for Axis titles
+    axis_title_font = QFont("Times", 10, QFont::Bold);
+
     // x axis
     QPalette palette1 = axisWidget(Axis::xBottom)->palette();
     palette1.setColor(QPalette::WindowText, Qt::lightGray); // ticks
@@ -89,7 +92,7 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
 
     QwtText axisTitleX( "Price" );
     axisTitleX.setRenderFlags( Qt::AlignRight | Qt::AlignVCenter );
-    axisTitleX.setFont( this->axisTitle( QwtPlot::xBottom ).font() );
+    axisTitleX.setFont( axis_title_font );
     this->setAxisTitle( QwtPlot::xBottom, axisTitleX );
 
     // y axis
@@ -100,7 +103,7 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
 
     QwtText axisTitleY( "Bitstamp" );
     axisTitleY.setRenderFlags( Qt::AlignLeft | Qt::AlignTop );
-    axisTitleY.setFont( this->axisTitle( QwtPlot::yLeft).font() );
+    axisTitleY.setFont( axis_title_font );
     this->setAxisTitle( QwtPlot::yLeft, axisTitleY );
 
     // 2nd y axis
@@ -111,7 +114,7 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
 
     QwtText axisTitleY2( "XRPL" );
     axisTitleY2.setRenderFlags( Qt::AlignRight | Qt::AlignTop );
-    axisTitleY2.setFont( this->axisTitle( QwtPlot::yRight).font() );
+    axisTitleY2.setFont( axis_title_font );
     this->setAxisTitle( QwtPlot::yRight, axisTitleY2 );
 
     enableAxis(QwtPlot::yRight);
@@ -149,4 +152,16 @@ void OrderBookPlot::exportPlot()
 {
     QwtPlotRenderer renderer;
     renderer.exportTo(this, "stockchart.pdf");
+}
+
+void OrderBookPlot::update_time_and_replot()
+{
+    QString now = QDateTime::currentDateTime().toUTC().toString("yyyy-MM-dd hh:mm:ss");
+    //
+    QwtText axisTitleX( "Price " + now);
+    axisTitleX.setRenderFlags( Qt::AlignRight | Qt::AlignVCenter );
+    axisTitleX.setFont( axis_title_font );
+    this->setAxisTitle( QwtPlot::xBottom, axisTitleX );
+    //
+    this->replot();
 }

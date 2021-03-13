@@ -57,11 +57,12 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     // Create orderbook plot
     //
-    std::shared_ptr<OrderBookPlot> obp = std::make_shared<OrderBookPlot>();
-    ui.orderbook_layout_1->addWidget(obp.get(), 0);
+    obp = std::make_shared<OrderBookPlot>();
+    obp->setMinimumSize(384,256);
+    obp->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    ui.order_plot_layout->addWidget(obp.get(), 0);
     bistamp_orderbook_ = new bitstamp_order_book(obp, false);
     ledger_orderbook_ = new xrpl_order_book(obp, true);
-
     //
     // setup Qt actions/connections
     //
@@ -156,16 +157,22 @@ void GroxMainWindow::createMenus()
 //    connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
     connect(ui.connect_button, SIGNAL(clicked()), this, SLOT(start_websocket()));
 
-    connect(this, SIGNAL(new_order_data_ui(QString)), ui.order_book_text,
+    connect(this, SIGNAL(new_order_bitstamp_ui(QString)), ui.order_book_bitstamp,
+        SLOT(setPlainText(QString)));
+    connect(this, SIGNAL(new_order_xrpl_ui(QString)), ui.order_book_xrpl,
         SLOT(setPlainText(QString)));
 
-    connect(this, SIGNAL(bitstamp_orderbook_replot()), bistamp_orderbook_->OrderBookPlot_.get(), SLOT(replot()));
+    //connect(this, SIGNAL(bitstamp_orderbook_replot()), bistamp_orderbook_->OrderBookPlot_.get(), SLOT(replot()));
+    connect(this, SIGNAL(bitstamp_orderbook_replot()), this, SLOT(capture_image()));
     connect(this, SIGNAL(ledger_orderbook_replot()), ledger_orderbook_->OrderBookPlot_.get(), SLOT(replot()));
 
 
     connect(this, SIGNAL(new_ohlc_data_ui()), this, SLOT(new_ohlc_data()));
+//    connect(this, SIGNAL(new_ledger_data()), this, SLOT(capture_image()));
+
 
     connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_accounts()));
+
 
     connect(ui.xrp_dir, SIGNAL(clicked()), this, SLOT(xrp_dir_clicked()));
     connect(ui.usd_dir, SIGNAL(clicked()), this, SLOT(usd_dir_clicked()));
@@ -304,7 +311,20 @@ void GroxMainWindow::new_ledger_order_data(GroxMainWindow* mw, std::string_view 
     }
 
     QString datastring = QString::fromStdString(mw->ledger_orderbook_->order_text);
-    emit mw->new_order_data_ui(datastring);
+    emit mw->new_order_xrpl_ui(datastring);
+    emit mw->new_ledger_data();
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::capture_image()
+{
+    obp->update_time_and_replot();
+
+    return;
+
+    auto image = ui.tabWidget->grab();
+    ui.imagelabel->setPixmap(image);
+    ui.imagelabel->setScaledContents(true);
 }
 
 // ----------------------------------------------------------------------------
@@ -314,6 +334,15 @@ void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string_view data)
 
     if (mw->bistamp_orderbook_->accept_json_bitstamp(data))
         emit mw->bitstamp_orderbook_replot();
+
+    //
+    double budget = 100000;
+    double fee_pc = 0.12;
+    double fee_fix = 0.0;
+    mw->ledger_orderbook_->compute_arbitrage(budget, fee_pc, fee_fix, *mw->bistamp_orderbook_);
+
+    QString datastring = QString::fromStdString(mw->bistamp_orderbook_->order_text);
+    emit mw->new_order_bitstamp_ui(datastring);
 }
 
 // ----------------------------------------------------------------------------

@@ -21,7 +21,9 @@ std::ostream& operator<<(std::ostream& os, const xrpl_offer &x) {
     os << "Account: " << x.Account << " "
        << "BookDirectory: " << x.BookDirectory << " "
        << "TakerPays: " << x.TakerPays << " "
-       << "TakerGets: " << x.TakerGets;
+       << "TakerGets: " << x.TakerGets << " "
+       << "Rate: " << x.rate() << " "
+       << "Funds: " << x.owner_funds;
     return os;
 }
 
@@ -110,10 +112,14 @@ void from_json(const nlohmann::json &j, xrp_amount &p)
 void from_json(const nlohmann::json &j, xrpl_offer &p)
 {
     bool ok = true;
+    p.funded_offer  = -1;
     p.Account       = j.at("Account").get< std::string >();
     p.BookDirectory = j.at("BookDirectory").get< std::string >();
     p.TakerGets     = j.at("TakerGets").get< xrp_amount >();
     p.TakerPays     = j.at("TakerPays").get< xrp_amount >();
+
+    // we track unfunded offers using owner funds - this code is obsolete
+#ifdef OLD_TAKER_PAYS_FUNDED
     if (j.contains("taker_gets_funded")) {
         xrpl_offer temp = p;
         temp.TakerGets = j.at("taker_gets_funded").get< xrp_amount >();
@@ -121,9 +127,14 @@ void from_json(const nlohmann::json &j, xrpl_offer &p)
         if (temp.TakerGets.value>0 && temp.TakerPays.value>0) {
             p = temp;
         }
-        else {
-//            std::cout << "taker_gets_funded " << j.at("taker_gets_funded").dump(4) << std::endl
-//                      << "taker_pays_funded " << j.at("taker_pays_funded").dump(4) << std::endl;
-        }
+    }
+#endif
+    // The offer might be for more than the account actually holds
+    // so we must track actual funds when building order book later
+    if (j.contains("owner_funds")) {
+        p.owner_funds = std::stod(j.at("owner_funds").get< std::string >());
+    }
+    else {
+        p.owner_funds = -1;
     }
 }

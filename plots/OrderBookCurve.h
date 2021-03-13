@@ -2,6 +2,7 @@
 
 #include <QList>
 #include <qwt_plot_curve.h>
+#include <mutex>
 
 class OrderBookCurve : public QwtPlotCurve
 {
@@ -13,8 +14,13 @@ public:
 
     void setSegmentInfo(int segmentStartIndex, int segmentFinisIndex, const QColor & color, double thickness);
 
+    void setRawSamples_locked(
+        std::vector<float> const &xData, std::vector<float> const &yData);
+
 private:
     QList<QPen>     m_segPen;
     QList<int>      m_segStart;
     QList<int>      m_segFinish;
+    //
+    mutable std::mutex paint_mutex_;
  };

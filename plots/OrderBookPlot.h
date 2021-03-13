@@ -16,12 +16,16 @@ public:
     OrderBookPlot( QWidget * = NULL );
     void clearPlot();
 
+    QFont axis_title_font;
+
     static const int bid_ask_max = 200;
 
     // data arrays
     double xData[bid_ask_max];
     double yData[bid_ask_max];
     OrderBookCurve *plot_curve_;
+
+    void update_time_and_replot();
 
 public Q_SLOTS:
     void setMode( int );

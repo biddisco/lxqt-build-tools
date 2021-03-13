@@ -3,6 +3,10 @@
 #include <QAction>
 #include <QMainWindow>
 //
+#include <qwt_plot_textlabel.h>
+#include <qwt_plot_marker.h>
+#include <qwt_text.h>
+//
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
 # include "extern/belle/include/belle.hh"
@@ -31,6 +35,8 @@ class GroxMainWindow : public QMainWindow
     bool repeat_ohlc_;
     bitstamp_order_book *bistamp_orderbook_;
     xrpl_order_book *ledger_orderbook_;
+    QwtPlotTextLabel *timelabel_;
+    std::shared_ptr<OrderBookPlot> obp;
 
 //    http::request<http::string_body> bitstamp_request_;
 
@@ -78,10 +84,12 @@ public:
 signals:
     void quitApplication();
     void new_ticker_data_ui(QString);
-    void new_order_data_ui(QString);
+    void new_order_bitstamp_ui(QString);
+    void new_order_xrpl_ui(QString);
     void bitstamp_orderbook_replot();
     void ledger_orderbook_replot();
     void new_ohlc_data_ui();
+    void new_ledger_data();
 
 public slots:
     void appExitCleanupHandler();
@@ -104,6 +112,8 @@ public slots:
     void q2u_clicked();
     void q3u_clicked();
     void q4u_clicked();
+
+    void capture_image();
 
 private:
     Ui::GroxMainWindow ui;

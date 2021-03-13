@@ -133,20 +133,58 @@ struct xrp_amount {
 Q_DECLARE_METATYPE(xrp_amount)
 Q_DECLARE_METATYPE(std::vector<xrp_amount>*)
 
+// if the taker pays xrp, offer is buying xrp
+// if the takes pays usd, offer is selling xrp
 struct xrpl_offer {
+public:
+    // used only in building bid/ask order books
+    double      owner_funds;
+    double      funded_offer;
+public:
     std::string Account;
     std::string BookDirectory;
     xrp_amount  TakerGets;
     xrp_amount  TakerPays;
-    //
-    bool operator == (const xrpl_offer& other) const {
-        return BookDirectory == other.BookDirectory;
-//        return (Account   == other.Account) &&
-//               (TakerGets == other.TakerGets) &&
-//               (TakerPays == other.TakerPays);
+
+    double amount(currency_type ct) const {
+        if (TakerPays.currency == ct) {
+            return TakerPays.value;
+        }
+        else {
+            return TakerGets.value;
+        }
     }
 
-    bool grox_compatible()
+    // if the taker gives xrp, offer is selling xrp
+    // if the takes gives usd, offer is buying xrp
+    double rate() const {
+        if (TakerPays.currency == currency_type::xrp) {
+            return 1E6 * TakerGets.value / TakerPays.value;
+        }
+        else {
+            return 1E6 * TakerPays.value / TakerGets.value;
+        }
+    }
+
+    // we do not need to compare all fields when modifying XRP leddger offers
+    // as the book directory is unique per offer node
+    bool operator == (const xrpl_offer& other) const {
+        return BookDirectory == other.BookDirectory;
+    }
+
+    bool operator < (const xrpl_offer& other) const {
+        return (rate() < other.rate());
+    }
+
+    bool operator > (const xrpl_offer& other) const {
+        return (rate() > other.rate());
+    }
+
+    bool unfunded(double epsilon=0.0) const {
+        return (funded_offer<=epsilon || TakerGets.value==0) || (TakerPays.value==0);
+    }
+
+    bool grox_compatible() const
     {
         return ((TakerGets.currency == currency_type::xrp &&
                  TakerPays.currency == currency_type::usd_bitstamp) ||
