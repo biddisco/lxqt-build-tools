@@ -46,7 +46,7 @@ bool startswith(const std::string_view str, const std::string& sub)
     std::stringstream temp; temp << x; \
     std::cout << temp.str() << std::endl; }
 
-//#define GROX_TEST_MODE 1
+//#define GROX_ARBITRAGE_TEST_MODE 1
 
 bool startswith(const std::string_view str, const std::string& sub);
 
@@ -56,7 +56,7 @@ bool startswith(const std::string_view str, const std::string& sub);
 // ----------------------------------------------------------------------------
 order_book_base::order_book_base(std::shared_ptr<OrderBookPlot> obp, bool secondaxis)
 {
-#ifdef GROX_TEST_MODE
+#ifdef GROX_ARBITRAGE_TEST_MODE
     std::cerr << "**********************************************\n"
               << "Warning TEST_MODE enabled, price data invalid\n"
               << "**********************************************\n";
@@ -223,22 +223,25 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(
     //
     // title format string
     std::stringstream temp;
-    boost::format title("%10s %10s %10s %10s | %10s %10s %10s %10s | %10s %10s\n");
-    temp << title % "Buy" % "Avail" % "Price" % "Cost" % "Sell" % "Avail" % "Price" %
-            "Receive" % "Gain" % "%";
-    DEBUG_ONLY(title % "Buy" % "Avail" % "Price" % "Cost" % "Sell" % "Avail" % "Price" %
-        "Receive" % "Gain" % "%");
+    boost::format title("%10s %10s %10s %10s | %10s %10s %10s %10s | %10s %10s %10s %10s\n");
+    temp << title % "Buy" % "Avail" % "Price" % "Cost" %
+            "Sell" % "Avail" % "Price" % "Receive" %
+            "Gain" % "%" % "C_Gain" % "C_%";
     // numeric entries format string
     boost::format num(
-        "%10.4f %10.4f %10.4f %10.4f | %10.4f %10.4f %10.4f %10.4f | %10.4f %10.4f\n");
+        "%11.4f %11.4f %10.4f %10.4f | %11.4f %11.4f %10.4f %10.4f | %10.4f %10.4f %10.4f %10.4f\n");
+    boost::format num_partial(
+        "%11s %11s %10s %10s | %11.4f %11.4f %10.4f %10.4f | %10.4f %10.4f %10.4f %10.4f\n");
+    boost::format num_summary(
+        "%11s %11s %10s %10.4f | %11.4f %11s %10s %10.4f | %10.4f %10.4f %10.4f %10.4f\n");
     //
     using trade_set = std::tuple<double, double, double, double, double, double, double,
         double, double, double>;
     std::vector<trade_set> trades;
     //
     double spend_budget = budget;
-    double buy_cost = 0;
-    double sell_val = 0;
+    double cum_gain = 0;
+    double cum_pc = 0;
     for (auto const& o : here_ask_zipped)
     {
         // if we buy the sells present in the ask list, how much do we pay?
@@ -256,62 +259,77 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(
         }
         double tokens_to_sell = tokens_bought;
 
-        // move to the next sell point and carry on selling
+        int multi_part_sell_index = 0;
+        // just for debugging/summry info
+        double multi_part_tokens_sold = 0;
+        double multi_part_funds_received = 0;
+        double multi_part_funds_spent = 0;
+
+        // How much can we sell at the curent best rates ...
         while (sell_rate > ask_rate && tokens_to_sell > 0)
         {
             // Assuming we have bought on this exchange, how much can we sell on the other
             double tokens_sold, funds_received;
             std::tie(tokens_sold, funds_received) =
-                sell_nibble(tokens_bought, fee_pc, fee_fix, sell_size, sell_rate);
+                sell_nibble(tokens_to_sell, fee_pc, fee_fix, sell_size, sell_rate);
 
             double gain = 0.0;
             double pc_r = 0.0;
-            // if we only sold some of the tokens, recompute the actual purchase cost
-            if (tokens_sold < tokens_to_sell)
+            double tokens_bought_partial = tokens_bought;
+            double funds_spent_partital  = funds_spent;
+
+            // if we only sold some of the tokens, compute the parital purchase cost
+            if (tokens_sold < tokens_bought)
             {
-                double actual_tokens_bought, actual_funds_spent;
-                std::tie(actual_tokens_bought, actual_funds_spent) =
+                std::tie(tokens_bought_partial, funds_spent_partital) =
                     buy_nibble(0, fee_pc, fee_fix, tokens_sold, ask_rate);
                 // compute profit/loss
-                gain = funds_received - actual_funds_spent;
-                pc_r = 100.0 * (gain / actual_funds_spent);
-
-                trades.push_back(trade_set{tokens_bought, ask_size, ask_rate,
-                    actual_funds_spent, tokens_sold, sell_size, sell_rate, funds_received,
-                    gain, pc_r});
-
-                temp << num % tokens_bought % ask_size % ask_rate % actual_funds_spent %
-                        tokens_sold % sell_size % sell_rate % funds_received % gain % pc_r;
-                DEBUG_ONLY(num % tokens_bought % ask_size % ask_rate % actual_funds_spent %
-                    tokens_sold % sell_size % sell_rate % funds_received % gain % pc_r);
-
+                gain = funds_received - funds_spent_partital;
+                pc_r = 100.0 * (gain / funds_spent_partital);
             }
             else
             {
                 gain = funds_received - funds_spent;
                 pc_r = 100.0 * (gain / funds_spent);
-                trades.push_back(trade_set{tokens_bought, ask_size, ask_rate,
-                    funds_spent, tokens_sold, sell_size, sell_rate, funds_received,
-                    gain, pc_r});
+            }
+            trades.push_back(trade_set{
+                                 tokens_bought, ask_size, ask_rate, funds_spent_partital,
+                                 tokens_sold, sell_size, sell_rate, funds_received,
+                                 gain, pc_r});
 
-                temp << num % tokens_bought % ask_size % ask_rate % funds_spent %
-                        tokens_sold % sell_size % sell_rate % funds_received % gain % pc_r;
-                DEBUG_ONLY(num % tokens_bought % ask_size % ask_rate % funds_spent %
-                    tokens_sold % sell_size % sell_rate % funds_received % gain % pc_r);
-
+            if (multi_part_sell_index>0) {
+                temp << num_partial % "---" % "---" % "---" % "---" %
+                        tokens_sold % sell_size % sell_rate % funds_received %
+                        gain % pc_r % cum_gain % cum_pc;
+            }
+            else {
+                temp << num % tokens_bought % ask_size % ask_rate % funds_spent_partital %
+                        tokens_sold % sell_size % sell_rate % funds_received %
+                        gain % pc_r % cum_gain % cum_pc;
             }
 
-
             tokens_to_sell -= tokens_sold;
+            sell_size -= tokens_sold;
+            multi_part_tokens_sold += tokens_sold;
+            multi_part_funds_received += funds_received;
+            multi_part_funds_spent += funds_spent_partital;
+
             // if all sales at this price have been made, look at the next price slot
-            if (tokens_sold == sell_size)
+            // (should not be < 0 - numeric precision)
+            if (sell_size<=0.0)
             {
                 std::tie(sell_size, sell_rate) = *(++sell_point);
             }
-            else
-            {
-                sell_size -= tokens_sold;
+            // end of a multi-part sale - display a summary
+            if (tokens_to_sell<=0.0 && multi_part_sell_index>0) {
+                gain = multi_part_funds_received - multi_part_funds_spent;
+                pc_r = 100.0 * (gain / multi_part_funds_spent);
+                //
+                temp << num_summary % "---" % "---" % "---" % multi_part_funds_spent %
+                        multi_part_tokens_sold % "---" % "---" % multi_part_funds_received %
+                        gain % pc_r % cum_gain % cum_pc;
             }
+            multi_part_sell_index++;
         }
 
         // always keep some small-change in the account
@@ -371,7 +389,7 @@ void bitstamp_order_book::bid_ask_string_to_number(nlohmann::json& json, offer_d
     //
     std::transform(bid_string.begin(), bid_string.end(),
         ranges::view::zip(data.rate, data.size).begin(), [](const auto& i) {
-#ifdef GROX_TEST_MODE
+#ifdef GROX_ARBITRAGE_TEST_MODE
             // increase the price on the exchange to test our buy/sell algorithm
             return std::pair<double, double>{std::stod(i[0]) + 0.015, std::stod(i[1])};
 #else
