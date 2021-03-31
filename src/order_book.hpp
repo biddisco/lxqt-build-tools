@@ -60,14 +60,23 @@ struct offer_data
     }
 };
 
+struct fee_data
+{
+    // a percentage charged on every transaction
+    double percent;
+    // a fixed amount taken for a transaction
+    double fixed;
+};
+
 // ----------------------------------------------------------------------------
 // Base order book class provides access to top bids/asks
 // plotting and other representations of the orders
 // ----------------------------------------------------------------------------
 struct order_book_base
 {
-    using arb_pair = std::pair<double, double>;
-    using arb_vector = std::vector<arb_pair>;
+    using trade_set = std::tuple<double, double, double, double, double, double, double,
+        double, double, double>;
+    using arb_vector = std::vector<trade_set>;
 
     // Sorted order book entries
     offer_data bids;
@@ -106,9 +115,11 @@ struct order_book_base
     std::pair<double, double> sell_nibble(double max_tokens, double fee_percent,
         double fee_fixed, double size, double rate) const;
 
-    //
-    arb_vector compute_arbitrage(
-        double budget, double fee_pc, double fee_fix, order_book_base const& other) const;
+    // given another orderbook, if we buy on this one and sell on the other
+    // are there arbitrage opportunities between the two
+    arb_vector compute_arbitrage(order_book_base const& other,
+        double budget, fee_data buy_fee, fee_data sell_fee,
+            double test_offset, std::string &string_output) const;
 };
 
 // ----------------------------------------------------------------------------

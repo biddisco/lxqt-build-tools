@@ -5,7 +5,42 @@
 
 #include <string>
 #include "src/internet/evp-encrypt.hpp"
+#include "ohlc.hpp"
 
+class wallet_widget;
+class currency_widget;
+
+struct currency {
+    std::string name_;
+    std::string issuer_;
+    currency_type type_;
+    double balance_;
+    double avail_;
+    double reserved_;
+    currency_widget *widget_;
+};
+
+struct basic_account {
+    //
+    std::vector<currency> currencies_;
+};
+
+struct ledger_wallet : public basic_account {
+    secure_string  name_;
+    secure_string  public_;
+    secure_string  private_;
+    int64_t        tag_;
+    wallet_widget *widget_;
+};
+
+// ----------------------------------------------------------------------------
+struct bitstamp_account : public ledger_wallet {
+    secure_string API_user;
+    secure_string API_key;
+    secure_string API_secret;
+};
+
+// ----------------------------------------------------------------------------
 struct app_settings
 {
     QString iniFileName;
@@ -16,34 +51,15 @@ struct app_settings
     std::string tempLocation;
     QString configLocation;
     //
-    secure_string API_user;
-    secure_string API_key;
-    secure_string API_secret;
+    bitstamp_account bitstamp;
     //
-    secure_string XRP_name;
-    secure_string XRP_public;
-    secure_string XRP_secret;
+    int active_wallet;
+    std::vector<ledger_wallet> xrp_wallets;
     //
     secure_string grox_password;
     secure_string randomBytes;
     //
     double bitstamp_xrp_fee;
-    //
-    double bitstamp_xrp_balance;
-    double bitstamp_xrp_available;
-    double bitstamp_xrp_reserved;
-    //
-    double bitstamp_usd_balance;
-    double bitstamp_usd_available;
-    double bitstamp_usd_reserved;
-    //
-    double ledger_xrp_balance;
-    double ledger_xrp_available;
-    double ledger_xrp_reserved;
-    //
-    double ledger_usd_balance;
-    double ledger_usd_available;
-    double ledger_usd_reserved;
     //
     //    tempLocation = QStandardPaths::standardLocations(QStandardPaths::TempLocation).first().replace('\\', '/') + "/";
     //    desktopLocation = QStandardPaths::standardLocations(QStandardPaths::DesktopLocation).first().replace('\\', '/') + "/";

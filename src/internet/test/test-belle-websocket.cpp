@@ -19,14 +19,14 @@ void websocket_subscribe_offers()
     std::string req_string = "{ \"id\": \"Example subscribe to XRP/GateHub USD order book\", \"command\": \"subscribe\", \"books\": [ { \"taker_pays\": { \"currency\": \"XRP\" }, \"taker_gets\": { \"currency\": \"USD\", \"issuer\": \"rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq\" }, \"snapshot\": true } ] }";
 
     // init client with remote address, port, and ssl enabled
-    Belle::Client app{"s1.ripple.com", 443, true};
+    Belle::Client app{"s1.ripple.com", 51234, true};
     on_http_error(app);
 
     // init an http request object
     Belle::Request req;
 
-    nlohmann::json content;
-    content["commmand"] = "subscribe";
+    nlohmann::json command;
+    command["commmand"] = "subscribe";
 
     // buying xrp
     nlohmann::json buy_xrp;
@@ -44,8 +44,10 @@ void websocket_subscribe_offers()
     nlohmann::json subscription;
     subscription["books"] = nlohmann::json::array({buy_xrp, sell_xrp});
 
-//    content["params"] = nlohmann::json::array({subscription});
-    content["books"] = nlohmann::json::array({buy_xrp, sell_xrp});
+    command["books"] = nlohmann::json::array({buy_xrp, sell_xrp});
+
+    nlohmann::json content;
+    content["params"] = command;
 
     // set the method
     req.method(Belle::Method::post);

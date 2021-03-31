@@ -46,7 +46,12 @@ bool startswith(const std::string_view str, const std::string& sub)
     std::stringstream temp; temp << x; \
     std::cout << temp.str() << std::endl; }
 
-//#define GROX_ARBITRAGE_TEST_MODE 1
+// ----------------------------------------------------------------------------
+// WARNING
+// This ifdef increases the price on the exchange to test our buy/sell algorithm
+// so that arbitrage decisions can be tested.
+// ----------------------------------------------------------------------------
+//#define GROX_ARBITRAGE_TEST_MODE 0.005
 
 bool startswith(const std::string_view str, const std::string& sub);
 
@@ -205,14 +210,12 @@ std::pair<double, double> order_book_base::sell_nibble(double max_tokens,
     return std::make_pair(t_recv, a_recv);
 }
 
-//
-order_book_base::arb_vector order_book_base::compute_arbitrage(
-    double budget, double fee_pc, double fee_fix, order_book_base const& other) const
+// buy on this orderbook, sell on the other - can we earn from arbitrage
+order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base const& other,
+    double budget, fee_data buy_fee, fee_data sell_fee,
+        double test_offset, std::string &string_output) const
 {
     if (asks.size.size()==0 || other.bids.size.size()==0) return {};
-    //
-    order_book_base::arb_vector buy_here_sell_there;
-    order_book_base::arb_vector sell_here_buy_there;
     //
     auto here_ask_zipped = ranges::views::zip(asks.size, asks.rate);
     auto there_bid_zipped = ranges::views::zip(other.bids.total, other.bids.rate);
@@ -221,25 +224,36 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(
     double sell_size, sell_rate;
     std::tie(sell_size, sell_rate) = *sell_point;
     //
+    QString now = QDateTime::currentDateTime().toUTC().toString("yyyy-MM-dd hh:mm:ss");
+    //
     // title format string
     std::stringstream temp;
-    boost::format title("%10s %10s %10s %10s | %10s %10s %10s %10s | %10s %10s %10s %10s\n");
+    temp << now.toStdString() << "\n";
+    if (test_offset>0) {
+        boost::format offset(
+            "TEST_MODE, arbitrage data offset %6.4f \n");
+        temp << "*****************************************\n"
+             << offset % test_offset
+             << "*****************************************\n";
+    }
+    //
+    boost::format title("%11s %11s %10s %10s | %11s %11s %10s %11s | %10s %10s %10s %10s\n");
     temp << title % "Buy" % "Avail" % "Price" % "Cost" %
             "Sell" % "Avail" % "Price" % "Receive" %
             "Gain" % "%" % "C_Gain" % "C_%";
     // numeric entries format string
     boost::format num(
-        "%11.4f %11.4f %10.4f %10.4f | %11.4f %11.4f %10.4f %10.4f | %10.4f %10.4f %10.4f %10.4f\n");
+        "%11.4f %11.4f %10.4f %10.4f | %11.4f %11.4f %10.4f %11.4f | %10.4f %10.4f %10.4f %10.4f\n");
     boost::format num_partial(
-        "%11s %11s %10s %10s | %11.4f %11.4f %10.4f %10.4f | %10.4f %10.4f %10.4f %10.4f\n");
+        "%11s %11s %10s %10s | %11.4f %11.4f %10.4f %11.4f | %10.4f %10.4f %10.4f %10.4f\n");
     boost::format num_summary(
-        "%11s %11s %10s %10.4f | %11.4f %11s %10s %10.4f | %10.4f %10.4f %10.4f %10.4f\n");
+        "%11s %11s %10s %10.4f | %11.4f %11s %10s %11.4f | %10.4f %10.4f %10.4f %10.4f\n");
     //
-    using trade_set = std::tuple<double, double, double, double, double, double, double,
-        double, double, double>;
     std::vector<trade_set> trades;
     //
     double spend_budget = budget;
+    double cum_funds_spent = 0;
+    double cum_funds_recv  = 0;
     double cum_gain = 0;
     double cum_pc = 0;
     for (auto const& o : here_ask_zipped)
@@ -247,10 +261,11 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(
         // if we buy the sells present in the ask list, how much do we pay?
         double ask_size, ask_rate;
         std::tie(ask_size, ask_rate) = o;
+        ask_rate -= test_offset;
         //
         double tokens_bought, funds_spent;
         std::tie(tokens_bought, funds_spent) =
-            buy_nibble(spend_budget, fee_pc, fee_fix, ask_size, ask_rate);
+            buy_nibble(spend_budget, buy_fee.percent, buy_fee.fixed, ask_size, ask_rate);
         spend_budget -= funds_spent;
         if (spend_budget < 0)
         {
@@ -271,10 +286,10 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(
             // Assuming we have bought on this exchange, how much can we sell on the other
             double tokens_sold, funds_received;
             std::tie(tokens_sold, funds_received) =
-                sell_nibble(tokens_to_sell, fee_pc, fee_fix, sell_size, sell_rate);
+                sell_nibble(tokens_to_sell, sell_fee.percent, sell_fee.fixed, sell_size, sell_rate);
 
             double gain = 0.0;
-            double pc_r = 0.0;
+            double pc = 0.0;
             double tokens_bought_partial = tokens_bought;
             double funds_spent_partital  = funds_spent;
 
@@ -282,30 +297,34 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(
             if (tokens_sold < tokens_bought)
             {
                 std::tie(tokens_bought_partial, funds_spent_partital) =
-                    buy_nibble(0, fee_pc, fee_fix, tokens_sold, ask_rate);
-                // compute profit/loss
-                gain = funds_received - funds_spent_partital;
-                pc_r = 100.0 * (gain / funds_spent_partital);
+                    buy_nibble(0, buy_fee.percent, buy_fee.fixed, tokens_sold, ask_rate);
             }
-            else
-            {
-                gain = funds_received - funds_spent;
-                pc_r = 100.0 * (gain / funds_spent);
-            }
+            // compute profit/loss
+            gain = funds_received - funds_spent_partital;
+            pc = 100.0 * (gain / funds_spent_partital);
+            //
+            cum_funds_recv += funds_received;
+            cum_funds_spent += funds_spent_partital;
+            //
+            cum_gain = (cum_funds_recv - cum_funds_spent);
+            cum_pc = 100.0 * (cum_gain / cum_funds_spent);
+            //
+//            if (cum_pc <= 0.01) break;
+
             trades.push_back(trade_set{
                                  tokens_bought, ask_size, ask_rate, funds_spent_partital,
                                  tokens_sold, sell_size, sell_rate, funds_received,
-                                 gain, pc_r});
+                                 gain, pc});
 
             if (multi_part_sell_index>0) {
                 temp << num_partial % "---" % "---" % "---" % "---" %
                         tokens_sold % sell_size % sell_rate % funds_received %
-                        gain % pc_r % cum_gain % cum_pc;
+                        gain % pc % cum_gain % cum_pc;
             }
             else {
                 temp << num % tokens_bought % ask_size % ask_rate % funds_spent_partital %
                         tokens_sold % sell_size % sell_rate % funds_received %
-                        gain % pc_r % cum_gain % cum_pc;
+                        gain % pc % cum_gain % cum_pc;
             }
 
             tokens_to_sell -= tokens_sold;
@@ -323,11 +342,11 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(
             // end of a multi-part sale - display a summary
             if (tokens_to_sell<=0.0 && multi_part_sell_index>0) {
                 gain = multi_part_funds_received - multi_part_funds_spent;
-                pc_r = 100.0 * (gain / multi_part_funds_spent);
+                pc = 100.0 * (gain / multi_part_funds_spent);
                 //
                 temp << num_summary % "---" % "---" % "---" % multi_part_funds_spent %
                         multi_part_tokens_sold % "---" % "---" % multi_part_funds_received %
-                        gain % pc_r % cum_gain % cum_pc;
+                        gain % pc % cum_gain % cum_pc;
             }
             multi_part_sell_index++;
         }
@@ -339,10 +358,10 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(
     // dump out the trade details
     if (trades.size() > 0)
     {
-        std::cout << temp.str() << std::endl;
+        string_output = temp.str();
+        std::cout << string_output << std::endl;
     }
-    //
-    return buy_here_sell_there;
+    return trades;
 }
 
 // ----------------------------------------------------------------------------
@@ -391,7 +410,8 @@ void bitstamp_order_book::bid_ask_string_to_number(nlohmann::json& json, offer_d
         ranges::view::zip(data.rate, data.size).begin(), [](const auto& i) {
 #ifdef GROX_ARBITRAGE_TEST_MODE
             // increase the price on the exchange to test our buy/sell algorithm
-            return std::pair<double, double>{std::stod(i[0]) + 0.015, std::stod(i[1])};
+            return std::pair<double, double>{
+                std::stod(i[0]) + GROX_ARBITRAGE_TEST_MODE, std::stod(i[1])};
 #else
             return std::pair<double, double>{ std::stod(i[0]), std::stod(i[1]) };
 #endif
@@ -444,8 +464,7 @@ void xrpl_order_book::ledger_map_to_order_book()
     //
     auto clamp_offers_to_funds =
             [](std::vector<xrpl_offer>& offers,
-            currency_type curr,
-            const std::string &acct)
+            currency_type curr)
     {
         // for debugging
         //std::stringstream temp;
@@ -481,7 +500,7 @@ void xrpl_order_book::ledger_map_to_order_book()
         // the account may not be fully funded, so the offers may be invalid
         if (acc_bids.size()>0) {
             std::sort(acc_bids.begin(), acc_bids.end(), std::greater<xrpl_offer>{});
-            clamp_offers_to_funds(acc_bids, currency_type::usd_bitstamp, acct);
+            clamp_offers_to_funds(acc_bids, currency_type::usd_bitstamp);
         }
         double tiny_offers = 0;
         for (const auto& o : acc_bids)
@@ -501,7 +520,7 @@ void xrpl_order_book::ledger_map_to_order_book()
 
         if (acc_asks.size()>0) {
             std::sort(acc_asks.begin(), acc_asks.end(), std::less<xrpl_offer>{});
-            clamp_offers_to_funds(acc_asks, currency_type::xrp, acct);
+            clamp_offers_to_funds(acc_asks, currency_type::xrp);
         }
         tiny_offers = 0;
         for (const auto& o : acc_asks)
@@ -733,6 +752,7 @@ void xrpl_order_book::handle_offer_change(
     const nlohmann::json& trans, const nlohmann::json& affected)
 {
     bool ok = true;
+    bool fatal = true;
     for (auto& el : affected.items())
     {
         const nlohmann::json* node;
@@ -808,6 +828,8 @@ void xrpl_order_book::handle_offer_change(
             break;
         case node_edit::deleted:
             ok &= delete_offer(final_offer);
+            // if an offer delete fails, it's not fatal
+            fatal = false;
             break;
         }
     }
@@ -815,6 +837,7 @@ void xrpl_order_book::handle_offer_change(
     {
         std::cerr << "Error : Transaction : " << trans.dump(4) << std::endl;
         std::cerr << "Error : Affected : " << affected.dump(4) << std::endl;
-        throw std::runtime_error("Error in handle_offer_change");
+        if (fatal)
+            throw std::runtime_error("Error in handle_offer_change");
     }
 }

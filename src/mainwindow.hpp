@@ -2,6 +2,7 @@
 
 #include <QAction>
 #include <QMainWindow>
+#include <QScrollArea>
 //
 #include <qwt_plot_textlabel.h>
 #include <qwt_plot_marker.h>
@@ -23,6 +24,24 @@
 //
 #include "settings.hpp"
 #include "order_book.hpp"
+
+class AdjustingScrollArea : public QScrollArea {
+   bool eventFilter(QObject * obj, QEvent * ev) override {
+      if (obj == widget() && ev->type() == QEvent::Resize) {
+         // Essential vvv
+         setMaximumWidth(width() - viewport()->width() + widget()->width());
+      }
+      return QScrollArea::eventFilter(obj, ev);
+   }
+public:
+   AdjustingScrollArea(QWidget * parent = 0) : QScrollArea{parent} {}
+   void setWidget(QWidget *w) {
+      QScrollArea::setWidget(w);
+      // It happens that QScrollArea already filters widget events,
+      // but that's an implementation detail that we shouldn't rely on.
+      w->installEventFilter(this);
+   }
+};
 
 class GroxMainWindow : public QMainWindow
 {
@@ -49,11 +68,12 @@ public:
 
     static void new_ticker_data(GroxMainWindow*, std::string&&);
     static void new_order_data(GroxMainWindow*, std::string_view);
+    static void new_ledger_account_data(GroxMainWindow*, std::string_view);
     static void new_ledger_order_data(GroxMainWindow*, std::string_view);
     //
     void receive_ohlc_data(std::string&&);
     void bitstamp_account_data(std::string&&);
-    void ledger_reply(std::string&&);
+    void ledger_reply(ledger_wallet &w, std::string&&);
     void ledger_order_book(bool buy_xrp);
 
     void create_data_dir();
@@ -72,19 +92,13 @@ public:
     void merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
         const std::vector<double>& new_ohlc_volumes);
 
-    bool isValidSize(QSize* sizeV)
-    {
-        if (sizeV->width() < 3 || sizeV->width() > 2000 || sizeV->height() < 3 ||
-            sizeV->height() > 2000)
-            return false;
-
-        return true;
-    }
+    void update_balance(std::string_view addr, double oldb, double newb);
 
 signals:
     void quitApplication();
     void new_ticker_data_ui(QString);
     void new_order_bitstamp_ui(QString);
+    void update_arbitrage_view(QString);
     void new_order_xrpl_ui(QString);
     void bitstamp_orderbook_replot();
     void ledger_orderbook_replot();
@@ -95,24 +109,16 @@ public slots:
     void appExitCleanupHandler();
     void start_websocket();
     void new_ohlc_data();
-    void update_accounts();
+    void update_account_balances();
+    void execute_xrp();
+    void execute_usd();
+    void ledger_acct_change(int);
 
     // ----------------------------------
-    void transfer_setup_xrp(double);
-    void transfer_setup_usd(double);
-    //
-    void xrp_dir_clicked();
-    void q1x_clicked();
-    void q2x_clicked();
-    void q3x_clicked();
-    void q4x_clicked();
-    //
-    void usd_dir_clicked();
-    void q1u_clicked();
-    void q2u_clicked();
-    void q3u_clicked();
-    void q4u_clicked();
-
+//    void transfer_setup_xrp(double);
+//    void transfer_setup_usd(double);
+//    void xrp_dir_clicked();
+//    void usd_dir_clicked();
     void capture_image();
 
 private:
@@ -127,6 +133,8 @@ private:
     std::shared_ptr<net::ws::session> ws_bidask;
     // websocket for ledger order book trades
     std::shared_ptr<net::ws::session> ws_ledger_orderbook;
+    // websocket for account changes
+    std::shared_ptr<net::ws::session> ws_ledger_accounts;
 
 //    // https session ffor rest API calls
 //    std::shared_ptr<net::https::session> https_rest;

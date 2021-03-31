@@ -141,6 +141,10 @@ set(GROX_SRC
     src/ohlc.cpp
     src/order_book.cpp
     #
+    src/exchange/xrpl.cpp
+    #
+    src/currency_widget.cpp
+    src/wallet_widget.cpp
     #
     #
     chartSegment/ANDSegmentConstraint.cpp
@@ -258,6 +262,7 @@ target_link_libraries(
          ${HDF5_LIBRARIES}
          range-v3
          ${STD_FILESYSTEM_LIB}
+         Ripple::xrpl_core
          uuid
          OpenSSL::SSL
          pthread

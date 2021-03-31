@@ -86,12 +86,16 @@ void generate_encrypted_ini_data(password_dialog& npw)
     // -----------------------
     encryption encryptor(app_ini->grox_password, app_ini->randomBytes);
     //
-    app_ini->API_user = npw.getAPIUser().toStdString();
-    app_ini->API_key = npw.getAPIKey().toStdString();
-    app_ini->API_secret = npw.getAPISecret().toStdString();
-    secure_string API_user = encryptor.encrypt(app_ini->API_user);
-    secure_string API_key = encryptor.encrypt(app_ini->API_key);
-    secure_string API_secret = encryptor.encrypt(app_ini->API_secret);
+    app_ini->bitstamp.API_user = npw.getAPIUser().toStdString();
+    app_ini->bitstamp.API_key = npw.getAPIKey().toStdString();
+    app_ini->bitstamp.API_secret = npw.getAPISecret().toStdString();
+    app_ini->bitstamp.tag_ = npw.getAPIDestTag().toLong();
+    app_ini->bitstamp.public_ = npw.getAPIXRPAddress().toStdString();
+    secure_string API_user = encryptor.encrypt(app_ini->bitstamp.API_user);
+    secure_string API_key = encryptor.encrypt(app_ini->bitstamp.API_key);
+    secure_string API_secret = encryptor.encrypt(app_ini->bitstamp.API_secret);
+    secure_string API_tag_ = encryptor.encrypt(std::to_string(app_ini->bitstamp.tag_));
+    secure_string API_public_ = encryptor.encrypt(app_ini->bitstamp.public_);
     //
     settings.setValue("EncryptedData/API_key",
         QString::fromStdString(base64_encode(API_key).toStdString()));
@@ -99,20 +103,27 @@ void generate_encrypted_ini_data(password_dialog& npw)
         QString::fromStdString(base64_encode(API_user).toStdString()));
     settings.setValue("EncryptedData/API_secret",
         QString::fromStdString(base64_encode(API_secret).toStdString()));
+    settings.setValue("EncryptedData/API_desttag",
+        QString::fromStdString(base64_encode(API_tag_).toStdString()));
+    settings.setValue("EncryptedData/API_xrpaddress",
+        QString::fromStdString(base64_encode(API_public_).toStdString()));
     //
-    app_ini->XRP_name = npw.getXRPName().toStdString();
-    app_ini->XRP_public = npw.getXRPPublic().toStdString();
-    app_ini->XRP_secret = npw.getXRPPrivate().toStdString();
-    secure_string XRP_name = encryptor.encrypt(app_ini->XRP_name);
-    secure_string XRP_public = encryptor.encrypt(app_ini->XRP_public);
-    secure_string XRP_secret = encryptor.encrypt(app_ini->XRP_secret);
-    //
-    settings.setValue("EncryptedData/XRP_name",
-        QString::fromStdString(base64_encode(XRP_name).toStdString()));
-    settings.setValue("EncryptedData/XRP_public",
-        QString::fromStdString(base64_encode(XRP_public).toStdString()));
-    settings.setValue("EncryptedData/XRP_secret",
-        QString::fromStdString(base64_encode(XRP_secret).toStdString()));
+    app_ini->xrp_wallets.clear();
+    app_ini->xrp_wallets = npw.get_wallets();
+    int index = 0;
+    for (const auto &w : app_ini->xrp_wallets) {
+        secure_string name_ = encryptor.encrypt(w.name_);
+        secure_string public_ = encryptor.encrypt(w.public_);
+        secure_string private_ = encryptor.encrypt(w.private_);
+        QString num = QString::number(index);
+        settings.setValue("EncryptedData/XRP_name_" + num,
+            QString::fromStdString(base64_encode(name_).toStdString()));
+        settings.setValue("EncryptedData/XRP_public_" + num,
+            QString::fromStdString(base64_encode(public_).toStdString()));
+        settings.setValue("EncryptedData/XRP_secret_" + num,
+            QString::fromStdString(base64_encode(private_).toStdString()));
+        index++;
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -167,47 +178,79 @@ int main(int argc, char* argv[])
         // ---------------------------------------
         QByteArray API_user =
             base64_decode(settings.value("EncryptedData/API_user", "").toByteArray());
-        app_ini->API_user =
+        app_ini->bitstamp.API_user =
             encryptor.decrypt(secure_string(API_user.data(), API_user.size()));
         //
         QByteArray API_key =
             base64_decode(settings.value("EncryptedData/API_key", "").toByteArray());
-        app_ini->API_key =
+        app_ini->bitstamp.API_key =
             encryptor.decrypt(secure_string(API_key.data(), API_key.size()));
         //
         QByteArray API_secret =
             base64_decode(settings.value("EncryptedData/API_secret", "").toByteArray());
-        app_ini->API_secret =
+        app_ini->bitstamp.API_secret =
             encryptor.decrypt(secure_string(API_secret.data(), API_secret.size()));
 
-        // ---------------------------------------
-        // XRP walllet details
-        // ---------------------------------------
-        QByteArray XRP_name =
-            base64_decode(settings.value("EncryptedData/XRP_name", "").toByteArray());
-        app_ini->XRP_name =
-            encryptor.decrypt(secure_string(XRP_name.data(), XRP_name.size()));
         //
-        QByteArray XRP_public =
-            base64_decode(settings.value("EncryptedData/XRP_public", "").toByteArray());
-        app_ini->XRP_public =
-            encryptor.decrypt(secure_string(XRP_public.data(), XRP_public.size()));
+        QByteArray API_tag_ =
+            base64_decode(settings.value("EncryptedData/API_desttag", "").toByteArray());
+        app_ini->bitstamp.tag_ = std::atol(
+            encryptor.decrypt(secure_string(API_tag_.data(), API_tag_.size())).c_str());
+
         //
-        QByteArray XRP_secret =
-            base64_decode(settings.value("EncryptedData/XRP_secret", "").toByteArray());
-        app_ini->XRP_secret =
-            encryptor.decrypt(secure_string(XRP_secret.data(), XRP_secret.size()));
+        QByteArray API_public_ =
+            base64_decode(settings.value("EncryptedData/API_xrpaddress", "").toByteArray());
+        app_ini->bitstamp.public_ =
+            encryptor.decrypt(secure_string(API_public_.data(), API_public_.size()));
+
+        // ---------------------------------------
+        // XRP wallet details
+        // ---------------------------------------
+        app_ini->xrp_wallets.clear();
+        bool present = true;
+        int index = 0;
+        while (present) {
+            QString num = QString::number(index);
+            if (!settings.contains("EncryptedData/XRP_name_" + num)) present = false;
+            else {
+                ledger_wallet w;
+                //
+                w.tag_    = 0;
+                w.widget_ = nullptr;
+                //
+                QByteArray XRP_name =
+                    base64_decode(settings.value("EncryptedData/XRP_name_" + num, "").toByteArray());
+                w.name_ =
+                    encryptor.decrypt(secure_string(XRP_name.data(), XRP_name.size()));
+                //
+                QByteArray XRP_public =
+                    base64_decode(settings.value("EncryptedData/XRP_public_" + num, "").toByteArray());
+                w.public_ =
+                    encryptor.decrypt(secure_string(XRP_public.data(), XRP_public.size()));
+                //
+                QByteArray XRP_secret =
+                    base64_decode(settings.value("EncryptedData/XRP_secret_" + num, "").toByteArray());
+                w.private_ =
+                    encryptor.decrypt(secure_string(XRP_secret.data(), XRP_secret.size()));
+                app_ini->xrp_wallets.push_back(w);
+            }
+            index++;
+        }
     }
 
     if (argc > 1 && std::string(argv[1]) == std::string("decode"))
     {
         std::cout << "\nDecrypted information\n" << std::endl;
-        std::cout << "API_user   : " << app_ini->API_user << std::endl;
-        std::cout << "API_key    : " << app_ini->API_key << std::endl;
-        std::cout << "API_secret : " << app_ini->API_secret << std::endl;
-        std::cout << "XRP_name   : " << app_ini->XRP_name << std::endl;
-        std::cout << "XRP_public : " << app_ini->XRP_public << std::endl;
-        std::cout << "XRP_secret : " << app_ini->XRP_secret << std::endl;
+        std::cout << "API_user       : " << app_ini->bitstamp.API_user << std::endl;
+        std::cout << "API_key        : " << app_ini->bitstamp.API_key << std::endl;
+        std::cout << "API_secret     : " << app_ini->bitstamp.API_secret << std::endl;
+        std::cout << "xrp.tag_    : " << app_ini->bitstamp.tag_ << std::endl;
+        std::cout << "xrp.public_ : " << app_ini->bitstamp.public_ << std::endl;
+        for (const auto &w : app_ini->xrp_wallets) {
+            std::cout << "XRP_name       : " << w.name_ << std::endl;
+            std::cout << "XRP_public     : " << w.public_ << std::endl;
+            std::cout << "XRP_secret     : " << w.private_ << std::endl;
+        }
         return EXIT_SUCCESS;
     }
 
