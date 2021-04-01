@@ -26,6 +26,7 @@
 #include "hdf5.h"
 //
 #define DEBUG_ONLY(x)
+
 #define DEBUG_ALWAYS(x) { \
     std::stringstream temp; temp << x; \
     std::cout << temp.str() << std::endl; }
@@ -53,7 +54,7 @@ static const int bitstamp_https_port = 443;
 static const std::string bitstamp_websocket_address = "ws.bitstamp.net";
 static const int bitstamp_websocket_port = 443;
 
-#ifndef GROX_USE_TESTNET
+#ifdef GROX_USE_TESTNET
 static const std::string ripple_network_address = ripple_testnet_address;
 static const int ripple_network_port = ripple_testnet_port;
 static const std::string ripple_data_api_address = ripple_testapi_address;
@@ -210,7 +211,7 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
         if (mouseEvent->modifiers() == Qt::ShiftModifier)
         {
             //do what you need
-            DEBUG_ONLY(std::cout << "Shift click pressed" << std::endl);
+            DEBUG_ONLY("Shift click pressed");
             app_settings* app_ini = global_settings();
             std::array<std::string, 5> strings{
                 app_ini->bitstamp.API_user, app_ini->bitstamp.API_key,
@@ -316,7 +317,7 @@ void GroxMainWindow::ledger_acct_change(int index)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::new_ticker_data(GroxMainWindow* mw, std::string&& data)
 {
-    DEBUG_ONLY(std::cout << "\n\nReceived " << data << std::endl);
+    DEBUG_ONLY("\n\nReceived " << data);
 
     if (data.rfind("{\"data\":", 0) != 0)
     {
@@ -325,7 +326,7 @@ void GroxMainWindow::new_ticker_data(GroxMainWindow* mw, std::string&& data)
     nlohmann::json jdata = json::parse(data);
     // extract the main subgroup
     jdata = jdata["data"];
-    DEBUG_ONLY(std::cout << jdata.dump(4) << std::endl);
+    DEBUG_ONLY(jdata.dump(4));
 
     live_trades json_trades = jdata.get<live_trades>();
 
@@ -356,11 +357,11 @@ void GroxMainWindow::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
         auto last_existing = ohlc_samples.back().time;
         auto first_new = new_ohlc_samples.front().time;
 
-        std::cout << "existing " << static_cast<uint64_t>(last_existing) << " new "
-                  << static_cast<uint64_t>(first_new) << std::endl;
+        DEBUG_ONLY("existing " << static_cast<uint64_t>(last_existing) << " new "
+                  << static_cast<uint64_t>(first_new));
         if (first_new - last_existing == 60)
         {
-            std::cout << "merging data" << std::endl;
+            DEBUG_ONLY("merging data");
             ohlc_samples.append(new_ohlc_samples);
             ohlc_volumes.insert(
                 ohlc_volumes.end(), new_ohlc_volumes.begin(), new_ohlc_volumes.end());
@@ -403,8 +404,8 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
                 temp.timestamp, temp.open, temp.high, temp.low, temp.close));
             new_ohlc_volumes.push_back(temp.volume);
         }
-        DEBUG_ONLY(std::cout << "Received " << ohlc_strings.size()
-                  << " new OHLC samples" << std::endl);
+        DEBUG_ONLY("Received " << ohlc_strings.size()
+                  << " new OHLC samples");
         merge_data(new_ohlc_samples, new_ohlc_volumes);
 
         if (repeat_ohlc_)
@@ -429,14 +430,13 @@ void GroxMainWindow::new_ohlc_data()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::new_ledger_account_data(GroxMainWindow* mw, std::string_view data)
 {
-    std::cout << data << std::endl;
     if (startswith(data, "{\"result\":")) {
         // ignore this, just a subscription ok
-        std::cout << "Account subscription : " << data << std::endl;
+        DEBUG_ONLY("Account subscription : " << data);
     }
     else if (startswith(data, "{\"engine_result\":\"tesSUCCESS\"")) {
         nlohmann::json jdata = json::parse(data)["meta"]["AffectedNodes"];
-        std::cout << "Account changes : " << jdata.dump(4) << std::endl;
+        DEBUG_ONLY("Account changes : " << jdata.dump(4));
         for (const auto &j : jdata) {
             auto m = j["ModifiedNode"];
             auto f = m["FinalFields"];
@@ -484,7 +484,7 @@ void GroxMainWindow::capture_image()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string_view data)
 {
-    DEBUG_ONLY(std::cout << "\n\nReceived " << data << std::endl << std::endl << std::endl);
+    DEBUG_ONLY("\n\nReceived " << data << std::endl << std::endl);
 
     if (mw->bistamp_orderbook_->accept_json_bitstamp(data))
         emit mw->bitstamp_orderbook_replot();
@@ -561,11 +561,11 @@ void GroxMainWindow::update_balance(std::string_view addr, double oldb, double n
         }
         else {
             if (it2->balance_ != oldb) {
-                std::cerr << "Old balance " << it2->balance_ << " does not expected old " << oldb << std::endl;
+                std::cerr << "Old balance error " << it2->balance_ << " expect " << oldb << std::endl;
             }
             std::cerr << "Balance updated from " << oldb << " to " << newb << std::endl;
             it2->balance_ = newb;
-            it2->avail_ = it2->balance_ - it2->reserved_;
+            it2->avail_ = newb - it2->reserved_;
             it2->widget_->set_data(*it2);
         }
     }
@@ -575,7 +575,7 @@ void GroxMainWindow::update_balance(std::string_view addr, double oldb, double n
 void GroxMainWindow::ledger_reply(ledger_wallet &w, std::string&& data)
 {
     nlohmann::json jdata = json::parse(data)["balances"];
-    DEBUG_ALWAYS(jdata.dump(4));
+    DEBUG_ONLY(jdata.dump(4));
     std::vector<xrp_amount> balances = jdata.get<std::vector<xrp_amount>>();
     //
     app_settings* app_ini = global_settings();
@@ -585,11 +585,15 @@ void GroxMainWindow::ledger_reply(ledger_wallet &w, std::string&& data)
         if (b.currency == currency_type::usd_bitstamp) {
             currency c{"USD", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::usd_bitstamp, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
-        };
-        if (b.currency == currency_type::xrp) {
+        }
+        else if (b.currency == currency_type::eur_bitstamp) {
+            currency c{"EUR", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::eur_bitstamp, b.value, b.value, 0, nullptr};
+            add_currency(c, w.currencies_);
+        }
+        else if (b.currency == currency_type::xrp) {
             currency c{"XRP", "", currency_type::xrp, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
-        };
+        }
     }
     w.widget_->set_data(w);
     //
@@ -599,10 +603,10 @@ void GroxMainWindow::ledger_reply(ledger_wallet &w, std::string&& data)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::bitstamp_account_data(std::string&& data)
 {
-    DEBUG_ONLY(std::cout << "Response : " << data << std::endl);
+    DEBUG_ONLY("Response : " << data);
     //
     nlohmann::json jdata = json::parse(data);
-    DEBUG_ONLY(std::cout << jdata.dump(4) << std::endl);
+    DEBUG_ONLY(jdata.dump(4));
     //
     app_settings* app_ini = global_settings();
     //
@@ -615,14 +619,28 @@ void GroxMainWindow::bitstamp_account_data(std::string&& data)
     };
     add_currency(xrp_bitstamp, app_ini->bitstamp.currencies_);
 
-    currency usd_bitstamp{
-        "USD", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::usd_bitstamp,
-        std::stod(jdata["usd_balance"].get<std::string>()),
-        std::stod(jdata["usd_available"].get<std::string>()),
-        std::stod(jdata["usd_reserved"].get<std::string>()),
-        nullptr
-    };
-    add_currency(usd_bitstamp, app_ini->bitstamp.currencies_);
+    if (jdata.contains("usd_balance")) {
+        currency usd_bitstamp{
+            "USD", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::usd_bitstamp,
+            std::stod(jdata["usd_balance"].get<std::string>()),
+            std::stod(jdata["usd_available"].get<std::string>()),
+            std::stod(jdata["usd_reserved"].get<std::string>()),
+            nullptr
+        };
+        add_currency(usd_bitstamp, app_ini->bitstamp.currencies_);
+    }
+
+    if (jdata.contains("eur_balance")) {
+        currency eur_bitstamp{
+            "EUR", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::eur_bitstamp,
+            std::stod(jdata["eur_balance"].get<std::string>()),
+            std::stod(jdata["eur_available"].get<std::string>()),
+            std::stod(jdata["eur_reserved"].get<std::string>()),
+            nullptr
+        };
+        add_currency(eur_bitstamp, app_ini->bitstamp.currencies_);
+    }
+
     app_ini->bitstamp.widget_->set_data(app_ini->bitstamp);
 }
 
@@ -664,7 +682,7 @@ void GroxMainWindow::ledger_balance()
             return;
           }
           // debug : print the response headers and body
-          DEBUG_ONLY(std::cout << "Ledger response " << ctx.res.body() << "\n");
+          DEBUG_ONLY("Ledger response " << ctx.res.body() << "\n");
           this->ledger_reply(w, std::move(ctx.res.body()));
         });
     }
@@ -765,7 +783,7 @@ void GroxMainWindow::ledger_order_book(bool buy_xrp)
 
     // start the client and save the number of completed requests
     auto completed = app.connect();
-    DEBUG_ONLY(std::cout << "Completed " << completed << std::endl);
+    DEBUG_ONLY("Completed " << completed);
 }
 
 // ----------------------------------------------------------------------------
@@ -836,7 +854,7 @@ void GroxMainWindow::bitstamp_request(const std::string &url_path, const std::st
         return;
       }
       // debug : print the response headers and body
-      DEBUG_ONLY(std::cout << "Request response " << ctx.res.body() << "\n");
+      DEBUG_ONLY("Request response " << ctx.res.body() << "\n");
       this->bitstamp_account_data(std::move(ctx.res.body()));
     });
 }
@@ -844,7 +862,7 @@ void GroxMainWindow::bitstamp_request(const std::string &url_path, const std::st
 // ----------------------------------------------------------------------------
 void GroxMainWindow::update_account_balances()
 {
-    std::cout << "Updating accounts" << std::endl;
+    DEBUG_ONLY("Updating accounts");
     bitstamp_request("/api/v2/balance/", "");
     ledger_balance();
     /*auto completed = */belle_https_bitstamp.connect();
@@ -878,7 +896,7 @@ void GroxMainWindow::start_websocket()
         if (addresses.size()) addresses += ", ";
         addresses += "\"" + w.public_ + "\"";
     }
-    std::cout << "Subscribing to account changes for \n" << addresses << std::endl;
+    DEBUG_ONLY("Subscribing to account changes for \n" << addresses);
     ws_ledger_accounts = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
       ripple_network_address, std::to_string(ripple_network_port),
       "{ \"command\": \"subscribe\", \"accounts\": [ " + addresses + " ] }",
@@ -909,7 +927,7 @@ void GroxMainWindow::request_new_candlestick_data(uint64_t /*unused*/)
     if (ohlc_samples.size() > 0)
     {
         start_t = static_cast<uint64_t>(ohlc_samples.back().time);
-        std::cout << "Data present up until " << start_t << std::endl;
+        DEBUG_ONLY("Data present up until " << start_t);
         start_t += 60;    // next sample is 60s after last
     }
     //
@@ -929,7 +947,7 @@ void GroxMainWindow::request_new_candlestick_data(uint64_t /*unused*/)
     {
         if (samples >= 1000)
         {
-            std::cout << "Limiting request from: " << samples << std::endl;
+            DEBUG_ONLY("Limiting request from: " << samples);
             samples = 1000;
             repeat_ohlc_ = true;
         }
@@ -951,7 +969,7 @@ void GroxMainWindow::request_new_candlestick_data(uint64_t /*unused*/)
         return;
       }
       // debug : print the response headers and body
-      DEBUG_ONLY(std::cout << "Candlestick response " << ctx.res.body() << "\n");
+      DEBUG_ONLY("Candlestick response " << ctx.res.body() << "\n");
       this->receive_ohlc_data(std::move(ctx.res.body()));
     });
 }
@@ -983,7 +1001,7 @@ void GroxMainWindow::validate_ohlc()
         uint64_t t2 = static_cast<uint64_t>(i->time);
         if (t2 - t1 != 60)
         {
-            std::cout << "Validation error at index " << index << " " << t1 << " and "
+            std::cerr << "Validation error at index " << index << " " << t1 << " and "
                       << t2 << "dataseet truncated " << std::endl;
             valid = false;
             break;
@@ -1004,7 +1022,7 @@ void GroxMainWindow::read_hdf5()
     //
     if (std::filesystem::exists(app_ini->hdfFileName))
     {
-        std::cout << "Opening: " << app_ini->hdfFileName << std::endl;
+        DEBUG_ONLY("Opening: " << app_ini->hdfFileName);
         ohlc_samples.clear();
         ohlc_volumes.clear();
         //
@@ -1050,7 +1068,7 @@ void GroxMainWindow::read_hdf5()
     }
     else
     {
-        std::cout << "Creating empty: " << app_ini->hdfFileName << std::endl;
+        DEBUG_ONLY("Creating empty: " << app_ini->hdfFileName);
 
         // Create a new file using default properties.
         hid_t file_id = H5Fcreate(
@@ -1069,7 +1087,7 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
     validate_ohlc();
     //
     app_settings* app_ini = global_settings();
-    std::cout << "Opening: " << app_ini->hdfFileName << std::endl;
+    DEBUG_ONLY("Opening: " << app_ini->hdfFileName);
 
     // In the OHLC dataset:
     // There are 24*60=1440 60s candles per day, and each candle has 5 {t,o,h,l,c} entries,
@@ -1136,7 +1154,7 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
     // if we are extending a dataset
     else if (update > 0)
     {
-        std::cout << "Extending datasets by: " << update << std::endl;
+        DEBUG_ONLY("Extending datasets by: " << update);
         uint64_t offset = samples.size() - update;
         hsize_t offset1[1] = {offset * ohlc_size};
         hsize_t ext1[1] = {update * ohlc_size};
@@ -1181,7 +1199,7 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
     // free/close file
     status = H5Fclose(file);
 
-    std::cout << "Dataset size: " << ohlc_samples.size() << std::endl;
+    DEBUG_ONLY("Dataset size: " << ohlc_samples.size());
 }
 
 // ----------------------------------------------------------------------------

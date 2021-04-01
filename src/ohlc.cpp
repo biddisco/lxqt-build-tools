@@ -12,6 +12,7 @@ std::ostream& operator<<(std::ostream& os, const xrp_amount &x) {
     os << "Value: " << x.value << " " << "Currency: ";
     if (x.currency==currency_type::xrp) os << "xrp";
     else if (x.currency==currency_type::usd_bitstamp) os << "usd_bitstamp";
+    else if (x.currency==currency_type::eur_bitstamp) os << "eur_bitstamp";
     else if (x.currency==currency_type::usd_gatehub) os << "usd_gatehub";
     else os << "other";
     return os;
@@ -99,6 +100,9 @@ void from_json(const nlohmann::json &j, xrp_amount &p)
         }
         else if (currency=="USD" && issuer=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
             p.currency = currency_type::usd_bitstamp;
+        }
+        else if (currency=="EUR" && issuer=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
+            p.currency = currency_type::eur_bitstamp;
         }
         else if (currency=="USD" && issuer=="rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq") {
             p.currency = currency_type::usd_gatehub;

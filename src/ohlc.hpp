@@ -115,6 +115,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_order_book, bids, asks, timestamp, micro
 enum currency_type : int {
     xrp = 0,
     usd_bitstamp,
+    eur_bitstamp,
     usd_gatehub,
     other,
 };
