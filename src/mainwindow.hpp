@@ -22,6 +22,7 @@
 //
 #include "ui_mainwindow.h"
 //
+#include "exchange/xrpl_network.hpp"
 #include "settings.hpp"
 #include "order_book.hpp"
 
@@ -53,9 +54,11 @@ class GroxMainWindow : public QMainWindow
     std::vector<double> ohlc_volumes;
     bool repeat_ohlc_;
     bitstamp_order_book *bistamp_orderbook_;
-    xrpl_order_book *ledger_orderbook_;
     QwtPlotTextLabel *timelabel_;
-    std::shared_ptr<OrderBookPlot> obp;
+    OrderBookPlot *obp;
+    //
+    std::shared_ptr<xrpl_network> xrpl_network_;
+    std::shared_ptr<xrpl_network> xrpl_testnet_;
 
 //    http::request<http::string_body> bitstamp_request_;
 
@@ -68,12 +71,9 @@ public:
 
     static void new_ticker_data(GroxMainWindow*, std::string&&);
     static void new_order_data(GroxMainWindow*, std::string_view);
-    static void new_ledger_account_data(GroxMainWindow*, std::string_view);
-    static void new_ledger_order_data(GroxMainWindow*, std::string_view);
     //
     void receive_ohlc_data(std::string&&);
     void bitstamp_account_data(std::string&&);
-    void ledger_reply(ledger_wallet &w, std::string&&);
     void ledger_order_book(bool buy_xrp);
 
     void create_data_dir();
@@ -85,8 +85,6 @@ public:
 
     // ----------------------------------------------------------------------------
     void bitstamp_request(const std::string &url_path, const std::string &url_query);
-    void update_accounts(app_settings* app_ini);
-    void ledger_balance();
 
     // ----------------------------------------------------------------------------
     void merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
@@ -112,7 +110,10 @@ public slots:
     void update_account_balances();
     void execute_xrp();
     void execute_usd();
-    void ledger_acct_change(int);
+
+    // to connect to xrpl ledger signals
+    void update_currency_widget(currency*);
+    void update_wallet_widget(ledger_wallet*);
 
     // ----------------------------------
 //    void transfer_setup_xrp(double);
@@ -131,10 +132,6 @@ private:
     std::shared_ptr<net::ws::session> ws_trades;
     // websocket for bitstamp bid/ask order book
     std::shared_ptr<net::ws::session> ws_bidask;
-    // websocket for ledger order book trades
-    std::shared_ptr<net::ws::session> ws_ledger_orderbook;
-    // websocket for account changes
-    std::shared_ptr<net::ws::session> ws_ledger_accounts;
 
 //    // https session ffor rest API calls
 //    std::shared_ptr<net::https::session> https_rest;
@@ -143,7 +140,6 @@ private:
 
     // An https client object for queuing/dispatching requests
     OB::Belle::Client belle_https_bitstamp;
-    OB::Belle::Client belle_https_ripple;
 };
 
 static GroxMainWindow* mainwindow;

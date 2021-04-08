@@ -2,27 +2,26 @@
 
 #include <QApplication>
 #include <QString>
-
+//
 #include <string>
+//
+#include "src/internet/https-async.hpp"
+#include "src/internet/websocket-ssl.hpp"
 #include "src/internet/evp-encrypt.hpp"
+//
+#include "order_book.hpp"
 #include "ohlc.hpp"
+#include "currency.hpp"
+#include "exchange/exchange.hpp"
+//
 
 class wallet_widget;
-class currency_widget;
-
-struct currency {
-    std::string name_;
-    std::string issuer_;
-    currency_type type_;
-    double balance_;
-    double avail_;
-    double reserved_;
-    currency_widget *widget_;
-};
+class bitstamp_network;
 
 struct basic_account {
     //
     std::vector<currency> currencies_;
+    std::shared_ptr<exchange> network_;
 };
 
 struct ledger_wallet : public basic_account {
@@ -31,7 +30,11 @@ struct ledger_wallet : public basic_account {
     secure_string  private_;
     int64_t        tag_;
     wallet_widget *widget_;
+    bool           testnet_;
 };
+
+// To ensure Qt can emit signals of this type
+Q_DECLARE_METATYPE(ledger_wallet)
 
 // ----------------------------------------------------------------------------
 struct bitstamp_account : public ledger_wallet {
@@ -39,6 +42,7 @@ struct bitstamp_account : public ledger_wallet {
     secure_string API_key;
     secure_string API_secret;
 };
+
 
 // ----------------------------------------------------------------------------
 struct app_settings
@@ -53,18 +57,12 @@ struct app_settings
     //
     bitstamp_account bitstamp;
     //
-    int active_wallet;
-    std::vector<ledger_wallet> xrp_wallets;
+    std::vector<ledger_wallet> xrpl_wallets;
     //
     secure_string grox_password;
     secure_string randomBytes;
     //
     double bitstamp_xrp_fee;
-    //
-    //    tempLocation = QStandardPaths::standardLocations(QStandardPaths::TempLocation).first().replace('\\', '/') + "/";
-    //    desktopLocation = QStandardPaths::standardLocations(QStandardPaths::DesktopLocation).first().replace('\\', '/') + "/";
-    //    logFileName = QLatin1String("QtBitcoinTrader.log");
-    //    iniFileName = QLatin1String("QtBitcoinTrader.ini");
 };
 
 app_settings* global_settings();

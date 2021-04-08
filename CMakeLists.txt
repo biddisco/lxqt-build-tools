@@ -138,10 +138,14 @@ set(GROX_SRC
     src/internet/websocket-ssl.cpp
     src/internet/https-async.cpp
     #
+    src/currency.cpp
     src/ohlc.cpp
     src/order_book.cpp
     #
     src/exchange/xrpl.cpp
+    src/exchange/exchange.cpp
+    src/exchange/xrpl_network.cpp
+    src/exchange/bitstamp.cpp
     #
     src/currency_widget.cpp
     src/wallet_widget.cpp

@@ -4,6 +4,7 @@
 #include <QString>
 //
 #include "password_dialog.hpp"
+#include "exchange/xrpl_network.hpp"
 
 // ----------------------------------------------------------------------------
 password_dialog::password_dialog()
@@ -101,8 +102,19 @@ void password_dialog::add_wallet()
     w.name_    = ui.xrp_nickname->text().toStdString();
     w.public_  = ui.xrp_public->text().toStdString();
     w.private_ = ui.xrp_private->text().toStdString();
-    wallets_.push_back(w);
-    ui.wallets_combo->addItem(QString(w.name_.c_str()));
+    w.testnet_ = ui.testnet->isChecked();
+    w.network_ = xrpl_network::get_instance(w.testnet_);
+
+    auto it = std::find_if(wallets_.begin(), wallets_.end(), [&](ledger_wallet &w2){
+        return w2.name_ == w.name_;
+    });
+    if (it==wallets_.end()) {
+        wallets_.push_back(w);
+        ui.wallets_combo->addItem(QString(w.name_.c_str()));
+    }
+    else {
+        *it = w;
+    }
     ui.wallets_combo->setCurrentText(QString(w.name_.c_str()));
 }
 
@@ -120,6 +132,7 @@ void password_dialog::refresh_gui(int index)
     ui.xrp_nickname->setText(w.name_.c_str());
     ui.xrp_public->setText(w.public_.c_str());
     ui.xrp_private->setText(w.private_.c_str());
+    ui.testnet->setChecked(w.testnet_);
 }
 // ----------------------------------------------------------------------------
 // Validate

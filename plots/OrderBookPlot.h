@@ -14,6 +14,8 @@ private:
 
 public:
     OrderBookPlot( QWidget * = NULL );
+    ~OrderBookPlot();
+    //
     void clearPlot();
 
     QFont axis_title_font;

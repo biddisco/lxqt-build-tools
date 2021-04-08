@@ -3,8 +3,6 @@
 // to pass structs as params we must declare metatypes to Qt
 #include <QtCore>
 //
-#include <qwt_scale_div.h>
-//
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
@@ -28,7 +26,10 @@
 #include "plots/OrderBookPlot.h"
 //
 #ifndef DEBUG_ONLY
-#define DEBUG_ONLY(x)
+# define DEBUG_ONLY(x)
+# define DEBUG_ALWAYS(x) { \
+    std::stringstream temp; temp << x; \
+    std::cout << temp.str() << std::endl; }
 #endif
 
 //#define GROX_TEST_MODE 1
@@ -83,7 +84,7 @@ struct order_book_base
     offer_data asks;
 
     // Graph plotting objects
-    std::shared_ptr<OrderBookPlot> OrderBookPlot_;
+    OrderBookPlot *OrderBookPlot_;
     OrderBookCurve* bid_curve_;
     OrderBookCurve* ask_curve_;
 
@@ -96,7 +97,7 @@ struct order_book_base
     std::string order_text;
 
     // construct, passing plot object in
-    order_book_base(std::shared_ptr<OrderBookPlot> obp, bool secondaxis);
+    order_book_base(OrderBookPlot * obp, bool secondaxis);
 
     // clean up
     ~order_book_base();

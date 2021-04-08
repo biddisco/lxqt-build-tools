@@ -20,6 +20,7 @@
 //
 #include "plots/OrderBookCurve.h"
 #include "plots/OrderBookPlot.h"
+#include <iostream>
 
 OrderBookPlot::OrderBookPlot(QWidget* parent)
   : QwtPlot(parent)
@@ -118,6 +119,12 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
     this->setAxisTitle( QwtPlot::yRight, axisTitleY2 );
 
     enableAxis(QwtPlot::yRight);
+}
+
+OrderBookPlot::~OrderBookPlot()
+{
+    // dummy destructor;
+    std::cout << "Destroying orderbook plot" << std::endl;
 }
 
 void OrderBookPlot::clearPlot()

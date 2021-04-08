@@ -212,7 +212,7 @@
                         <string>Enable arbitrage</string>
                        </property>
                        <property name="checked">
-                        <bool>true</bool>
+                        <bool>false</bool>
                        </property>
                       </widget>
                      </item>
@@ -222,7 +222,7 @@
                         <string>Arbitrage Test Mode</string>
                        </property>
                        <property name="checked">
-                        <bool>true</bool>
+                        <bool>false</bool>
                        </property>
                       </widget>
                      </item>

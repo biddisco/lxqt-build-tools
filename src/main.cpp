@@ -108,20 +108,23 @@ void generate_encrypted_ini_data(password_dialog& npw)
     settings.setValue("EncryptedData/API_xrpaddress",
         QString::fromStdString(base64_encode(API_public_).toStdString()));
     //
-    app_ini->xrp_wallets.clear();
-    app_ini->xrp_wallets = npw.get_wallets();
+    app_ini->xrpl_wallets.clear();
+    app_ini->xrpl_wallets = npw.get_wallets();
     int index = 0;
-    for (const auto &w : app_ini->xrp_wallets) {
+    for (const auto &w : app_ini->xrpl_wallets) {
         secure_string name_ = encryptor.encrypt(w.name_);
         secure_string public_ = encryptor.encrypt(w.public_);
         secure_string private_ = encryptor.encrypt(w.private_);
         QString num = QString::number(index);
+        //
         settings.setValue("EncryptedData/XRP_name_" + num,
             QString::fromStdString(base64_encode(name_).toStdString()));
         settings.setValue("EncryptedData/XRP_public_" + num,
             QString::fromStdString(base64_encode(public_).toStdString()));
         settings.setValue("EncryptedData/XRP_secret_" + num,
             QString::fromStdString(base64_encode(private_).toStdString()));
+        xrpl_network * net = dynamic_cast<xrpl_network*>(w.network_.get());
+        settings.setValue("EncryptedData/XRP_test_" + num, net->testnet());
         index++;
     }
 }
@@ -206,7 +209,7 @@ int main(int argc, char* argv[])
         // ---------------------------------------
         // XRP wallet details
         // ---------------------------------------
-        app_ini->xrp_wallets.clear();
+        app_ini->xrpl_wallets.clear();
         bool present = true;
         int index = 0;
         while (present) {
@@ -215,6 +218,15 @@ int main(int argc, char* argv[])
             else {
                 ledger_wallet w;
                 //
+                bool XRP_testnet = settings.value("EncryptedData/XRP_test_" + num, "false").toBool();
+                if (XRP_testnet) {
+                    w.network_ = xrpl_network::get_xrpltestnet_instance();
+                    w.testnet_ = true;
+                }
+                else {
+                    w.network_ = xrpl_network::get_xrpl_instance();
+                    w.testnet_ = false;
+                }
                 w.tag_    = 0;
                 w.widget_ = nullptr;
                 //
@@ -232,7 +244,7 @@ int main(int argc, char* argv[])
                     base64_decode(settings.value("EncryptedData/XRP_secret_" + num, "").toByteArray());
                 w.private_ =
                     encryptor.decrypt(secure_string(XRP_secret.data(), XRP_secret.size()));
-                app_ini->xrp_wallets.push_back(w);
+                app_ini->xrpl_wallets.push_back(w);
             }
             index++;
         }
@@ -246,10 +258,11 @@ int main(int argc, char* argv[])
         std::cout << "API_secret     : " << app_ini->bitstamp.API_secret << std::endl;
         std::cout << "xrp.tag_    : " << app_ini->bitstamp.tag_ << std::endl;
         std::cout << "xrp.public_ : " << app_ini->bitstamp.public_ << std::endl;
-        for (const auto &w : app_ini->xrp_wallets) {
+        for (const auto &w : app_ini->xrpl_wallets) {
             std::cout << "XRP_name       : " << w.name_ << std::endl;
             std::cout << "XRP_public     : " << w.public_ << std::endl;
             std::cout << "XRP_secret     : " << w.private_ << std::endl;
+            std::cout << "XRP_testnet    : " << w.testnet_ << std::endl;
         }
         return EXIT_SUCCESS;
     }

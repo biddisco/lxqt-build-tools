@@ -7,6 +7,7 @@
 #include <string>
 //
 #include "nlohmann/json.hpp"
+#include "currency.hpp"
 
 // ----------------------------------------------------------------------------
 // ohlc data
@@ -111,14 +112,6 @@ struct live_order_book {
 Q_DECLARE_METATYPE(live_order_book)
 Q_DECLARE_METATYPE(std::vector<live_order_book>*)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_order_book, bids, asks, timestamp, microtimestamp);
-
-enum currency_type : int {
-    xrp = 0,
-    usd_bitstamp,
-    eur_bitstamp,
-    usd_gatehub,
-    other,
-};
 
 struct xrp_amount {
     double        value;

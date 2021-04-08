@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>345</width>
-    <height>114</height>
+    <width>316</width>
+    <height>125</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,37 +26,7 @@
    <property name="bottomMargin">
     <number>2</number>
    </property>
-   <item row="0" column="0">
-    <widget class="QLabel" name="currency">
-     <property name="text">
-      <string>Currency</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_5">
-     <property name="text">
-      <string>Balance</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <widget class="QLabel" name="label_6">
-     <property name="text">
-      <string>Available</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2">
+   <item row="3" column="4">
     <widget class="QLabel" name="label_7">
      <property name="text">
       <string>Reserved</string>
@@ -66,27 +36,7 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0">
-    <widget class="QLabel" name="balance">
-     <property name="text">
-      <string>balance</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="1">
-    <widget class="QLabel" name="avail">
-     <property name="text">
-      <string>avail</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="2">
+   <item row="4" column="4">
     <widget class="QLabel" name="reserved">
      <property name="text">
       <string>reserved</string>
@@ -96,7 +46,7 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="1" colspan="2">
+   <item row="0" column="3" colspan="2">
     <widget class="QLabel" name="issuer">
      <property name="text">
       <string>Issuer</string>
@@ -106,11 +56,33 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="0" colspan="3">
+   <item row="4" column="3">
+    <widget class="QLabel" name="avail">
+     <property name="text">
+      <string>avail</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="2" colspan="3">
     <widget class="QWidget" name="controls" native="true">
      <layout class="QGridLayout" name="gridLayout_4">
-      <item row="0" column="5">
-       <widget class="QPushButton" name="q4x">
+      <property name="leftMargin">
+       <number>2</number>
+      </property>
+      <property name="topMargin">
+       <number>2</number>
+      </property>
+      <property name="rightMargin">
+       <number>2</number>
+      </property>
+      <property name="bottomMargin">
+       <number>2</number>
+      </property>
+      <item row="0" column="6">
+       <widget class="QPushButton" name="q3x">
         <property name="maximumSize">
          <size>
           <width>32</width>
@@ -118,18 +90,30 @@
          </size>
         </property>
         <property name="text">
-         <string>100</string>
+         <string>75</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
-       <widget class="QLineEdit" name="amount">
+      <item row="0" column="5">
+       <widget class="QPushButton" name="q2x">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>32</width>
+          <height>16777215</height>
+         </size>
+        </property>
         <property name="text">
-         <string>0</string>
+         <string>50</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
+      <item row="0" column="4">
        <widget class="QPushButton" name="q1x">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -154,8 +138,11 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="4">
-       <widget class="QPushButton" name="q3x">
+      <item row="0" column="8">
+       <widget class="QComboBox" name="dest_combo"/>
+      </item>
+      <item row="0" column="7">
+       <widget class="QPushButton" name="q4x">
         <property name="maximumSize">
          <size>
           <width>32</width>
@@ -163,33 +150,21 @@
          </size>
         </property>
         <property name="text">
-         <string>75</string>
+         <string>100</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="3">
-       <widget class="QPushButton" name="q2x">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>32</width>
-          <height>16777215</height>
-         </size>
-        </property>
+      <item row="0" column="2">
+       <widget class="QLineEdit" name="amount_edit">
         <property name="text">
-         <string>50</string>
+         <string>0</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="0">
-       <widget class="QToolButton" name="xrp_execute">
+      <item row="0" column="9">
+       <widget class="QToolButton" name="exec">
         <property name="text">
-         <string>X</string>
+         <string>x</string>
         </property>
         <property name="toolButtonStyle">
          <enum>Qt::ToolButtonTextOnly</enum>
@@ -197,6 +172,60 @@
        </widget>
       </item>
      </layout>
+    </widget>
+   </item>
+   <item row="3" column="3">
+    <widget class="QLabel" name="label_6">
+     <property name="text">
+      <string>Available</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="2">
+    <widget class="QLabel" name="balance">
+     <property name="text">
+      <string>balance</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="2">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QToolButton" name="show">
+       <property name="text">
+        <string>:</string>
+       </property>
+       <property name="toolButtonStyle">
+        <enum>Qt::ToolButtonTextOnly</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Balance</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="0" column="2">
+    <widget class="QLabel" name="currency">
+     <property name="text">
+      <string>Currency</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+     </property>
     </widget>
    </item>
   </layout>

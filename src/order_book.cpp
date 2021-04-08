@@ -38,14 +38,6 @@ bool startswith(const std::string_view str, const std::string& sub)
     return true;
 }
 
-#ifndef DEBUG_ONLY
-#define DEBUG_ONLY(x)
-#endif
-
-#define DEBUG_ALWAYS(x) { \
-    std::stringstream temp; temp << x; \
-    std::cout << temp.str() << std::endl; }
-
 // ----------------------------------------------------------------------------
 // WARNING
 // This ifdef increases the price on the exchange to test our buy/sell algorithm
@@ -59,7 +51,7 @@ bool startswith(const std::string_view str, const std::string& sub);
 // Base order book class provides access to top bids/asks
 // plotting and other representations of the orders
 // ----------------------------------------------------------------------------
-order_book_base::order_book_base(std::shared_ptr<OrderBookPlot> obp, bool secondaxis)
+order_book_base::order_book_base(OrderBookPlot *obp, bool secondaxis)
 {
 #ifdef GROX_ARBITRAGE_TEST_MODE
     std::cerr << "**********************************************\n"
@@ -89,8 +81,8 @@ order_book_base::order_book_base(std::shared_ptr<OrderBookPlot> obp, bool second
         bid_curve_->setYAxis(QwtPlot::yLeft);
         ask_curve_->setYAxis(QwtPlot::yLeft);
     }
-    bid_curve_->attach(obp.get());
-    ask_curve_->attach(obp.get());
+    bid_curve_->attach(obp/*.get()*/);
+    ask_curve_->attach(obp/*.get()*/);
 }
 
 order_book_base::~order_book_base()
@@ -435,20 +427,26 @@ void xrpl_order_book::accept_json_ledger_snapshot(std::string_view data)
     // websocket (re?)connnect: clear the orderbook ...
     orders.clear();
     //
-    auto offers = joffers.get<std::vector<xrpl_offer>>();
-    //
-    for (auto const& o : offers)
-    {
-        // skip unsupported currencies
-        if (!o.grox_compatible()) {
-            std::cerr << "Unsupported currency " << o << std::endl;
-            continue;
+    try {
+        auto offers = joffers.get<std::vector<xrpl_offer>>();
+        //
+        for (auto const& o : offers)
+        {
+            // skip unsupported currencies
+            if (!o.grox_compatible()) {
+                std::cerr << "Unsupported currency " << o << std::endl;
+                continue;
+            }
+            // put offer into offer map
+            insert_offer(o);
         }
-        // put offer into offer map
-        insert_offer(o);
+        //
+        ledger_map_to_order_book();
     }
-    //
-    ledger_map_to_order_book();
+    catch (...) {
+        std::cerr << "Error in accept_json_ledger_snapshot: "
+                  << joffers.dump(4) << std::endl;
+    }
 }
 
 // This function converts an existing order book into

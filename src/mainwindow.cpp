@@ -18,18 +18,20 @@
 #include "src/internet/evp-encrypt.hpp"
 #include "src/internet/https-async.hpp"
 //
-#include "src/exchange/xrpl.hpp"
+#include "exchange/xrpl.hpp"
+#include "exchange/xrpl_network.hpp"
 //
 #include "ohlc.hpp"
 #include "settings.hpp"
 //
 #include "hdf5.h"
 //
-#define DEBUG_ONLY(x)
-
-#define DEBUG_ALWAYS(x) { \
+#ifndef DEBUG_ONLY
+# define DEBUG_ONLY(x)
+# define DEBUG_ALWAYS(x) { \
     std::stringstream temp; temp << x; \
     std::cout << temp.str() << std::endl; }
+#endif
 
 // Main net rippled server
 static const std::string ripple_mainnet_address = "s1.ripple.com";
@@ -83,6 +85,8 @@ void on_http_error(Belle::Client& belle_https_connection)
 GroxMainWindow::GroxMainWindow(QWidget* parent)
   : QMainWindow(parent)
 {
+    // qRegisterMetaType<currency>("currency");
+
     //
     // Build GUI from designer generated widgets/controls
     //
@@ -101,12 +105,17 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     // Create orderbook plot
     //
-    obp = std::make_shared<OrderBookPlot>();
+    obp = new OrderBookPlot(); // std::make_shared<OrderBookPlot>();
     obp->setMinimumSize(384,256);
     //obp->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    ui.order_plot_layout->addWidget(obp.get(), 0);
+    ui.order_plot_layout->addWidget(obp/*.get()*/, 0);
     bistamp_orderbook_ = new bitstamp_order_book(obp, false);
-    ledger_orderbook_ = new xrpl_order_book(obp, true);
+
+    // create xrp network interfaces
+    xrpl_network_ = std::dynamic_pointer_cast<xrpl_network>(xrpl_network::get_xrpl_instance());
+    xrpl_testnet_ = std::dynamic_pointer_cast<xrpl_network>(xrpl_network::get_xrpltestnet_instance());
+    xrpl_network_->set_plot(obp);
+    xrpl_testnet_->set_plot(obp);
     //
     // setup Qt actions/connections
     //
@@ -127,12 +136,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     belle_https_bitstamp.ssl(true);
     on_http_error(belle_https_bitstamp);
     //
-    belle_https_ripple.address(ripple_data_api_address);
-    belle_https_ripple.port(ripple_data_api_port);
-    belle_https_ripple.ssl(true);
-    on_http_error(belle_https_ripple);
-    //
-    //
     AdjustingScrollArea *scroll = new AdjustingScrollArea(this);
     scroll->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     ui.accounts_group->layout()->addWidget(scroll);
@@ -152,7 +155,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         vbox->addWidget(app_ini->bitstamp.widget_);
     }
 
-    for (auto & w: app_ini->xrp_wallets) {
+    ranges::for_each(app_ini->xrpl_wallets, [&](auto &w) {
         // create a gui widget for the wallet
         w.widget_ = new wallet_widget(this);
         w.widget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
@@ -160,7 +163,10 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         vbox->addWidget(w.widget_);
         // update wallet combo with name
         ui.xrp_acct_combo->addItem(QString(w.name_.c_str()));
-    }
+        // updte networks with monitoried wallets
+        if (w.testnet_) xrpl_testnet_->add_wallet(w);
+        else xrpl_network_->add_wallet(w);
+    });
     vbox->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
     scroll->setWidgetResizable(true);
     scroll->adjustSize();
@@ -171,7 +177,10 @@ GroxMainWindow::~GroxMainWindow()
 {
     delete CombinedPriceVolumeCharts_;
     delete bistamp_orderbook_;
-    delete ledger_orderbook_;
+    //
+//    xrpl_network_.reset();
+//    xrpl_testnet_.reset();
+    //obp.reset();
 }
 
 // ----------------------------------------------------------------------------
@@ -186,8 +195,12 @@ void GroxMainWindow::appExitCleanupHandler()
         ws_trades->shutdown_blocking();
     if (ws_bidask)
         ws_bidask->shutdown_blocking();
-    if (ws_ledger_orderbook)
-        ws_ledger_orderbook->shutdown_blocking();
+    //
+    xrpl_network_->disconnect();
+    xrpl_network_.reset();
+    xrpl_testnet_->disconnect();
+    xrpl_testnet_.reset();
+    //
     qDebug() << "websockets: shutdown complete";
 }
 
@@ -218,7 +231,7 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
                 app_ini->bitstamp.API_secret, std::to_string(app_ini->bitstamp.tag_),
                 app_ini->bitstamp.public_};
             //
-            password_dialog npw = password_dialog(strings, app_ini->xrp_wallets);
+            password_dialog npw = password_dialog(strings, app_ini->xrpl_wallets);
             if (npw.exec() == QDialog::Accepted)
             {
                 generate_encrypted_ini_data(npw);
@@ -248,8 +261,11 @@ void GroxMainWindow::createMenus()
 
     //connect(this, SIGNAL(bitstamp_orderbook_replot()), bistamp_orderbook_->OrderBookPlot_.get(), SLOT(replot()));
     connect(this, SIGNAL(bitstamp_orderbook_replot()), this, SLOT(capture_image()));
-    connect(this, SIGNAL(ledger_orderbook_replot()), ledger_orderbook_->OrderBookPlot_.get(), SLOT(replot()));
+    connect(this, SIGNAL(ledger_orderbook_replot()),
+            xrpl_network_->get_orderbook()->OrderBookPlot_/*.get()*/, SLOT(replot()));
 
+    connect(xrpl_network_.get(), SIGNAL(new_order_book_data(QString)), ui.order_book_xrpl,
+            SLOT(setPlainText(QString)));
 
     connect(this, SIGNAL(new_ohlc_data_ui()), this, SLOT(new_ohlc_data()));
 //    connect(this, SIGNAL(new_ledger_data()), this, SLOT(capture_image()));
@@ -258,16 +274,27 @@ void GroxMainWindow::createMenus()
     connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
 
-//    connect(ui.xrp_dir, SIGNAL(clicked()), this, SLOT(xrp_dir_clicked()));
-//    connect(ui.usd_dir, SIGNAL(clicked()), this, SLOT(usd_dir_clicked()));
-//    //
-//    connect(ui.xrp_execute, SIGNAL(clicked()), this, SLOT(execute_xrp()));
-//    connect(ui.usd_execute, SIGNAL(clicked()), this, SLOT(execute_usd()));
-    //
-    connect(ui.xrp_acct_combo, SIGNAL(currentIndexChanged(int)), this, SLOT(ledger_acct_change(int)));
+    connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)), this, SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
+    connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)), this, SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
+    connect(xrpl_network_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this, SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
+    connect(xrpl_testnet_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this, SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
 }
 
 // ----------------------------------------------------------------------------
+// slot to ensure widget updates on GUI thread
+void GroxMainWindow::update_currency_widget(currency *c)
+{
+    assert(c->widget_);
+    c->widget_->set_data(c);
+}
+
+// ----------------------------------------------------------------------------
+// slot to ensure widget updates on GUI thread
+void GroxMainWindow::update_wallet_widget(ledger_wallet *w)
+{
+    assert(w->widget_);
+    w->widget_->set_data(*w);
+}
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::execute_xrp()
@@ -280,10 +307,10 @@ void GroxMainWindow::execute_xrp()
         app_settings* app_ini = global_settings();
 
         std::uint32_t tag = app_ini->bitstamp.tag_;
-        bool test = make_xrp_payment(ripple::KeyType::secp256k1,
-            app_ini->xrp_wallets[app_ini->active_wallet].private_,
-            app_ini->xrp_wallets[app_ini->active_wallet].public_,
-            app_ini->bitstamp.public_, tag, 10);
+//        bool test = make_xrp_payment(ripple::KeyType::secp256k1,
+//            app_ini->xrpl_wallets[app_ini->active_wallet].private_,
+//            app_ini->xrpl_wallets[app_ini->active_wallet].public_,
+//            app_ini->bitstamp.public_, tag, 10);
 
         QApplication::quit();
     } else {
@@ -303,15 +330,6 @@ void GroxMainWindow::execute_usd()
     } else {
         qDebug() << "Yes was *not* clicked";
     }
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::ledger_acct_change(int index)
-{
-    app_settings* app_ini = global_settings();
-    app_ini->active_wallet = index;
-//    ledger_balance();
-//    belle_https_ripple.connect();
 }
 
 // ----------------------------------------------------------------------------
@@ -428,48 +446,6 @@ void GroxMainWindow::new_ohlc_data()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::new_ledger_account_data(GroxMainWindow* mw, std::string_view data)
-{
-    if (startswith(data, "{\"result\":")) {
-        // ignore this, just a subscription ok
-        DEBUG_ONLY("Account subscription : " << data);
-    }
-    else if (startswith(data, "{\"engine_result\":\"tesSUCCESS\"")) {
-        nlohmann::json jdata = json::parse(data)["meta"]["AffectedNodes"];
-        DEBUG_ONLY("Account changes : " << jdata.dump(4));
-        for (const auto &j : jdata) {
-            auto m = j["ModifiedNode"];
-            auto f = m["FinalFields"];
-            auto p = m["PreviousFields"];
-            //
-            std::string acct = f["Account"].get<std::string>();
-            double oldb = 1E-6*std::stod(p["Balance"].get<std::string>());
-            double newb = 1E-6*std::stod(f["Balance"].get<std::string>());
-            std::cout << "Acct " << acct << " old balance " << oldb << " new balance " << newb << std::endl;
-            mw->update_balance(acct, oldb, newb);
-        }
-    }
-//    QString datastring = QString::fromStdString(mw->ledger_orderbook_->order_text);
-//    emit mw->new_order_xrpl_ui(datastring);
-//    emit mw->new_ledger_data();
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::new_ledger_order_data(GroxMainWindow* mw, std::string_view data)
-{
-    if (startswith(data, "{\"result\":")) {
-        mw->ledger_orderbook_->accept_json_ledger_snapshot(data);
-    }
-    else if (startswith(data, "{\"engine_result\":")) {
-        mw->ledger_orderbook_->accept_json_ledger_transaction(data);
-    }
-
-    QString datastring = QString::fromStdString(mw->ledger_orderbook_->order_text);
-    emit mw->new_order_xrpl_ui(datastring);
-    emit mw->new_ledger_data();
-}
-
-// ----------------------------------------------------------------------------
 void GroxMainWindow::capture_image()
 {
     obp->update_time_and_replot();
@@ -507,7 +483,7 @@ void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string_view data)
     fee_data buy_fee{0.0, 0.01};
     //
     if (mw->ui.enable_arbitrage->isChecked()) {
-        mw->ledger_orderbook_->compute_arbitrage(*mw->bistamp_orderbook_, budget, buy_fee, sell_fee, test_offset, arbitrage_string);
+        mw->xrpl_network_->get_orderbook()->compute_arbitrage(*mw->bistamp_orderbook_, budget, buy_fee, sell_fee, test_offset, arbitrage_string);
 
         if (arbitrage_string.size()>0) {
             QString arb_string = QString::fromStdString(arbitrage_string);
@@ -520,84 +496,6 @@ void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string_view data)
 
     QString datastring = QString::fromStdString(mw->bistamp_orderbook_->order_text);
     emit mw->new_order_bitstamp_ui(datastring);
-}
-
-// ----------------------------------------------------------------------------
-void add_currency(const currency &curr, std::vector<currency> &c_list)
-{
-    auto it = std::find_if(c_list.begin(), c_list.end(),
-                        [&curr](const currency &c){return c.type_ == curr.type_;});
-    if (it==c_list.end()) {
-        c_list.push_back(curr);
-    }
-    else {
-        // copy the new currency info, but keep the old widget if it exists
-        auto temp = it->widget_;
-        *it = curr;
-        if (temp!=nullptr) {
-            it->widget_ = temp;
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::update_balance(std::string_view addr, double oldb, double newb)
-{
-    app_settings* app_ini = global_settings();
-    auto it = std::find_if(app_ini->xrp_wallets.begin(), app_ini->xrp_wallets.end(),
-        [addr](ledger_wallet &w){
-            return w.public_ == addr;
-
-    });
-    if (it==app_ini->xrp_wallets.end()) {
-        std::cerr << "Balance update did not find acct " << addr << std::endl;
-    }
-    else {
-        auto c_list = it->currencies_;
-        auto it2 = std::find_if(c_list.begin(), c_list.end(),
-                            [](const currency &c){return c.type_ == currency_type::xrp;});
-        if (it2==c_list.end()) {
-            std::cerr << "Balance update did not find XRP currency" << std::endl;
-        }
-        else {
-            if (it2->balance_ != oldb) {
-                std::cerr << "Old balance error " << it2->balance_ << " expect " << oldb << std::endl;
-            }
-            std::cerr << "Balance updated from " << oldb << " to " << newb << std::endl;
-            it2->balance_ = newb;
-            it2->avail_ = newb - it2->reserved_;
-            it2->widget_->set_data(*it2);
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::ledger_reply(ledger_wallet &w, std::string&& data)
-{
-    nlohmann::json jdata = json::parse(data)["balances"];
-    DEBUG_ONLY(jdata.dump(4));
-    std::vector<xrp_amount> balances = jdata.get<std::vector<xrp_amount>>();
-    //
-    app_settings* app_ini = global_settings();
-    //
-    for (const auto &b : balances) {
-        // @TODO, do not hardcode USD
-        if (b.currency == currency_type::usd_bitstamp) {
-            currency c{"USD", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::usd_bitstamp, b.value, b.value, 0, nullptr};
-            add_currency(c, w.currencies_);
-        }
-        else if (b.currency == currency_type::eur_bitstamp) {
-            currency c{"EUR", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::eur_bitstamp, b.value, b.value, 0, nullptr};
-            add_currency(c, w.currencies_);
-        }
-        else if (b.currency == currency_type::xrp) {
-            currency c{"XRP", "", currency_type::xrp, b.value, b.value, 0, nullptr};
-            add_currency(c, w.currencies_);
-        }
-    }
-    w.widget_->set_data(w);
-    //
-    update_accounts(app_ini);
 }
 
 // ----------------------------------------------------------------------------
@@ -642,50 +540,6 @@ void GroxMainWindow::bitstamp_account_data(std::string&& data)
     }
 
     app_ini->bitstamp.widget_->set_data(app_ini->bitstamp);
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::update_accounts(app_settings* app_ini)
-{
-/*
-    ui.bitstamp_xrp_fee->setText(boost::str(boost::format("fee %.4f%%") % app_ini->bitstamp_xrp_fee).c_str());
-    //
-    ui.bitstamp_balance_xrp->setText(boost::str(boost::format("%.6f") % app_ini->bitstamp_xrp_balance).c_str());
-    ui.bitstamp_avail_xrp->setText(boost::str(boost::format("%.6f") % app_ini->bitstamp_xrp_available).c_str());
-    ui.bitstamp_reserved_xrp->setText(boost::str(boost::format("%.6f") % app_ini->bitstamp_xrp_reserved).c_str());
-    //
-    ui.bitstamp_balance_usd->setText(boost::str(boost::format("%.2f") % app_ini->bitstamp_usd_balance).c_str());
-    ui.bitstamp_avail_usd->setText(boost::str(boost::format("%.2f") % app_ini->bitstamp_usd_available).c_str());
-    ui.bitstamp_reserved_usd->setText(boost::str(boost::format("%.2f") % app_ini->bitstamp_usd_reserved).c_str());
-*/
-//    //
-//    ui.ledger_balance_xrp->setText(boost::str(boost::format("%.6f") % app_ini->ledger_xrp_available).c_str());
-//    ui.ledger_balance_usd->setText(boost::str(boost::format("%.2f") % app_ini->ledger_usd_available).c_str());
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::ledger_balance()
-{
-    app_settings* app_ini = global_settings();
-    for (auto &w : app_ini->xrp_wallets) {
-        std::string target = "/v2/accounts/" + w.public_ + "/balances";
-
-        belle_https_ripple.on_http(target, [this, &w](auto& ctx)
-        {
-          // check http status code
-          if (ctx.res.result() != Belle::Status::ok)
-          {
-            // print the response status code and reason
-            std::cerr << "HTTPS Error: "
-                      << ctx.res.result_int()
-                      << " " << ctx.res.reason() << "\n\n";
-            return;
-          }
-          // debug : print the response headers and body
-          DEBUG_ONLY("Ledger response " << ctx.res.body() << "\n");
-          this->ledger_reply(w, std::move(ctx.res.body()));
-        });
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -863,10 +717,11 @@ void GroxMainWindow::bitstamp_request(const std::string &url_path, const std::st
 void GroxMainWindow::update_account_balances()
 {
     DEBUG_ONLY("Updating accounts");
+    xrpl_network_->get_all_account_balances();
+    xrpl_testnet_->get_all_account_balances();
+    //
     bitstamp_request("/api/v2/balance/", "");
-    ledger_balance();
     /*auto completed = */belle_https_bitstamp.connect();
-    belle_https_ripple.connect();
 }
 
 // ----------------------------------------------------------------------------
@@ -885,23 +740,13 @@ void GroxMainWindow::start_websocket()
         "\"order_book_xrpusd\"}}",
         std::bind(GroxMainWindow::new_order_data, this, _1));
 
-    ws_ledger_orderbook = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
-      ripple_network_address, std::to_string(ripple_network_port),
-      "{ \"command\": \"subscribe\", \"books\": [ { \"taker_pays\": { \"currency\": \"XRP\" }, \"taker_gets\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true }, { \"taker_gets\": { \"currency\": \"XRP\" }, \"taker_pays\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true } ] }",
-      std::bind(GroxMainWindow::new_ledger_order_data, this, _1));
+    //
+    xrpl_network_->subscribe_orderbook(io_contexts);
+    xrpl_testnet_->subscribe_orderbook(io_contexts);
+    xrpl_network_->subscribe_accounts(io_contexts);
+    xrpl_testnet_->subscribe_accounts(io_contexts);
 
-    app_settings* app_ini = global_settings();
-    std::string addresses;
-    for (const auto &w : app_ini->xrp_wallets) {
-        if (addresses.size()) addresses += ", ";
-        addresses += "\"" + w.public_ + "\"";
-    }
-    DEBUG_ONLY("Subscribing to account changes for \n" << addresses);
-    ws_ledger_accounts = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
-      ripple_network_address, std::to_string(ripple_network_port),
-      "{ \"command\": \"subscribe\", \"accounts\": [ " + addresses + " ] }",
-      std::bind(GroxMainWindow::new_ledger_account_data, this, _1));
-
+    // @TODO - should this go before subscriptions?
     // Run the I/O service on a thread.
     websocket_thread = std::thread([&]() {
         // The call will return when the socket is closed.
@@ -916,7 +761,6 @@ void GroxMainWindow::start_websocket()
 //    ledger_order_book(false);
     /*auto completed = */
     belle_https_bitstamp.connect();
-    belle_https_ripple.connect();
 }
 
 // ----------------------------------------------------------------------------
