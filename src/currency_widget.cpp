@@ -33,9 +33,10 @@ currency_widget::~currency_widget()
 }
 
 // ----------------------------------------------------------------------------
-void currency_widget::set_data(currency const *c, exchange *network)
+void currency_widget::set_data(currency const *c, basic_account *acct, exchange *network)
 {
     currency_ = *c;
+    if (acct) account_ = acct;
     if (network) network_ = network;
     ui->currency->setText(c->name_.c_str());
     ui->issuer->setText(c->issuer_.c_str());
@@ -68,8 +69,11 @@ void currency_widget::show_hide()
         ui->dest_combo->clear();
         app_settings* app_ini = global_settings();
         for (auto & w: app_ini->xrpl_wallets) {
-            if (network_->can_send(currency_, w.network_.get()))
-                ui->dest_combo->addItem(QString(w.name_.c_str()));
+            if (network_->can_send(currency_, w.network_.get())) {
+                QVariant v;
+                v.setValue(static_cast<basic_account*>(&w));
+                ui->dest_combo->addItem(QString(w.name_.c_str()), v);
+            }
         }
         ui->controls->show();
     }
@@ -79,18 +83,20 @@ void currency_widget::show_hide()
 }
 
 // ----------------------------------------------------------------------------
-void currency_widget::get_amount()
+double currency_widget::get_amount()
 {
-    amount_ = std::stod(ui->amount_edit->text().toStdString());
+    return std::stod(ui->amount_edit->text().toStdString());
 }
 
 // ----------------------------------------------------------------------------
 void currency_widget::execute_transfer()
 {
-    amount_ = std::stod(ui->amount_edit->text().toStdString());
+    amount_ = get_amount();
     std::cout << "Transferring " << amount_ << " to " << ui->dest_combo->currentText().toStdString() << std::endl;
-    app_settings* app_ini = global_settings();
-    for (auto & w: app_ini->xrpl_wallets) {
-//        ui->dest_combo->addItem(QString(w.name_.c_str()));
-    }
+    // ????
+    currency payment = this->currency_;
+    payment.balance_ = amount_;
+    QVariant v = ui->dest_combo->currentData();
+    basic_account *to_wallet = v.value<basic_account*>();
+    network_->make_payment(payment, account_, to_wallet);
 }

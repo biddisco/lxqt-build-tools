@@ -15,17 +15,18 @@ class currency_widget : public QWidget
 
 private:
     Ui::currency_widget *ui;
-    int         decimals_;
-    currency    currency_;
-    exchange   *network_;
-    double      amount_;
-    std::string fmt_;
+    int            decimals_;
+    currency       currency_;
+    basic_account *account_;
+    exchange      *network_;
+    double         amount_;
+    std::string    fmt_;
 
 public:
-    explicit currency_widget(int decimals, QWidget *parent = nullptr);
+    currency_widget(int decimals, QWidget *parent = nullptr);
     ~currency_widget();
 
-    void set_data(currency const *c, exchange *network=nullptr);
+    void set_data(currency const *c, basic_account *acct=nullptr, exchange *network=nullptr);
 
 public slots:
     // ----------------------------------
@@ -37,7 +38,7 @@ public slots:
     void q4x_clicked();
 
     void show_hide();
-    void get_amount();
+    double get_amount();
     void execute_transfer();
 };
 

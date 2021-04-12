@@ -31,29 +31,46 @@ private:
     std::shared_ptr<net::ws::session> ws_accounts;
     // https client for xrpl data API
     OB::Belle::Client belle_https_ripple;
+    // https client for xrpl network submissions
+    OB::Belle::Client belle_jsonrpc_network;
 
     bool testnet_;
     xrpl_order_book *orderbook_;
-    OrderBookPlot * plot_;
+//    OrderBookPlot * plot_;
     std::vector<ledger_wallet> subscribed_wallets_;
 
-    // Main net rippled server
+    // ---------------------------------------
+    // MainNet : rippled server
+    // ---------------------------------------
     static inline const std::string ripple_mainnet_address = "s1.ripple.com";
     static inline const int ripple_mainnet_port = 443;
 
-    // testnet rippled server
-    static inline const std::string ripple_testnet_address = "s.altnet.rippletest.net";
-    static inline const int ripple_testnet_port = 51233;
+    // MainNet : JSON RPC server
+    static inline const std::string ripple_jsonrpc_address = "s1.ripple.com";
+    static inline const int ripple_jsonrpc_port = 51234;
 
-    // mainnet data api
+    // MainNet : data api
     static inline const std::string ripple_dataapi_address = "data.ripple.com";
     static inline const int ripple_dataapi_port = 443;
 
-    // testnet data api
+    // ---------------------------------------
+    // TestNet rippled server
+    // ---------------------------------------
+    static inline const std::string ripple_testnet_address = "s.altnet.rippletest.net";
+    static inline const int ripple_testnet_port = 51233;
+
+    // TestNet JSON RPC server
+    static inline const std::string ripple_jsonrpc_testaddr = "s.altnet.rippletest.net";
+    static inline const int ripple_jsonrpc_testport = 51234;
+
+    // TestNet data api
     static inline const std::string ripple_testapi_address = "testnet.data.api.ripple.com";
     static inline const int ripple_testapi_port = 443;
 
 public:
+    // ---------------------------------------
+    // singleton acces to network/testnet
+    // ---------------------------------------
     static std::shared_ptr<exchange> get_xrpl_instance() {
         static std::shared_ptr<exchange> xrpl_ptr = nullptr;
         if (xrpl_ptr==nullptr)
@@ -72,6 +89,9 @@ public:
         return get_xrpl_instance();
     }
 
+    // ---------------------------------------
+    // constructor/destructor
+    // ---------------------------------------
     xrpl_network(bool testnet);
     ~xrpl_network() override {}
     //
@@ -80,15 +100,17 @@ public:
     bool testnet() const;
     //
     std::string network_address() const;
+    std::string jsonrpc_address() const;
     std::string dataapi_address() const;
     int network_port() const;
+    int jsonrpc_port() const;
     int dataapi_port() const;
     //
     bool can_send(currency &/*c*/, exchange *dest) override;
     //
     xrpl_order_book *get_orderbook();
     //
-    void connect();
+    void connect() override;
     //
     void disconnect();
     //
@@ -110,8 +132,17 @@ public:
     void get_all_account_balances();
     void handle_account_balance(ledger_wallet &w, std::string&& data);
 
+    // Send query to Data API and get info for all tracked wallets
+    void get_all_account_infos();
+    void handle_account_info(ledger_wallet &w, std::string&& data);
+
+    bool make_payment(currency &c, basic_account *src, basic_account *dest) override;
+
 signals:
+    // emitted when a currency balance changes
     void update_currency_widget(currency*);
+    // emitted when a wallet is updated with ne balances for multiple currencies
     void update_wallet_widget(ledger_wallet*);
+    // emitted when new order book data is ready
     void new_order_book_data(QString);
 };

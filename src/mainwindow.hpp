@@ -67,14 +67,13 @@ public:
     ~GroxMainWindow();
     void createActions();
     void createMenus();
-    bool eventFilter(QObject* obj, QEvent* event);
+    bool eventFilter(QObject* obj, QEvent* event) override;
 
     static void new_ticker_data(GroxMainWindow*, std::string&&);
     static void new_order_data(GroxMainWindow*, std::string_view);
     //
     void receive_ohlc_data(std::string&&);
     void bitstamp_account_data(std::string&&);
-    void ledger_order_book(bool buy_xrp);
 
     void create_data_dir();
     void read_hdf5();

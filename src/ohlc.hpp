@@ -167,11 +167,13 @@ public:
     }
 
     bool operator < (const xrpl_offer& other) const {
-        return (rate() < other.rate());
+        return (rate() < other.rate()) ||
+               ((std::fabs(rate()-other.rate())<1E-6) && owner_funds>other.owner_funds);
     }
 
     bool operator > (const xrpl_offer& other) const {
-        return (rate() > other.rate());
+        return (rate() > other.rate()) ||
+               ((std::fabs(rate()-other.rate())<1E-6) && owner_funds>other.owner_funds);
     }
 
     bool unfunded(double epsilon=0.0) const {

@@ -3,6 +3,8 @@
 //
 #include <string>
 //
+#include <ripple/protocol/Sign.h>
+//
 #include "src/internet/https-async.hpp"
 #include "src/internet/websocket-ssl.hpp"
 #include "src/internet/evp-encrypt.hpp"
@@ -11,6 +13,11 @@
 #include "../settings.hpp"
 #include "../currency_widget.hpp"
 #include "xrpl_network.hpp"
+#include "xrpl.hpp"
+//
+//#include <test/jtx.h>
+#include <test/jtx/WSClient.h>
+#define line_string "# ---------------------------------\n"
 
 // ----------------------------------------------------------------------------
 xrpl_network::xrpl_network(bool testnet) : testnet_(testnet)
@@ -18,17 +25,25 @@ xrpl_network::xrpl_network(bool testnet) : testnet_(testnet)
     belle_https_ripple.address(dataapi_address());
     belle_https_ripple.port(dataapi_port());
     belle_https_ripple.ssl(true);
-
     // set the http 'on error' callback
     belle_https_ripple.on_http_error([](auto& ctx)
     {
-      std::cerr << "Error: " << ctx.ec.message() << "\n\n";
+      std::cerr << "(belle_https_ripple) : Error: " << ctx.ec.message() << "\n\n";
+    });
+
+    belle_jsonrpc_network.address(jsonrpc_address());
+    belle_jsonrpc_network.port(jsonrpc_port());
+    belle_jsonrpc_network.ssl(true);
+    // set the http 'on error' callback
+    belle_jsonrpc_network.on_http_error([](auto& ctx)
+    {
+      std::cerr << "(belle_jsonrpc_network) : Error: " << ctx.ec.message() << "\n\n";
     });
 }
 
 // ----------------------------------------------------------------------------
 void xrpl_network::set_plot(OrderBookPlot *obp) {
-    plot_ = obp;
+//    plot_ = obp;
     orderbook_ = new xrpl_order_book(obp, true);
 }
 
@@ -42,9 +57,17 @@ std::string xrpl_network::network_address() const {
     if (testnet_) return ripple_testnet_address;
     return ripple_mainnet_address;
 }
+std::string xrpl_network::jsonrpc_address() const {
+    if (testnet_) return ripple_jsonrpc_testaddr;
+    return ripple_jsonrpc_address;
+}
 int xrpl_network::network_port() const {
     if (testnet_) return ripple_testnet_port;
     return ripple_mainnet_port;
+}
+int xrpl_network::jsonrpc_port() const {
+    if (testnet_) return ripple_jsonrpc_port;
+    return ripple_jsonrpc_testport;
 }
 std::string xrpl_network::dataapi_address() const {
     if (testnet_) return ripple_testapi_address;
@@ -200,7 +223,7 @@ void xrpl_network::get_all_account_balances()
         {
           if (ctx.res.result() != OB::Belle::Status::ok)
           {
-            std::cerr << "HTTPS Error: " << ctx.res.result_int()
+            std::cerr << "Account balance : HTTPS Error: " << ctx.res.result_int()
                       << " " << ctx.res.reason()
                       << " - Address Not found? " << w.public_ << "\n";
             return;
@@ -239,3 +262,255 @@ void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
     // signal GUI to update
     emit update_wallet_widget(&w);
 }
+
+// ----------------------------------------------------------------------------
+void xrpl_network::get_all_account_infos()
+{
+    /*
+    {
+      "method": "account_info",
+      "params": [
+        {
+          "account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+          "strict": true,
+          "ledger_index": "current",
+          "queue": true
+        }
+      ]
+    }
+    */
+
+    for (auto &w : subscribed_wallets_) {
+        nlohmann::json params;
+        params["account"] = w.public_;
+        params["ledger_index"] = "current";
+        params["strict"] = true;
+        params["queue"] = true;
+
+        nlohmann::json content;
+        content["method"] = "account_info";
+        content["params"] = nlohmann::json::array({params});
+
+        using namespace OB;
+        // init an http request object
+        Belle::Request req;
+
+        // set the method
+        req.method(Belle::Method::post);
+        req.set(Belle::Header::host, network_address());
+        req.set(Belle::Header::user_agent, "mystery");
+        req.set(Belle::Header::content_type, "application/json");
+        req.set(Belle::Header::accept, "application/json");
+        req.set(Belle::Header::connection, "close");
+        // set the target path
+        req.target("/");
+        req.body() = content.dump();
+        req.prepare_payload();
+        DEBUG_ONLY(line_string << req);
+
+        belle_jsonrpc_network.on_http(req, [this, &w](auto& ctx)
+        {
+          if (ctx.res.result() != OB::Belle::Status::ok)
+          {
+            std::cerr << "account_info : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
+                      << " " << ctx.res.reason()
+                      << "\n";
+            return;
+          }
+          // debug : print the response headers and body
+          DEBUG_ONLY(line_string << "account_info response : " << ctx.res.body());
+          this->handle_account_info(w, std::move(ctx.res.body()));
+        });
+        belle_jsonrpc_network.connect();
+    }
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::handle_account_info(ledger_wallet &w, std::string&& data)
+{
+    nlohmann::json jdata = json::parse(data)["result"]["account_data"];
+    DEBUG_ONLY(jdata.dump(4));
+    //
+    if (jdata.is_null()) return;
+    //
+    assert(w.public_ == jdata.at("Account").get< std::string >());
+    w.sequence_ = jdata.at("Sequence").get< int32_t >();
+    DEBUG_ALWAYS(w.public_ << " Sequence " << w.sequence_);
+    // signal GUI to update
+    emit update_wallet_widget(&w);
+}
+
+// ----------------------------------------------------------------------------
+bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *dest)
+{
+    ledger_wallet *from = static_cast<ledger_wallet*>(src);
+    ledger_wallet *to = static_cast<ledger_wallet*>(dest);
+    std::cout << "XRPL payment amount " << c.balance_
+              << " from " << from->public_
+              << " to " << to->public_ << std::endl;
+
+    std::string signed_tx = make_xrp_payment(
+            ripple::KeyType::secp256k1,
+            from->private_,
+            from->public_,
+            from->sequence_,
+            to->public_,
+            to->tag_,
+            static_cast<uint64_t>(c.balance_*1000000));
+
+    from->sequence_++;
+
+    nlohmann::json tx;
+    tx["tx_blob"] = signed_tx;
+
+    nlohmann::json content;
+    content["method"] = "submit";
+    content["params"] = nlohmann::json::array({tx});
+
+    using namespace OB;
+    // init an http request object
+    Belle::Request req;
+
+    // set the method
+    req.method(Belle::Method::post);
+    req.set(Belle::Header::host, network_address());
+    req.set(Belle::Header::user_agent, "mystery");
+    req.set(Belle::Header::content_type, "application/json");
+    req.set(Belle::Header::accept, "application/json");
+    req.set(Belle::Header::connection, "close");
+    // set the target path
+    req.target("/");
+    req.body() = content.dump();
+    req.prepare_payload();
+    DEBUG_ONLY(line_string << req);
+
+    belle_jsonrpc_network.on_http(req, [this](auto& ctx)
+    {
+      if (ctx.res.result() != OB::Belle::Status::ok)
+      {
+        std::cerr << "Make payment : HTTPS Error: " << ctx.res.result_int()
+                  << " " << ctx.res.reason()
+                  << "\n";
+        return;
+      }
+      // debug : print the response headers and body
+      DEBUG_ONLY("Tx submit response " << ctx.res.body() << "\n");
+//      this->handle_account_balance(w, std::move(ctx.res.body()));
+    });
+
+    belle_jsonrpc_network.connect();
+
+
+//    {
+//        using namespace std::chrono_literals;
+//        using namespace jtx;
+//        Basic_Con
+//        Env env(*this);
+//        env.fund(XRP(10000), "alice", "bob");
+//        env.close();
+//        auto wsc = makeWSClient(env.app().config());
+
+//    }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// this function not yet working
+#if 0
+void GroxMainWindow::ledger_order_book(bool buy_xrp)
+{
+    // curl command to query : buy xrp for USD.bitstamp
+    // curl -H 'Content-Type: application/json' -d '{"method":"book_offers","params":[{"taker_gets":{"currency":"XRP"},"taker_pays":{"currency":"USD","issuer":"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"},"limit":10}]}' https://s1.ripple.com:51234/
+    // "{ \"command\": \"subscribe\", \"books\": [ { \"taker_pays\": { \"currency\": \"XRP\" }, \"taker_gets\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true }, { \"taker_gets\": { \"currency\": \"XRP\" }, \"taker_pays\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true } ] }",
+
+    // init client with remote address, port, and ssl enabled
+    Belle::Client app{ripple_network_address, ripple_network_port, true};
+    on_http_error(app);
+/*
+{
+  "command": "subscribe",
+  "books": [
+    {
+      "taker_pays": {
+        "currency": "XRP"
+      },
+      "taker_gets": {
+        "currency": "USD",
+        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
+      },
+      "snapshot": true
+    },
+    {
+      "taker_gets": {
+        "currency": "XRP"
+      },
+      "taker_pays": {
+        "currency": "USD",
+        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
+      },
+      "snapshot": true
+    }
+  ]
+}
+*/
+
+    // init an http request object
+    Belle::Request req;
+
+    nlohmann::json content;
+    content["command"] = "subscribe";
+
+    // order to buy XRP : the taker of this offer will pay XRP for my USD
+    nlohmann::json buy;
+    buy["taker_pays"]["currency"] = "XRP";
+    buy["taker_gets"]["currency"] = "USD";
+    buy["taker_gets"]["issuer"]   = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+    buy["snapshot"] = "true";
+
+    nlohmann::json sell;
+    // order to sell XRP : the taker of this offer will pay USD for my XRP
+    sell["taker_gets"]["currency"] = "XRP";
+    sell["taker_pays"]["currency"] = "USD";
+    sell["taker_pays"]["issuer"]   = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+    sell["snapshot"] = "true";
+
+    content["books"] = nlohmann::json::array({buy,sell});
+
+    // set the method
+    req.method(Belle::Method::post);
+    req.set(Belle::Header::host, ripple_network_address);
+    req.set(Belle::Header::user_agent, "mystery");
+    req.set(Belle::Header::content_type, "application/json");
+    req.set(Belle::Header::accept, "application/json");
+    req.set(Belle::Header::connection, "close");
+    // set the target path
+    req.target("/");
+    req.body() = content.dump();
+    req.prepare_payload();
+
+    app.on_http(req.move(), [this, buy_xrp](auto& ctx) {
+        // check http status code
+        if (ctx.res.result() != Belle::Status::ok)
+        {
+            // print the response status code and reason
+            std::cerr << "Error: " << ctx.res.result_int() << " " << ctx.res.reason()
+                      << "\n\n";
+            return;
+        }
+        // debug : print the response headers and body
+        DEBUG_ALWAYS("Request response " << ctx.res.body());
+//        if (buy_xrp)
+//            this->ledger_book_buy_xrp(std::move(ctx.res.body()));
+//        else
+//            this->ledger_book_sell_xrp(std::move(ctx.res.body()));
+    });
+
+    // save the number of requests in the queue
+    auto total = app.queue().size();
+
+    // start the client and save the number of completed requests
+    auto completed = app.connect();
+    DEBUG_ONLY("Completed " << completed);
+}
+#endif

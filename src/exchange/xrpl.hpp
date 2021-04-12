@@ -5,10 +5,11 @@
 #include <ripple/protocol/KeyType.h>
 
 // ----------------------------------------------------------------------------
-bool make_xrp_payment(
+std::string make_xrp_payment(
         ripple::KeyType keyType,
-        std::string secret_seed,
-        std::string public_address,
+        std::string from_seed,
+        std::string from_address,
+        int32_t from_sequence,
         std::string dest_address,
-        int dest_tag,
-        int amount_drops);
+        int32_t dest_tag,
+        int64_t amount_drops);

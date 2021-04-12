@@ -20,4 +20,5 @@ class bitstamp_network : public exchange
 public:
     ~bitstamp_network() override {}
     bool can_send(currency &c, exchange *dest) override;
+    bool make_payment(currency &c, basic_account *src, basic_account *dest) override;
 };

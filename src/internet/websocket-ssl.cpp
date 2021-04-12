@@ -34,7 +34,7 @@
 namespace net {
 
     // Report a failure
-    void msg_fail(beast::error_code ec, char const* what)
+    void msg_fail(boost::beast::error_code ec, char const* what)
     {
         std::cerr << what << ": " << ec.message() << "\n";
     }

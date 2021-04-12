@@ -23,18 +23,21 @@ struct basic_account {
     std::vector<currency> currencies_;
     std::shared_ptr<exchange> network_;
 };
+// For compatibility with Qt Variant and Signals/Slots
+Q_DECLARE_METATYPE(basic_account*)
 
 struct ledger_wallet : public basic_account {
     secure_string  name_;
     secure_string  public_;
     secure_string  private_;
     int64_t        tag_;
+    int32_t        sequence_;
     wallet_widget *widget_;
     bool           testnet_;
 };
 
-// To ensure Qt can emit signals of this type
-Q_DECLARE_METATYPE(ledger_wallet)
+// For compatibility with Qt Variant and Signals/Slots
+Q_DECLARE_METATYPE(ledger_wallet*)
 
 // ----------------------------------------------------------------------------
 struct bitstamp_account : public ledger_wallet {

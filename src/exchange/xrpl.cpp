@@ -15,11 +15,17 @@
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/jss.h>
 
+#ifndef DEBUG_ONLY
+# define DEBUG_ONLY(x)
+# define DEBUG_ALWAYS(x) { \
+    std::stringstream temp; temp << x; \
+    std::cout << temp.str() << std::endl; }
+#endif
+
 // ----------------------------------------------------------------------------
 std::string serialize(ripple::STTx const& tx)
 {
     using namespace ripple;
-
     return strHex(tx.getSerializer().peekData());
 }
 
@@ -27,9 +33,7 @@ std::string serialize(ripple::STTx const& tx)
 std::shared_ptr<ripple::STTx const> deserialize(std::string blob)
 {
     using namespace ripple;
-
     auto ret{strUnHex(blob)};
-
     if (!ret.has_value() || ret.get_ptr()->size() == 0)
         Throw<std::runtime_error>("transaction not valid hex");
 
@@ -39,26 +43,31 @@ std::shared_ptr<ripple::STTx const> deserialize(std::string blob)
 }
 
 // ----------------------------------------------------------------------------
-bool make_xrp_payment(
+//#define DEBUG_TX_SIGN
+
+std::string make_xrp_payment(
         ripple::KeyType keyType,
-        std::string secret_seed,
-        std::string public_address,
+        std::string from_seed,
+        std::string from_address,
+        int32_t from_sequence,
         std::string dest_address,
-        int dest_tag,
-        int amount_drops)
+        int32_t dest_tag,
+        int64_t amount_drops)
 {
     using namespace ripple;
     //
-    auto const seed = parseGenericSeed(secret_seed);
+    auto const seed = parseGenericSeed(from_seed);
     assert(seed);
     auto const keypair = generateKeyPair(keyType, *seed);
     auto const id = calcAccountID(keypair.first);
-    assert(toBase58(id) == public_address);
-    //
+    assert(toBase58(id) == from_address);
+
+#ifdef DEBUG_TX_SIGN_SHOW_SECRET
     std::cout << std::endl
-              << to_string(keyType) << " secret \"" << secret_seed
-              << "\" generates secret key \"" << toBase58(*seed) << "\" and public key \""
+              << to_string(keyType) << /*" secret \"" << secret_seed
+              << "\" generates secret key \"" << toBase58(*seed) << */"\" and public key \""
               << toBase58(id) << std::endl;
+#endif
 
     auto const destination = parseBase58<AccountID>(dest_address);
     assert(destination);
@@ -68,54 +77,27 @@ bool make_xrp_payment(
         obj[sfFee] = STAmount{100};
         obj[sfFlags] = tfFullyCanonicalSig;
         obj[sfSigningPubKey] = keypair.first.slice();
+        obj[sfSequence] = from_sequence;
         // Payment-specific fields
         obj[sfDestination] = *destination;
         obj[sfDestinationTag] = dest_tag;
         obj[sfAmount] = STAmount(XRPAmount(amount_drops)); // drops?
-        obj[sfSendMax] = STAmount(XRPAmount(amount_drops)); // drops?
     });
 
-    std::cout << "\nBefore signing: \n"
+    DEBUG_ONLY("Before signing: \n"
               << noopTx.getJson(JsonOptions::none).toStyledString() << std::endl
-              << "Serialized: " << noopTx.getJson(JsonOptions::none, true)[jss::tx]
-              << std::endl;
+              << "Serialized: " << noopTx.getJson(JsonOptions::none, true)[jss::tx]);
 
     noopTx.sign(keypair.first, keypair.second);
 
     auto const serialized = serialize(noopTx);
+
+#ifdef DEBUG_TX_SIGN
     std::cout << "\nAfter signing: \n"
-              << noopTx.getJson(JsonOptions::none).toStyledString() << std::endl
-              << "Serialized: " << serialized << std::endl;
+        << noopTx.getJson(JsonOptions::none).toStyledString() << std::endl
+        << "Serialized: " << serialized << std::endl;
+#endif
 
-    auto const deserialized = deserialize(serialized);
-    assert(deserialized);
-    assert(deserialized->getTransactionID() == noopTx.getTransactionID());
-    std::cout << "Deserialized: "
-              << deserialized->getJson(JsonOptions::none).toStyledString() << std::endl;
-
-    auto const check1 = noopTx.checkSign(STTx::RequireFullyCanonicalSig::no);
-
-    std::cout << "Check 1: " << (check1.first ? "Good" : "Bad!") << std::endl;
-    assert(check1.first);
-
-    // Use the function primitives, which are hidden by the `STTx`
-    // interface, to check the signature again and verify that
-    // `STTx` is working properly.
-    auto const& signatureSlice = noopTx[sfTxnSignature];
-    Blob const data = [&] {
-        // This is a copy of the static `getSigningData` function body
-        // which is needed by `verify`.
-        Serializer s;
-        s.add32(HashPrefix::txSign);
-        noopTx.addWithoutSigningFields(s);
-        return s.getData();
-    }();
-
-    // STTx::checkSign calls `verify` indirectly via `checkSingleSign`
-    auto const check2 = verify(keypair.first, makeSlice(data), signatureSlice, true);
-
-    std::cout << "Check 2: " << (check2 ? "Good" : "Bad!") << std::endl;
-
-    return check1.first && check2;
+    return serialized;
 }
 
