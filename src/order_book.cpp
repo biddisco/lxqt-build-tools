@@ -27,7 +27,7 @@
 //
 #include "order_book.hpp"
 
-bool startswith(const std::string_view str, const std::string& sub)
+bool startswith(std::string_view str, std::string_view sub)
 {
     // rev search - pos=0, limits search to pos or earlier
     // equivalent to if data.startswith(...)
@@ -45,8 +45,6 @@ bool startswith(const std::string_view str, const std::string& sub)
 // ----------------------------------------------------------------------------
 //#define GROX_ARBITRAGE_TEST_MODE 0.005
 
-bool startswith(const std::string_view str, const std::string& sub);
-
 // ----------------------------------------------------------------------------
 // Base order book class provides access to top bids/asks
 // plotting and other representations of the orders
@@ -60,24 +58,26 @@ order_book_base::order_book_base(OrderBookPlot *obp, bool secondaxis)
 #endif
     OrderBookPlot_ = obp;
     //
-    prev_xmin = 0;
-    prev_xmax = 0;
-    prev_ymax = 0;
+    for (int i=0; i<2; i++) {
+        prev_xmin[i] = 0;
+        prev_xmax[i] = 0;
+        prev_ymax[i] = 0;
+    }
     //
     bid_curve_ = new OrderBookCurve();
     ask_curve_ = new OrderBookCurve();
     //
     if (secondaxis)
     {
-        bid_curve_->setSegmentInfo(0, 100, Qt::darkYellow, 3);
-        ask_curve_->setSegmentInfo(0, 100, Qt::darkMagenta, 3);
+        bid_curve_->setSegmentInfo(0, 0, Qt::darkYellow, 3);
+        ask_curve_->setSegmentInfo(0, 0, Qt::darkMagenta, 3);
         bid_curve_->setYAxis(QwtPlot::yRight);
         ask_curve_->setYAxis(QwtPlot::yRight);
     }
     else
     {
-        bid_curve_->setSegmentInfo(0, 100, Qt::green, 3);
-        ask_curve_->setSegmentInfo(0, 100, Qt::red, 3);
+        bid_curve_->setSegmentInfo(0, 0, Qt::green, 3);
+        ask_curve_->setSegmentInfo(0, 0, Qt::red, 3);
         bid_curve_->setYAxis(QwtPlot::yLeft);
         ask_curve_->setYAxis(QwtPlot::yLeft);
     }
@@ -94,41 +94,51 @@ order_book_base::~order_book_base()
     //delete ask_curve_;
 }
 
-void order_book_base::update_graph_limits()
+void order_book_base::update_graph_limits(bool primary)
 {
+    if (asks.rate.empty() || bids.rate.empty()) return;
+    double scale  = primary ? 0.25 : 0.1;
+    double tscale = primary ? 25 : 10;
+    int index = primary ? 0 : 1;
+
     // pick x min max limits so they don't jump around constantly
     double xrange = asks.rate.back() - bids.rate.back();
-    double xscale = 0.25 * std::pow(10, static_cast<int>(std::log10(xrange)));
+    double xscale = scale * std::pow(10, static_cast<int>(std::log10(xrange)));
     double xmin = std::floor(bids.rate.back() / xscale) * xscale;
     double xmax = std::ceil(asks.rate.back() / xscale) * xscale;
     //
     // pick y min max limits so they don't jump around constantly
     double yrange = std::max(bids.total.back(), asks.total.back());
-    double yscale = 0.25 * std::pow(10, static_cast<int64_t>(std::log10(yrange)));
+    double yscale = scale * std::pow(10, static_cast<int64_t>(std::log10(yrange)));
     double ymin = 0.0;
     double ymax = (std::ceil(yrange / yscale)) * yscale;
     //
     static bool first_time = true;
     if (first_time)
     {
-        prev_xmin = xmin;
-        prev_xmax = xmax;
-        prev_ymax = ymax;
+        prev_xmin[index] = xmin;
+        prev_xmax[index] = xmax;
+        prev_ymax[index] = ymax;
         first_time = false;
     }
     else
     {
-        double x1 = (xmin - prev_xmin) / 50.0;
-        double x2 = (prev_xmax - xmax) / 50.0;
-        double y2 = (prev_ymax - ymax) / 50.0;
-        prev_xmin += x1;
-        prev_xmax -= x2;
-        prev_ymax -= y2;
+        double x1 = (xmin - prev_xmin[index]) / tscale;
+        double x2 = (prev_xmax[index] - xmax) / tscale;
+        double y2 = (prev_ymax[index] - ymax) / tscale;
+        prev_xmin[index] += x1;
+        prev_xmax[index] -= x2;
+        prev_ymax[index] -= y2;
     }
     //
-    OrderBookPlot_->setAxisScale(QwtPlot::xBottom, prev_xmin, prev_xmax);
-    OrderBookPlot_->setAxisScale(QwtPlot::yLeft, ymin, prev_ymax);
-    OrderBookPlot_->setAxisScale(QwtPlot::yRight, ymin, prev_ymax / 5.0);
+    if (primary) {
+        OrderBookPlot_->setAxisScale(QwtPlot::xBottom, prev_xmin[index], prev_xmax[index]);
+        OrderBookPlot_->setAxisScale(QwtPlot::yLeft, ymin, prev_ymax[index]);
+    }
+    else {
+        OrderBookPlot_->setAxisScale(QwtPlot::xBottom, prev_xmin[index], prev_xmax[index]);
+        OrderBookPlot_->setAxisScale(QwtPlot::yRight, ymin, prev_ymax[index]);
+    }
 }
 
 // produces a simple string representation of the order book
@@ -380,10 +390,9 @@ bool bitstamp_order_book::accept_json_bitstamp(std::string_view data)
     // push this data into the graph object
     bid_curve_->setRawSamples_locked(bids.rate, bids.total);
     ask_curve_->setRawSamples_locked(asks.rate, asks.total);
+    update_graph_limits(true);
     //
     order_text = order_book_string();
-    //
-    update_graph_limits();
     return true;
 }
 
@@ -558,6 +567,7 @@ void xrpl_order_book::ledger_map_to_order_book()
     // push this data into the graph object
     bid_curve_->setRawSamples_locked(bids.rate, bids.total);
     ask_curve_->setRawSamples_locked(asks.rate, asks.total);
+    update_graph_limits(false);
     //
     order_text = order_book_string();
 }

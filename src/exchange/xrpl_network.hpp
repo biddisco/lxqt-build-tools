@@ -5,9 +5,9 @@
 //
 #include <string>
 //
-#include "src/internet/https-async.hpp"
-#include "src/internet/websocket-ssl.hpp"
-#include "src/internet/evp-encrypt.hpp"
+#include "src/network/https-async.hpp"
+#include "src/network/websocket-ssl.hpp"
+#include "src/network/evp-encrypt.hpp"
 //
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
@@ -36,7 +36,6 @@ private:
 
     bool testnet_;
     xrpl_order_book *orderbook_;
-//    OrderBookPlot * plot_;
     std::vector<ledger_wallet> subscribed_wallets_;
 
     // ---------------------------------------
@@ -69,7 +68,7 @@ private:
 
 public:
     // ---------------------------------------
-    // singleton acces to network/testnet
+    // singleton access to network/testnet
     // ---------------------------------------
     static std::shared_ptr<exchange> get_xrpl_instance() {
         static std::shared_ptr<exchange> xrpl_ptr = nullptr;
@@ -93,7 +92,7 @@ public:
     // constructor/destructor
     // ---------------------------------------
     xrpl_network(bool testnet);
-    ~xrpl_network() override {}
+    ~xrpl_network() override;
     //
     void set_plot(OrderBookPlot * obp);
     //
@@ -108,11 +107,11 @@ public:
     //
     bool can_send(currency &/*c*/, exchange *dest) override;
     //
-    xrpl_order_book *get_orderbook();
+    const xrpl_order_book &get_orderbook() const;
     //
-    void connect() override;
+    void connect(net::contexts &io_contexts) override;
     //
-    void disconnect();
+    void disconnect() override;
     //
     void subscribe_orderbook(net::contexts &io_contexts);
     //
@@ -121,9 +120,9 @@ public:
     void add_wallet(const ledger_wallet &w);
 
     // ----------------------------------------------------------------------------
-    static void new_order_data(xrpl_network* nw, std::string_view data);
+    static void new_order_data(xrpl_network* nw, std::string_view);
     // ----------------------------------------------------------------------------
-    static void new_account_data(xrpl_network* nw, std::string_view data);
+    static void new_account_data(xrpl_network* nw, std::string_view);
 
     // ----------------------------------------------------------------------------
     void update_balance(std::string_view addr, double oldb, double newb);
@@ -139,9 +138,12 @@ public:
     bool make_payment(currency &c, basic_account *src, basic_account *dest) override;
 
 signals:
+    // Signals are emitted so that the Qt appication/GUI thread can perform
+    // procesing operations that affect Qt/GUI managed items in a thread safe way
+
     // emitted when a currency balance changes
     void update_currency_widget(currency*);
-    // emitted when a wallet is updated with ne balances for multiple currencies
+    // emitted when a wallet is updated with new balances for multiple currencies
     void update_wallet_widget(ledger_wallet*);
     // emitted when new order book data is ready
     void new_order_book_data(QString);

@@ -34,7 +34,7 @@
 
 //#define GROX_TEST_MODE 1
 
-bool startswith(const std::string_view str, const std::string& sub);
+bool startswith(std::string_view str, std::string_view sub);
 //
 constexpr static int bid_index = 0;
 constexpr static int ask_index = 1;
@@ -89,9 +89,9 @@ struct order_book_base
     OrderBookCurve* ask_curve_;
 
     // Graph min/max control
-    double prev_xmin;
-    double prev_xmax;
-    double prev_ymax;
+    double prev_xmin[2];
+    double prev_xmax[2];
+    double prev_ymax[2];
 
     // Text representation of order book
     std::string order_text;
@@ -102,7 +102,7 @@ struct order_book_base
     // clean up
     ~order_book_base();
 
-    void update_graph_limits();
+    void update_graph_limits(bool primary);
 
     // produces a simple string representation of the order book
     // from the bid/ask lists

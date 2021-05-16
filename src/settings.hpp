@@ -5,9 +5,9 @@
 //
 #include <string>
 //
-#include "src/internet/https-async.hpp"
-#include "src/internet/websocket-ssl.hpp"
-#include "src/internet/evp-encrypt.hpp"
+#include "src/network/https-async.hpp"
+#include "src/network/websocket-ssl.hpp"
+#include "src/network/evp-encrypt.hpp"
 //
 #include "order_book.hpp"
 #include "ohlc.hpp"

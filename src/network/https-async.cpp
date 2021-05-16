@@ -23,7 +23,7 @@
 #include <memory>
 #include <string>
 
-#include "src/internet/https-async.hpp"
+#include "src/network/https-async.hpp"
 
 //------------------------------------------------------------------------------
 

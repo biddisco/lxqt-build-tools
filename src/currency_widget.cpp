@@ -68,6 +68,15 @@ void currency_widget::show_hide()
     if (ui->controls->isHidden()) {
         ui->dest_combo->clear();
         app_settings* app_ini = global_settings();
+
+        // Add bitstamp exchange to transfer list
+        if (network_->can_send(currency_, app_ini->bitstamp.network_.get())) {
+            QVariant v;
+            v.setValue(static_cast<basic_account*>(&app_ini->bitstamp));
+            ui->dest_combo->addItem(QString(app_ini->bitstamp.name_.c_str()), v);
+        }
+
+        // Add xrpl exchange wallets to transfer list
         for (auto & w: app_ini->xrpl_wallets) {
             if (network_->can_send(currency_, w.network_.get())) {
                 QVariant v;

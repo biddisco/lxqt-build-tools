@@ -8,7 +8,7 @@
 #include <iostream>
 #include <string>
 //
-#include "src/internet/evp-encrypt.hpp"
+#include "src/network/evp-encrypt.hpp"
 
 using uuid_string_t = char[256];
 
@@ -20,8 +20,8 @@ static size_t write_call_back(void* contents, size_t size, size_t nmemb, void* u
 
 int main()
 {
-    const std::string api_key = std::getenv("API_KEY") ? std::getenv("API_KEY") : "";
-    const std::string api_secret = std::getenv("API_SEC") ? std::getenv("API_SEC") : "";
+    const std::string api_key = std::getenv("rand2") ? std::getenv("rand2") : "";
+    const std::string api_secret = std::getenv("rand3") ? std::getenv("rand3") : "";
     if (api_key.empty() || api_secret.empty())
     {
         std::cout << "Set ENV vars for API_KEY and APi_SEC " << std::endl;

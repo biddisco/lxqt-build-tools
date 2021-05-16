@@ -70,5 +70,7 @@ void OrderBookCurve::setRawSamples_locked(
     // when we are changing daya
     std::lock_guard<std::mutex> lock(paint_mutex_);
     //
+    m_segStart.front() = 0;
+    m_segFinish.front() = xData.size();
     QwtPlotCurve::setRawSamples(&xData[0], &yData[0], xData.size());
 }

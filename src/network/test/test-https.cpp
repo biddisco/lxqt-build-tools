@@ -28,7 +28,7 @@
 #include <string>
 #include <thread>
 //
-#include "src/internet/https-async.hpp"
+#include "src/network/https-async.hpp"
 
 // Report a failure
 namespace net {

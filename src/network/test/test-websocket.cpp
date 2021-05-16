@@ -19,10 +19,10 @@
 #include <string>
 #include <thread>
 //
-#include "src/internet/websocket-ssl.hpp"
+#include "src/network/websocket-ssl.hpp"
 
 //------------------------------------------------------------------------------
-void new_ticker_data(std::string&& data)
+void new_trade_data(std::string&& data)
 {
     std::cout << "\n\nReceived\n\n" << data << std::endl;
 }
@@ -55,7 +55,7 @@ int main(int argc, char** argv)
     net::contexts contexts;
 
     std::shared_ptr<net::ws::session> session = net::ws::create_session(
-        contexts.ioc, contexts.ctx, host, port, channel, new_ticker_data);
+        contexts.ioc, contexts.ctx, host, port, channel, new_trade_data);
 
     // Run the I/O service on a thread.
     std::thread websocket_thread([&]() {

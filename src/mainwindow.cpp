@@ -15,16 +15,21 @@
 #include "wallet_widget.hpp"
 #include "currency_widget.hpp"
 //
-#include "src/internet/evp-encrypt.hpp"
-#include "src/internet/https-async.hpp"
+#include "src/network/evp-encrypt.hpp"
+#include "src/network/https-async.hpp"
 //
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
 //
 #include "ohlc.hpp"
 #include "settings.hpp"
+#include "date.hpp"
 //
 #include "hdf5.h"
+//
+#include <iostream>
+#include <iomanip>
+#include <ctime>
 //
 #ifndef DEBUG_ONLY
 # define DEBUG_ONLY(x)
@@ -33,25 +38,8 @@
     std::cout << temp.str() << std::endl; }
 #endif
 
-//
-static const std::string bitstamp_https_address = "www.bitstamp.net";
-static const int bitstamp_https_port = 443;
-//
-static const std::string bitstamp_websocket_address = "ws.bitstamp.net";
-static const int bitstamp_websocket_port = 443;
-
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
-
-namespace Belle = OB::Belle;
-void on_http_error(Belle::Client& belle_https_connection)
-{
-  // set the http on error callback
-  belle_https_connection.on_http_error([](auto& ctx)
-  {
-    std::cerr << "Error: " << ctx.ec.message() << "\n\n";
-  });
-}
 
 // ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)
@@ -66,47 +54,53 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     mainwindow = this;
     //
-    repeat_ohlc_ = false;
-    //
     // Create candlestick/volume plots
     //
     CombinedPriceVolumeCharts_ = new CombinedPriceVolumeCharts(this);
     priceAndPatternPlot_ = CombinedPriceVolumeCharts_->priceAndPatternPlot();
     ui.candlestick_layout->addWidget(CombinedPriceVolumeCharts_, 30);
 
-    //
+    // ----------------------------------
     // Create orderbook plot
     //
     obp = new OrderBookPlot(); // std::make_shared<OrderBookPlot>();
     obp->setMinimumSize(384,256);
     //obp->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui.order_plot_layout->addWidget(obp/*.get()*/, 0);
-    bistamp_orderbook_ = new bitstamp_order_book(obp, false);
 
+
+    // ----------------------------------
+    // create bitstamp exchange interface
+    //
+    bitstamp_network_ = std::dynamic_pointer_cast<bitstamp_network>(bitstamp_network::get_instance());
+    bitstamp_network_->set_plot(obp);
+
+    // ----------------------------------
     // create xrp network interfaces
+    // we do not plot the xrp testnet orderbook
+    //
     xrpl_network_ = std::dynamic_pointer_cast<xrpl_network>(xrpl_network::get_xrpl_instance());
     xrpl_testnet_ = std::dynamic_pointer_cast<xrpl_network>(xrpl_network::get_xrpltestnet_instance());
     xrpl_network_->set_plot(obp);
-    //xrpl_testnet_->set_plot(obp);
-    //
+
+    // ----------------------------------
     // setup Qt actions/connections
     //
     createActions();
     createMenus();
-    //
+
+    // ----------------------------------
+    // Load existing candlestick data
     read_hdf5();
-    //
+
+    // ----------------------------------
     // just an experiment to display an image
     //
     // scale pixmap to fit in label's size and keep ratio of pixmap
     QPixmap pix(":/images/xrp.jpg");
-//    pix = pix.scaled(ui.image_label->size(), Qt::KeepAspectRatio);
-//    ui.image_label->setPixmap(pix);
-    //
-    belle_https_bitstamp.address(bitstamp_https_address);
-    belle_https_bitstamp.port(bitstamp_https_port);
-    belle_https_bitstamp.ssl(true);
-    on_http_error(belle_https_bitstamp);
+    // pix = pix.scaled(ui.image_label->size(), Qt::KeepAspectRatio);
+    // ui.image_label->setPixmap(pix);
+
     //
     AdjustingScrollArea *scroll = new AdjustingScrollArea(this);
     scroll->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
@@ -135,6 +129,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         vbox->addWidget(w.widget_);
         // update wallet combo with name
         ui.xrp_acct_combo->addItem(QString(w.name_.c_str()));
+        ui.all_acct_combo->addItem(QString(w.name_.c_str()));
         // updte networks with monitoried wallets
         if (w.testnet_) xrpl_testnet_->add_wallet(w);
         else xrpl_network_->add_wallet(w);
@@ -142,9 +137,10 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     vbox->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
     scroll->setWidgetResizable(true);
     scroll->adjustSize();
-    //
-    //
+
+    // ----------------------------------
     // Subscribe to xrpl events
+    //
     xrpl_network_->subscribe_orderbook(io_contexts);
     xrpl_network_->subscribe_accounts(io_contexts);
     xrpl_testnet_->subscribe_accounts(io_contexts);
@@ -163,7 +159,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 GroxMainWindow::~GroxMainWindow()
 {
     delete CombinedPriceVolumeCharts_;
-    delete bistamp_orderbook_;
     //
 //    xrpl_network_.reset();
 //    xrpl_testnet_.reset();
@@ -177,14 +172,13 @@ void GroxMainWindow::appExitCleanupHandler()
     // call clean up handlers of any components/widgets
     // block here to prevent access of temp buffers that are deleted
     // by the program/qt/etc
-    qDebug() << "websockets: shutdown start";
-    if (ws_trades)
-        ws_trades->shutdown_blocking();
-    if (ws_bidask)
-        ws_bidask->shutdown_blocking();
+    //
+    bitstamp_network_->disconnect();
+    bitstamp_network_.reset();
     //
     xrpl_network_->disconnect();
     xrpl_network_.reset();
+    //
     xrpl_testnet_->disconnect();
     xrpl_testnet_.reset();
     //
@@ -232,32 +226,29 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::createMenus()
 {
+    // to capture ctrl-click on connect button
     ui.connect_button->installEventFilter(this);
 
-//    connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
+    // action for quit (@TODO)
+    // connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
+
+    // button-click : main connect networks start button
     connect(ui.connect_button, SIGNAL(clicked()), this, SLOT(start_websocket()));
 
-    connect(this, SIGNAL(new_order_bitstamp_ui(QString)), ui.order_book_bitstamp,
-        SLOT(setPlainText(QString)));
-
-    connect(this, SIGNAL(update_arbitrage_view(QString)), ui.arbitrage_orders,
-        SLOT(setPlainText(QString)));
-
-    connect(this, SIGNAL(new_order_xrpl_ui(QString)), ui.order_book_xrpl,
-        SLOT(setPlainText(QString)));
-
-    //connect(this, SIGNAL(bitstamp_orderbook_replot()), bistamp_orderbook_->OrderBookPlot_.get(), SLOT(replot()));
-    connect(this, SIGNAL(bitstamp_orderbook_replot()), this, SLOT(capture_image()));
-    connect(this, SIGNAL(ledger_orderbook_replot()),
-            xrpl_network_->get_orderbook()->OrderBookPlot_/*.get()*/, SLOT(replot()));
-
-
-    connect(this, SIGNAL(new_ohlc_data_ui()), this, SLOT(new_ohlc_data()));
-//    connect(this, SIGNAL(new_ledger_data()), this, SLOT(capture_image()));
-
-
+    // button-click : fetch latest account balance data
     connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
+    // when new candlestick data is ready, redo main graph
+    connect(this, SIGNAL(new_ohlc_data_ui()), this, SLOT(new_ohlc_data()));
+
+    // signals emitted from networking thread completion handlers should use
+    // Qt::QueuedConnection to ensure they transfer to Qt main thread
+
+    // orderbook updates from bitstamp network connection
+    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
+            this, SLOT(perform_arbitrage()), Qt::QueuedConnection);
+    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
+            obp, SLOT(update_time_and_replot()), Qt::QueuedConnection);
 
     connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)),
             this, SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
@@ -324,34 +315,6 @@ void GroxMainWindow::execute_usd()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::new_ticker_data(GroxMainWindow* mw, std::string&& data)
-{
-    DEBUG_ONLY("\n\nReceived " << data);
-
-    if (data.rfind("{\"data\":", 0) != 0)
-    {
-        return;
-    }
-    nlohmann::json jdata = json::parse(data);
-    // extract the main subgroup
-    jdata = jdata["data"];
-    DEBUG_ONLY(jdata.dump(4));
-
-    live_trades json_trades = jdata.get<live_trades>();
-
-    // convert json data to trade structs
-    //    live_trades_string json_strings;
-    //    // convert json to vector of structs
-    //    json_strings = jdata.get<live_trades_string>();
-    //    live_trades json_trade(json_strings);
-
-    //    emit candlestickdata(ohlc_vector);
-
-    QString datastring = QString::fromStdString(jdata.dump(4));
-    emit mw->new_ticker_data_ui(datastring);
-}
-
-// ----------------------------------------------------------------------------
 void GroxMainWindow::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
     const std::vector<double>& new_ohlc_volumes)
 {
@@ -413,14 +376,14 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
                 temp.timestamp, temp.open, temp.high, temp.low, temp.close));
             new_ohlc_volumes.push_back(temp.volume);
         }
-        DEBUG_ONLY("Received " << ohlc_strings.size()
+        DEBUG_ALWAYS("Received " << ohlc_strings.size()
                   << " new OHLC samples");
         merge_data(new_ohlc_samples, new_ohlc_volumes);
-
-        if (repeat_ohlc_)
-        {
-            request_new_candlestick_data();
-        }
+        // what is the last sample we currently have
+        auto end_t = static_cast<uint64_t>(ohlc_samples.back().time);
+        std::time_t t(end_t);
+        std::tm tm = *std::localtime(&t);
+        std::cout << "Data merged up to " << std::put_time(&tm, "%F %T") << std::endl;
     }
     catch (std::exception& e)
     {
@@ -449,165 +412,6 @@ void GroxMainWindow::capture_image()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::new_order_data(GroxMainWindow* mw, std::string_view data)
-{
-    DEBUG_ONLY("\n\nReceived " << data << std::endl << std::endl);
-
-    if (mw->bistamp_orderbook_->accept_json_bitstamp(data))
-        emit mw->bitstamp_orderbook_replot();
-
-    //
-    double budget = 100000;
-    std::string arbitrage_string;
-    double test_offset = 0.00;
-    if (mw->ui.arbitrage_test_mode->isChecked()) {
-        try {
-            test_offset = std::stod(mw->ui.arbitrage_test_offset->text().toStdString());
-        }
-        catch (...) {
-            test_offset = 0.00;
-        }
-    }
-
-    //
-    fee_data sell_fee{0.12, 0.0};
-    fee_data buy_fee{0.0, 0.01};
-    //
-    if (mw->ui.enable_arbitrage->isChecked()) {
-        mw->xrpl_network_->get_orderbook()->compute_arbitrage(*mw->bistamp_orderbook_, budget, buy_fee, sell_fee, test_offset, arbitrage_string);
-
-        if (arbitrage_string.size()>0) {
-            QString arb_string = QString::fromStdString(arbitrage_string);
-            emit mw->update_arbitrage_view(arb_string);
-        }
-        else {
-            emit mw->update_arbitrage_view("");
-        }
-    }
-
-    QString datastring = QString::fromStdString(mw->bistamp_orderbook_->order_text);
-    emit mw->new_order_bitstamp_ui(datastring);
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::bitstamp_account_data(std::string&& data)
-{
-    DEBUG_ONLY("Response : " << data);
-    //
-    nlohmann::json jdata = json::parse(data);
-    DEBUG_ONLY(jdata.dump(4));
-    //
-    app_settings* app_ini = global_settings();
-    //
-    currency xrp_bitstamp{
-        "XRP", "", currency_type::xrp,
-        std::stod(jdata["xrp_balance"].get<std::string>()),
-        std::stod(jdata["xrp_available"].get<std::string>()),
-        std::stod(jdata["xrp_reserved"].get<std::string>()),
-        nullptr
-    };
-    add_currency(xrp_bitstamp, app_ini->bitstamp.currencies_);
-
-    if (jdata.contains("usd_balance")) {
-        currency usd_bitstamp{
-            "USD", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::usd_bitstamp,
-            std::stod(jdata["usd_balance"].get<std::string>()),
-            std::stod(jdata["usd_available"].get<std::string>()),
-            std::stod(jdata["usd_reserved"].get<std::string>()),
-            nullptr
-        };
-        add_currency(usd_bitstamp, app_ini->bitstamp.currencies_);
-    }
-
-    if (jdata.contains("eur_balance")) {
-        currency eur_bitstamp{
-            "EUR", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::eur_bitstamp,
-            std::stod(jdata["eur_balance"].get<std::string>()),
-            std::stod(jdata["eur_available"].get<std::string>()),
-            std::stod(jdata["eur_reserved"].get<std::string>()),
-            nullptr
-        };
-        add_currency(eur_bitstamp, app_ini->bitstamp.currencies_);
-    }
-
-    app_ini->bitstamp.widget_->set_data(app_ini->bitstamp);
-}
-
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::bitstamp_request(const std::string &url_path, const std::string &url_query)
-{
-    app_settings* app_ini = global_settings();
-    static std::string const url_host = bitstamp_https_address;
-
-    secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
-    encryption encryptor(app_ini->bitstamp.API_key, randbytes);
-    //
-    std::chrono::milliseconds timestamp =
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch());
-    // setup REST request fields
-    std::string x_auth = "BITSTAMP " + app_ini->bitstamp.API_key;
-    std::string x_auth_nonce = encryptor.generate_uuid_string();
-    std::string x_auth_timestamp = std::to_string(timestamp.count());
-    std::string x_auth_version = "v2";
-    std::string content_type = "application/x-www-form-urlencoded";
-    std::string payload = url_encode("{offset:1}");
-
-    std::string url_encoded = url_encode(url_path + url_query);
-    std::string url_redirected = url_path + url_query;
-    std::string http_method = "POST";
-
-    // full query is signed using Hmac SHA256 algorithm
-    std::string data_to_sign = "";
-    data_to_sign.append(x_auth);
-    data_to_sign.append(http_method);
-    data_to_sign.append(url_host);
-    data_to_sign.append(url_path);
-    data_to_sign.append(url_query);
-    data_to_sign.append(content_type);
-    data_to_sign.append(x_auth_nonce);
-    data_to_sign.append(x_auth_timestamp);
-    data_to_sign.append(x_auth_version);
-    data_to_sign.append(payload);
-    // generated signature
-    auto signed_hmac = encryptor.CalcHmacSHA256(app_ini->bitstamp.API_secret, data_to_sign);
-    assert(signed_hmac.size() == 32);
-    std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
-
-    Belle::Request b_request;
-    b_request = Belle::Request(http::verb::post, url_redirected, 11);
-    b_request.target(url_redirected);
-    b_request.set(http::field::host, url_host);
-    b_request.set(http::field::content_type, content_type);
-    b_request.set("X-Auth", x_auth);
-    b_request.set("X-Auth-Signature", x_auth_signature);
-    b_request.set("X-Auth-Nonce", x_auth_nonce);
-    b_request.set("X-Auth-Timestamp", x_auth_timestamp);
-    b_request.set("X-Auth-Version", x_auth_version);
-    //
-    b_request.body() = payload;
-    b_request.prepare_payload();
-
-
-    belle_https_bitstamp.on_http(/*Belle::Method::post, */b_request, [this](auto& ctx)
-    {
-      // check http status code
-      if (ctx.res.result() != Belle::Status::ok)
-      {
-        // print the response status code and reason
-        std::cerr << "HTTPS Error: "
-                  << ctx.res.result_int()
-                  << " " << ctx.res.reason() << "\n\n";
-        return;
-      }
-      // debug : print the response headers and body
-      DEBUG_ONLY("Request response " << ctx.res.body() << "\n");
-      this->bitstamp_account_data(std::move(ctx.res.body()));
-    });
-}
-
-// ----------------------------------------------------------------------------
 void GroxMainWindow::update_account_balances()
 {
     DEBUG_ONLY("Updating accounts");
@@ -617,85 +421,41 @@ void GroxMainWindow::update_account_balances()
     xrpl_network_->get_all_account_infos();
     xrpl_testnet_->get_all_account_infos();
     //
-//    bitstamp_request("/api/v2/balance/", "");
-//    /*auto completed = */belle_https_bitstamp.connect();
+    bitstamp_network_->request("/api/v2/balance/", "");
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::start_websocket()
+void GroxMainWindow::update_candlestick_data()
 {
-    using namespace std::placeholders;
-    ws_trades = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
-        bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
-        "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
-        "\"live_trades_xrpusd\"}}",
-        std::bind(GroxMainWindow::new_ticker_data, this, _1));
-
-    ws_bidask = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
-        bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
-        "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
-        "\"order_book_xrpusd\"}}",
-        std::bind(GroxMainWindow::new_order_data, this, _1));
-
-    //
-    request_new_candlestick_data();
-    /*auto completed = */
-    belle_https_bitstamp.connect();
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::request_new_candlestick_data(uint64_t /*unused*/)
-{
-    // what is the last sample we currently have
     uint64_t start_t = 0;
+    // what is the last sample we currently have
     if (ohlc_samples.size() > 0)
     {
         start_t = static_cast<uint64_t>(ohlc_samples.back().time);
         DEBUG_ONLY("Data present up until " << start_t);
         start_t += 60;    // next sample is 60s after last
     }
-    //
-    QDateTime currentDateTime = QDateTime::currentDateTimeUtc();
-    uint64_t unixtime = currentDateTime.toTime_t();
-    //
-    uint64_t diff = unixtime - start_t;
-    uint64_t samples = diff / 60;
-    //
-    std::string req;
-    repeat_ohlc_ = false;
-    if (start_t == 0)
-    {
-        req = "/api/v2/ohlc/xrpusd/?step=60&limit=1000";
-    }
-    else
-    {
-        if (samples >= 1000)
-        {
-            DEBUG_ONLY("Limiting request from: " << samples);
-            samples = 1000;
-            repeat_ohlc_ = true;
-        }
-        std::string start = std::to_string(start_t);
-        std::string limit = std::to_string(samples);
-        // send a request for ticker data using the io context thread to make the request
-        req = "/api/v2/ohlc/xrpusd/?step=60&start=" + start + "&limit=" + limit;
-    }
+    std::time_t t(start_t);
+    std::tm tm = *std::localtime(&t);
+    std::cout << "Requesting candlestick data from " << std::put_time(&tm, "%F %T") << std::endl;
 
-    belle_https_bitstamp.on_http(req, [this](auto& ctx)
-    {
-      // check http status code
-      if (ctx.res.result() != Belle::Status::ok)
-      {
-        // print the response status code and reason
-        std::cerr << "HTTPS Error: "
-                  << ctx.res.result_int()
-                  << " " << ctx.res.reason() << "\n\n";
-        return;
-      }
-      // debug : print the response headers and body
-      DEBUG_ONLY("Candlestick response " << ctx.res.body() << "\n");
-      this->receive_ohlc_data(std::move(ctx.res.body()));
+    // @TODO add futures here to make dependency chain simpler
+    bitstamp_network_->request_new_candlestick_data(start_t, [this, start_t](auto& ctx, bool more) {
+        std::time_t t(start_t);
+        std::tm tm = *std::localtime(&t);
+        std::cout << "Received candlestick data from " << std::put_time(&tm, "%F %T") << std::endl;
+        this->receive_ohlc_data(std::move(ctx.res.body()));
+        if (more) {
+            this->update_candlestick_data();
+        }
     });
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::start_websocket()
+{
+    bitstamp_network_->connect(io_contexts);
+    update_candlestick_data();
 }
 
 // ----------------------------------------------------------------------------
@@ -927,3 +687,38 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
 }
 
 // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+void GroxMainWindow::perform_arbitrage()
+{
+    double budget = 100000;
+    std::string arbitrage_string;
+    double test_offset = 0.00;
+    if (ui.arbitrage_test_mode->isChecked()) {
+        try {
+            test_offset = std::stod(ui.arbitrage_test_offset->text().toStdString());
+        }
+        catch (...) {
+            test_offset = 0.00;
+        }
+    }
+
+    //
+    fee_data sell_fee{0.12, 0.0};
+    fee_data buy_fee{0.0, 0.01};
+    //
+    if (ui.enable_arbitrage->isChecked())
+    {
+        xrpl_network_->get_orderbook().compute_arbitrage(bitstamp_network_->get_orderbook(),
+            budget, buy_fee, sell_fee, test_offset, arbitrage_string);
+
+        if (arbitrage_string.size()>0) {
+            QString arb_string = QString::fromStdString(arbitrage_string);
+            ui.arbitrage_orders->setPlainText(arb_string);
+        }
+        else {
+            ui.arbitrage_orders->setPlainText("");
+        }
+    }
+    QString datastring = QString::fromStdString(bitstamp_network_->get_orderbook().order_text);
+    ui.order_book_bitstamp->setPlainText(datastring);
+}

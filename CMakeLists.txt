@@ -67,7 +67,8 @@ find_package(
 )
 find_package(Boost REQUIRED system unit_test_framework)
 find_package(OpenSSL REQUIRED)
-find_package(HDF5 REQUIRED COMPONENTS C)
+find_package(MPI  REQUIRED COMPONENTS CXX) # needed by hdf5 if compiled with defaults
+find_package(HDF5 REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
 find_package(ZLIB)
 
 # ------------------------------------------------------------------------------
@@ -133,10 +134,10 @@ set(GROX_SRC
     src/mainwindow.cpp
     src/password_dialog.cpp
     #
-    src/internet/evp-encrypt.cpp
+    src/network/evp-encrypt.cpp
     #
-    src/internet/websocket-ssl.cpp
-    src/internet/https-async.cpp
+    src/network/websocket-ssl.cpp
+    src/network/https-async.cpp
     #
     src/currency.cpp
     src/ohlc.cpp
@@ -263,6 +264,7 @@ target_link_libraries(
          Qt5::Svg
          Qt5::Concurrent
          ${Boost_LIBRARIES}
+         MPI::MPI_CXX
          ${HDF5_LIBRARIES}
          range-v3
          ${STD_FILESYSTEM_LIB}
@@ -275,7 +277,7 @@ target_link_libraries(
 # ---------------------------------------------------
 # test websocket code
 # ---------------------------------------------------
-set(WS_SRC src/internet/websocket-ssl.cpp src/internet/test/test-websocket.cpp)
+set(WS_SRC src/network/websocket-ssl.cpp src/network/test/test-websocket.cpp)
 
 add_executable(test-websocket ${WS_SRC})
 
@@ -288,7 +290,7 @@ target_link_libraries(
 # ---------------------------------------------------
 # test https code
 # ---------------------------------------------------
-set(HTTPS_SRC src/internet/https-async.cpp src/internet/test/test-https.cpp)
+set(HTTPS_SRC src/network/https-async.cpp src/network/test/test-https.cpp)
 
 add_executable(test-https ${HTTPS_SRC})
 
@@ -299,8 +301,8 @@ target_link_libraries(test-https PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL pthread)
 # ---------------------------------------------------
 # test Token authentication
 # ---------------------------------------------------
-set(LOGIN_SRC src/internet/test/test-login.cpp src/internet/https-async.cpp
-              src/internet/evp-encrypt.cpp
+set(LOGIN_SRC src/network/test/test-login.cpp src/network/https-async.cpp
+              src/network/evp-encrypt.cpp
 )
 add_executable(test-login ${LOGIN_SRC})
 
@@ -317,7 +319,7 @@ target_compile_definitions(
 # ---------------------------------------------------
 # Bitstamp official example
 # ---------------------------------------------------
-set(BITSTAMP_SRC src/internet/test/bitstamp-demo.cpp src/internet/evp-encrypt.cpp)
+set(BITSTAMP_SRC src/network/test/bitstamp-demo.cpp src/network/evp-encrypt.cpp)
 add_executable(test-bitstamp ${BITSTAMP_SRC})
 
 target_include_directories(test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS})
@@ -329,7 +331,7 @@ target_link_libraries(
 # ---------------------------------------------------
 # test AES code
 # ---------------------------------------------------
-set(AES256_SRC src/internet/evp-encrypt.cpp src/internet/test/test-aes256.cpp)
+set(AES256_SRC src/network/evp-encrypt.cpp src/network/test/test-aes256.cpp)
 
 add_executable(test-aes256 ${AES256_SRC})
 
@@ -339,7 +341,7 @@ target_link_libraries(test-aes256 PUBLIC OpenSSL::SSL pthread)
 # Ripple transaction signing demo
 # ---------------------------------------------------
 if(TARGET Ripple::xrpl_core)
-  set(SIGN_SRC src/internet/test/ripple-sign-demo.cpp)
+  set(SIGN_SRC src/network/test/ripple-sign-demo.cpp)
   add_executable(test-ripple-signing ${SIGN_SRC})
   target_link_libraries(
     test-ripple-signing PUBLIC Ripple::xrpl_core OpenSSL::SSL pthread
@@ -349,21 +351,21 @@ endif()
 # ---------------------------------------------------
 # belle - client test against bitstamp API
 # ---------------------------------------------------
-add_executable(test-belle-client src/internet/test/test-belle-client.cpp)
+add_executable(test-belle-client src/network/test/test-belle-client.cpp)
 target_include_directories(test-belle-client PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
 target_link_libraries(test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
 
 # ---------------------------------------------------
 # belle - client test against bitstamp API
 # ---------------------------------------------------
-add_executable(test-belle-client-request src/internet/test/test-belle-client-request.cpp)
+add_executable(test-belle-client-request src/network/test/test-belle-client-request.cpp)
 target_include_directories(test-belle-client-request PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
 target_link_libraries(test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
 
 # ---------------------------------------------------
 # belle - websocket test against ripple API
 # ---------------------------------------------------
-add_executable(test-belle-websocket src/internet/test/test-belle-websocket.cpp)
+add_executable(test-belle-websocket src/network/test/test-belle-websocket.cpp)
 target_include_directories(test-belle-websocket PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
 target_link_libraries(test-belle-websocket PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
 

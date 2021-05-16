@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <memory>
 
-#include "src/internet/evp-encrypt.hpp"
+#include "src/network/evp-encrypt.hpp"
 #include "mainwindow.hpp"
 #include "password_dialog.hpp"
 #include "settings.hpp"
@@ -142,9 +142,9 @@ int main(int argc, char* argv[])
     app_settings* app_ini = global_settings();
     QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
     //
-    if (std::getenv("GROX_PASSWORD") != nullptr)
+    if (std::getenv("rand1") != nullptr)
     {
-        app_ini->grox_password = std::getenv("GROX_PASSWORD");
+        app_ini->grox_password = std::getenv("rand1");
     }
     else
     {
@@ -179,6 +179,9 @@ int main(int argc, char* argv[])
         // ---------------------------------------
         // Bitstamp exchange details
         // ---------------------------------------
+        app_ini->bitstamp.network_ = bitstamp_network::get_instance();
+        app_ini->bitstamp.name_    = "Bitstamp";
+
         QByteArray API_user =
             base64_decode(settings.value("EncryptedData/API_user", "").toByteArray());
         app_ini->bitstamp.API_user =

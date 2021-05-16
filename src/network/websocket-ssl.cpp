@@ -27,7 +27,7 @@
 #include <string>
 #include <thread>
 //
-#include "src/internet/websocket-ssl.hpp"
+#include "src/network/websocket-ssl.hpp"
 
 //------------------------------------------------------------------------------
 

@@ -5,15 +5,16 @@
 //
 #include <ripple/protocol/Sign.h>
 //
-#include "src/internet/https-async.hpp"
-#include "src/internet/websocket-ssl.hpp"
-#include "src/internet/evp-encrypt.hpp"
+#include "src/network/https-async.hpp"
+#include "src/network/websocket-ssl.hpp"
+#include "src/network/evp-encrypt.hpp"
 //
-#include "../order_book.hpp"
-#include "../settings.hpp"
-#include "../currency_widget.hpp"
-#include "xrpl_network.hpp"
-#include "xrpl.hpp"
+#include "src/order_book.hpp"
+#include "src/settings.hpp"
+#include "src/currency_widget.hpp"
+#include "src/exchange/xrpl_network.hpp"
+#include "src/exchange/bitstamp.hpp"
+#include "src/exchange/xrpl.hpp"
 //
 //#include <test/jtx.h>
 #include <test/jtx/WSClient.h>
@@ -42,13 +43,21 @@ xrpl_network::xrpl_network(bool testnet) : testnet_(testnet)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::set_plot(OrderBookPlot *obp) {
-//    plot_ = obp;
+xrpl_network::~xrpl_network()
+{
+    qDebug() << "xrpl_network: destructor" << " testnet " << testnet();
+    delete orderbook_;
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::set_plot(OrderBookPlot *obp)
+{
     orderbook_ = new xrpl_order_book(obp, true);
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::testnet() const {
+bool xrpl_network::testnet() const
+{
     return testnet_;
 }
 
@@ -79,22 +88,27 @@ int xrpl_network::dataapi_port() const {
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::can_send(currency &/*c*/, exchange *dest) {
+bool xrpl_network::can_send(currency &c, exchange *dest) {
     // yes to anything if the source is also an xrpl wallet
     if (dynamic_cast<xrpl_network*>(dest)) {
         return dynamic_cast<xrpl_network*>(dest)->testnet()==testnet();
+    }
+    else if (!testnet() && dynamic_cast<bitstamp_network*>(dest)) {
+        if (c.type_==currency_type::xrp || c.type_==currency_type::usd_bitstamp || c.type_==currency_type::eur_bitstamp) {
+            return true;
+        }
     }
     return false;
 }
 
 // ----------------------------------------------------------------------------
-xrpl_order_book *xrpl_network::get_orderbook()
+const xrpl_order_book &xrpl_network::get_orderbook() const
 {
-    return orderbook_;
+    return *orderbook_;
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::connect()
+void xrpl_network::connect(net::contexts &/*io_contexts*/)
 {
     // @TODO - implement something useful here
 }
@@ -102,6 +116,8 @@ void xrpl_network::connect()
 // ----------------------------------------------------------------------------
 void xrpl_network::disconnect()
 {
+    qDebug() << "xrpl_network: websockets: shutdown start" << " testnet " << testnet();
+
     if (ws_orderbook) {
         ws_orderbook->shutdown_blocking();
         ws_orderbook.reset();
@@ -347,7 +363,8 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
     ledger_wallet *to = static_cast<ledger_wallet*>(dest);
     std::cout << "XRPL payment amount " << c.balance_
               << " from " << from->public_
-              << " to " << to->public_ << std::endl;
+              << " to " << to->public_
+              << ((to->tag_!=0) ? "(" + std::to_string(to->tag_) + ")" : "") << std::endl;
 
     std::string signed_tx = make_xrp_payment(
             ripple::KeyType::secp256k1,
@@ -418,6 +435,16 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
 // ----------------------------------------------------------------------------
 // this function not yet working
 #if 0
+
+void on_http_error(OB::Belle::Client& belle_https_connection)
+{
+  // set the http on error callback
+  belle_https_connection.on_http_error([](auto& ctx)
+  {
+    std::cerr << "Error: " << ctx.ec.message() << "\n\n";
+  });
+}
+
 void GroxMainWindow::ledger_order_book(bool buy_xrp)
 {
     // curl command to query : buy xrp for USD.bitstamp
@@ -425,7 +452,7 @@ void GroxMainWindow::ledger_order_book(bool buy_xrp)
     // "{ \"command\": \"subscribe\", \"books\": [ { \"taker_pays\": { \"currency\": \"XRP\" }, \"taker_gets\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true }, { \"taker_gets\": { \"currency\": \"XRP\" }, \"taker_pays\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true } ] }",
 
     // init client with remote address, port, and ssl enabled
-    Belle::Client app{ripple_network_address, ripple_network_port, true};
+    OB::Belle::Client app{ripple_network_address, ripple_network_port, true};
     on_http_error(app);
 /*
 {

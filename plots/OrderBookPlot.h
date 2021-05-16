@@ -27,9 +27,9 @@ public:
     double yData[bid_ask_max];
     OrderBookCurve *plot_curve_;
 
-    void update_time_and_replot();
 
 public Q_SLOTS:
+    void update_time_and_replot();
     void setMode( int );
     void exportPlot();
 

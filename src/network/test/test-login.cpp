@@ -11,8 +11,8 @@
 #include <curl/curl.h>
 #include <uuid/uuid.h>
 //
-#include "src/internet/evp-encrypt.hpp"
-#include "src/internet/https-async.hpp"
+#include "src/network/evp-encrypt.hpp"
+#include "src/network/https-async.hpp"
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -50,8 +50,8 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    const std::string api_key = std::getenv("API_KEY") ? std::getenv("API_KEY") : "";
-    const std::string api_secret = std::getenv("API_SEC") ? std::getenv("API_SEC") : "";
+    const std::string api_key = std::getenv("rand2") ? std::getenv("rand2") : "";
+    const std::string api_secret = std::getenv("rand3") ? std::getenv("rand3") : "";
     if (api_key.empty() || api_secret.empty())
     {
         std::cout << "Set ENV vars for API_KEY and APi_SEC " << std::endl;
