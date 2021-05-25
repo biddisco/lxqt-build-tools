@@ -482,7 +482,7 @@ void xrpl_order_book::ledger_map_to_order_book()
         // the first offer always holds the max funds available
         double funds_avail = offers[0].owner_funds;
         if (funds_avail==-1) {
-            throw std::runtime_error("bid fund tracking error");
+            std::cerr << "Error: " << "bid fund tracking error " << offers[0] << std::endl;
         }
         for (auto &o : offers) {
             // used only in building bid/ask order books

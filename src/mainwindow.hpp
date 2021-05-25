@@ -3,6 +3,7 @@
 #include <QAction>
 #include <QMainWindow>
 #include <QScrollArea>
+#include <QTimer>
 //
 #include <qwt_plot_textlabel.h>
 #include <qwt_plot_marker.h>
@@ -54,8 +55,8 @@ class GroxMainWindow : public QMainWindow
     QVector<QwtOHLCSample> ohlc_samples;
     std::vector<double> ohlc_volumes;
 
-    QwtPlotTextLabel *timelabel_;
-    OrderBookPlot *obp;
+    OrderBookPlot *obp_;
+    QTimer *timer_;
     //
     std::shared_ptr<bitstamp_network> bitstamp_network_;
     std::shared_ptr<xrpl_network> xrpl_network_;
@@ -99,6 +100,8 @@ public slots:
     void execute_xrp();
     void execute_usd();
     void perform_arbitrage();
+    void transaction_event();
+    void on_timer();
 
     // to connect to xrpl ledger signals
     void update_currency_widget(currency*);

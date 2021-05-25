@@ -120,12 +120,14 @@ public:
     void add_wallet(const ledger_wallet &w);
 
     // ----------------------------------------------------------------------------
-    static void new_order_data(xrpl_network* nw, std::string_view);
+    static void new_orderbook_data(xrpl_network* nw, std::string_view);
     // ----------------------------------------------------------------------------
     static void new_account_data(xrpl_network* nw, std::string_view);
 
     // ----------------------------------------------------------------------------
-    void update_balance(std::string_view addr, double oldb, double newb);
+    std::vector<currency>::iterator get_currency(std::string_view addr, currency_type t);
+    void update_XRP_balance(std::string_view addr, double oldb, double newb);
+    void update_IOU_balance(std::string_view addr, const currency &curr);
 
     // Send query to Data API and get balances for all tracked wallets
     void get_all_account_balances();
@@ -141,10 +143,12 @@ signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
     // procesing operations that affect Qt/GUI managed items in a thread safe way
 
-    // emitted when a currency balance changes
+    // emitted when a currency balance changes and GUI needs updating
     void update_currency_widget(currency*);
+
     // emitted when a wallet is updated with new balances for multiple currencies
     void update_wallet_widget(ledger_wallet*);
+
     // emitted when new order book data is ready
     void new_order_book_data(QString);
 };

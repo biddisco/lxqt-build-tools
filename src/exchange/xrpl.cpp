@@ -14,6 +14,8 @@
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/jss.h>
+#include <ripple/protocol/Issue.h>
+#include <ripple/protocol/tokens.h>
 
 #ifndef DEBUG_ONLY
 # define DEBUG_ONLY(x)
@@ -47,12 +49,14 @@ std::shared_ptr<ripple::STTx const> deserialize(std::string blob)
 
 std::string make_xrp_payment(
         ripple::KeyType keyType,
-        std::string from_seed,
-        std::string from_address,
+        const std::string &from_seed,
+        const std::string &from_address,
         int32_t from_sequence,
-        std::string dest_address,
+        const std::string &dest_address,
         int32_t dest_tag,
-        int64_t amount_drops)
+        int64_t amount,
+        const std::string &currency,
+        const std::string &issuer)
 {
     using namespace ripple;
     //
@@ -71,6 +75,11 @@ std::string make_xrp_payment(
 
     auto const destination = parseBase58<AccountID>(dest_address);
     assert(destination);
+    auto const gateway1 = parseBase58<AccountID>(issuer);
+    if (currency!="") {
+        assert(gateway1);
+    }
+
     STTx noopTx(ttPAYMENT, [&](auto& obj) {
         // General transaction fields
         obj[sfAccount] = id;
@@ -81,7 +90,15 @@ std::string make_xrp_payment(
         // Payment-specific fields
         obj[sfDestination] = *destination;
         obj[sfDestinationTag] = dest_tag;
-        obj[sfAmount] = STAmount(XRPAmount(amount_drops)); // drops?
+        if (currency.size()>0) {
+            obj[sfAmount]  = STAmount(Issue(to_currency(currency), *gateway1), amount, -2);
+            // we multiply by 1.002 to allow for IOU fees, and scale the float to int size,
+            // but shift right by the same amount to move the decimal point back to dollars.cents
+            obj[sfSendMax] = STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount*1.002*1E5), -(2+5));
+        }
+        else {
+            obj[sfAmount] = STAmount(XRPAmount(amount)); // drops?
+        }
     });
 
     DEBUG_ONLY("Before signing: \n"

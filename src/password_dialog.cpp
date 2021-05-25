@@ -123,6 +123,7 @@ void password_dialog::remove_wallet()
     if (wallets_.size()>1) {
         auto index = ui.wallets_combo->currentIndex();
         wallets_.erase(wallets_.begin() + index);
+        ui.wallets_combo->removeItem(index);
     }
 }
 

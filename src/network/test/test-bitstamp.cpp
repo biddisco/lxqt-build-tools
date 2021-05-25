@@ -18,8 +18,17 @@ static size_t write_call_back(void* contents, size_t size, size_t nmemb, void* u
     return size * nmemb;
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    // Check command line arguments.
+    if (argc != 3 && argc != 4)
+    {
+        std::cerr << "Usage  : bin/test-login "
+                  << "/api/v2/user_transactions/ "
+                  << "\"?limit=2\"" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     const std::string api_key = std::getenv("rand2") ? std::getenv("rand2") : "";
     const std::string api_secret = std::getenv("rand3") ? std::getenv("rand3") : "";
     if (api_key.empty() || api_secret.empty())
@@ -48,9 +57,9 @@ int main()
     std::string payload = url_encode("{offset:1}");
 
     std::string http_method = "POST";
-    std::string url_host = "www.bitstamp.net";
-    std::string url_path = "/api/v2/user_transactions/";
-    std::string url_query = "";
+    std::string url_host  = "www.bitstamp.net";
+    std::string url_path  = argv[1];    // "/api/v2/user_transactions/";
+    std::string url_query = argv[2];    // "?limit=2";
 
     std::string data_to_sign = "";
     data_to_sign.append(x_auth);

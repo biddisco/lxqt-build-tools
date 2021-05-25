@@ -126,7 +126,7 @@ void aes_decrypt(const byte key[encryption::KEY_SIZE],
     rtext.resize(out_len1 + out_len2);
 }
 
-std::string b2a_hex(char* byte_arr, int n)
+std::string b2a_hex(std::string_view byte_arr, int n)
 {
     const static std::string hex_codes = "0123456789abcdef";
     std::string hex_string;
@@ -166,13 +166,13 @@ std::string generate_random_alphanumeric_string(std::size_t len, std::uint64_t s
     return result;
 }
 
-std::string url_encode(const std::string& value)
+std::string url_encode(std::string_view value)
 {
     std::ostringstream escaped;
     escaped.fill('0');
     escaped << std::hex;
 
-    for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i)
+    for (std::string_view::const_iterator i = value.begin(), n = value.end(); i != n; ++i)
     {
         std::string::value_type c = (*i);
 

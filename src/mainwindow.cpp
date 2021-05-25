@@ -23,7 +23,6 @@
 //
 #include "ohlc.hpp"
 #include "settings.hpp"
-#include "date.hpp"
 //
 #include "hdf5.h"
 //
@@ -63,17 +62,17 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // ----------------------------------
     // Create orderbook plot
     //
-    obp = new OrderBookPlot(); // std::make_shared<OrderBookPlot>();
-    obp->setMinimumSize(384,256);
-    //obp->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    ui.order_plot_layout->addWidget(obp/*.get()*/, 0);
+    obp_ = new OrderBookPlot(); // std::make_shared<OrderBookPlot>();
+    obp_->setMinimumSize(384,256);
+    //obp_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    ui.order_plot_layout->addWidget(obp_/*.get()*/, 0);
 
 
     // ----------------------------------
     // create bitstamp exchange interface
     //
     bitstamp_network_ = std::dynamic_pointer_cast<bitstamp_network>(bitstamp_network::get_instance());
-    bitstamp_network_->set_plot(obp);
+    bitstamp_network_->set_plot(obp_);
 
     // ----------------------------------
     // create xrp network interfaces
@@ -81,7 +80,11 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     xrpl_network_ = std::dynamic_pointer_cast<xrpl_network>(xrpl_network::get_xrpl_instance());
     xrpl_testnet_ = std::dynamic_pointer_cast<xrpl_network>(xrpl_network::get_xrpltestnet_instance());
-    xrpl_network_->set_plot(obp);
+    xrpl_network_->set_plot(obp_);
+
+    // timer will fire once each time it is reset
+    timer_ = new QTimer(this);
+    timer_->setSingleShot(true);
 
     // ----------------------------------
     // setup Qt actions/connections
@@ -145,24 +148,24 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     xrpl_network_->subscribe_accounts(io_contexts);
     xrpl_testnet_->subscribe_accounts(io_contexts);
 
-    // Run the I/O service on a thread.
-    websocket_thread = std::thread([&]() {
-        // The call will return when the socket is closed.
-        io_contexts.ioc.run();
-    });
-    websocket_thread.detach();
-
+    // Run the I/O service on some threads.
+    for (int i=0; i<2; ++i) {
+        websocket_thread = std::thread([&]() {
+            DEBUG_ONLY("io_contexts run : thread " << std::this_thread::get_id());
+            // The call will return when the socket is closed.
+            io_contexts.ioc.run();
+        });
+        websocket_thread.detach();
+    }
     update_account_balances();
 }
 
 // ----------------------------------------------------------------------------
 GroxMainWindow::~GroxMainWindow()
 {
+    delete timer_;
     delete CombinedPriceVolumeCharts_;
-    //
-//    xrpl_network_.reset();
-//    xrpl_testnet_.reset();
-    //obp.reset();
+    delete obp_;
 }
 
 // ----------------------------------------------------------------------------
@@ -181,8 +184,11 @@ void GroxMainWindow::appExitCleanupHandler()
     //
     xrpl_testnet_->disconnect();
     xrpl_testnet_.reset();
-    //
     qDebug() << "websockets: shutdown complete";
+
+    // stop boost::asio io_service
+    io_contexts.ioc.stop();
+    qDebug() << "boost::asio: shutdown complete";
 }
 
 // ----------------------------------------------------------------------------
@@ -241,14 +247,27 @@ void GroxMainWindow::createMenus()
     // when new candlestick data is ready, redo main graph
     connect(this, SIGNAL(new_ohlc_data_ui()), this, SLOT(new_ohlc_data()));
 
+    // ---------------------------------------------------------------------
     // signals emitted from networking thread completion handlers should use
     // Qt::QueuedConnection to ensure they transfer to Qt main thread
+    // ---------------------------------------------------------------------
+
+    // used to fetch account balances after N seconds
+    connect(timer_, SIGNAL(timeout()), this, SLOT(on_timer()));
 
     // orderbook updates from bitstamp network connection
     connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
             this, SLOT(perform_arbitrage()), Qt::QueuedConnection);
     connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
-            obp, SLOT(update_time_and_replot()), Qt::QueuedConnection);
+            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
+    // when a transaction takes place we might need to update wallet/records
+    connect(bitstamp_network_.get(), SIGNAL(transaction_event()),
+            this, SLOT(transaction_event()), Qt::QueuedConnection);
+
+    connect(bitstamp_network_.get(), &bitstamp_network::widget_update, this, []() {
+        app_settings* app_ini = global_settings();
+        app_ini->bitstamp.widget_->set_data(app_ini->bitstamp);
+    }, Qt::QueuedConnection);
 
     connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)),
             this, SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
@@ -260,6 +279,10 @@ void GroxMainWindow::createMenus()
             this, SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
     connect(xrpl_network_.get(), SIGNAL(new_order_book_data(QString)),
             ui.order_book_xrpl, SLOT(setPlainText(QString)), Qt::QueuedConnection);
+
+    // when a transaction takes place we might need to update wallet/records
+    connect(xrpl_network_.get(), SIGNAL(transaction_event()),
+            this, SLOT(transaction_event()), Qt::QueuedConnection);
 }
 
 // ----------------------------------------------------------------------------
@@ -402,8 +425,7 @@ void GroxMainWindow::new_ohlc_data()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::capture_image()
 {
-    obp->update_time_and_replot();
-
+    obp_->update_time_and_replot();
     return;
 
 //    auto image = ui.tabWidget->grab();
@@ -415,13 +437,29 @@ void GroxMainWindow::capture_image()
 void GroxMainWindow::update_account_balances()
 {
     DEBUG_ONLY("Updating accounts");
+    //
+    bitstamp_network_->update_account_info();
+    //
     xrpl_network_->get_all_account_balances();
-    xrpl_testnet_->get_all_account_balances();
-    //
     xrpl_network_->get_all_account_infos();
-    xrpl_testnet_->get_all_account_infos();
     //
-    bitstamp_network_->request("/api/v2/balance/", "");
+    if (1) {
+        xrpl_testnet_->get_all_account_balances();
+        xrpl_testnet_->get_all_account_infos();
+    }
+}
+
+// ----------------------------------------------------------------------------
+static std::mutex time_mutex;
+std::string unix_time_to_calendar_time(uint64_t unixtime)
+{
+    // we use a mutex here, because std::localtime isn't threadsafe
+    std::lock_guard<std::mutex> lock(time_mutex);
+    std::time_t t(unixtime);
+    std::tm tm = *std::localtime(&t);
+    std::stringstream temp;
+    temp << std::put_time(&tm, "%F %T");
+    return temp.str();
 }
 
 // ----------------------------------------------------------------------------
@@ -432,18 +470,14 @@ void GroxMainWindow::update_candlestick_data()
     if (ohlc_samples.size() > 0)
     {
         start_t = static_cast<uint64_t>(ohlc_samples.back().time);
-        DEBUG_ONLY("Data present up until " << start_t);
+        DEBUG_ALWAYS("Data present up until " << unix_time_to_calendar_time(start_t));
         start_t += 60;    // next sample is 60s after last
     }
-    std::time_t t(start_t);
-    std::tm tm = *std::localtime(&t);
-    std::cout << "Requesting candlestick data from " << std::put_time(&tm, "%F %T") << std::endl;
+    std::cout << "Requesting candlestick data from " << unix_time_to_calendar_time(start_t) << std::endl;
 
     // @TODO add futures here to make dependency chain simpler
     bitstamp_network_->request_new_candlestick_data(start_t, [this, start_t](auto& ctx, bool more) {
-        std::time_t t(start_t);
-        std::tm tm = *std::localtime(&t);
-        std::cout << "Received candlestick data from " << std::put_time(&tm, "%F %T") << std::endl;
+        std::cout << "Received candlestick data from " << unix_time_to_calendar_time(start_t) << std::endl;
         this->receive_ohlc_data(std::move(ctx.res.body()));
         if (more) {
             this->update_candlestick_data();
@@ -721,4 +755,18 @@ void GroxMainWindow::perform_arbitrage()
     }
     QString datastring = QString::fromStdString(bitstamp_network_->get_orderbook().order_text);
     ui.order_book_bitstamp->setPlainText(datastring);
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::transaction_event()
+{
+    update_account_balances();
+    // set timer for 5 seconds
+    timer_->start(5000);
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::on_timer()
+{
+    update_account_balances();
 }

@@ -95,21 +95,7 @@ void from_json(const nlohmann::json &j, xrp_amount &p)
             issuer = j.at("issuer").get< std::string >();
         }
         //
-        if (currency=="XRP") {
-            p.currency = currency_type::xrp;
-        }
-        else if (currency=="USD" && issuer=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
-            p.currency = currency_type::usd_bitstamp;
-        }
-        else if (currency=="EUR" && issuer=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
-            p.currency = currency_type::eur_bitstamp;
-        }
-        else if (currency=="USD" && issuer=="rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq") {
-            p.currency = currency_type::usd_gatehub;
-        }
-        else {
-            p.currency = currency_type::other;
-        }
+        p.currency = get_currency_type(currency, issuer);
     }
 }
 

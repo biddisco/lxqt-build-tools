@@ -135,12 +135,32 @@ void xrpl_network::add_wallet(const ledger_wallet &w)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::subscribe_orderbook(net::contexts &io_contexts) {
+void xrpl_network::subscribe_orderbook(net::contexts &io_contexts)
+{
     using namespace std::placeholders;
+    //
+    nlohmann::json command;
+    command["command"] = "subscribe";
+    // buying xrp
+    nlohmann::json buy_xrp;
+    buy_xrp["taker_gets"]["currency"] = "XRP";
+    buy_xrp["taker_pays"]["currency"] = "USD";
+    buy_xrp["taker_pays"]["issuer"] = currency::bitstamp_trust;
+    buy_xrp["snapshot"] = true;
+    // selling xrp
+    nlohmann::json sell_xrp;
+    sell_xrp["taker_pays"]["currency"] = "XRP";
+    sell_xrp["taker_gets"]["currency"] = "USD";
+    sell_xrp["taker_gets"]["issuer"] = currency::bitstamp_trust;
+    sell_xrp["snapshot"] = true;
+    // subscribe to 2 books
+    command["books"] = nlohmann::json::array({buy_xrp, sell_xrp});
+    std::string subscription = command.dump();
+    DEBUG_ONLY("JSON text is : " << subscription);
+
     ws_orderbook = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
-      network_address(), std::to_string(network_port()),
-      "{ \"command\": \"subscribe\", \"books\": [ { \"taker_pays\": { \"currency\": \"XRP\" }, \"taker_gets\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true }, { \"taker_gets\": { \"currency\": \"XRP\" }, \"taker_pays\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true } ] }",
-      std::bind(xrpl_network::new_order_data, this, _1));
+      network_address(), std::to_string(network_port()), subscription,
+      std::bind(xrpl_network::new_orderbook_data, this, _1));
 }
 
 // ----------------------------------------------------------------------------
@@ -158,12 +178,14 @@ void xrpl_network::subscribe_accounts(net::contexts &io_contexts)
 
     ws_accounts = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
       network_address(), std::to_string(network_port()), subscription,
-      std::bind(new_account_data, this, _1));
+      std::bind(xrpl_network::new_account_data, this, _1));
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::new_order_data(xrpl_network* nw, std::string_view data)
+void xrpl_network::new_orderbook_data(xrpl_network* nw, std::string_view data)
 {
+    DEBUG_ONLY("xrpl new_orderbook_data : thread " << std::this_thread::get_id());
+
     if (startswith(data, "{\"result\":")) {
         nw->orderbook_->accept_json_ledger_snapshot(data);
     }
@@ -179,77 +201,150 @@ void xrpl_network::new_order_data(xrpl_network* nw, std::string_view data)
 // ----------------------------------------------------------------------------
 void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
 {
+    DEBUG_ONLY("xrpl account_data : thread " << std::this_thread::get_id());
+    DEBUG_ONLY("Account changes : " << data);
     if (startswith(data, "{\"result\":")) {
         // ignore this, just a subscription ok
         DEBUG_ONLY("Account subscription : " << data);
     }
     else if (startswith(data, "{\"engine_result\":\"tesSUCCESS\"")) {
-        nlohmann::json jdata = json::parse(data)["meta"]["AffectedNodes"];
+        nlohmann::json jdata = json::parse(data);
         DEBUG_ONLY("Account changes : " << jdata.dump(4));
-        for (const auto &j : jdata) {
-            auto m = j["ModifiedNode"];
-            auto f = m["FinalFields"];
-            auto p = m["PreviousFields"];
-            //
-            std::string acct = f["Account"].get<std::string>();
-            double oldb = 1E-6*std::stod(p["Balance"].get<std::string>());
-            double newb = 1E-6*std::stod(f["Balance"].get<std::string>());
-            std::cout << "Acct " << acct << " old balance " << oldb << " new balance " << newb << std::endl;
-            nw->update_balance(acct, oldb, newb);
+        nlohmann::json adata = jdata["meta"]["AffectedNodes"];
+        for (const auto &a : adata) {
+            try {
+                auto m = a["ModifiedNode"];
+                auto f = m["FinalFields"];
+                auto p = m["PreviousFields"];
+                auto b = f["Balance"];
+                double oldb;
+                double newb;
+                //
+                if (f.contains("Account")) {
+                    std::string acct = f["Account"].get<std::string>();
+                    oldb = 1E-6*std::stod(p["Balance"].get<std::string>());
+                    newb = 1E-6*std::stod(b.get<std::string>());
+                    std::cout << "Acct " << acct
+                              << " old balance " << oldb
+                              << " new balance " << newb << std::endl;
+                    nw->update_XRP_balance(acct, oldb, newb);
+                }
+                // is this an IOU balance change?
+                else if (b.contains("issuer") && (b["issuer"].get<std::string>() == "rrrrrrrrrrrrrrrrrrrrBZbvji")) {
+                    currency curr;
+                    auto t              = jdata["transaction"];
+                    std::string fm_acct = t["Account"];
+                    std::string to_acct = t["Destination"];
+                    curr.name_          = b["currency"].get<std::string>();
+                    curr.issuer_        = t["SendMax"]["issuer"].get<std::string>();
+                    curr.balance_       = std::stod(b["value"].get<std::string>());
+                    curr.type_          = get_currency_type(curr.name_, curr.issuer_);
+                    if (to_acct == f["LowLimit"]["issuer"].get<std::string>()) {
+                        std::cout << "Acct " << to_acct
+                                  << " IOU balance change " << curr.balance_ << std::endl;
+                        nw->update_IOU_balance(to_acct, curr);
+                    }
+                    if (fm_acct == f["HighLimit"]["issuer"].get<std::string>()) {
+                        curr.balance_ = -curr.balance_;
+                        std::cout << "Acct " << fm_acct
+                                  << " IOU balance change " << curr.balance_ << std::endl;
+                        nw->update_IOU_balance(fm_acct, curr);
+                    }
+                }
+            }
+            catch (...) {
+                DEBUG_ALWAYS("Account changes : " << data);
+            }
         }
     }
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::update_balance(std::string_view addr, double oldb, double newb)
+std::vector<currency>::iterator xrpl_network::get_currency(std::string_view addr, currency_type t)
 {
     auto it = ranges::find_if(subscribed_wallets_, [addr](ledger_wallet const &w){
         return w.public_ == addr;
     });
     if (it==subscribed_wallets_.end()) {
-        std::cerr << "Balance update did not find acct " << addr << std::endl;
-        return;
+        std::cerr << "get currency did not find acct " << addr << std::endl;
+        return std::vector<currency>::iterator(nullptr);
     }
     auto &c_list = it->currencies_;
-    auto it2 = ranges::find_if(c_list, [](currency const &c){
-        return c.type_ == currency_type::xrp;
+    auto it2 = ranges::find_if(c_list, [t](currency const &c){
+        return c.type_ == t;
     });
     if (it2==c_list.end()) {
-        std::cerr << "Balance update did not find ledger currency" << std::endl;
-        return;
+        std::cerr << "get currency did not find ledger currency" << std::endl;
+        return std::vector<currency>::iterator(nullptr);
     }
-    if (it2->balance_ != oldb) {
-        std::cerr << "Old balance error " << it2->balance_ << " expected " << oldb << std::endl;
+    return it2;
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::update_XRP_balance(std::string_view addr, double oldb, double newb)
+{
+    auto it = get_currency(addr, currency_type::xrp);
+    if (it==std::vector<currency>::iterator(nullptr)) return;
+    //
+    if (it->balance_ != oldb) {
+        std::cerr << "Old balance error " << it->balance_ << " expected " << oldb << std::endl;
     }
     std::cerr << "Balance updated from " << oldb << " to " << newb << std::endl;
-    it2->balance_ = newb;
-    it2->avail_ = newb - it2->reserved_;
+    it->balance_ = newb;
+    it->avail_   = newb - it->reserved_;
 
     // signal GUI to update
-    emit update_currency_widget(&(*it2));
+    emit update_currency_widget(&(*it));
+}
+
+// ----------------------------------------------------------------------------
+// an IOU update sets the new balance directly - it does not add/subtract
+void xrpl_network::update_IOU_balance(std::string_view addr, const currency &curr)
+{
+    auto it = get_currency(addr, curr.type_);
+    if (it==std::vector<currency>::iterator(nullptr)) return;
+    //
+    double oldb = it->balance_;
+    double newb = curr.balance_;
+    std::cerr << "Balance updated from " << oldb << " to " << newb << std::endl;
+    it->balance_ = newb;
+    it->avail_   = newb - it->reserved_;
+
+    // signal GUI to update
+    emit update_currency_widget(&(*it));
 }
 
 // ----------------------------------------------------------------------------
 void xrpl_network::get_all_account_balances()
 {
     for (auto &w : subscribed_wallets_) {
-        std::string target = "/v2/accounts/" + w.public_ + "/balances";
+        auto thread_function = [&]() {
+            OB::Belle::Client new_client(dataapi_address(), dataapi_port(), true);
+            // set the http 'on error' callback
+            new_client.on_http_error([](auto& ctx) {
+              std::cerr << "get_all_account_balances : Error: " << ctx.ec.message() << "\n\n";
+            });
 
-        belle_https_ripple.on_http(target, [this, &w](auto& ctx)
-        {
-          if (ctx.res.result() != OB::Belle::Status::ok)
-          {
-            std::cerr << "Account balance : HTTPS Error: " << ctx.res.result_int()
-                      << " " << ctx.res.reason()
-                      << " - Address Not found? " << w.public_ << "\n";
-            return;
-          }
-          // debug : print the response headers and body
-          DEBUG_ONLY("Ledger response " << ctx.res.body() << "\n");
-          this->handle_account_balance(w, std::move(ctx.res.body()));
-        });
-    }
-    belle_https_ripple.connect();
+            std::string target = "/v2/accounts/" + w.public_ + "/balances";
+
+            new_client.on_http(target, [this, &w](auto& ctx)
+            {
+              if (ctx.res.result() != OB::Belle::Status::ok)
+              {
+                std::cerr << "Account balance : HTTPS Error: " << ctx.res.result_int()
+                          << " " << ctx.res.reason()
+                          << " - Address Not found? " << w.public_ << "\n";
+                return;
+              }
+              // debug : print the response headers and body
+              DEBUG_ONLY("Ledger response " << ctx.res.body() << "\n");
+              this->handle_account_balance(w, std::move(ctx.res.body()));
+            });
+            new_client.connect();
+        };
+        auto https_thread = std::thread(std::move(thread_function));
+        https_thread.detach();
+    };
 }
 
 // ----------------------------------------------------------------------------
@@ -262,11 +357,11 @@ void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
     for (const auto &b : balances) {
         // @TODO, do not hardcode USD
         if (b.currency == currency_type::usd_bitstamp) {
-            currency c{"USD", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::usd_bitstamp, b.value, b.value, 0, nullptr};
+            currency c{"USD", currency::bitstamp_trust, currency_type::usd_bitstamp, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
         }
         else if (b.currency == currency_type::eur_bitstamp) {
-            currency c{"EUR", "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B", currency_type::eur_bitstamp, b.value, b.value, 0, nullptr};
+            currency c{"EUR", currency::bitstamp_trust, currency_type::eur_bitstamp, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
         }
         else if (b.currency == currency_type::xrp) {
@@ -282,63 +377,59 @@ void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
 // ----------------------------------------------------------------------------
 void xrpl_network::get_all_account_infos()
 {
-    /*
-    {
-      "method": "account_info",
-      "params": [
-        {
-          "account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
-          "strict": true,
-          "ledger_index": "current",
-          "queue": true
-        }
-      ]
-    }
-    */
-
     for (auto &w : subscribed_wallets_) {
-        nlohmann::json params;
-        params["account"] = w.public_;
-        params["ledger_index"] = "current";
-        params["strict"] = true;
-        params["queue"] = true;
+        auto thread_function = [&]() {
+            OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
+            // set the http 'on error' callback
+            new_client.on_http_error([](auto& ctx) {
+              std::cerr << "get_all_account_infos : Protocol Error: " << ctx.ec.message() << "\n\n";
+            });
 
-        nlohmann::json content;
-        content["method"] = "account_info";
-        content["params"] = nlohmann::json::array({params});
+            nlohmann::json params;
+            params["account"] = w.public_;
+            params["ledger_index"] = "current";
+            params["strict"] = true;
+            params["queue"] = true;
 
-        using namespace OB;
-        // init an http request object
-        Belle::Request req;
+            nlohmann::json content;
+            content["method"] = "account_info";
+            content["params"] = nlohmann::json::array({params});
 
-        // set the method
-        req.method(Belle::Method::post);
-        req.set(Belle::Header::host, network_address());
-        req.set(Belle::Header::user_agent, "mystery");
-        req.set(Belle::Header::content_type, "application/json");
-        req.set(Belle::Header::accept, "application/json");
-        req.set(Belle::Header::connection, "close");
-        // set the target path
-        req.target("/");
-        req.body() = content.dump();
-        req.prepare_payload();
-        DEBUG_ONLY(line_string << req);
+            using namespace OB;
+            // init an http request object
+            Belle::Request req;
 
-        belle_jsonrpc_network.on_http(req, [this, &w](auto& ctx)
-        {
-          if (ctx.res.result() != OB::Belle::Status::ok)
-          {
-            std::cerr << "account_info : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
-                      << " " << ctx.res.reason()
-                      << "\n";
-            return;
-          }
-          // debug : print the response headers and body
-          DEBUG_ONLY(line_string << "account_info response : " << ctx.res.body());
-          this->handle_account_info(w, std::move(ctx.res.body()));
-        });
-        belle_jsonrpc_network.connect();
-    }
+            // set the method
+            req.method(Belle::Method::post);
+            req.set(Belle::Header::host, network_address());
+            req.set(Belle::Header::user_agent, "mystery");
+            req.set(Belle::Header::content_type, "application/json");
+            req.set(Belle::Header::accept, "application/json");
+            req.set(Belle::Header::connection, "close");
+            // set the target path
+            req.target("/");
+            req.body() = content.dump();
+            req.prepare_payload();
+            DEBUG_ONLY(line_string << req);
+
+            new_client.on_http(req, [this, &w](auto& ctx)
+            {
+              if (ctx.res.result() != OB::Belle::Status::ok)
+              {
+                std::cerr << "account_info : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
+                          << " " << ctx.res.reason()
+                          << "\n";
+                return;
+              }
+              // debug : print the response headers and body
+              DEBUG_ONLY(line_string << "account_info response : " << w.public_ << " : " << ctx.res.body());
+              this->handle_account_info(w, std::move(ctx.res.body()));
+            });
+            new_client.connect();
+        };
+        auto https_thread = std::thread(std::move(thread_function));
+        https_thread.detach();
+    };
 }
 
 // ----------------------------------------------------------------------------
@@ -361,20 +452,40 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
 {
     ledger_wallet *from = static_cast<ledger_wallet*>(src);
     ledger_wallet *to = static_cast<ledger_wallet*>(dest);
-    std::cout << "XRPL payment amount " << c.balance_
-              << " from " << from->public_
-              << " to " << to->public_
-              << ((to->tag_!=0) ? "(" + std::to_string(to->tag_) + ")" : "") << std::endl;
+    std::string signed_tx;
+    // are we sending xrp or an IOU?
+    if (c.type_ == currency_type::xrp) {
+        std::cout << "XRP payment amount " << c.balance_
+                  << " from " << from->public_
+                  << " to " << to->public_
+                  << ((to->tag_!=0) ? "(" + std::to_string(to->tag_) + ")" : "") << std::endl;
 
-    std::string signed_tx = make_xrp_payment(
-            ripple::KeyType::secp256k1,
-            from->private_,
-            from->public_,
-            from->sequence_,
-            to->public_,
-            to->tag_,
-            static_cast<uint64_t>(c.balance_*1000000));
+        signed_tx = make_xrp_payment(
+                ripple::KeyType::secp256k1,
+                from->private_,
+                from->public_,
+                from->sequence_,
+                to->get_receive_address(c).begin(),
+                to->tag_,
+                static_cast<uint64_t>(c.balance_*1000000), "", "");
+    }
+    else {
+        std::cout << "XRP IOU payment amount " << c.balance_
+                  << " " << c.name_
+                  << " from " << from->public_
+                  << " to " << to->public_
+                  << " IOU addr " << to->get_receive_address(c)
+                  << ((to->tag_!=0) ? "(" + std::to_string(to->tag_) + ")" : "") << std::endl;
 
+        signed_tx = make_xrp_payment(
+                ripple::KeyType::secp256k1,
+                from->private_,
+                from->public_,
+                from->sequence_,
+                to->get_receive_address(c).begin(),
+                to->tag_,
+                static_cast<uint64_t>(c.balance_*100), c.name_, c.issuer_);
+    }
     from->sequence_++;
 
     nlohmann::json tx;
@@ -401,22 +512,32 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
     req.prepare_payload();
     DEBUG_ONLY(line_string << req);
 
-    belle_jsonrpc_network.on_http(req, [this](auto& ctx)
-    {
-      if (ctx.res.result() != OB::Belle::Status::ok)
-      {
-        std::cerr << "Make payment : HTTPS Error: " << ctx.res.result_int()
-                  << " " << ctx.res.reason()
-                  << "\n";
-        return;
-      }
-      // debug : print the response headers and body
-      DEBUG_ONLY("Tx submit response " << ctx.res.body() << "\n");
-//      this->handle_account_balance(w, std::move(ctx.res.body()));
-    });
 
-    belle_jsonrpc_network.connect();
+    auto thread_function = [&, req=std::move(req)]() {
+        OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
+        // set the http 'on error' callback
+        new_client.on_http_error([](auto& ctx) {
+          std::cerr << "make_payment : Error: " << ctx.ec.message() << "\n\n";
+        });
 
+        new_client.on_http(req, [this](auto& ctx)
+        {
+          if (ctx.res.result() != OB::Belle::Status::ok)
+          {
+              std::cerr << "Make payment : HTTPS Error: " << ctx.res.result_int()
+                        << " " << ctx.res.reason()
+                        << "\n";
+              return;
+          }
+          // debug : print the response headers and body
+          DEBUG_ONLY("Tx submit response " << ctx.res.body() << "\n");
+          emit transaction_event();
+        });
+
+        new_client.connect();
+    };
+    auto https_thread = std::thread(std::move(thread_function));
+    https_thread.detach();
 
 //    {
 //        using namespace std::chrono_literals;
@@ -433,111 +554,3 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
 }
 
 // ----------------------------------------------------------------------------
-// this function not yet working
-#if 0
-
-void on_http_error(OB::Belle::Client& belle_https_connection)
-{
-  // set the http on error callback
-  belle_https_connection.on_http_error([](auto& ctx)
-  {
-    std::cerr << "Error: " << ctx.ec.message() << "\n\n";
-  });
-}
-
-void GroxMainWindow::ledger_order_book(bool buy_xrp)
-{
-    // curl command to query : buy xrp for USD.bitstamp
-    // curl -H 'Content-Type: application/json' -d '{"method":"book_offers","params":[{"taker_gets":{"currency":"XRP"},"taker_pays":{"currency":"USD","issuer":"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"},"limit":10}]}' https://s1.ripple.com:51234/
-    // "{ \"command\": \"subscribe\", \"books\": [ { \"taker_pays\": { \"currency\": \"XRP\" }, \"taker_gets\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true }, { \"taker_gets\": { \"currency\": \"XRP\" }, \"taker_pays\": { \"currency\": \"USD\", \"issuer\": \"rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B\" }, \"snapshot\": true } ] }",
-
-    // init client with remote address, port, and ssl enabled
-    OB::Belle::Client app{ripple_network_address, ripple_network_port, true};
-    on_http_error(app);
-/*
-{
-  "command": "subscribe",
-  "books": [
-    {
-      "taker_pays": {
-        "currency": "XRP"
-      },
-      "taker_gets": {
-        "currency": "USD",
-        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
-      },
-      "snapshot": true
-    },
-    {
-      "taker_gets": {
-        "currency": "XRP"
-      },
-      "taker_pays": {
-        "currency": "USD",
-        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
-      },
-      "snapshot": true
-    }
-  ]
-}
-*/
-
-    // init an http request object
-    Belle::Request req;
-
-    nlohmann::json content;
-    content["command"] = "subscribe";
-
-    // order to buy XRP : the taker of this offer will pay XRP for my USD
-    nlohmann::json buy;
-    buy["taker_pays"]["currency"] = "XRP";
-    buy["taker_gets"]["currency"] = "USD";
-    buy["taker_gets"]["issuer"]   = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
-    buy["snapshot"] = "true";
-
-    nlohmann::json sell;
-    // order to sell XRP : the taker of this offer will pay USD for my XRP
-    sell["taker_gets"]["currency"] = "XRP";
-    sell["taker_pays"]["currency"] = "USD";
-    sell["taker_pays"]["issuer"]   = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
-    sell["snapshot"] = "true";
-
-    content["books"] = nlohmann::json::array({buy,sell});
-
-    // set the method
-    req.method(Belle::Method::post);
-    req.set(Belle::Header::host, ripple_network_address);
-    req.set(Belle::Header::user_agent, "mystery");
-    req.set(Belle::Header::content_type, "application/json");
-    req.set(Belle::Header::accept, "application/json");
-    req.set(Belle::Header::connection, "close");
-    // set the target path
-    req.target("/");
-    req.body() = content.dump();
-    req.prepare_payload();
-
-    app.on_http(req.move(), [this, buy_xrp](auto& ctx) {
-        // check http status code
-        if (ctx.res.result() != Belle::Status::ok)
-        {
-            // print the response status code and reason
-            std::cerr << "Error: " << ctx.res.result_int() << " " << ctx.res.reason()
-                      << "\n\n";
-            return;
-        }
-        // debug : print the response headers and body
-        DEBUG_ALWAYS("Request response " << ctx.res.body());
-//        if (buy_xrp)
-//            this->ledger_book_buy_xrp(std::move(ctx.res.body()));
-//        else
-//            this->ledger_book_sell_xrp(std::move(ctx.res.body()));
-    });
-
-    // save the number of requests in the queue
-    auto total = app.queue().size();
-
-    // start the client and save the number of completed requests
-    auto completed = app.connect();
-    DEBUG_ONLY("Completed " << completed);
-}
-#endif

@@ -26,7 +26,7 @@ void websocket_subscribe_offers()
     Belle::Request req;
 
     nlohmann::json command;
-    command["commmand"] = "subscribe";
+    command["command"] = "subscribe";
 
     // buying xrp
     nlohmann::json buy_xrp;
@@ -48,6 +48,8 @@ void websocket_subscribe_offers()
 
     nlohmann::json content;
     content["params"] = command;
+
+    std::cout << "JSON text is : " << command << std::endl;
 
     // set the method
     req.method(Belle::Method::post);

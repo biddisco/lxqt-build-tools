@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QString>
+#include <QTimer>
 //
 #include <string>
 //
@@ -22,8 +23,6 @@ private:
     std::shared_ptr<net::ws::session> ws_trades;
     // websocket for bitstamp bid/ask order book
     std::shared_ptr<net::ws::session> ws_bidask;
-    // An https client object for queuing/dispatching requests
-    OB::Belle::Client belle_https_bitstamp;
 
     // orderbook from bitstamp
     bitstamp_order_book *orderbook_;
@@ -35,7 +34,8 @@ public:
     //
     static inline const std::string bitstamp_websocket_address = "ws.bitstamp.net";
     static inline const int bitstamp_websocket_port = 443;
-
+    //
+    using request_callback = std::function<void(std::string&&)>;
 public:
     // ---------------------------------------
     // singleton access to network/testnet
@@ -55,6 +55,7 @@ public:
     //
     void disconnect() override;
 
+    void update_account_info();
     bool can_send(currency &c, exchange *dest) override;
     bool make_payment(currency &c, basic_account *src, basic_account *dest) override;
     //
@@ -63,7 +64,7 @@ public:
     void set_plot(OrderBookPlot *obp);
 
     // ----------------------------------------------------------------------------
-    void request(const std::string &url_path, const std::string &url_query);
+    void account_request(std::string &&url_path, std::string &&url_query, request_callback &&cb);
     //
     void account_data(std::string&&);
 
@@ -75,7 +76,7 @@ public:
     static void new_trade_data(bitstamp_network*, std::string_view);
 
     // function called from websocket subscription to live orderbook data
-    static void new_order_data(bitstamp_network*, std::string_view);
+    static void new_orderbook_data(bitstamp_network*, std::string_view);
 
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
@@ -86,4 +87,11 @@ signals:
 
     // emitted when new
     void new_trade_data_ui(QString);
+
+    // when the wallet widget needs to be updated with new data/currencies
+    void widget_update();
+
+public slots:
+    void timer_event();
+
 };

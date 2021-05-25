@@ -19,10 +19,6 @@ namespace http = beast::http;
 namespace asio = boost::asio;
 using tcp = asio::ip::tcp;
 
-static std::string const host = "www.bitstamp.net";
-static std::string const redirected = "/api/v2/user_transactions/";
-static std::string const redirected_escaped = "/api/v2/user_transactions/";
-
 // Report a failure
 namespace net {
     void msg_fail(beast::error_code ec, char const* what)
@@ -65,20 +61,18 @@ int main(int argc, char** argv)
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch());
 
-    std::string x_auth = "BITSTAMP " + api_key;
-    std::string x_auth_nonce = encryptor.generate_uuid_string();
-    std::string x_auth_timestamp = std::to_string(timestamp.count());
-    std::string x_auth_version = "v2";
-    std::string content_type = "application/x-www-form-urlencoded";
-    std::string payload = url_encode("{offset:1}");
+    std::string http_method         = "POST";
+    std::string url_host            = "www.bitstamp.net";
+    std::string url_path            = argv[1];    // "/api/v2/user_transactions/";
+    std::string url_query           = argv[2];    // "?limit=2";
+    std::string url_redirected      = url_path;   //+ url_query;
 
-    std::string http_method = "POST";
-    std::string url_host = "www.bitstamp.net";
-    std::string url_path = argv[1];     // "/api/v2/user_transactions/";
-    std::string url_query = argv[2];    //"?limit=2";
-
-    std::string url_encoded = url_encode(url_path + url_query);
-    std::string url_redirected = url_path + url_query;
+    std::string x_auth              = "BITSTAMP " + api_key;
+    std::string x_auth_nonce        = encryptor.generate_uuid_string();
+    std::string x_auth_timestamp    = std::to_string(timestamp.count());
+    std::string x_auth_version      = "v2";
+    std::string content_type        = "application/x-www-form-urlencoded";
+    std::string payload             = url_query.size()>0 ? url_query : url_encode("{offset:1}");
 
     // full query is signed using Hmac SHA256 algorithm
     std::string data_to_sign = "";
@@ -86,25 +80,26 @@ int main(int argc, char** argv)
     data_to_sign.append(http_method);
     data_to_sign.append(url_host);
     data_to_sign.append(url_path);
-    data_to_sign.append(url_query);
+    data_to_sign.append(""); // url_query);
     data_to_sign.append(content_type);
     data_to_sign.append(x_auth_nonce);
     data_to_sign.append(x_auth_timestamp);
     data_to_sign.append(x_auth_version);
     data_to_sign.append(payload);
+
     // generated signature
     auto signed_hmac = encryptor.CalcHmacSHA256(api_secret, data_to_sign);
     assert(signed_hmac.size() == 32);
     std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
 
     http::request<http::string_body> request(http::verb::post, url_redirected, 11);
-    request.set(http::field::host, host);
+    request.set(http::field::host, url_host);
     request.set(http::field::content_type, content_type);
     request.set("X-Auth", x_auth);
-    request.set("X-Auth-Signature", x_auth_signature);
     request.set("X-Auth-Nonce", x_auth_nonce);
     request.set("X-Auth-Timestamp", x_auth_timestamp);
     request.set("X-Auth-Version", x_auth_version);
+    request.set("X-Auth-Signature", x_auth_signature);
     //
     request.body() = payload;
     request.prepare_payload();

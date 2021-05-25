@@ -319,7 +319,7 @@ target_compile_definitions(
 # ---------------------------------------------------
 # Bitstamp official example
 # ---------------------------------------------------
-set(BITSTAMP_SRC src/network/test/bitstamp-demo.cpp src/network/evp-encrypt.cpp)
+set(BITSTAMP_SRC src/network/test/test-bitstamp.cpp src/network/evp-encrypt.cpp)
 add_executable(test-bitstamp ${BITSTAMP_SRC})
 
 target_include_directories(test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS})

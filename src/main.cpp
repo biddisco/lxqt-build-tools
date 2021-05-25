@@ -61,6 +61,11 @@ QByteArray base64_decode(QByteArray ba)
     return QByteArray::fromBase64(ba);
 }
 
+QByteArray base64_decode(const secure_string &s)
+{
+    return QByteArray::fromBase64(QByteArray::fromStdString(s));
+}
+
 secure_string base64_string(QByteArray ba)
 {
     QByteArray bb = QByteArray::fromBase64(ba);
@@ -144,11 +149,13 @@ int main(int argc, char* argv[])
     //
     if (std::getenv("rand1") != nullptr)
     {
-        app_ini->grox_password = std::getenv("rand1");
+        // generate a base64 encoded pw : bash commmand : echo "password" | base64
+        std::string raw = std::getenv("rand1");
+        app_ini->grox_password = base64_decode(raw).toStdString();
     }
     else
     {
-        std::cout << "Please set GROX_PASSWORD environment var" << std::endl;
+        std::cout << "Please set GROX_PASSWORD base64 encoded environment var" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -191,12 +198,19 @@ int main(int argc, char* argv[])
             base64_decode(settings.value("EncryptedData/API_key", "").toByteArray());
         app_ini->bitstamp.API_key =
             encryptor.decrypt(secure_string(API_key.data(), API_key.size()));
+        if (std::getenv("rand2")) {
+            app_ini->bitstamp.API_key = std::getenv("rand2");
+            std::cout << "Using key from ENV" << std::endl;
+        }
         //
         QByteArray API_secret =
             base64_decode(settings.value("EncryptedData/API_secret", "").toByteArray());
         app_ini->bitstamp.API_secret =
             encryptor.decrypt(secure_string(API_secret.data(), API_secret.size()));
-
+        if (std::getenv("rand3")) {
+            app_ini->bitstamp.API_secret = std::getenv("rand3");
+            std::cout << "Using sec from ENV" << std::endl;
+        }
         //
         QByteArray API_tag_ =
             base64_decode(settings.value("EncryptedData/API_desttag", "").toByteArray());
@@ -259,8 +273,8 @@ int main(int argc, char* argv[])
         std::cout << "API_user       : " << app_ini->bitstamp.API_user << std::endl;
         std::cout << "API_key        : " << app_ini->bitstamp.API_key << std::endl;
         std::cout << "API_secret     : " << app_ini->bitstamp.API_secret << std::endl;
-        std::cout << "xrp.tag_    : " << app_ini->bitstamp.tag_ << std::endl;
-        std::cout << "xrp.public_ : " << app_ini->bitstamp.public_ << std::endl;
+        std::cout << "xrp.tag        : " << app_ini->bitstamp.tag_ << std::endl;
+        std::cout << "xrp.public     : " << app_ini->bitstamp.public_ << std::endl;
         for (const auto &w : app_ini->xrpl_wallets) {
             std::cout << "XRP_name       : " << w.name_ << std::endl;
             std::cout << "XRP_public     : " << w.public_ << std::endl;

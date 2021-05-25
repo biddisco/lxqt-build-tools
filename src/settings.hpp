@@ -34,6 +34,8 @@ struct ledger_wallet : public basic_account {
     int32_t        sequence_;
     wallet_widget *widget_;
     bool           testnet_;
+
+    virtual std::string_view get_receive_address(const currency &c) { return public_; }
 };
 
 // For compatibility with Qt Variant and Signals/Slots
@@ -44,6 +46,14 @@ struct bitstamp_account : public ledger_wallet {
     secure_string API_user;
     secure_string API_key;
     secure_string API_secret;
+    //
+    // bitstamp has a different deposit address for IOUs
+    virtual std::string_view get_receive_address(const currency &c) override
+    {
+        if (c.type_ == currency_type::xrp) return public_;
+        if (c.type_ == currency_type::usd_bitstamp) return currency::bitstamp_trust;
+        if (c.type_ == currency_type::eur_bitstamp) return currency::bitstamp_trust;
+    }
 };
 
 

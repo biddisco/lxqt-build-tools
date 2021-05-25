@@ -18,8 +18,12 @@ enum currency_type : int {
     other,
 };
 
+currency_type get_currency_type(std::string_view name, std::string_view issuer);
+
 // ----------------------------------------------------------------------------
 struct currency {
+    static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+    //
     std::string name_;
     std::string issuer_;
     currency_type type_;
@@ -28,6 +32,9 @@ struct currency {
     double reserved_;
     currency_widget *widget_;
 };
+
+std::ostream& operator<<(std::ostream& os, const currency_type &);
+std::ostream& operator<<(std::ostream& os, const currency &);
 
 // To ensure Qt can emit signals of this type
 Q_DECLARE_METATYPE(currency)

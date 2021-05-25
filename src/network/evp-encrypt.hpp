@@ -17,8 +17,8 @@ std::string generate_random_alphanumeric_string(
     std::size_t /*len*/, std::uint64_t /*seed*/);
 
 // encode a URL by escaping necessary chars
-std::string url_encode(const std::string&);
-std::string b2a_hex(char* /*byte_arr*/, int /*n*/);
+std::string url_encode(std::string_view);
+std::string b2a_hex(std::string_view /*byte_arr*/, int /*n*/);
 
 // ------------------------------------------------------------------
 // allocator that cleans up memory
