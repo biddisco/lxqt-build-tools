@@ -10,8 +10,9 @@
 #include "src/network/websocket-ssl.hpp"
 #include "src/network/evp-encrypt.hpp"
 //
-#include "exchange.hpp"
-#include "xrpl_network.hpp"
+#include "src/exchange/exchange.hpp"
+#include "src/exchange/xrpl_network.hpp"
+#include "src/trade_data.hpp"
 
 // ----------------------------------------------------------------------------
 class bitstamp_network : public exchange
@@ -36,6 +37,7 @@ public:
     static inline const int bitstamp_websocket_port = 443;
     //
     using request_callback = std::function<void(std::string&&)>;
+
 public:
     // ---------------------------------------
     // singleton access to network/testnet
@@ -50,6 +52,8 @@ public:
     bitstamp_network();
     ~bitstamp_network() override;
 
+    std::string_view name() override { return "Bitstamp"; }
+
     //
     void connect(net::contexts &io_contexts) override;
     //
@@ -62,6 +66,11 @@ public:
     const bitstamp_order_book &get_orderbook() const;
     //
     void set_plot(OrderBookPlot *obp);
+    //
+    void get_open_trades();
+
+    // place a buy/sell order
+    void place_order(trade_data const &t);
 
     // ----------------------------------------------------------------------------
     void account_request(std::string &&url_path, std::string &&url_query, request_callback &&cb);
@@ -90,6 +99,9 @@ signals:
 
     // when the wallet widget needs to be updated with new data/currencies
     void widget_update();
+
+    // emitted when data about open trades is available
+    void user_trades_updated(QString);
 
 public slots:
     void timer_event();

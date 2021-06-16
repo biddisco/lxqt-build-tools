@@ -14,6 +14,7 @@
 #include "password_dialog.hpp"
 #include "wallet_widget.hpp"
 #include "currency_widget.hpp"
+#include "trade_widget.hpp"
 //
 #include "src/network/evp-encrypt.hpp"
 #include "src/network/https-async.hpp"
@@ -131,7 +132,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         w.widget_->set_data(w);
         vbox->addWidget(w.widget_);
         // update wallet combo with name
-        ui.xrp_acct_combo->addItem(QString(w.name_.c_str()));
         ui.all_acct_combo->addItem(QString(w.name_.c_str()));
         // updte networks with monitoried wallets
         if (w.testnet_) xrpl_testnet_->add_wallet(w);
@@ -158,6 +158,15 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         websocket_thread.detach();
     }
     update_account_balances();
+
+    //
+    // Resize order book to fit monospace text (add 3 chars - scrollbars/etc)
+    //
+    QString myText = "X";
+    QFontMetrics fm(ui.order_book_xrpl->font());
+    int calcWidth = fm.horizontalAdvance(myText)*88;
+    ui.order_book_xrpl->setMinimumWidth(calcWidth);
+    ui.order_book_bitstamp->setMinimumWidth(calcWidth);
 }
 
 // ----------------------------------------------------------------------------
@@ -256,10 +265,18 @@ void GroxMainWindow::createMenus()
     connect(timer_, SIGNAL(timeout()), this, SLOT(on_timer()));
 
     // orderbook updates from bitstamp network connection
+    // 1 Priority, arbitrage, 2 plot update, 3 text update
     connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
             this, SLOT(perform_arbitrage()), Qt::QueuedConnection);
     connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
             obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
+    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
+            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
+
+    // when trades are queried/changed, we must update the GUI
+    connect(bitstamp_network_.get(), SIGNAL(user_trades_updated(QString)),
+            this, SLOT(user_trades_update(QString)), Qt::QueuedConnection);
+
     // when a transaction takes place we might need to update wallet/records
     connect(bitstamp_network_.get(), SIGNAL(transaction_event()),
             this, SLOT(transaction_event()), Qt::QueuedConnection);
@@ -277,8 +294,10 @@ void GroxMainWindow::createMenus()
             this, SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
     connect(xrpl_testnet_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)),
             this, SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
-    connect(xrpl_network_.get(), SIGNAL(new_order_book_data(QString)),
-            ui.order_book_xrpl, SLOT(setPlainText(QString)), Qt::QueuedConnection);
+    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
+            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
+    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
+            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
 
     // when a transaction takes place we might need to update wallet/records
     connect(xrpl_network_.get(), SIGNAL(transaction_event()),
@@ -436,9 +455,10 @@ void GroxMainWindow::capture_image()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::update_account_balances()
 {
-    DEBUG_ONLY("Updating accounts");
+    DEBUG_ALWAYS("Updating accounts");
     //
     bitstamp_network_->update_account_info();
+    bitstamp_network_->get_open_trades();
     //
     xrpl_network_->get_all_account_balances();
     xrpl_network_->get_all_account_infos();
@@ -753,20 +773,85 @@ void GroxMainWindow::perform_arbitrage()
             ui.arbitrage_orders->setPlainText("");
         }
     }
-    QString datastring = QString::fromStdString(bitstamp_network_->get_orderbook().order_text);
-    ui.order_book_bitstamp->setPlainText(datastring);
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::transaction_event()
 {
+    DEBUG_ALWAYS("transaction_event : check balances");
     update_account_balances();
-    // set timer for 5 seconds
+    // set timer for 5 seconds to check again after next ledger close
     timer_->start(5000);
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::on_timer()
 {
+    DEBUG_ALWAYS("on_timer : check balances");
     update_account_balances();
+    timer_->start(5000);
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::orderbook_text_update()
+{
+    QString datastring = QString::fromStdString(bitstamp_network_->get_orderbook().order_text);
+    ui.order_book_bitstamp->setPlainText(datastring);
+
+    datastring = QString::fromStdString(xrpl_network_->get_orderbook().order_text);
+    ui.order_book_xrpl->setPlainText(datastring);
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::user_trades_update(QString data)
+{
+    DEBUG_ONLY(data.toStdString());
+    // Wipe the old order widgets
+    QWidget *old_scroll = ui.orders_group->findChild<QWidget*>("Bitstamp");
+    if (old_scroll) {
+        ui.orders_group->layout()->removeWidget(old_scroll);
+        delete old_scroll;
+    }
+    //
+    AdjustingScrollArea *scroll = new AdjustingScrollArea(this);
+    scroll->setObjectName("Bitstamp");
+    scroll->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    ui.orders_group->layout()->addWidget(scroll);
+    //
+    QFrame *frame = new QFrame(this);
+    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    scroll->setWidget(frame);
+    //
+    QVBoxLayout *vbox = new QVBoxLayout();
+    frame->setLayout(vbox);
+    //
+    std::string temp = data.toStdString();
+    nlohmann::json jdata = json::parse(temp);
+    for (auto& [key, val] : jdata.items())
+    {
+        std::string cs = val["currency_pair"];
+        std::size_t pos = cs.find("/");
+        std::string c1 = cs.substr(0,pos);
+        std::string c2 = cs.substr(pos+1);
+
+        trade_data t{
+            bitstamp_network_,
+            (val["type"] == "1") ? 1 : 0,
+            get_currency_type(c1,""),
+            get_currency_type(c2,""),
+            std::stod(val["amount"].get< std::string >()),
+            std::stod(val["price"].get< std::string >()),
+            val["datetime"]
+        };
+
+        // create a gui widget for the order
+        auto widget_ = new trade_widget(this);
+        widget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+        widget_->set_data(t);
+        vbox->addWidget(widget_);
+    }
+
+    vbox->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
+    scroll->setWidgetResizable(true);
+    scroll->adjustSize();
 }

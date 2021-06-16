@@ -1,0 +1,63 @@
+#include "trade_widget.hpp"
+#include "ui_trade_widget.h"
+
+#include "nlohmann/json.hpp"
+
+trade_widget::trade_widget(QWidget *parent) :
+    QWidget(parent),
+    ui(new Ui::trade_widget)
+{
+    ui->setupUi(this);
+}
+
+trade_widget::trade_widget(std::string_view data, QWidget *parent) :
+    QWidget(parent),
+    ui(new Ui::trade_widget)
+{
+    nlohmann::json jdata = nlohmann::json::parse(data);
+    //
+    ui->setupUi(this);
+    // [{"price": "1.29000", "currency_pair": "XRP/USD", "datetime": "2021-05-30 20:55:34", "amount": "50000.00000000", "type": "1", "id": "1366315662319616"}]
+    ui->network->setText("Bitstamp");
+    ui->currency_get->setText(jdata["currency_pair"].get<std::string>().c_str());
+    ui->currency_pay->setText(jdata["currency_pair"].get<std::string>().c_str());
+    ui->amount_get->setText(jdata["amount"].get<std::string>().c_str());
+    ui->amount_pay->setText(jdata["price"].get<std::string>().c_str());
+    ui->date_time->setText(jdata["datetime"].get<std::string>().c_str());
+}
+
+void trade_widget::set_data(trade_data const &t)
+{
+    std::string temp = t.network_->name().begin();
+    ui->network->setText(QString::fromStdString(temp));
+    bool buy = t.trade_type_==0;
+    if (buy) {
+        QPalette palette = ui->buy_sell->palette();
+        palette.setColor(QPalette::WindowText, QRgb(0x00FF00));
+        ui->buy_sell->setPalette(palette);
+        ui->buy_sell->setText("Buy");
+        //
+        ui->currency_get->setText(to_string(t.currency_get_).begin());
+        ui->currency_pay->setText(to_string(t.currency_pay_).begin());
+        ui->amount_get->setText(std::to_string(t.amount_get_).c_str());
+        ui->amount_pay->setText(std::to_string(t.amount_pay_).c_str());
+    }
+    else {
+        QPalette palette = ui->buy_sell->palette();
+        palette.setColor(QPalette::WindowText, QRgb(0xFF0000));
+        ui->buy_sell->setPalette(palette);
+        ui->buy_sell->setText("Sell");
+        //
+        ui->currency_get->setText(to_string(t.currency_get_).begin());
+        ui->currency_pay->setText(to_string(t.currency_pay_).begin());
+        ui->amount_get->setText(std::to_string(t.amount_get_).c_str());
+        ui->amount_pay->setText(std::to_string(t.amount_pay_).c_str());
+    }
+    ui->date_time->setText(t.datetime_.c_str());
+}
+
+
+trade_widget::~trade_widget()
+{
+    delete ui;
+}

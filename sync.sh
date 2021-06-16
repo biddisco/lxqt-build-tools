@@ -6,6 +6,14 @@ $HOME/update-rsync.sh $HOME/src/xrp/grox/ pi@192.168.1.15:/home/pi/src/grox --de
 
 echo 
 echo "-----------------------------------"
-echo "Updating to old laptop"
+echo "Updating to old laptop (cable)"
 echo "-----------------------------------"
+# RJ45 network cable
+$HOME/update-rsync.sh $HOME/src/xrp/grox/ biddisco@192.168.1.165:/home/biddisco/src/grox --delete
+
+echo 
+echo "-----------------------------------"
+echo "Updating to old laptop (wifi)"
+echo "-----------------------------------"
+# Wifi connection
 $HOME/update-rsync.sh $HOME/src/xrp/grox/ biddisco@192.168.1.112:/home/biddisco/src/grox --delete

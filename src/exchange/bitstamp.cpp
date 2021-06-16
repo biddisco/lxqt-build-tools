@@ -124,6 +124,22 @@ void bitstamp_network::update_account_info()
 }
 
 // ----------------------------------------------------------------------------
+void bitstamp_network::place_order(trade_data const &t)
+{
+
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::get_open_trades()
+{
+    account_request("/api/v2/open_orders/all/", "", [this](std::string &&data) {
+        DEBUG_ONLY("Open Order response:\n" << data);
+        QString sdata(data.c_str());
+        emit user_trades_updated(sdata);
+    });
+}
+
+// ----------------------------------------------------------------------------
 void bitstamp_network::account_request(std::string &&url_path, std::string &&url_query, request_callback &&cb)
 {
     // NB. HTTP POST request uses payload for parameters, not URI/URL

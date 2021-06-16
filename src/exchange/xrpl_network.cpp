@@ -23,23 +23,6 @@
 // ----------------------------------------------------------------------------
 xrpl_network::xrpl_network(bool testnet) : testnet_(testnet)
 {
-    belle_https_ripple.address(dataapi_address());
-    belle_https_ripple.port(dataapi_port());
-    belle_https_ripple.ssl(true);
-    // set the http 'on error' callback
-    belle_https_ripple.on_http_error([](auto& ctx)
-    {
-      std::cerr << "(belle_https_ripple) : Error: " << ctx.ec.message() << "\n\n";
-    });
-
-    belle_jsonrpc_network.address(jsonrpc_address());
-    belle_jsonrpc_network.port(jsonrpc_port());
-    belle_jsonrpc_network.ssl(true);
-    // set the http 'on error' callback
-    belle_jsonrpc_network.on_http_error([](auto& ctx)
-    {
-      std::cerr << "(belle_jsonrpc_network) : Error: " << ctx.ec.message() << "\n\n";
-    });
 }
 
 // ----------------------------------------------------------------------------
@@ -157,6 +140,7 @@ void xrpl_network::subscribe_orderbook(net::contexts &io_contexts)
     command["books"] = nlohmann::json::array({buy_xrp, sell_xrp});
     std::string subscription = command.dump();
     DEBUG_ONLY("JSON text is : " << subscription);
+    DEBUG_ALWAYS("Subscribing to xrpl:XRP/USD orderbook");
 
     ws_orderbook = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
       network_address(), std::to_string(network_port()), subscription,
@@ -174,7 +158,7 @@ void xrpl_network::subscribe_accounts(net::contexts &io_contexts)
     }
     std::string subscription =
             "{ \"command\": \"subscribe\", \"accounts\": [ " + addresses + " ] }";
-    DEBUG_ONLY("Subscribing to account changes for \n" << addresses);
+    DEBUG_ALWAYS("Subscribing to account changes for \n" << addresses);
 
     ws_accounts = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
       network_address(), std::to_string(network_port()), subscription,
@@ -194,8 +178,7 @@ void xrpl_network::new_orderbook_data(xrpl_network* nw, std::string_view data)
     }
 
     // Send signal to mainwindow
-    QString datastring = QString::fromStdString(nw->orderbook_->order_text);
-    emit nw->new_order_book_data(datastring);
+    emit nw->orderbook_changed();
 }
 
 // ----------------------------------------------------------------------------

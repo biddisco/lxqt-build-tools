@@ -12,7 +12,7 @@
 #include "order_book.hpp"
 #include "ohlc.hpp"
 #include "currency.hpp"
-#include "exchange/exchange.hpp"
+#include "src/exchange/exchange.hpp"
 //
 
 class wallet_widget;

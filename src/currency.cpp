@@ -6,23 +6,31 @@
 #include <range/v3/algorithm.hpp>
 #include "currency.hpp"
 
+
 // ----------------------------------------------------------------------------
-std::ostream& operator<<(std::ostream& os, const currency_type &t)
+std::string_view to_string(const currency_type &t)
 {
     switch (t) {
     case xrp:
-        os << "XRP"; break;
+        return "XRP"; break;
     case usd_bitstamp:
-        os << "USD"; break;
+        return "USD"; break;
     case eur_bitstamp:
-        os << "EUR"; break;
+        return "EUR"; break;
     case usd_gatehub:
-        os << "USD"; break;
+        return "USD"; break;
     case other:
-        os << "other"; break;
+        return "other"; break;
     default:
-        os << "Unknown"; break;
+        return "Unknown"; break;
     }
+    return "";
+}
+
+// ----------------------------------------------------------------------------
+std::ostream& operator<<(std::ostream& os, const currency_type &t)
+{
+    os << to_string(t);
     return os;
 }
 
@@ -38,6 +46,9 @@ currency_type get_currency_type(std::string_view name, std::string_view issuer)
 {
     if (name=="XRP") {
         return currency_type::xrp;
+    }
+    else if (name=="USD" && issuer=="") {
+        return currency_type::usd_bitstamp;
     }
     else if (name=="USD" && issuer=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
         return currency_type::usd_bitstamp;

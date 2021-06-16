@@ -4,7 +4,7 @@
 #include <string>
 #include <boost/format.hpp>
 //
-#include "exchange/exchange.hpp"
+#include "src/exchange/exchange.hpp"
 
 // ----------------------------------------------------------------------------
 currency_widget::currency_widget(int decimals, QWidget *parent) :

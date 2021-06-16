@@ -96,9 +96,15 @@ order_book_base::~order_book_base()
 
 void order_book_base::update_graph_limits(bool primary)
 {
+//    if (!primary) return;
+    // just in case multiple iinvocations overlap, not critical
+    static std::atomic<bool> in_function = false;
+    if (in_function) return;
+    //
+    in_function = true;
     if (asks.rate.empty() || bids.rate.empty()) return;
-    double scale  = primary ? 0.25 : 0.1;
-    double tscale = primary ? 25 : 10;
+    double scale  = primary ? 0.05 : 0.05;
+    double tscale = primary ? 10 : 25;
     int index = primary ? 0 : 1;
 
     // pick x min max limits so they don't jump around constantly
@@ -113,13 +119,13 @@ void order_book_base::update_graph_limits(bool primary)
     double ymin = 0.0;
     double ymax = (std::ceil(yrange / yscale)) * yscale;
     //
-    static bool first_time = true;
-    if (first_time)
+    static bool first_time[2] = {true, true};
+    if (first_time[index])
     {
         prev_xmin[index] = xmin;
         prev_xmax[index] = xmax;
         prev_ymax[index] = ymax;
-        first_time = false;
+        first_time[index] = false;
     }
     else
     {
@@ -136,9 +142,13 @@ void order_book_base::update_graph_limits(bool primary)
         OrderBookPlot_->setAxisScale(QwtPlot::yLeft, ymin, prev_ymax[index]);
     }
     else {
-        OrderBookPlot_->setAxisScale(QwtPlot::xBottom, prev_xmin[index], prev_xmax[index]);
+        if (first_time[0]) {
+            OrderBookPlot_->setAxisScale(QwtPlot::xBottom, prev_xmin[index], prev_xmax[index]);
+            OrderBookPlot_->setAxisScale(QwtPlot::yLeft, ymin, prev_ymax[index]);
+        }
         OrderBookPlot_->setAxisScale(QwtPlot::yRight, ymin, prev_ymax[index]);
     }
+    in_function = false;
 }
 
 // produces a simple string representation of the order book

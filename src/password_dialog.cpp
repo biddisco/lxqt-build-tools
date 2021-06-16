@@ -4,7 +4,7 @@
 #include <QString>
 //
 #include "password_dialog.hpp"
-#include "exchange/xrpl_network.hpp"
+#include "src/exchange/xrpl_network.hpp"
 
 // ----------------------------------------------------------------------------
 password_dialog::password_dialog()

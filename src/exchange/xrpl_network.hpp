@@ -14,10 +14,10 @@
 # include "extern/belle/include/belle.hh"
 #endif
 //
-#include "exchange.hpp"
-#include "../order_book.hpp"
-#include "../settings.hpp"
-#include "../currency_widget.hpp"
+#include "src/exchange/exchange.hpp"
+#include "src/order_book.hpp"
+#include "src/settings.hpp"
+#include "src/currency_widget.hpp"
 
 // ----------------------------------------------------------------------------
 class xrpl_network : public exchange
@@ -29,10 +29,6 @@ private:
     std::shared_ptr<net::ws::session> ws_orderbook;
     // websocket for account changes
     std::shared_ptr<net::ws::session> ws_accounts;
-    // https client for xrpl data API
-    OB::Belle::Client belle_https_ripple;
-    // https client for xrpl network submissions
-    OB::Belle::Client belle_jsonrpc_network;
 
     bool testnet_;
     xrpl_order_book *orderbook_;
@@ -41,11 +37,12 @@ private:
     // ---------------------------------------
     // MainNet : rippled server
     // ---------------------------------------
+//    static inline const std::string ripple_mainnet_address = "xrplcluster.com"; // "s1.ripple.com";
     static inline const std::string ripple_mainnet_address = "s1.ripple.com";
     static inline const int ripple_mainnet_port = 443;
 
     // MainNet : JSON RPC server
-    static inline const std::string ripple_jsonrpc_address = "s1.ripple.com";
+    static inline const std::string ripple_jsonrpc_address = "xrplcluster.com"; // "s1.ripple.com";
     static inline const int ripple_jsonrpc_port = 51234;
 
     // MainNet : data api
@@ -93,6 +90,8 @@ public:
     // ---------------------------------------
     xrpl_network(bool testnet);
     ~xrpl_network() override;
+    //
+    std::string_view name() override { return "XRPL"; }
     //
     void set_plot(OrderBookPlot * obp);
     //
@@ -149,6 +148,6 @@ signals:
     // emitted when a wallet is updated with new balances for multiple currencies
     void update_wallet_widget(ledger_wallet*);
 
-    // emitted when new order book data is ready
-    void new_order_book_data(QString);
+    // emitted when new orderbook data has been received and processed
+    void orderbook_changed();
 };

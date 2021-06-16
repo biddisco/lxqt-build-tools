@@ -18,6 +18,7 @@ enum currency_type : int {
     other,
 };
 
+std::string_view to_string(const currency_type &t);
 currency_type get_currency_type(std::string_view name, std::string_view issuer);
 
 // ----------------------------------------------------------------------------

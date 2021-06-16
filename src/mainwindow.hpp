@@ -24,9 +24,9 @@
 #include "ui_mainwindow.h"
 //
 #include "exchange/bitstamp.hpp"
-#include "exchange/xrpl_network.hpp"
-#include "settings.hpp"
-#include "order_book.hpp"
+#include "src/exchange/xrpl_network.hpp"
+#include "src/settings.hpp"
+#include "src/order_book.hpp"
 
 class AdjustingScrollArea : public QScrollArea {
    bool eventFilter(QObject * obj, QEvent * ev) override {
@@ -102,6 +102,8 @@ public slots:
     void perform_arbitrage();
     void transaction_event();
     void on_timer();
+    void orderbook_text_update();
+    void user_trades_update(QString);
 
     // to connect to xrpl ledger signals
     void update_currency_widget(currency*);
