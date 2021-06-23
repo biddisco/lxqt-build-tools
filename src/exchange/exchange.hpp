@@ -6,6 +6,7 @@
 //
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
+#include "src/trade_data.hpp"
 
 class basic_account;
 
@@ -21,6 +22,8 @@ public:
     virtual bool can_send(currency &c, exchange *dest) = 0;
     virtual bool make_payment(currency &c, basic_account *src, basic_account *dest) = 0;
     virtual std::string_view name() = 0;
+    virtual void cancel_order(trade_data const &t) = 0;
+    virtual std::vector<std::pair<currency_type, currency_type>> currency_pairs() = 0;
 signals:
     // emitted when a transaction might cause a balance change
     void transaction_event();

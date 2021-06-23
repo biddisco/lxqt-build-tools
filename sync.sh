@@ -17,3 +17,12 @@ echo "Updating to old laptop (wifi)"
 echo "-----------------------------------"
 # Wifi connection
 $HOME/update-rsync.sh $HOME/src/xrp/grox/ biddisco@192.168.1.112:/home/biddisco/src/grox --delete
+
+echo 
+echo "-----------------------------------  "
+echo "Updating to old laptop (cscs network)"
+echo "-----------------------------------  "
+# Wifi connection
+$HOME/update-rsync.sh $HOME/src/xrp/grox/ biddisco@148.187.133.20:/home/biddisco/src/grox --delete
+
+

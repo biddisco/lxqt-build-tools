@@ -56,6 +56,18 @@ void bitstamp_network::disconnect()
 }
 
 // ----------------------------------------------------------------------------
+std::vector<std::pair<currency_type, currency_type>> bitstamp_network::currency_pairs()
+{
+    std::vector<std::pair<currency_type, currency_type>> supported = {
+        {usd_bitstamp,xrp},
+        {xrp,usd_bitstamp},
+        {eur_bitstamp,xrp},
+        {xrp,eur_bitstamp},
+    };
+    return supported;
+}
+
+// ----------------------------------------------------------------------------
 const bitstamp_order_book &bitstamp_network::get_orderbook() const
 {
     return *orderbook_;
@@ -124,13 +136,7 @@ void bitstamp_network::update_account_info()
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::place_order(trade_data const &t)
-{
-
-}
-
-// ----------------------------------------------------------------------------
-void bitstamp_network::get_open_trades()
+void bitstamp_network::get_open_orders()
 {
     account_request("/api/v2/open_orders/all/", "", [this](std::string &&data) {
         DEBUG_ONLY("Open Order response:\n" << data);
@@ -197,6 +203,7 @@ void bitstamp_network::account_request(std::string &&url_path, std::string &&url
         //
         b_request.body() = payload;
         b_request.prepare_payload();
+        DEBUG_ALWAYS("Request " << b_request << "\n");
 
         new_client.on_http(b_request, [cb=std::move(cb)](auto& ctx)
         {
@@ -363,6 +370,33 @@ void bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http
 // ----------------------------------------------------------------------------
 void bitstamp_network::timer_event()
 {
-    std::cout << "Timer event : requesting account update" << std::endl;
-    update_account_info();
+//    std::cout << "Timer event : requesting account update" << std::endl;
+//    update_account_info();
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::cancel_order(trade_data const &t)
+{
+    std::string data = "&id=" + std::to_string(t.id_);
+    account_request("/api/v2/cancel_order/", std::move(data), [this](std::string &&data) {
+        DEBUG_ONLY("Cancel Order response:\n" << data);
+        // refresh order status
+        get_open_orders();
+    });
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::place_buy_limit_order(trade_data const &t)
+{
+    std::string pair = std::string(to_string(t.currency_get_))
+            + std::string(to_string(t.currency_pay_));
+    //
+    std::string data = "&amount=" + std::to_string(t.amount_get_)
+            + "&price=" + std::to_string(t.amount_pay_);
+    //
+    account_request("/api/v2/buy/" + pair, std::move(data), [this](std::string &&data) {
+        DEBUG_ONLY("Cancel Order response:\n" << data);
+        // refresh order status
+        get_open_orders();
+    });
 }

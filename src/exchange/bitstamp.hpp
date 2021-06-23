@@ -67,10 +67,10 @@ public:
     //
     void set_plot(OrderBookPlot *obp);
     //
-    void get_open_trades();
+    void get_open_orders();
 
     // place a buy/sell order
-    void place_order(trade_data const &t);
+    void place_buy_limit_order(trade_data const &t);
 
     // ----------------------------------------------------------------------------
     void account_request(std::string &&url_path, std::string &&url_query, request_callback &&cb);
@@ -86,6 +86,10 @@ public:
 
     // function called from websocket subscription to live orderbook data
     static void new_orderbook_data(bitstamp_network*, std::string_view);
+
+    void cancel_order(trade_data const &t) override;
+
+    virtual std::vector<std::pair<currency_type, currency_type>> currency_pairs() override;
 
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform

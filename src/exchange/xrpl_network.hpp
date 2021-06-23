@@ -137,6 +137,9 @@ public:
     void handle_account_info(ledger_wallet &w, std::string&& data);
 
     bool make_payment(currency &c, basic_account *src, basic_account *dest) override;
+    void cancel_order(trade_data const &t) override {};
+
+    std::vector<std::pair<currency_type, currency_type>> currency_pairs() override;
 
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform

@@ -39,7 +39,8 @@ public slots:
 
     void show_hide();
     double get_amount();
-    void execute_transfer();
+    void execute_payment();
+    void execute_trade();
 };
 
 #endif // CURRENCY_WIDGET_H

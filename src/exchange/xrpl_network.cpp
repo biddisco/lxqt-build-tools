@@ -85,6 +85,16 @@ bool xrpl_network::can_send(currency &c, exchange *dest) {
 }
 
 // ----------------------------------------------------------------------------
+std::vector<std::pair<currency_type, currency_type>> xrpl_network::currency_pairs()
+{
+    std::vector<std::pair<currency_type, currency_type>> supported = {
+        {usd_bitstamp,xrp},
+        {xrp,usd_bitstamp},
+    };
+    return supported;
+}
+
+// ----------------------------------------------------------------------------
 const xrpl_order_book &xrpl_network::get_orderbook() const
 {
     return *orderbook_;

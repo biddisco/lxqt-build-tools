@@ -13,7 +13,8 @@ currency_widget::currency_widget(int decimals, QWidget *parent) :
     decimals_(decimals), currency_{}
 {
     ui->setupUi(this);
-    ui->controls->hide();
+    ui->controls_pay->hide();
+    ui->controls_trade->hide();
     ui->amount_edit->setValidator( new QDoubleValidator(0, 1E9, 6, this) );
     fmt_ = "%02." + std::to_string(decimals_) + "f";
     //
@@ -22,7 +23,8 @@ currency_widget::currency_widget(int decimals, QWidget *parent) :
     connect(ui->q3x, SIGNAL(clicked()), this, SLOT(q3x_clicked()));
     connect(ui->q4x, SIGNAL(clicked()), this, SLOT(q4x_clicked()));
     connect(ui->show, SIGNAL(clicked()), this, SLOT(show_hide()));
-    connect(ui->exec, SIGNAL(clicked()), this, SLOT(execute_transfer()));
+    connect(ui->exec_pay, SIGNAL(clicked()), this, SLOT(execute_payment()));
+    connect(ui->exec_trade, SIGNAL(clicked()), this, SLOT(execute_trade()));
     connect(ui->amount_edit, SIGNAL(returnPressed()), this, SLOT(get_amount()));
 }
 
@@ -65,7 +67,7 @@ void currency_widget::q4x_clicked() { transfer_setup_xrp(1.00); }
 // ----------------------------------------------------------------------------
 void currency_widget::show_hide()
 {
-    if (ui->controls->isHidden()) {
+    if (ui->controls_pay->isHidden()) {
         ui->dest_combo->clear();
         app_settings* app_ini = global_settings();
 
@@ -84,10 +86,26 @@ void currency_widget::show_hide()
                 ui->dest_combo->addItem(QString(w.name_.c_str()), v);
             }
         }
-        ui->controls->show();
+
+        ui->buy_sell_combo->clear();
+        auto pairs = network_->currency_pairs();
+        for (auto &p : pairs) {
+            auto c1 = p.first;
+            auto c2 = p.second;
+            if (c1 == currency_.type_) {
+                ui->buy_sell_combo->addItem(QString(to_string(c2).begin()));
+            }
+            else {
+                //ui->buy_sell_combo->addItem(QString(to_string(c1).begin()));
+            }
+        }
+
+        ui->controls_pay->show();
+        ui->controls_trade->show();
     }
     else {
-        ui->controls->hide();
+        ui->controls_pay->hide();
+        ui->controls_trade->hide();
     }
 }
 
@@ -98,7 +116,7 @@ double currency_widget::get_amount()
 }
 
 // ----------------------------------------------------------------------------
-void currency_widget::execute_transfer()
+void currency_widget::execute_payment()
 {
     amount_ = get_amount();
     std::cout << "Transferring " << amount_ << " to " << ui->dest_combo->currentText().toStdString() << std::endl;
@@ -108,4 +126,10 @@ void currency_widget::execute_transfer()
     QVariant v = ui->dest_combo->currentData();
     basic_account *to_wallet = v.value<basic_account*>();
     network_->make_payment(payment, account_, to_wallet);
+}
+
+// ----------------------------------------------------------------------------
+void currency_widget::execute_trade()
+{
+
 }

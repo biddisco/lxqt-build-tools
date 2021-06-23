@@ -5,6 +5,8 @@
 #include <QKeySequence>
 #include <QShortcut>
 #include <QMessageBox>
+#include <QDockWidget>
+#include <QScrollBar>
 //
 #include <filesystem>
 //
@@ -105,41 +107,65 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // pix = pix.scaled(ui.image_label->size(), Qt::KeepAspectRatio);
     // ui.image_label->setPixmap(pix);
 
+    // ----------------------------------
+    // create a dock widget to hold accounts/wallets
     //
-    AdjustingScrollArea *scroll = new AdjustingScrollArea(this);
-    scroll->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
-    ui.accounts_group->layout()->addWidget(scroll);
+    accounts_scrollwidget = new QScrollArea(this);
+    accounts_scrollwidget->setWidgetResizable(true);
+    QFrame *accounts_frame = new QFrame(accounts_scrollwidget);
+    accounts_frame->setLayout(new QVBoxLayout());
+    accounts_scrollwidget->setWidget(accounts_frame);
+    accounts_dock = std::make_shared<QDockWidget>("Accounts", this);
+    accounts_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    accounts_dock->setFeatures(QDockWidget::AllDockWidgetFeatures);
+    accounts_dock->setObjectName("AccountsDock");
+    accounts_dock->setWidget(accounts_scrollwidget);
+    addDockWidget(Qt::RightDockWidgetArea, accounts_dock.get());
+
+    // ----------------------------------
+    // create a dock widget to hold trade orders
     //
-    QFrame *frame = new QFrame(this);
-    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    scroll->setWidget(frame);
+    orders_scrollwidget = new QScrollArea(this);
+    orders_scrollwidget->setWidgetResizable(true);
+    QFrame *orders_frame = new QFrame(orders_scrollwidget);
+    orders_frame->setLayout(new QVBoxLayout());
+    orders_scrollwidget->setWidget(orders_frame);
+    orders_dock = std::make_shared<QDockWidget>("Orders", this);
+    orders_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    orders_dock->setFeatures(QDockWidget::AllDockWidgetFeatures);
+    orders_dock->setObjectName("OrdersDock");
+    orders_dock->setWidget(orders_scrollwidget);
+    addDockWidget(Qt::RightDockWidgetArea, orders_dock.get());
+
     //
-    QVBoxLayout *vbox = new QVBoxLayout();
-    frame->setLayout(vbox);
+//    QFrame *frame = new QFrame(this);
+//    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+//    accounts_scrollwidget->setWidget(frame);
+    //
+//    QVBoxLayout *vbox = new QVBoxLayout();
+//    frame->setLayout(vbox);
     //
     app_settings* app_ini = global_settings();
     {
         app_ini->bitstamp.widget_ = new wallet_widget(this);
-        app_ini->bitstamp.widget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+        app_ini->bitstamp.widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         app_ini->bitstamp.widget_->set_data(app_ini->bitstamp);
-        vbox->addWidget(app_ini->bitstamp.widget_);
+        accounts_frame->layout()->addWidget(app_ini->bitstamp.widget_);
     }
 
     ranges::for_each(app_ini->xrpl_wallets, [&](auto &w) {
         // create a gui widget for the wallet
         w.widget_ = new wallet_widget(this);
-        w.widget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+        w.widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         w.widget_->set_data(w);
-        vbox->addWidget(w.widget_);
+        accounts_frame->layout()->addWidget(w.widget_);
         // update wallet combo with name
         ui.all_acct_combo->addItem(QString(w.name_.c_str()));
         // updte networks with monitoried wallets
         if (w.testnet_) xrpl_testnet_->add_wallet(w);
         else xrpl_network_->add_wallet(w);
     });
-    vbox->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
-    scroll->setWidgetResizable(true);
-    scroll->adjustSize();
+    accounts_frame->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred));
 
     // ----------------------------------
     // Subscribe to xrpl events
@@ -160,13 +186,20 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     update_account_balances();
 
     //
-    // Resize order book to fit monospace text (add 3 chars - scrollbars/etc)
+    // Resize order book to fit monospace text (add 1 chars - scrollbars/etc)
     //
-    QString myText = "X";
-    QFontMetrics fm(ui.order_book_xrpl->font());
-    int calcWidth = fm.horizontalAdvance(myText)*88;
+    QString txt = "X";
+    int char_size = QFontMetrics(ui.order_book_xrpl->font()).horizontalAdvance(txt);
+    int calcWidth = char_size*85 + 8;
+    //std::cout << "width " << ui.order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
     ui.order_book_xrpl->setMinimumWidth(calcWidth);
+    //ui.order_book_xrpl->setMaximumWidth(calcWidth);
     ui.order_book_bitstamp->setMinimumWidth(calcWidth);
+    //ui.order_book_bitstamp->setMaximumWidth(calcWidth);
+    //
+    calcWidth = char_size*140 + 8;
+    ui.arbitrage_orders->setMinimumWidth(calcWidth);
+    //ui.arbitrage_orders->setMaximumWidth(calcWidth);
 }
 
 // ----------------------------------------------------------------------------
@@ -458,7 +491,7 @@ void GroxMainWindow::update_account_balances()
     DEBUG_ALWAYS("Updating accounts");
     //
     bitstamp_network_->update_account_info();
-    bitstamp_network_->get_open_trades();
+    bitstamp_network_->get_open_orders();
     //
     xrpl_network_->get_all_account_balances();
     xrpl_network_->get_all_account_infos();
@@ -805,22 +838,18 @@ void GroxMainWindow::orderbook_text_update()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::user_trades_update(QString data)
 {
-    DEBUG_ONLY(data.toStdString());
+    DEBUG_ALWAYS(data.toStdString());
     // Wipe the old order widgets
-    QWidget *old_scroll = ui.orders_group->findChild<QWidget*>("Bitstamp");
-    if (old_scroll) {
-        ui.orders_group->layout()->removeWidget(old_scroll);
-        delete old_scroll;
+    QWidget *old_frame = orders_scrollwidget->findChild<QWidget*>("Bitstamp");
+    if (old_frame) {
+        orders_scrollwidget->widget()->layout()->removeWidget(old_frame);
+        delete old_frame;
     }
     //
-    AdjustingScrollArea *scroll = new AdjustingScrollArea(this);
-    scroll->setObjectName("Bitstamp");
-    scroll->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
-    ui.orders_group->layout()->addWidget(scroll);
-    //
     QFrame *frame = new QFrame(this);
-    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    scroll->setWidget(frame);
+    frame->setObjectName("Bitstamp");
+    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    orders_scrollwidget->widget()->layout()->addWidget(frame);
     //
     QVBoxLayout *vbox = new QVBoxLayout();
     frame->setLayout(vbox);
@@ -834,24 +863,74 @@ void GroxMainWindow::user_trades_update(QString data)
         std::string c1 = cs.substr(0,pos);
         std::string c2 = cs.substr(pos+1);
 
+        double amount = std::stod(val["amount"].get< std::string >());
+        double price = std::stod(val["price"].get< std::string >());
         trade_data t{
             bitstamp_network_,
             (val["type"] == "1") ? 1 : 0,
             get_currency_type(c1,""),
             get_currency_type(c2,""),
-            std::stod(val["amount"].get< std::string >()),
-            std::stod(val["price"].get< std::string >()),
+            amount,
+            price,
+            amount*price,
+            std::stoull(val["id"].get< std::string >()),
             val["datetime"]
         };
 
         // create a gui widget for the order
         auto widget_ = new trade_widget(this);
-        widget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+        widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         widget_->set_data(t);
         vbox->addWidget(widget_);
     }
 
     vbox->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
-    scroll->setWidgetResizable(true);
-    scroll->adjustSize();
+}
+
+void GroxMainWindow::closeEvent(QCloseEvent *event)
+{
+    saveWindowSettings();
+    QMainWindow::closeEvent(event);
+}
+
+void GroxMainWindow::showEvent(QShowEvent *event )
+{
+    loadWindowSettings();
+    QMainWindow::showEvent(event);
+}
+
+void GroxMainWindow::saveWindowSettings()
+{
+    app_settings* app_ini = global_settings();
+    QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+    // Start GroxMainWindow section
+    settings.beginGroup(objectName());
+#ifdef workaround
+    settings.setValue("geometry", QVariant(geometry()));
+    settings.setValue("windowState",saveState());
+#else
+    settings.setValue("geometry", saveGeometry());
+    settings.setValue("windowState", saveState());
+#endif
+    settings.endGroup();
+    qDebug() << "Settings saved under:" << settings.fileName();
+}
+
+void GroxMainWindow::loadWindowSettings()
+{
+    app_settings* app_ini = global_settings();
+    QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+    // Start GroxMainWindow section
+    settings.beginGroup(objectName());
+
+#ifdef workaround
+    if(settings.contains("geometry"))
+        setGeometry(settings.value("geometry").value<QRect>());
+    restoreState(settings.value("windowState").toByteArray());
+#else
+    restoreGeometry(settings.value("geometry").toByteArray());
+    restoreState(settings.value("windowState").toByteArray());
+#endif
+    settings.endGroup();
+    qDebug() << "Settings loaded from:" << settings.fileName();
 }

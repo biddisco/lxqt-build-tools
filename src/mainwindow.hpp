@@ -49,6 +49,10 @@ public:
 class GroxMainWindow : public QMainWindow
 {
     Q_OBJECT
+    std::shared_ptr<QDockWidget> accounts_dock;
+    std::shared_ptr<QDockWidget> orders_dock;
+    QScrollArea *accounts_scrollwidget;
+    QScrollArea *orders_scrollwidget;
 
     CombinedPriceVolumeCharts* CombinedPriceVolumeCharts_;
     PriceAndPatternPlot* priceAndPatternPlot_;
@@ -86,6 +90,11 @@ public:
         const std::vector<double>& new_ohlc_volumes);
 
     void update_balance(std::string_view addr, double oldb, double newb);
+
+    void closeEvent(QCloseEvent *event);
+    void showEvent(QShowEvent *event);
+    void saveWindowSettings();
+    void loadWindowSettings();
 
 signals:
     void quitApplication();
