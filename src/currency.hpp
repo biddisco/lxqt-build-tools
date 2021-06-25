@@ -20,6 +20,8 @@ enum currency_type : int {
 
 std::string_view to_string(const currency_type &t);
 currency_type get_currency_type(std::string_view name, std::string_view issuer);
+bool is_fiat(currency_type c);
+bool is_fiat(std::string_view name, std::string_view issuer);
 
 // ----------------------------------------------------------------------------
 struct currency {

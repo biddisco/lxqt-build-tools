@@ -13,6 +13,7 @@ currency_widget::currency_widget(int decimals, QWidget *parent) :
     decimals_(decimals), currency_{}
 {
     ui->setupUi(this);
+    ui->controls_amount->hide();
     ui->controls_pay->hide();
     ui->controls_trade->hide();
     ui->amount_edit->setValidator( new QDoubleValidator(0, 1E9, 6, this) );
@@ -26,7 +27,9 @@ currency_widget::currency_widget(int decimals, QWidget *parent) :
     connect(ui->exec_pay, SIGNAL(clicked()), this, SLOT(execute_payment()));
     connect(ui->exec_trade, SIGNAL(clicked()), this, SLOT(execute_trade()));
     connect(ui->amount_edit, SIGNAL(returnPressed()), this, SLOT(get_amount()));
-}
+
+    connect(ui->buy_sell_combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+        [=](int /*index*/){ buy_sell_status(); });}
 
 // ----------------------------------------------------------------------------
 currency_widget::~currency_widget()
@@ -99,11 +102,15 @@ void currency_widget::show_hide()
                 //ui->buy_sell_combo->addItem(QString(to_string(c1).begin()));
             }
         }
-
+        //
+        buy_sell_status();
+        //
+        ui->controls_amount->show();
         ui->controls_pay->show();
         ui->controls_trade->show();
     }
     else {
+        ui->controls_amount->hide();
         ui->controls_pay->hide();
         ui->controls_trade->hide();
     }
@@ -132,4 +139,25 @@ void currency_widget::execute_payment()
 void currency_widget::execute_trade()
 {
 
+}
+
+// ----------------------------------------------------------------------------
+void currency_widget::buy_sell_status()
+{
+    bool buy = is_fiat(currency_.type_);
+    if (buy) {
+        QPalette palette = ui->buy_sell->palette();
+        palette.setColor(QPalette::WindowText, QRgb(0x00CF00));
+        ui->buy_sell->setPalette(palette);
+        ui->buy_sell->setText("Buy " + ui->buy_sell_combo->currentText()
+            + " <- " + currency_.name_.c_str());
+    }
+    else {
+        QPalette palette = ui->buy_sell->palette();
+        palette.setColor(QPalette::WindowText, QRgb(0xFF4040));
+        ui->buy_sell->setPalette(palette);
+        ui->buy_sell->setText(QString("Sell ") + currency_.name_.c_str()
+            + " -> " + ui->buy_sell_combo->currentText());
+
+    }
 }

@@ -27,6 +27,7 @@ public:
     ~currency_widget();
 
     void set_data(currency const *c, basic_account *acct=nullptr, exchange *network=nullptr);
+    void buy_sell_status();
 
 public slots:
     // ----------------------------------

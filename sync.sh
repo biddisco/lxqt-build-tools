@@ -25,4 +25,6 @@ echo "-----------------------------------  "
 # Wifi connection
 $HOME/update-rsync.sh $HOME/src/xrp/grox/ biddisco@148.187.133.20:/home/biddisco/src/grox --delete
 
-
+# to copy the settings
+# scp /home/biddisco/.config/grox.ini 148.187.133.20:/home/biddisco/.config/grox.ini
+# scp /home/biddisco/.ssh/.gkey.sh    148.187.133.20:/home/biddisco/.ssh/.gkey.sh

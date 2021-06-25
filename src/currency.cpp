@@ -63,6 +63,17 @@ currency_type get_currency_type(std::string_view name, std::string_view issuer)
     return currency_type::other;
 }
 
+bool is_fiat(currency_type c)
+{
+    if (c==currency_type::xrp) return false;
+    return true;
+}
+
+bool is_fiat(std::string_view name, std::string_view issuer)
+{
+    return is_fiat(get_currency_type(name, issuer));
+}
+
 // ----------------------------------------------------------------------------
 void add_currency(const currency &curr, std::vector<currency> &c_list)
 {
