@@ -547,3 +547,14 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
 }
 
 // ----------------------------------------------------------------------------
+// place a buy/sell order
+void xrpl_network::place_buy_limit_order(trade_data const &t)
+{
+    DEBUG_ALWAYS("Implement xrpl_network::place_buy_limit_order")
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::place_buy_sell_orders(std::vector<trade_data> const &trades)
+{
+    DEBUG_ALWAYS("Implement xrpl_network::place_buy_sell_orders")
+}

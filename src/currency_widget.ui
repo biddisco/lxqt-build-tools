@@ -253,7 +253,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QSpinBox" name="spinBox">
+         <widget class="QSpinBox" name="num_orders">
           <property name="minimum">
            <number>1</number>
           </property>
@@ -295,7 +295,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
+         <widget class="QDoubleSpinBox" name="min_price"/>
         </item>
        </layout>
       </item>
@@ -319,7 +319,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+         <widget class="QDoubleSpinBox" name="max_price"/>
         </item>
        </layout>
       </item>

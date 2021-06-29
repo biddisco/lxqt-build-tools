@@ -18,14 +18,10 @@ enum currency_type : int {
     other,
 };
 
-std::string_view to_string(const currency_type &t);
-currency_type get_currency_type(std::string_view name, std::string_view issuer);
-bool is_fiat(currency_type c);
-bool is_fiat(std::string_view name, std::string_view issuer);
-
 // ----------------------------------------------------------------------------
 struct currency {
     static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+    static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
     //
     std::string name_;
     std::string issuer_;
@@ -36,11 +32,32 @@ struct currency {
     currency_widget *widget_;
 };
 
-std::ostream& operator<<(std::ostream& os, const currency_type &);
-std::ostream& operator<<(std::ostream& os, const currency &);
-
 // To ensure Qt can emit signals of this type
 Q_DECLARE_METATYPE(currency)
 
 // ----------------------------------------------------------------------------
+// convert a string pair, name, issuer to a currency type enum
+currency_type get_currency_type(std::string_view name, std::string_view issuer);
+
+// ----------------------------------------------------------------------------
+// return true if the currency is a fiat currency such as USD, EUR etc etc
+bool is_fiat(currency_type c);
+bool is_fiat(std::string_view name, std::string_view issuer);
+
+// ----------------------------------------------------------------------------
+// convert a currency type enum to a string pair, {name, issuer}
+std::pair<std::string, std::string> to_string(const currency_type &t);
+
+// ----------------------------------------------------------------------------
+// displays an amount such as 1.34 as a string, but uses different numbers
+// of decimal places depending on the currency type (fiat always 2)
+std::string to_string(double amount, currency_type c);
+
+// ----------------------------------------------------------------------------
+// stream operators
+std::ostream& operator<<(std::ostream& os, const currency_type &);
+std::ostream& operator<<(std::ostream& os, const currency &);
+
+// ----------------------------------------------------------------------------
+// convenience function to add a currency to a list
 void add_currency(const currency &curr, std::vector<currency> &c_list);

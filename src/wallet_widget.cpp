@@ -31,7 +31,7 @@ void wallet_widget::set_data(ledger_wallet &w)
             c.widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
             ui->currencies_layout->addWidget(c.widget_);
         }
-        c.widget_->set_data(&c, &w, w.network_.get());
+        c.widget_->set_data(&c, &w, w.network_);
     }
     update();
 }
@@ -49,7 +49,7 @@ void wallet_widget::set_data(bitstamp_account &w)
             c.widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
             ui->currencies_layout->addWidget(c.widget_);
         }
-        c.widget_->set_data(&c, &w, w.network_.get());
+        c.widget_->set_data(&c, &w, w.network_);
     }
     update();
 }

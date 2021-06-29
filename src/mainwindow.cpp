@@ -865,14 +865,17 @@ void GroxMainWindow::user_trades_update(QString data)
 
         double amount = std::stod(val["amount"].get< std::string >());
         double price = std::stod(val["price"].get< std::string >());
+        double fee = 0;
         trade_data t{
             bitstamp_network_,
-            (val["type"] == "1") ? 1 : 0,
+            // 0=buy, 1=sell
+            (val["type"] == "0") ? trade_type::buy : trade_type::sell,
             get_currency_type(c1,""),
             get_currency_type(c2,""),
             amount,
-            price,
             amount*price,
+            price,
+            fee,
             std::stoull(val["id"].get< std::string >()),
             val["datetime"]
         };

@@ -91,8 +91,8 @@ public:
 
     void update_balance(std::string_view addr, double oldb, double newb);
 
-    void closeEvent(QCloseEvent *event);
-    void showEvent(QShowEvent *event);
+    void closeEvent(QCloseEvent *event) override;
+    void showEvent(QShowEvent *event) override;
     void saveWindowSettings();
     void loadWindowSettings();
 

@@ -1,5 +1,10 @@
+#include <QDialog>
+#include <QMessageBox>
+//
 #include "currency_widget.hpp"
+#include "trade_widget.hpp"
 #include "ui_currency_widget.h"
+#include "check_trade_dialog.hpp"
 //
 #include <string>
 #include <boost/format.hpp>
@@ -17,7 +22,6 @@ currency_widget::currency_widget(int decimals, QWidget *parent) :
     ui->controls_pay->hide();
     ui->controls_trade->hide();
     ui->amount_edit->setValidator( new QDoubleValidator(0, 1E9, 6, this) );
-    fmt_ = "%02." + std::to_string(decimals_) + "f";
     //
     connect(ui->q1x, SIGNAL(clicked()), this, SLOT(q1x_clicked()));
     connect(ui->q2x, SIGNAL(clicked()), this, SLOT(q2x_clicked()));
@@ -38,7 +42,7 @@ currency_widget::~currency_widget()
 }
 
 // ----------------------------------------------------------------------------
-void currency_widget::set_data(currency const *c, basic_account *acct, exchange *network)
+void currency_widget::set_data(currency const *c, basic_account *acct, std::shared_ptr<exchange> network)
 {
     currency_ = *c;
     if (acct) account_ = acct;
@@ -46,9 +50,9 @@ void currency_widget::set_data(currency const *c, basic_account *acct, exchange 
     ui->currency->setText(c->name_.c_str());
     ui->issuer->setText(c->issuer_.c_str());
     //
-    ui->balance->setText(boost::str(boost::format(fmt_) % c->balance_).c_str());
-    ui->avail->setText(boost::str(boost::format(fmt_) % c->avail_).c_str());
-    ui->reserved->setText(boost::str(boost::format(fmt_) % c->reserved_).c_str());
+    ui->balance->setText(to_string(c->balance_, c->type_).c_str());
+    ui->avail->setText(to_string(c->avail_, c->type_).c_str());
+    ui->reserved->setText(to_string(c->reserved_, c->type_).c_str());
     update();
 /*
     ui.bitstamp_xrp_fee->setText(boost::str(boost::format("fee %.4f%%") % app_ini->bitstamp_xrp_fee).c_str());
@@ -58,7 +62,7 @@ void currency_widget::set_data(currency const *c, basic_account *acct, exchange 
 // ----------------------------------------------------------------------------
 void currency_widget::transfer_setup_xrp(double fraction) {
     amount_ = fraction * currency_.avail_;
-    ui->amount_edit->setText(boost::str(boost::format(fmt_) % amount_).c_str());
+    ui->amount_edit->setText(to_string(amount_, currency_.type_).c_str());
 }
 
 // ----------------------------------------------------------------------------
@@ -96,9 +100,12 @@ void currency_widget::show_hide()
             auto c1 = p.first;
             auto c2 = p.second;
             if (c1 == currency_.type_) {
-                ui->buy_sell_combo->addItem(QString(to_string(c2).begin()));
+                auto cstr = to_string(c2);
+                ui->buy_sell_combo->addItem(QString(cstr.first.c_str()),
+                                            QString(cstr.second.c_str()));
             }
             else {
+                // we don't show trade pairs the other way around (yet?)
                 //ui->buy_sell_combo->addItem(QString(to_string(c1).begin()));
             }
         }
@@ -135,10 +142,72 @@ void currency_widget::execute_payment()
     network_->make_payment(payment, account_, to_wallet);
 }
 
-// ----------------------------------------------------------------------------
 void currency_widget::execute_trade()
 {
+    int N = ui->num_orders->value();
+    currency_type taker_payc = get_currency_type(
+                ui->buy_sell_combo->currentText().toStdString(),
+                ui->buy_sell_combo->currentData().toString().toStdString());
+    //
+    if (ui->amount_edit->text().isEmpty())
+        return;
+    //
+    double taker_gets = ui->amount_edit->text().toDouble();
+    if (taker_gets==0)
+        return;
 
+    QString now(QDateTime::currentDateTime().toString());
+    double price_min;
+    double price_max;
+
+    // if dest is xrp, we are buying it
+    bool buy_order = (taker_payc == currency_type::xrp);
+    price_min = ui->min_price->value();
+    price_max = ui->max_price->value();
+    //
+    std::vector<trade_data> trades;
+    for (int i=0; i<N; ++i) {
+        double price;
+        if (N>1) price = price_min + i*(price_max-price_min)/(N-1);
+        else price = price_min;
+        double taker_get   = taker_gets/N;
+        if (buy_order) {
+            double taker_pay = taker_gets/(price*N);
+            trade_data t{
+                        network_,
+                        buy_order ? trade_type::buy : trade_type::sell,
+                        taker_payc,             // taker pays this currency
+                        this->currency_.type_,  // taker gets this currency
+                        taker_pay,              // taker pays this amount (total)
+                        taker_get,              // taker gets this amount (total)
+                        price,                  // exchange rate
+                        0,          // fee
+                        0,          // Id
+                        now.toStdString(),
+            };
+            trades.push_back(t);
+        }
+        else {
+            double taker_pay   = taker_gets*price/N;
+            trade_data t{
+                        network_,
+                        buy_order ? trade_type::buy : trade_type::sell,
+                        this->currency_.type_,  // taker gets this currency
+                        taker_payc,             // taker pays this currency
+                        taker_get,              // taker gets this amount (total)
+                        taker_pay,              // taker pays this amount (total)
+                        price,                  // exchange rate
+                        0,          // fee
+                        0,          // Id
+                        now.toStdString(),
+            };
+            trades.push_back(t);
+        }
+    }
+    check_trades_dialog d(this, trades);
+    if (d.exec()==QDialog::Accepted) {
+        network_->place_buy_sell_orders(trades);
+    }
 }
 
 // ----------------------------------------------------------------------------

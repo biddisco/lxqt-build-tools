@@ -1,45 +1,12 @@
 #include <string>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <vector>
 #include <algorithm>
 
 #include <range/v3/algorithm.hpp>
 #include "currency.hpp"
-
-
-// ----------------------------------------------------------------------------
-std::string_view to_string(const currency_type &t)
-{
-    switch (t) {
-    case xrp:
-        return "XRP"; break;
-    case usd_bitstamp:
-        return "USD"; break;
-    case eur_bitstamp:
-        return "EUR"; break;
-    case usd_gatehub:
-        return "USD"; break;
-    case other:
-        return "other"; break;
-    default:
-        return "Unknown"; break;
-    }
-    return "";
-}
-
-// ----------------------------------------------------------------------------
-std::ostream& operator<<(std::ostream& os, const currency_type &t)
-{
-    os << to_string(t);
-    return os;
-}
-
-// ----------------------------------------------------------------------------
-std::ostream& operator<<(std::ostream& os, const currency &c)
-{
-    os << c.name_ << " " << c.issuer_ << " " << c.balance_;
-    return os;
-}
 
 // ----------------------------------------------------------------------------
 currency_type get_currency_type(std::string_view name, std::string_view issuer)
@@ -50,19 +17,20 @@ currency_type get_currency_type(std::string_view name, std::string_view issuer)
     else if (name=="USD" && issuer=="") {
         return currency_type::usd_bitstamp;
     }
-    else if (name=="USD" && issuer=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
+    else if (name=="USD" && issuer==currency::bitstamp_trust) {
         return currency_type::usd_bitstamp;
     }
-    else if (name=="EUR" && issuer=="rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B") {
+    else if (name=="EUR" && issuer==currency::bitstamp_trust) {
         return currency_type::eur_bitstamp;
     }
-    else if (name=="USD" && issuer=="rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq") {
+    else if (name=="USD" && issuer==currency::gatehub_trust) {
         return currency_type::usd_gatehub;
     }
     //
     return currency_type::other;
 }
 
+// ----------------------------------------------------------------------------
 bool is_fiat(currency_type c)
 {
     if (c==currency_type::xrp) return false;
@@ -72,6 +40,53 @@ bool is_fiat(currency_type c)
 bool is_fiat(std::string_view name, std::string_view issuer)
 {
     return is_fiat(get_currency_type(name, issuer));
+}
+
+// ----------------------------------------------------------------------------
+std::pair<std::string, std::string> to_string(const currency_type &t)
+{
+    switch (t) {
+    case xrp:
+        return std::make_pair("XRP", ""); break;
+    case usd_bitstamp:
+        return std::make_pair("USD", currency::bitstamp_trust); break;
+    case eur_bitstamp:
+        return std::make_pair("EUR", currency::bitstamp_trust); break;
+    case usd_gatehub:
+        return std::make_pair("USD", currency::gatehub_trust); break;
+    case other:
+        return std::make_pair("other", ""); break;
+    default:
+        return std::make_pair("Unknown", ""); break;
+    }
+    return std::make_pair("error", "");
+}
+
+// ----------------------------------------------------------------------------
+std::ostream& operator<<(std::ostream& os, const currency_type &t)
+{
+    os << to_string(t).first;
+    return os;
+}
+
+// ----------------------------------------------------------------------------
+std::ostream& operator<<(std::ostream& os, const currency &c)
+{
+    os << c.name_ << " " << c.issuer_ << " " << c.balance_;
+    return os;
+}
+
+
+// ----------------------------------------------------------------------------
+std::string to_string(double amount, currency_type c)
+{
+    int dec = 6;
+    if (is_fiat(c)) {
+        dec = 2;
+    }
+    std::stringstream stream;
+    stream << std::fixed << std::setprecision(dec) << amount;
+    return stream.str();
 }
 
 // ----------------------------------------------------------------------------

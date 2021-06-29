@@ -151,6 +151,7 @@ set(GROX_SRC
     src/currency_widget.cpp
     src/wallet_widget.cpp
     src/trade_widget.cpp
+    src/check_trade_dialog.cpp
     #
     #
     chartSegment/ANDSegmentConstraint.cpp

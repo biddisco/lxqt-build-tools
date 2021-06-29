@@ -35,6 +35,7 @@ struct ledger_wallet : public basic_account {
     wallet_widget *widget_;
     bool           testnet_;
 
+    virtual ~ledger_wallet() {}
     virtual std::string_view get_receive_address(const currency &c) { return public_; }
 };
 

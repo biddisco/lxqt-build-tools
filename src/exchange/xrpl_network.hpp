@@ -37,12 +37,15 @@ private:
     // ---------------------------------------
     // MainNet : rippled server
     // ---------------------------------------
-//    static inline const std::string ripple_mainnet_address = "xrplcluster.com"; // "s1.ripple.com";
+#if 1 || GROX_USE_RIPPLE_MAINNET_SERVER
     static inline const std::string ripple_mainnet_address = "s1.ripple.com";
+#else
+    static inline const std::string ripple_mainnet_address = "xrplcluster.com";
+#endif
     static inline const int ripple_mainnet_port = 443;
 
     // MainNet : JSON RPC server
-    static inline const std::string ripple_jsonrpc_address = "xrplcluster.com"; // "s1.ripple.com";
+    static inline const std::string ripple_jsonrpc_address = "s1.ripple.com";
     static inline const int ripple_jsonrpc_port = 51234;
 
     // MainNet : data api
@@ -140,6 +143,10 @@ public:
     void cancel_order(trade_data const &t) override {};
 
     std::vector<std::pair<currency_type, currency_type>> currency_pairs() override;
+
+    // place a buy/sell order
+    void place_buy_limit_order(trade_data const &t);
+    void place_buy_sell_orders(std::vector<trade_data> const &trades) override;
 
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform

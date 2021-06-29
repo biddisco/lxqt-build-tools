@@ -70,7 +70,8 @@ public:
     void get_open_orders();
 
     // place a buy/sell order
-    void place_buy_limit_order(trade_data const &t);
+    void place_limit_order(trade_data const &t, bool update_after);
+    void place_buy_sell_orders(std::vector<trade_data> const &trades) override;
 
     // ----------------------------------------------------------------------------
     void account_request(std::string &&url_path, std::string &&url_query, request_callback &&cb);

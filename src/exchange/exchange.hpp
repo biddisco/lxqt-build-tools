@@ -24,6 +24,8 @@ public:
     virtual std::string_view name() = 0;
     virtual void cancel_order(trade_data const &t) = 0;
     virtual std::vector<std::pair<currency_type, currency_type>> currency_pairs() = 0;
+    virtual void place_buy_sell_orders(std::vector<trade_data> const &trades) = 0;
+
 signals:
     // emitted when a transaction might cause a balance change
     void transaction_event();

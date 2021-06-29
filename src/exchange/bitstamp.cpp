@@ -386,17 +386,34 @@ void bitstamp_network::cancel_order(trade_data const &t)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::place_buy_limit_order(trade_data const &t)
+void bitstamp_network::place_limit_order(trade_data const &t, bool update_after)
 {
-    std::string pair = std::string(to_string(t.currency_get_))
-            + std::string(to_string(t.currency_pay_));
+    std::string pair = std::string(to_string(t.taker_payc_).first)
+            + std::string(to_string(t.taker_getc_).first) + "/";
+    // make lowercase XRPUSD->xrpud for bitstamp API
+    std::transform(pair.begin(), pair.end(), pair.begin(),
+        [](unsigned char c){ return std::tolower(c); });
+
+    std::string req = std::string("/api/v2/") + (t.trade_type_==trade_type::buy ? "buy/" : "sell/");
+    double amount = t.xrp_amount();
     //
-    std::string data = "&amount=" + std::to_string(t.amount_get_)
-            + "&price=" + std::to_string(t.amount_pay_);
+    std::string data = "&amount=" + std::to_string(amount)
+            + "&price=" + to_string(t.exchange_rate_, t.taker_getc_);
     //
-    account_request("/api/v2/buy/" + pair, std::move(data), [this](std::string &&data) {
-        DEBUG_ONLY("Cancel Order response:\n" << data);
+    DEBUG_ALWAYS("Placing order " << req << " " << pair << " " << data);
+    account_request(req + pair, std::move(data), [this, update_after](std::string &&data) {
+        DEBUG_ALWAYS("Buy-Limit Order response:\n" << data);
         // refresh order status
-        get_open_orders();
+        if (update_after) get_open_orders();
     });
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::place_buy_sell_orders(std::vector<trade_data> const &trades)
+{
+    std::string req;
+    for (auto const &t : trades) {
+        if (&t != &trades.back()) place_limit_order(t, false);
+        else place_limit_order(t, true);
+    }
 }
