@@ -16,25 +16,31 @@
 //
 
 class wallet_widget;
-class bitstamp_network;
 
-struct basic_account {
-    //
-    std::vector<currency> currencies_;
-    std::shared_ptr<exchange> network_;
+// ----------------------------------------------------------------------------
+// base class for account/wallet info
+struct basic_account
+{
+    std::string                 name_;
+    std::shared_ptr<exchange>   network_;
+    wallet_widget              *widget_;
+    std::vector<currency>       currencies_;
+    std::vector<trade_data>     offers_;
 };
+
 // For compatibility with Qt Variant and Signals/Slots
 Q_DECLARE_METATYPE(basic_account*)
 
-struct ledger_wallet : public basic_account {
-    secure_string  name_;
+// ----------------------------------------------------------------------------
+// an account or wallet on the xrp ledger
+struct ledger_wallet : public basic_account
+{
     secure_string  public_;
     secure_string  private_;
     int64_t        tag_;
     int32_t        sequence_;
-    wallet_widget *widget_;
     bool           testnet_;
-
+    //
     virtual ~ledger_wallet() {}
     virtual std::string_view get_receive_address(const currency &c) { return public_; }
 };
@@ -43,6 +49,7 @@ struct ledger_wallet : public basic_account {
 Q_DECLARE_METATYPE(ledger_wallet*)
 
 // ----------------------------------------------------------------------------
+// a bitstamp account (supports xrp send/receive so is also a ledger wallet)
 struct bitstamp_account : public ledger_wallet {
     secure_string API_user;
     secure_string API_key;
@@ -61,17 +68,15 @@ struct bitstamp_account : public ledger_wallet {
 // ----------------------------------------------------------------------------
 struct app_settings
 {
-    QString iniFileName;
+    QString     iniFileName;
     std::string logFileName;
     std::string hdfFileName;
     //
     std::string appDataLocation;
     std::string tempLocation;
-    QString configLocation;
+    QString     configLocation;
     //
-    bitstamp_account bitstamp;
-    //
-    std::vector<ledger_wallet> xrpl_wallets;
+    std::vector<std::shared_ptr<exchange>> networks_;
     //
     secure_string grox_password;
     secure_string randomBytes;

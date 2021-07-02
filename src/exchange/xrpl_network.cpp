@@ -441,6 +441,112 @@ void xrpl_network::handle_account_info(ledger_wallet &w, std::string&& data)
 }
 
 // ----------------------------------------------------------------------------
+void xrpl_network::get_all_account_orders()
+{
+    for (auto &w : subscribed_wallets_) {
+        auto thread_function = [&]() {
+            OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
+            // set the http 'on error' callback
+            new_client.on_http_error([](auto& ctx) {
+              std::cerr << "get_all_account_orders : Protocol Error: " << ctx.ec.message() << "\n\n";
+            });
+
+            nlohmann::json params;
+            params["account"] = w.public_;
+
+            nlohmann::json content;
+            content["method"] = "account_offers";
+            content["params"] = nlohmann::json::array({params});
+
+            using namespace OB;
+            // init an http request object
+            Belle::Request req;
+
+            // set the method
+            req.method(Belle::Method::post);
+            req.set(Belle::Header::host, network_address());
+            req.set(Belle::Header::user_agent, "mystery");
+            req.set(Belle::Header::content_type, "application/json");
+            req.set(Belle::Header::accept, "application/json");
+            req.set(Belle::Header::connection, "close");
+            // set the target path
+            req.target("/");
+            req.body() = content.dump();
+            req.prepare_payload();
+            DEBUG_ONLY(line_string << req);
+
+            new_client.on_http(req, [this, &w](auto& ctx)
+            {
+              if (ctx.res.result() != OB::Belle::Status::ok)
+              {
+                std::cerr << "account_offers : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
+                          << " " << ctx.res.reason()
+                          << "\n";
+                return;
+              }
+              // debug : print the response headers and body
+              DEBUG_ALWAYS(line_string << "account_offers response : " << w.public_ << " : " << ctx.res.body());
+              this->handle_account_orders(w, std::move(ctx.res.body()));
+            });
+            new_client.connect();
+        };
+        auto https_thread = std::thread(std::move(thread_function));
+        https_thread.detach();
+    };
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::handle_account_orders(ledger_wallet &w, std::string&& data)
+{
+    nlohmann::json jdata = json::parse(data)["result"];
+    DEBUG_ALWAYS(jdata.dump(4));
+    //
+    if (jdata.is_null()) return;
+    assert(w.public_ == jdata.at("account").get< std::string >());
+    auto offers = jdata["offers"];
+    if (offers.size()==0) return;
+    //
+    w.offers_.clear();
+    for (const auto & offer : offers) {
+        //
+        xrp_amount taker_get;
+        xrp_amount taker_pay;
+        from_json(offer["taker_gets"], taker_get);
+        from_json(offer["taker_pays"], taker_pay);
+        bool buy = taker_pay.currency == currency_type::xrp;
+        double price = 0;
+        double fee = 0;
+        // xrp amounts are in drops, do divide by 1E6 to get whole xrp units
+        if (buy) {
+            taker_pay.value /= 1E6;
+            price = taker_pay.value / taker_get.value;
+        }
+        else {
+            taker_get.value /= 1E6;
+            price = taker_get.value / taker_pay.value;
+        }
+        //
+        w.offers_.emplace_back(
+            trade_data{
+                get_instance(testnet()),
+                // 0=buy, 1=sell
+                (buy) ? trade_type::buy : trade_type::sell,
+                taker_pay.currency,
+                taker_get.currency,
+                taker_pay.value,
+                taker_get.value,
+                price,
+                fee,
+                offer.at("seq").get<std::uint64_t>(),
+                "- no date -"
+            }
+        );
+    }
+    // signal GUI to update
+    emit update_wallet_widget(&w);
+}
+
+// ----------------------------------------------------------------------------
 bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *dest)
 {
     ledger_wallet *from = static_cast<ledger_wallet*>(src);
@@ -548,13 +654,34 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
 
 // ----------------------------------------------------------------------------
 // place a buy/sell order
-void xrpl_network::place_buy_limit_order(trade_data const &t)
+void xrpl_network::place_limit_order(trade_data const &t, bool update_after)
 {
-    DEBUG_ALWAYS("Implement xrpl_network::place_buy_limit_order")
+
+    std::string pair = std::string(to_string(t.taker_payc_).first)
+            + std::string(to_string(t.taker_getc_).first) + "/";
+    // make lowercase XRPUSD->xrpud for bitstamp API
+    std::transform(pair.begin(), pair.end(), pair.begin(),
+        [](unsigned char c){ return std::tolower(c); });
+
+    std::string req = std::string("/api/v2/") + (t.trade_type_==trade_type::buy ? "buy/" : "sell/");
+    double amount = t.xrp_amount();
+    //
+    std::string data = "&amount=" + std::to_string(amount)
+            + "&price=" + to_string(t.exchange_rate_, t.taker_getc_);
+    //
+    DEBUG_ALWAYS("Placing order " << req << " " << pair << " " << data);
+//            account_request(req + pair, std::move(data), [this, update_after](std::string &&data) {
+//                DEBUG_ALWAYS("Buy-Limit Order response:\n" << data);
+//                // refresh order status
+//                if (update_after) get_open_orders();
+//            });
 }
 
 // ----------------------------------------------------------------------------
 void xrpl_network::place_buy_sell_orders(std::vector<trade_data> const &trades)
 {
-    DEBUG_ALWAYS("Implement xrpl_network::place_buy_sell_orders")
+    for (auto const &t : trades) {
+        if (&t != &trades.back()) place_limit_order(t, false);
+        else place_limit_order(t, true);
+    }
 }

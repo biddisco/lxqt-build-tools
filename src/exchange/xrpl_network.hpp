@@ -66,26 +66,31 @@ private:
     static inline const std::string ripple_testapi_address = "testnet.data.api.ripple.com";
     static inline const int ripple_testapi_port = 443;
 
-public:
+private:
     // ---------------------------------------
     // singleton access to network/testnet
     // ---------------------------------------
-    static std::shared_ptr<exchange> get_xrpl_instance() {
+    static std::shared_ptr<exchange> xrpl_instance() {
         static std::shared_ptr<exchange> xrpl_ptr = nullptr;
         if (xrpl_ptr==nullptr)
             xrpl_ptr = std::make_shared<xrpl_network>(false);
         return xrpl_ptr;
     }
-    static std::shared_ptr<exchange> get_xrpltestnet_instance() {
+    static std::shared_ptr<exchange> xrpltestnet_instance() {
         static std::shared_ptr<exchange> testnet_ptr = nullptr;
         if (testnet_ptr==nullptr)
             testnet_ptr = std::make_shared<xrpl_network>(true);
         return testnet_ptr;
     }
+
+public:
     static std::shared_ptr<exchange> get_instance(bool testnet) {
         if (testnet)
-            return get_xrpltestnet_instance();
-        return get_xrpl_instance();
+            return xrpltestnet_instance();
+        return xrpl_instance();
+    }
+    static std::shared_ptr<xrpl_network> get_xrpl_instance(bool testnet) {
+        return std::dynamic_pointer_cast<xrpl_network>(get_instance(testnet));
     }
 
     // ---------------------------------------
@@ -120,6 +125,16 @@ public:
     void subscribe_accounts(net::contexts &io_contexts);
     //
     void add_wallet(const ledger_wallet &w);
+    void clear_wallets() { subscribed_wallets_.clear(); }
+
+    std::vector<basic_account*> wallets() override
+    {
+        std::vector<basic_account*> accts;
+        for (auto &acct : subscribed_wallets_) {
+            accts.push_back(&acct);
+        }
+        return accts;
+    }
 
     // ----------------------------------------------------------------------------
     static void new_orderbook_data(xrpl_network* nw, std::string_view);
@@ -139,25 +154,33 @@ public:
     void get_all_account_infos();
     void handle_account_info(ledger_wallet &w, std::string&& data);
 
+    // Send query to Data API and get all open orders for tracked wallets
+    void get_all_account_orders();
+    void handle_account_orders(ledger_wallet &w, std::string&& data);
+
     bool make_payment(currency &c, basic_account *src, basic_account *dest) override;
     void cancel_order(trade_data const &t) override {};
+
 
     std::vector<std::pair<currency_type, currency_type>> currency_pairs() override;
 
     // place a buy/sell order
-    void place_buy_limit_order(trade_data const &t);
+    void place_limit_order(trade_data const &t, bool update_after);
     void place_buy_sell_orders(std::vector<trade_data> const &trades) override;
 
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
     // procesing operations that affect Qt/GUI managed items in a thread safe way
 
-    // emitted when a currency balance changes and GUI needs updating
+    // emitted when new orderbook data has been received and processed
+    void orderbook_changed();
+
+    // emitted when a single currency balance changes and GUI needs updating
     void update_currency_widget(currency*);
 
     // emitted when a wallet is updated with new balances for multiple currencies
     void update_wallet_widget(ledger_wallet*);
 
-    // emitted when new orderbook data has been received and processed
-    void orderbook_changed();
+    // emitted when a wallet is updated with new trade information
+    void update_trade_widget(ledger_wallet*);
 };

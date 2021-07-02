@@ -25,8 +25,9 @@ public:
     virtual void cancel_order(trade_data const &t) = 0;
     virtual std::vector<std::pair<currency_type, currency_type>> currency_pairs() = 0;
     virtual void place_buy_sell_orders(std::vector<trade_data> const &trades) = 0;
+    virtual std::vector<basic_account*> wallets() = 0;
 
 signals:
-    // emitted when a transaction might cause a balance change
+    // emitted when a transaction might cause a change in data
     void transaction_event();
 };

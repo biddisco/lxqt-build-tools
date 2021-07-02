@@ -4,7 +4,7 @@
 #include "currency_widget.hpp"
 #include "trade_widget.hpp"
 #include "ui_currency_widget.h"
-#include "check_trade_dialog.hpp"
+#include "check_trades_dialog.hpp"
 //
 #include <string>
 #include <boost/format.hpp>
@@ -78,6 +78,17 @@ void currency_widget::show_hide()
         ui->dest_combo->clear();
         app_settings* app_ini = global_settings();
 
+        // for each walleet on each network
+        for (auto network : app_ini->networks_) {
+            for (auto w : network->wallets()) {
+                if (network_->can_send(currency_, w->network_.get())) {
+                    QVariant v;
+                    v.setValue(w);
+                    ui->dest_combo->addItem(QString(w->name_.c_str()), v);
+                }
+            }
+        }
+/*
         // Add bitstamp exchange to transfer list
         if (network_->can_send(currency_, app_ini->bitstamp.network_.get())) {
             QVariant v;
@@ -93,7 +104,7 @@ void currency_widget::show_hide()
                 ui->dest_combo->addItem(QString(w.name_.c_str()), v);
             }
         }
-
+*/
         ui->buy_sell_combo->clear();
         auto pairs = network_->currency_pairs();
         for (auto &p : pairs) {

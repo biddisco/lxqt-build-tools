@@ -1,18 +1,21 @@
 #pragma once
 
-#include <QApplication>
 #include <QString>
-#include <QTimer>
 //
 #include <string>
+//
+#ifndef Q_MOC_RUN
+// MOC chokes on keyword "signals" used by belle
+# include "extern/belle/include/belle.hh"
+#endif
 //
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 #include "src/network/evp-encrypt.hpp"
-//
 #include "src/exchange/exchange.hpp"
-#include "src/exchange/xrpl_network.hpp"
+#include "src/order_book.hpp"
 #include "src/trade_data.hpp"
+#include "src/settings.hpp"
 
 // ----------------------------------------------------------------------------
 class bitstamp_network : public exchange
@@ -27,6 +30,9 @@ private:
 
     // orderbook from bitstamp
     bitstamp_order_book *orderbook_;
+
+    // usually only one present, but allow for more
+    std::vector<bitstamp_account> accounts_;
 
 public:
     //
@@ -49,34 +55,79 @@ public:
         return bitstamp_ptr;
     }
 
+    static std::shared_ptr<bitstamp_network> get_bitstamp_instance() {
+        return std::dynamic_pointer_cast<bitstamp_network>(get_instance());
+    }
+
+    // ---------------------------------------
+    // construct/destruct
+    // ---------------------------------------
     bitstamp_network();
     ~bitstamp_network() override;
 
+    // returns a temp vector of account pointers (references)
+    // to be used with caution.
+    std::vector<basic_account*> wallets() override
+    {
+        std::vector<basic_account*> accts;
+        for (auto &acct : accounts_) {
+            accts.push_back(&acct);
+        }
+        return accts;
+    }
+
+    bitstamp_account &account() {
+        return accounts_[0];
+    }
+
+    // ---------------------------------------
+    // network name
     std::string_view name() override { return "Bitstamp"; }
 
-    //
+    // supported currency pairs
+    virtual std::vector<std::pair<currency_type, currency_type>> currency_pairs() override;
+
+    // Is sending this currency to the destination exchange supported
+    bool can_send(currency &c, exchange *dest) override;
+
+    // ---------------------------------------
+    // return the order book for this exchange
+    const bitstamp_order_book &get_orderbook() const;
+
+    // set the plot object for this exchange's orderbook
+    void set_plot(OrderBookPlot *obp);
+
+    // ---------------------------------------
+    // init connections/websockets etc
     void connect(net::contexts &io_contexts) override;
-    //
+    // shut down sockets/connections
     void disconnect() override;
 
-    void update_account_info();
-    bool can_send(currency &c, exchange *dest) override;
+    // ---------------------------------------
+    // http: fetch account info/data
+    void get_account_info();
+    // process account info response
+    void handle_account_info(std::string&&);
+
+    // ---------------------------------------
+    // http: fetch open order data
+    void get_open_orders();
+    // process open order data response
+    void handle_open_orders(std::string&&);
+
+
     bool make_payment(currency &c, basic_account *src, basic_account *dest) override;
     //
-    const bitstamp_order_book &get_orderbook() const;
-    //
-    void set_plot(OrderBookPlot *obp);
-    //
-    void get_open_orders();
 
+    // ---------------------------------------
     // place a buy/sell order
     void place_limit_order(trade_data const &t, bool update_after);
     void place_buy_sell_orders(std::vector<trade_data> const &trades) override;
+    void cancel_order(trade_data const &t) override;
 
     // ----------------------------------------------------------------------------
     void account_request(std::string &&url_path, std::string &&url_query, request_callback &&cb);
     //
-    void account_data(std::string&&);
 
     using fn_on_http_2 = std::function<void(OB::Belle::Client::Http_Ctx&, bool)>;
 
@@ -88,9 +139,7 @@ public:
     // function called from websocket subscription to live orderbook data
     static void new_orderbook_data(bitstamp_network*, std::string_view);
 
-    void cancel_order(trade_data const &t) override;
 
-    virtual std::vector<std::pair<currency_type, currency_type>> currency_pairs() override;
 
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
@@ -103,10 +152,7 @@ signals:
     void new_trade_data_ui(QString);
 
     // when the wallet widget needs to be updated with new data/currencies
-    void widget_update();
-
-    // emitted when data about open trades is available
-    void user_trades_updated(QString);
+    void update_wallet_widget(bitstamp_account*);
 
 public slots:
     void timer_event();

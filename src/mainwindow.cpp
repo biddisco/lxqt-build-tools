@@ -17,6 +17,7 @@
 #include "wallet_widget.hpp"
 #include "currency_widget.hpp"
 #include "trade_widget.hpp"
+#include "check_trades_dialog.hpp"
 //
 #include "src/network/evp-encrypt.hpp"
 #include "src/network/https-async.hpp"
@@ -74,15 +75,15 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // ----------------------------------
     // create bitstamp exchange interface
     //
-    bitstamp_network_ = std::dynamic_pointer_cast<bitstamp_network>(bitstamp_network::get_instance());
+    bitstamp_network_ = bitstamp_network::get_bitstamp_instance();
     bitstamp_network_->set_plot(obp_);
 
     // ----------------------------------
     // create xrp network interfaces
     // we do not plot the xrp testnet orderbook
     //
-    xrpl_network_ = std::dynamic_pointer_cast<xrpl_network>(xrpl_network::get_xrpl_instance());
-    xrpl_testnet_ = std::dynamic_pointer_cast<xrpl_network>(xrpl_network::get_xrpltestnet_instance());
+    xrpl_network_ = xrpl_network::get_xrpl_instance(false);
+    xrpl_testnet_ = xrpl_network::get_xrpl_instance(true);
     xrpl_network_->set_plot(obp_);
 
     // timer will fire once each time it is reset
@@ -127,9 +128,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     orders_scrollwidget = new QScrollArea(this);
     orders_scrollwidget->setWidgetResizable(true);
-    QFrame *orders_frame = new QFrame(orders_scrollwidget);
-    orders_frame->setLayout(new QVBoxLayout());
-    orders_scrollwidget->setWidget(orders_frame);
+    QFrame *main_frame = new QFrame(orders_scrollwidget);
+    main_frame->setLayout(new QVBoxLayout());
+    orders_scrollwidget->setWidget(main_frame);
     orders_dock = std::make_shared<QDockWidget>("Orders", this);
     orders_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
     orders_dock->setFeatures(QDockWidget::AllDockWidgetFeatures);
@@ -138,33 +139,21 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     addDockWidget(Qt::RightDockWidgetArea, orders_dock.get());
 
     //
-//    QFrame *frame = new QFrame(this);
-//    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-//    accounts_scrollwidget->setWidget(frame);
-    //
-//    QVBoxLayout *vbox = new QVBoxLayout();
-//    frame->setLayout(vbox);
-    //
     app_settings* app_ini = global_settings();
-    {
-        app_ini->bitstamp.widget_ = new wallet_widget(this);
-        app_ini->bitstamp.widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        app_ini->bitstamp.widget_->set_data(app_ini->bitstamp);
-        accounts_frame->layout()->addWidget(app_ini->bitstamp.widget_);
-    }
 
-    ranges::for_each(app_ini->xrpl_wallets, [&](auto &w) {
-        // create a gui widget for the wallet
-        w.widget_ = new wallet_widget(this);
-        w.widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        w.widget_->set_data(w);
-        accounts_frame->layout()->addWidget(w.widget_);
-        // update wallet combo with name
-        ui.all_acct_combo->addItem(QString(w.name_.c_str()));
-        // updte networks with monitoried wallets
-        if (w.testnet_) xrpl_testnet_->add_wallet(w);
-        else xrpl_network_->add_wallet(w);
-    });
+    // for each wallet on each network
+    for (auto network : app_ini->networks_) {
+        for (auto w : network->wallets()) {
+            // create a gui widget for the wallet
+            w->widget_ = new wallet_widget(this);
+            w->widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+            if (network->name()=="Bitstamp") w->widget_->set_data(*static_cast<bitstamp_account*>(w));
+            if (network->name()=="XRPL")     w->widget_->set_data(*static_cast<ledger_wallet*>(w));
+            accounts_frame->layout()->addWidget(w->widget_);
+            // update wallet combo with name
+            ui.all_acct_combo->addItem(QString(w->name_.c_str()));
+        }
+    }
     accounts_frame->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred));
 
     // ----------------------------------
@@ -254,13 +243,25 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
         {
             //do what you need
             DEBUG_ONLY("Shift click pressed");
-            app_settings* app_ini = global_settings();
             std::array<std::string, 5> strings{
-                app_ini->bitstamp.API_user, app_ini->bitstamp.API_key,
-                app_ini->bitstamp.API_secret, std::to_string(app_ini->bitstamp.tag_),
-                app_ini->bitstamp.public_};
-            //
-            password_dialog npw = password_dialog(strings, app_ini->xrpl_wallets);
+                bitstamp_network_->account().API_user, bitstamp_network_->account().API_key,
+                bitstamp_network_->account().API_secret, std::to_string(bitstamp_network_->account().tag_),
+                bitstamp_network_->account().public_};
+
+            // iterate over wallets to commvert type from basic pointers
+            // @TODO - improve this
+            std::vector<ledger_wallet> wallets;
+            auto x1 = xrpl_network::get_xrpl_instance(false)->wallets();
+            auto x2 = xrpl_network::get_xrpl_instance(true)->wallets();
+            ranges::for_each(x1, [&](basic_account* b){
+                ledger_wallet w = *static_cast<ledger_wallet*>(b);
+                wallets.push_back(w);
+            });
+            ranges::for_each(x2, [&](basic_account* b){
+                ledger_wallet w = *static_cast<ledger_wallet*>(b);
+                wallets.push_back(w);
+            });
+            password_dialog npw = password_dialog(strings, wallets);
             if (npw.exec() == QDialog::Accepted)
             {
                 generate_encrypted_ini_data(npw);
@@ -306,18 +307,16 @@ void GroxMainWindow::createMenus()
     connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
             this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
 
-    // when trades are queried/changed, we must update the GUI
-    connect(bitstamp_network_.get(), SIGNAL(user_trades_updated(QString)),
-            this, SLOT(user_trades_update(QString)), Qt::QueuedConnection);
-
     // when a transaction takes place we might need to update wallet/records
-    connect(bitstamp_network_.get(), SIGNAL(transaction_event()),
-            this, SLOT(transaction_event()), Qt::QueuedConnection);
+    connect(bitstamp_network_.get(), &bitstamp_network::transaction_event, this, [this]() {
+        transaction_event();
+        display_offers();
+    } , Qt::QueuedConnection);
 
-    connect(bitstamp_network_.get(), &bitstamp_network::widget_update, this, []() {
-        app_settings* app_ini = global_settings();
-        app_ini->bitstamp.widget_->set_data(app_ini->bitstamp);
-    }, Qt::QueuedConnection);
+    connect(bitstamp_network_.get(), &bitstamp_network::update_wallet_widget, this, [this](bitstamp_account *acct) {
+        acct->widget_->set_data(*acct);
+        display_offers();
+    } , Qt::QueuedConnection);
 
     connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)),
             this, SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
@@ -351,6 +350,7 @@ void GroxMainWindow::update_wallet_widget(ledger_wallet *w)
 {
     assert(w->widget_);
     w->widget_->set_data(*w);
+    display_offers();
 }
 
 // ----------------------------------------------------------------------------
@@ -363,11 +363,11 @@ void GroxMainWindow::execute_xrp()
         qDebug() << "Yes was clicked";
         app_settings* app_ini = global_settings();
 
-        std::uint32_t tag = app_ini->bitstamp.tag_;
+        std::uint32_t tag = bitstamp_network_->account().tag_;
 //        bool test = make_xrp_payment(ripple::KeyType::secp256k1,
 //            app_ini->xrpl_wallets[app_ini->active_wallet].private_,
 //            app_ini->xrpl_wallets[app_ini->active_wallet].public_,
-//            app_ini->bitstamp.public_, tag, 10);
+//            bitstamp_network_->account().public_, tag, 10);
 
         QApplication::quit();
     } else {
@@ -490,11 +490,12 @@ void GroxMainWindow::update_account_balances()
 {
     DEBUG_ALWAYS("Updating accounts");
     //
-    bitstamp_network_->update_account_info();
+    bitstamp_network_->get_account_info();
     bitstamp_network_->get_open_orders();
     //
     xrpl_network_->get_all_account_balances();
     xrpl_network_->get_all_account_infos();
+    xrpl_network_->get_all_account_orders();
     //
     if (1) {
         xrpl_testnet_->get_all_account_balances();
@@ -836,58 +837,27 @@ void GroxMainWindow::orderbook_text_update()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::user_trades_update(QString data)
+void GroxMainWindow::display_offers()
 {
-    DEBUG_ALWAYS(data.toStdString());
-    // Wipe the old order widgets
-    QWidget *old_frame = orders_scrollwidget->findChild<QWidget*>("Bitstamp");
-    if (old_frame) {
-        orders_scrollwidget->widget()->layout()->removeWidget(old_frame);
-        delete old_frame;
-    }
-    //
-    QFrame *frame = new QFrame(this);
-    frame->setObjectName("Bitstamp");
-    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    orders_scrollwidget->widget()->layout()->addWidget(frame);
-    //
-    QVBoxLayout *vbox = new QVBoxLayout();
-    frame->setLayout(vbox);
-    //
-    std::string temp = data.toStdString();
-    nlohmann::json jdata = json::parse(temp);
-    for (auto& [key, val] : jdata.items())
-    {
-        std::string cs = val["currency_pair"];
-        std::size_t pos = cs.find("/");
-        std::string c1 = cs.substr(0,pos);
-        std::string c2 = cs.substr(pos+1);
-
-        double amount = std::stod(val["amount"].get< std::string >());
-        double price = std::stod(val["price"].get< std::string >());
-        double fee = 0;
-        trade_data t{
-            bitstamp_network_,
-            // 0=buy, 1=sell
-            (val["type"] == "0") ? trade_type::buy : trade_type::sell,
-            get_currency_type(c1,""),
-            get_currency_type(c2,""),
-            amount,
-            amount*price,
-            price,
-            fee,
-            std::stoull(val["id"].get< std::string >()),
-            val["datetime"]
-        };
-
-        // create a gui widget for the order
-        auto widget_ = new trade_widget(this);
-        widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        widget_->set_data(t);
-        vbox->addWidget(widget_);
+    // Delete previous space in offer window
+    for (int i = 0; i < orders_scrollwidget->widget()->layout()->count(); ++i) {
+        QLayoutItem *layoutItem = orders_scrollwidget->widget()->layout()->itemAt(i);
+        if (layoutItem->spacerItem()) {
+            orders_scrollwidget->widget()->layout()->removeItem(layoutItem);
+            delete layoutItem;
+            --i;
+        }
     }
 
-    vbox->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
+    app_settings* app_ini = global_settings();
+    // for each wallet on each network
+    for (auto network : app_ini->networks_) {
+        for (auto w : network->wallets()) {
+            check_trades_dialog::create_trade_widgets(orders_scrollwidget->widget(), w->name_, w->offers_);
+        }
+    }
+    // absorb any extra space in the parent by adding a spacer
+    orders_scrollwidget->widget()->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
 }
 
 void GroxMainWindow::closeEvent(QCloseEvent *event)

@@ -39,7 +39,7 @@ void wallet_widget::set_data(ledger_wallet &w)
 // ----------------------------------------------------------------------------
 void wallet_widget::set_data(bitstamp_account &w)
 {
-    ui->ledger_wallet->setTitle("Bitstamp");
+    ui->ledger_wallet->setTitle(w.name_.c_str());
     ui->address->setText(w.public_.c_str());
     ui->tag->setText(QString(std::to_string(w.tag_).c_str()));
     //

@@ -1,9 +1,8 @@
-#include <QApplication>
 #include <QString>
-#include <QTimer>
 //
 #include <string>
 //
+#include "src/exchange/xrpl_network.hpp"
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 #include "src/network/evp-encrypt.hpp"
@@ -14,6 +13,9 @@
 // ----------------------------------------------------------------------------
 bitstamp_network::bitstamp_network()
 {
+    bitstamp_account default_acct;
+    default_acct.name_ = "Bitstamp Main";
+    accounts_.push_back(default_acct);
 }
 
 // ----------------------------------------------------------------------------
@@ -128,11 +130,56 @@ void bitstamp_network::set_plot(OrderBookPlot *obp) {
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::update_account_info()
+void bitstamp_network::get_account_info()
 {
     account_request("/api/v2/balance/", "", [this](std::string &&data) {
-        account_data(std::move(data));
+        handle_account_info(std::move(data));
     });
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::handle_account_info(std::string&& data)
+{
+    DEBUG_ONLY("bitstamp account_info : thread " << std::this_thread::get_id());
+    DEBUG_ONLY("Response : " << data);
+    //
+    nlohmann::json jdata = json::parse(data);
+    DEBUG_ONLY(jdata.dump(4));
+    //
+    bitstamp_account &acct = get_bitstamp_instance()->account();
+
+    currency xrp_bitstamp{
+        "XRP", "", currency_type::xrp,
+        std::stod(jdata["xrp_balance"].get<std::string>()),
+        std::stod(jdata["xrp_available"].get<std::string>()),
+        std::stod(jdata["xrp_reserved"].get<std::string>()),
+        nullptr
+    };
+    add_currency(xrp_bitstamp, acct.currencies_);
+
+    if (jdata.contains("usd_balance")) {
+        currency usd_bitstamp{
+            "USD", currency::bitstamp_trust, currency_type::usd_bitstamp,
+            std::stod(jdata["usd_balance"].get<std::string>()),
+            std::stod(jdata["usd_available"].get<std::string>()),
+            std::stod(jdata["usd_reserved"].get<std::string>()),
+            nullptr
+        };
+        add_currency(usd_bitstamp, acct.currencies_);
+    }
+
+    if (jdata.contains("eur_balance")) {
+        currency eur_bitstamp{
+            "EUR", currency::bitstamp_trust, currency_type::eur_bitstamp,
+            std::stod(jdata["eur_balance"].get<std::string>()),
+            std::stod(jdata["eur_available"].get<std::string>()),
+            std::stod(jdata["eur_reserved"].get<std::string>()),
+            nullptr
+        };
+        add_currency(eur_bitstamp, acct.currencies_);
+    }
+
+    emit update_wallet_widget(&acct);
 }
 
 // ----------------------------------------------------------------------------
@@ -140,9 +187,44 @@ void bitstamp_network::get_open_orders()
 {
     account_request("/api/v2/open_orders/all/", "", [this](std::string &&data) {
         DEBUG_ONLY("Open Order response:\n" << data);
-        QString sdata(data.c_str());
-        emit user_trades_updated(sdata);
+        handle_open_orders(std::move(data));
     });
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::handle_open_orders(std::string&& data)
+{
+    bitstamp_account &acct = get_bitstamp_instance()->account();
+    auto &trades = acct.offers_;
+    trades.clear();
+    //
+    nlohmann::json jdata = json::parse(data);
+    for (auto& [key, val] : jdata.items())
+    {
+        std::string cs = val["currency_pair"];
+        std::size_t pos = cs.find("/");
+        std::string c1 = cs.substr(0,pos);
+        std::string c2 = cs.substr(pos+1);
+
+        double amount = std::stod(val["amount"].get< std::string >());
+        double price = std::stod(val["price"].get< std::string >());
+        double fee = 0;
+        trade_data t{
+            this->get_instance(),
+            // 0=buy, 1=sell
+            (val["type"] == "0") ? trade_type::buy : trade_type::sell,
+            get_currency_type(c1,""),
+            get_currency_type(c2,""),
+            amount,
+            amount*price,
+            price,
+            fee,
+            std::stoull(val["id"].get< std::string >()),
+            val["datetime"]
+        };
+        trades.push_back(t);
+    }
+    emit update_wallet_widget(&acct);
 }
 
 // ----------------------------------------------------------------------------
@@ -156,15 +238,14 @@ void bitstamp_network::account_request(std::string &&url_path, std::string &&url
           std::cerr << "account_request : Protocol Error: " << ctx.ec.message() << "\n\n";
         });
 
-        app_settings* app_ini = global_settings();
         secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
-        encryption encryptor(app_ini->bitstamp.API_key, randbytes);
+        encryption encryptor(get_bitstamp_instance()->account().API_key, randbytes);
         //
         std::chrono::milliseconds timestamp =
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch());
         // setup REST request fields
-        std::string x_auth = "BITSTAMP " + app_ini->bitstamp.API_key;
+        std::string x_auth = "BITSTAMP " + get_bitstamp_instance()->account().API_key;
         std::string x_auth_nonce = encryptor.generate_uuid_string();
         std::string x_auth_timestamp = std::to_string(timestamp.count());
         std::string x_auth_version = "v2";
@@ -186,7 +267,7 @@ void bitstamp_network::account_request(std::string &&url_path, std::string &&url
         data_to_sign.append(payload);
 
         // generated signature
-        auto signed_hmac = encryptor.CalcHmacSHA256(app_ini->bitstamp.API_secret, data_to_sign);
+        auto signed_hmac = encryptor.CalcHmacSHA256(get_bitstamp_instance()->account().API_secret, data_to_sign);
         assert(signed_hmac.size() == 32);
         std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
 
@@ -203,7 +284,7 @@ void bitstamp_network::account_request(std::string &&url_path, std::string &&url
         //
         b_request.body() = payload;
         b_request.prepare_payload();
-        DEBUG_ALWAYS("Request " << b_request << "\n");
+        DEBUG_ONLY("Request " << b_request << "\n");
 
         new_client.on_http(b_request, [cb=std::move(cb)](auto& ctx)
         {
@@ -236,51 +317,6 @@ void bitstamp_network::new_orderbook_data(bitstamp_network* n, std::string_view 
         return;
 
     emit n->orderbook_changed();
-}
-
-// ----------------------------------------------------------------------------
-void bitstamp_network::account_data(std::string&& data)
-{
-    DEBUG_ONLY("bitstamp account_data : thread " << std::this_thread::get_id());
-    DEBUG_ONLY("Response : " << data);
-    //
-    nlohmann::json jdata = json::parse(data);
-    DEBUG_ONLY(jdata.dump(4));
-    //
-    app_settings* app_ini = global_settings();
-    //
-    currency xrp_bitstamp{
-        "XRP", "", currency_type::xrp,
-        std::stod(jdata["xrp_balance"].get<std::string>()),
-        std::stod(jdata["xrp_available"].get<std::string>()),
-        std::stod(jdata["xrp_reserved"].get<std::string>()),
-        nullptr
-    };
-    add_currency(xrp_bitstamp, app_ini->bitstamp.currencies_);
-
-    if (jdata.contains("usd_balance")) {
-        currency usd_bitstamp{
-            "USD", currency::bitstamp_trust, currency_type::usd_bitstamp,
-            std::stod(jdata["usd_balance"].get<std::string>()),
-            std::stod(jdata["usd_available"].get<std::string>()),
-            std::stod(jdata["usd_reserved"].get<std::string>()),
-            nullptr
-        };
-        add_currency(usd_bitstamp, app_ini->bitstamp.currencies_);
-    }
-
-    if (jdata.contains("eur_balance")) {
-        currency eur_bitstamp{
-            "EUR", currency::bitstamp_trust, currency_type::eur_bitstamp,
-            std::stod(jdata["eur_balance"].get<std::string>()),
-            std::stod(jdata["eur_available"].get<std::string>()),
-            std::stod(jdata["eur_reserved"].get<std::string>()),
-            nullptr
-        };
-        add_currency(eur_bitstamp, app_ini->bitstamp.currencies_);
-    }
-
-    emit widget_update();
 }
 
 // ----------------------------------------------------------------------------
@@ -411,7 +447,6 @@ void bitstamp_network::place_limit_order(trade_data const &t, bool update_after)
 // ----------------------------------------------------------------------------
 void bitstamp_network::place_buy_sell_orders(std::vector<trade_data> const &trades)
 {
-    std::string req;
     for (auto const &t : trades) {
         if (&t != &trades.back()) place_limit_order(t, false);
         else place_limit_order(t, true);

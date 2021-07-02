@@ -269,7 +269,7 @@
         <item>
          <widget class="QLabel" name="label_2">
           <property name="text">
-           <string> </string>
+           <string/>
           </property>
          </widget>
         </item>
@@ -285,7 +285,17 @@
         </item>
        </layout>
       </item>
-      <item row="1" column="2">
+      <item row="0" column="0">
+       <widget class="QLabel" name="buy_sell">
+        <property name="text">
+         <string>Buy/Sell</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="buy_sell_combo"/>
+      </item>
+      <item row="1" column="1">
        <layout class="QVBoxLayout" name="verticalLayout_5">
         <item>
          <widget class="QLabel" name="label_9">
@@ -299,17 +309,7 @@
         </item>
        </layout>
       </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="buy_sell_combo"/>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="buy_sell">
-        <property name="text">
-         <string>Buy/Sell</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
+      <item row="1" column="2">
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
          <widget class="QLabel" name="label_8">

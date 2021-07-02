@@ -90,6 +90,7 @@ public:
         const std::vector<double>& new_ohlc_volumes);
 
     void update_balance(std::string_view addr, double oldb, double newb);
+    void display_offers();
 
     void closeEvent(QCloseEvent *event) override;
     void showEvent(QShowEvent *event) override;
@@ -112,7 +113,6 @@ public slots:
     void transaction_event();
     void on_timer();
     void orderbook_text_update();
-    void user_trades_update(QString);
 
     // to connect to xrpl ledger signals
     void update_currency_widget(currency*);
