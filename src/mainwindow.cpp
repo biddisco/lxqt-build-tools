@@ -823,7 +823,7 @@ void GroxMainWindow::on_timer()
 {
     DEBUG_ALWAYS("on_timer : check balances");
     update_account_balances();
-    timer_->start(5000);
+//    timer_->start(5000);
 }
 
 // ----------------------------------------------------------------------------

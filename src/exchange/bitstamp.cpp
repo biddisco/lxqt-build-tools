@@ -215,6 +215,7 @@ void bitstamp_network::handle_open_orders(std::string&& data)
         if (trade_type_ == trade_type::sell) {
             trade_data t{
                 this->get_instance(),
+                account().name_,
                 get_currency_type(c2,""),
                 get_currency_type(c1,""),
                 amount*price,
@@ -229,6 +230,7 @@ void bitstamp_network::handle_open_orders(std::string&& data)
         else {
             trade_data t{
                 this->get_instance(),
+                account().name_,
                 get_currency_type(c1,""),
                 get_currency_type(c2,""),
                 amount,

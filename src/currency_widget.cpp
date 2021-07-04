@@ -191,6 +191,7 @@ void currency_widget::execute_trade()
         }
         trade_data t{
                     network_,
+                    account_->name_,
                     taker_payc,             // taker pays this currency
                     this->currency_.type_,  // taker gets this currency
                     taker_pay,              // taker pays this amount (total)

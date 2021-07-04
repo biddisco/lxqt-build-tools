@@ -207,59 +207,97 @@ void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
         nlohmann::json adata = jdata["meta"]["AffectedNodes"];
         for (const auto &a : adata) {
             try {
-                auto m = a["ModifiedNode"];
-                auto f = m["FinalFields"];
-                auto p = m["PreviousFields"];
-                auto b = f["Balance"];
-                double oldb;
-                double newb;
-                //
-                if (f.contains("Account")) {
-                    std::string acct = f["Account"].get<std::string>();
-                    oldb = 1E-6*std::stod(p["Balance"].get<std::string>());
-                    newb = 1E-6*std::stod(b.get<std::string>());
-                    std::cout << "Acct " << acct
-                              << " old balance " << oldb
-                              << " new balance " << newb << std::endl;
-                    nw->update_XRP_balance(acct, oldb, newb);
-                }
-                // is this an IOU balance change?
-                else if (b.contains("issuer") && (b["issuer"].get<std::string>() == "rrrrrrrrrrrrrrrrrrrrBZbvji")) {
-                    currency curr;
-                    auto t              = jdata["transaction"];
-                    std::string fm_acct = t["Account"];
-                    std::string to_acct = t["Destination"];
-                    curr.name_          = b["currency"].get<std::string>();
-                    curr.issuer_        = t["SendMax"]["issuer"].get<std::string>();
-                    curr.balance_       = std::stod(b["value"].get<std::string>());
-                    curr.type_          = get_currency_type(curr.name_, curr.issuer_);
-                    if (to_acct == f["LowLimit"]["issuer"].get<std::string>()) {
-                        std::cout << "Acct " << to_acct
-                                  << " IOU balance change " << curr.balance_ << std::endl;
-                        nw->update_IOU_balance(to_acct, curr);
+                if (a.contains("ModifiedNode")) {
+                    auto m = a["ModifiedNode"];
+                    auto f = m["FinalFields"];
+                    auto p = m["PreviousFields"];
+                    auto b = f["Balance"];
+                    double oldb;
+                    double newb;
+                    //
+                    if (f.contains("Account")) {
+                        std::string acct = f["Account"].get<std::string>();
+                        oldb = 1E-6*std::stod(p["Balance"].get<std::string>());
+                        newb = 1E-6*std::stod(b.get<std::string>());
+                        std::cout << "Acct " << acct
+                                  << " old balance " << oldb
+                                  << " new balance " << newb << std::endl;
+                        nw->update_XRP_balance(acct, oldb, newb);
                     }
-                    if (fm_acct == f["HighLimit"]["issuer"].get<std::string>()) {
-                        curr.balance_ = -curr.balance_;
-                        std::cout << "Acct " << fm_acct
-                                  << " IOU balance change " << curr.balance_ << std::endl;
-                        nw->update_IOU_balance(fm_acct, curr);
+                    // is this an IOU balance change?
+                    else if (b.contains("issuer") && (b["issuer"].get<std::string>() == "rrrrrrrrrrrrrrrrrrrrBZbvji")) {
+                        currency curr;
+                        auto t              = jdata["transaction"];
+                        std::string fm_acct = t["Account"];
+                        std::string to_acct = t["Destination"];
+                        curr.name_          = b["currency"].get<std::string>();
+                        curr.issuer_        = t["SendMax"]["issuer"].get<std::string>();
+                        curr.balance_       = std::stod(b["value"].get<std::string>());
+                        curr.type_          = get_currency_type(curr.name_, curr.issuer_);
+                        if (to_acct == f["LowLimit"]["issuer"].get<std::string>()) {
+                            std::cout << "Acct " << to_acct
+                                      << " IOU balance change " << curr.balance_ << std::endl;
+                            nw->update_IOU_balance(to_acct, curr);
+                        }
+                        if (fm_acct == f["HighLimit"]["issuer"].get<std::string>()) {
+                            curr.balance_ = -curr.balance_;
+                            std::cout << "Acct " << fm_acct
+                                      << " IOU balance change " << curr.balance_ << std::endl;
+                            nw->update_IOU_balance(fm_acct, curr);
+                        }
+                    }
+                }
+                if (a.contains("DeletedNode")) {
+                    auto t = jdata["transaction"];
+                    if (t["TransactionType"].get<std::string>() == "OfferCancel") {
+                        std::string  addr = t["Account"];
+                        std::uint64_t seq = t["OfferSequence"];
+                        auto it = nw->get_wallet_by_addr(addr);
+                        if (!it) {
+                            std::cerr << "Deleted node did not find wallet " << addr << std::endl;
+                            break;
+                        }
+                        it->delete_trade(seq);
+                        emit nw->transaction_event();
                     }
                 }
             }
             catch (...) {
-                DEBUG_ALWAYS("Account changes : " << data);
+                DEBUG_ALWAYS("Exception Account changes : " << data);
             }
         }
     }
 }
 
 // ----------------------------------------------------------------------------
-std::vector<currency>::iterator xrpl_network::get_currency(std::string_view addr, currency_type t)
+ledger_wallet *xrpl_network::get_wallet_by_addr(std::string_view addr)
 {
     auto it = ranges::find_if(subscribed_wallets_, [addr](ledger_wallet const &w){
         return w.public_ == addr;
     });
     if (it==subscribed_wallets_.end()) {
+        return nullptr;
+    }
+    return &(*it);
+}
+
+// ----------------------------------------------------------------------------
+ledger_wallet *xrpl_network::get_wallet_by_name(std::string_view name)
+{
+    auto it = ranges::find_if(subscribed_wallets_, [name](ledger_wallet const &w){
+        return w.name_ == name;
+    });
+    if (it==subscribed_wallets_.end()) {
+        return nullptr;
+    }
+    return &(*it);
+}
+
+// ----------------------------------------------------------------------------
+std::vector<currency>::iterator xrpl_network::get_currency(std::string_view addr, currency_type t)
+{
+    auto it = get_wallet_by_addr(addr);
+    if (!it) {
         std::cerr << "get currency did not find acct " << addr << std::endl;
         return std::vector<currency>::iterator(nullptr);
     }
@@ -517,6 +555,7 @@ void xrpl_network::handle_account_orders(ledger_wallet &w, std::string&& data)
          //
         trade_data t{
             get_instance(testnet()),
+            w.name_,
             taker_pay.currency,
             taker_get.currency,
             taker_pay.value,
@@ -698,13 +737,9 @@ void xrpl_network::place_buy_sell_orders(basic_account *acct, std::vector<trade_
 // ----------------------------------------------------------------------------
 void xrpl_network::cancel_order(trade_data const &t)
 {
-    using namespace ripple;
-    //
-    ledger_wallet *from;
-
-    for (auto &acct : subscribed_wallets_) {
-        if (acct.name_=="William")
-            from = static_cast<ledger_wallet*>(&acct);
+    ledger_wallet *from = get_wallet_by_name(t.wallet_);
+    if (!from) {
+        throw std::runtime_error("Cannot cancel order from " + t.wallet_);
     }
 
     // sign the transaction

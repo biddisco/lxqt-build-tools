@@ -24,8 +24,7 @@ enum order_type {
 // trade type : buy = 0, sell = 1
 struct trade_data {
     std::shared_ptr<exchange> network_;
-//    basic_account            *wallet_;
-//    trade_type trade_type_;
+    std::string               wallet_;
     currency_type taker_payc_;
     currency_type taker_getc_;
     double taker_pay_;

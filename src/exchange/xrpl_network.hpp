@@ -126,6 +126,8 @@ public:
     //
     void add_wallet(const ledger_wallet &w);
     void clear_wallets() { subscribed_wallets_.clear(); }
+    ledger_wallet *get_wallet_by_addr(std::string_view addr);
+    ledger_wallet *get_wallet_by_name(std::string_view name);
 
     std::vector<basic_account*> wallets() override
     {

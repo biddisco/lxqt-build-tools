@@ -26,6 +26,15 @@ struct basic_account
     wallet_widget              *widget_;
     std::vector<currency>       currencies_;
     std::vector<trade_data>     offers_;
+    //
+    void delete_trade(std::uint64_t id)
+    {
+        auto it = std::find_if(offers_.begin(), offers_.end(), [&](trade_data const& t){
+            return t.id_==id;
+        });
+        if(it != offers_.end())
+            offers_.erase(it);
+    }
 };
 
 // For compatibility with Qt Variant and Signals/Slots
