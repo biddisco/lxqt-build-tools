@@ -16,8 +16,9 @@
 #include "src/exchange/bitstamp.hpp"
 #include "src/exchange/xrpl.hpp"
 //
-//#include <test/jtx.h>
-#include <test/jtx/WSClient.h>
+#include <ripple/protocol/UintTypes.h>
+#include <ripple/protocol/Issue.h>
+//
 #define line_string "# ---------------------------------\n"
 
 // ----------------------------------------------------------------------------
@@ -513,34 +514,30 @@ void xrpl_network::handle_account_orders(ledger_wallet &w, std::string&& data)
         xrp_amount taker_pay;
         from_json(offer["taker_gets"], taker_get);
         from_json(offer["taker_pays"], taker_pay);
-        bool buy = taker_pay.currency == currency_type::xrp;
-        double price = 0;
-        double fee = 0;
+         //
+        trade_data t{
+            get_instance(testnet()),
+            taker_pay.currency,
+            taker_get.currency,
+            taker_pay.value,
+            taker_get.value,
+            0,
+            0,
+            offer.at("seq").get<std::uint64_t>(),
+            "- no date -"
+        };
+
         // xrp amounts are in drops, do divide by 1E6 to get whole xrp units
-        if (buy) {
-            taker_pay.value /= 1E6;
-            price = taker_pay.value / taker_get.value;
+        if (t.get_trade_type() == trade_type::buy) {
+            t.taker_pay_ /= 1E6;
+            t.exchange_rate_ = t.taker_get_ / t.taker_pay_;
         }
-        else {
-            taker_get.value /= 1E6;
-            price = taker_get.value / taker_pay.value;
+        else if (t.get_trade_type() == trade_type::sell) {
+            t.taker_get_ /= 1E6;
+            t.exchange_rate_ = t.taker_pay_ / t.taker_get_;
         }
         //
-        w.offers_.emplace_back(
-            trade_data{
-                get_instance(testnet()),
-                // 0=buy, 1=sell
-                (buy) ? trade_type::buy : trade_type::sell,
-                taker_pay.currency,
-                taker_get.currency,
-                taker_pay.value,
-                taker_get.value,
-                price,
-                fee,
-                offer.at("seq").get<std::uint64_t>(),
-                "- no date -"
-            }
-        );
+        w.offers_.push_back(t);
     }
     // signal GUI to update
     emit update_wallet_widget(&w);
@@ -586,7 +583,12 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
                 static_cast<uint64_t>(c.balance_*100), c.name_, c.issuer_);
     }
     from->sequence_++;
+    submit_signed_transaction(std::move(signed_tx));
+}
 
+// ----------------------------------------------------------------------------
+void xrpl_network::submit_signed_transaction(std::string &&signed_tx)
+{
     nlohmann::json tx;
     tx["tx_blob"] = signed_tx;
 
@@ -601,7 +603,7 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
     // set the method
     req.method(Belle::Method::post);
     req.set(Belle::Header::host, network_address());
-    req.set(Belle::Header::user_agent, "mystery");
+    req.set(Belle::Header::user_agent, "grox");
     req.set(Belle::Header::content_type, "application/json");
     req.set(Belle::Header::accept, "application/json");
     req.set(Belle::Header::connection, "close");
@@ -610,7 +612,6 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
     req.body() = content.dump();
     req.prepare_payload();
     DEBUG_ONLY(line_string << req);
-
 
     auto thread_function = [&, req=std::move(req)]() {
         OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
@@ -637,7 +638,88 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
     };
     auto https_thread = std::thread(std::move(thread_function));
     https_thread.detach();
+}
 
+// ----------------------------------------------------------------------------
+// place a buy/sell order
+void xrpl_network::place_limit_order(basic_account *acct, trade_data const &t, bool update_after)
+{
+    using namespace ripple;
+    //
+    ledger_wallet *from = static_cast<ledger_wallet*>(acct);
+
+    auto pay_pair = to_string(t.taker_payc_);
+    auto get_pair = to_string(t.taker_getc_);
+    ripple::STAmount taker_pays, taker_gets;
+
+    // fiat currencies are multipled by 100 and shifted left by 2
+    Currency curr_p = to_currency(pay_pair.first);
+    if (!isXRP(curr_p)) {
+        auto const issuer = parseBase58<AccountID>(pay_pair.second);
+        taker_pays = STAmount(Issue(curr_p, *issuer), static_cast<uint64_t>(1E2*t.taker_pay_), -2);
+    }
+    else {
+        taker_pays = STAmount(XRPAmount(1E6*t.taker_pay_)); // drops
+    }
+
+    // fiat currencies are multipled by 100 and shifted left by 2
+    Currency curr_g = to_currency(get_pair.first);
+    if (!isXRP(curr_g)) {
+        auto const issuer = parseBase58<AccountID>(get_pair.second);
+        taker_gets = STAmount(Issue(curr_g, *issuer), static_cast<uint64_t>(1E2*t.taker_get_), -2);
+    }
+    else {
+        taker_gets = STAmount(XRPAmount(1E6*t.taker_get_)); // drops
+    }
+
+    // sign the transaction
+    std::string signed_tx = make_xrp_offer(
+                ripple::KeyType::secp256k1,
+                from->private_,
+                from->public_,
+                from->sequence_,
+                taker_pays,
+                taker_gets,
+                0);
+    from->sequence_++;
+    submit_signed_transaction(std::move(signed_tx));
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::place_buy_sell_orders(basic_account *acct, std::vector<trade_data> const &trades)
+{
+    for (auto const &t : trades) {
+        //last order in list triggers update
+        if (&t == &trades.back()) place_limit_order(acct, t, true);
+        else place_limit_order(acct, t, false);
+    }
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::cancel_order(trade_data const &t)
+{
+    using namespace ripple;
+    //
+    ledger_wallet *from;
+
+    for (auto &acct : subscribed_wallets_) {
+        if (acct.name_=="William")
+            from = static_cast<ledger_wallet*>(&acct);
+    }
+
+    // sign the transaction
+    std::string signed_tx = cancel_xrp_offer(
+                ripple::KeyType::secp256k1,
+                from->private_,
+                from->public_,
+                from->sequence_,
+                t.id_,
+                0);
+    from->sequence_++;
+    submit_signed_transaction(std::move(signed_tx));
+}
+
+// ----------------------------------------------------------------------------
 //    {
 //        using namespace std::chrono_literals;
 //        using namespace jtx;
@@ -648,40 +730,3 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
 //        auto wsc = makeWSClient(env.app().config());
 
 //    }
-
-    return true;
-}
-
-// ----------------------------------------------------------------------------
-// place a buy/sell order
-void xrpl_network::place_limit_order(trade_data const &t, bool update_after)
-{
-
-    std::string pair = std::string(to_string(t.taker_payc_).first)
-            + std::string(to_string(t.taker_getc_).first) + "/";
-    // make lowercase XRPUSD->xrpud for bitstamp API
-    std::transform(pair.begin(), pair.end(), pair.begin(),
-        [](unsigned char c){ return std::tolower(c); });
-
-    std::string req = std::string("/api/v2/") + (t.trade_type_==trade_type::buy ? "buy/" : "sell/");
-    double amount = t.xrp_amount();
-    //
-    std::string data = "&amount=" + std::to_string(amount)
-            + "&price=" + to_string(t.exchange_rate_, t.taker_getc_);
-    //
-    DEBUG_ALWAYS("Placing order " << req << " " << pair << " " << data);
-//            account_request(req + pair, std::move(data), [this, update_after](std::string &&data) {
-//                DEBUG_ALWAYS("Buy-Limit Order response:\n" << data);
-//                // refresh order status
-//                if (update_after) get_open_orders();
-//            });
-}
-
-// ----------------------------------------------------------------------------
-void xrpl_network::place_buy_sell_orders(std::vector<trade_data> const &trades)
-{
-    for (auto const &t : trades) {
-        if (&t != &trades.back()) place_limit_order(t, false);
-        else place_limit_order(t, true);
-    }
-}

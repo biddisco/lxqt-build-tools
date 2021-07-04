@@ -3,6 +3,9 @@
 #include <iostream>
 //
 #include <ripple/protocol/KeyType.h>
+#include <ripple/protocol/STAmount.h>
+
+// Useful functions that directly make use of ripple-lib
 
 // ----------------------------------------------------------------------------
 // When paying XRP, the amount is drops (1E6 x xrp)
@@ -17,3 +20,20 @@ std::string make_xrp_payment(
         int64_t amount,
         const std::string &currency,
         const std::string &issuer);
+
+std::string make_xrp_offer(
+        ripple::KeyType keyType,
+        const std::string &from_seed,
+        const std::string &from_address,
+        int32_t from_sequence,
+        ripple::STAmount const& pays,
+        ripple::STAmount const& gets,
+        std::uint32_t flags);
+
+std::string cancel_xrp_offer(
+        ripple::KeyType keyType,
+        const std::string &from_seed,
+        const std::string &from_address,
+        int32_t from_sequence,
+        int32_t offerSeq,
+        std::uint32_t flags);

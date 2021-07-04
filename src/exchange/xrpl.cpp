@@ -45,8 +45,7 @@ std::shared_ptr<ripple::STTx const> deserialize(std::string blob)
 }
 
 // ----------------------------------------------------------------------------
-//#define DEBUG_TX_SIGN
-
+#define DEBUG_TX_SIGN
 std::string make_xrp_payment(
         ripple::KeyType keyType,
         const std::string &from_seed,
@@ -66,13 +65,6 @@ std::string make_xrp_payment(
     auto const id = calcAccountID(keypair.first);
     assert(toBase58(id) == from_address);
 
-#ifdef DEBUG_TX_SIGN_SHOW_SECRET
-    std::cout << std::endl
-              << to_string(keyType) << /*" secret \"" << secret_seed
-              << "\" generates secret key \"" << toBase58(*seed) << */"\" and public key \""
-              << toBase58(id) << std::endl;
-#endif
-
     auto const destination = parseBase58<AccountID>(dest_address);
     assert(destination);
     auto const gateway1 = parseBase58<AccountID>(issuer);
@@ -80,7 +72,7 @@ std::string make_xrp_payment(
         assert(gateway1);
     }
 
-    STTx noopTx(ttPAYMENT, [&](auto& obj) {
+    STTx payTx(ttPAYMENT, [&](auto& obj) {
         // General transaction fields
         obj[sfAccount] = id;
         obj[sfFee] = STAmount{100};
@@ -102,19 +94,111 @@ std::string make_xrp_payment(
     });
 
     DEBUG_ONLY("Before signing: \n"
-              << noopTx.getJson(JsonOptions::none).toStyledString() << std::endl
-              << "Serialized: " << noopTx.getJson(JsonOptions::none, true)[jss::tx]);
+              << payTx.getJson(JsonOptions::none).toStyledString() << std::endl
+              << "Serialized: " << payTx.getJson(JsonOptions::none, true)[jss::tx]);
 
-    noopTx.sign(keypair.first, keypair.second);
+    payTx.sign(keypair.first, keypair.second);
 
-    auto const serialized = serialize(noopTx);
+    auto const serialized = serialize(payTx);
 
 #ifdef DEBUG_TX_SIGN
     std::cout << "\nAfter signing: \n"
-        << noopTx.getJson(JsonOptions::none).toStyledString() << std::endl
+        << payTx.getJson(JsonOptions::none).toStyledString() << std::endl
         << "Serialized: " << serialized << std::endl;
 #endif
 
     return serialized;
 }
 
+// ----------------------------------------------------------------------------
+std::string make_xrp_offer(
+        ripple::KeyType keyType,
+        const std::string &from_seed,
+        const std::string &from_address,
+        int32_t from_sequence,
+        ripple::STAmount const& pays,
+        ripple::STAmount const& gets,
+        std::uint32_t flags)
+{
+    using namespace ripple;
+    //
+    auto const seed = parseGenericSeed(from_seed);
+    auto const keypair = generateKeyPair(keyType, *seed);
+    auto const id = calcAccountID(keypair.first);
+    assert(toBase58(id) == from_address);
+
+    STTx offerTx(ttOFFER_CREATE, [&](auto& obj) {
+        // General transaction fields
+        obj[sfAccount] = id;
+        obj[sfFee] = STAmount{100};
+        obj[sfFlags] = tfFullyCanonicalSig;
+        if (flags)
+            obj[sfFlags] = flags;
+        obj[sfSigningPubKey] = keypair.first.slice();
+        obj[sfSequence] = from_sequence;
+        // Offer specific fields
+        obj[sfTakerPays] = pays;
+        obj[sfTakerGets] = gets;
+    });
+
+    DEBUG_ALWAYS("Before signing: \n"
+              << offerTx.getJson(JsonOptions::none).toStyledString() << std::endl
+              << "Serialized: " << offerTx.getJson(JsonOptions::none, true)[jss::tx]);
+
+    offerTx.sign(keypair.first, keypair.second);
+
+    auto const serialized = serialize(offerTx);
+
+#ifdef DEBUG_TX_SIGN
+    std::cout << "\nAfter signing: \n"
+        << offerTx.getJson(JsonOptions::none).toStyledString() << std::endl
+        << "Serialized: " << serialized << std::endl;
+#endif
+
+    return serialized;
+}
+
+// ----------------------------------------------------------------------------
+std::string cancel_xrp_offer(
+        ripple::KeyType keyType,
+        const std::string &from_seed,
+        const std::string &from_address,
+        int32_t from_sequence,
+        int32_t offerSeq,
+        std::uint32_t flags)
+{
+    using namespace ripple;
+    //
+    auto const seed = parseGenericSeed(from_seed);
+    auto const keypair = generateKeyPair(keyType, *seed);
+    auto const id = calcAccountID(keypair.first);
+    assert(toBase58(id) == from_address);
+
+    STTx offerTx(ttOFFER_CANCEL, [&](auto& obj) {
+        // General transaction fields
+        obj[sfAccount] = id;
+        obj[sfFee] = STAmount{100};
+        if (flags)
+            obj[sfFlags] = flags;
+        obj[sfSigningPubKey] = keypair.first.slice();
+        obj[sfSequence] = from_sequence;
+        // Offer specific fields
+        obj[sfOfferSequence] = offerSeq;
+    });
+
+    DEBUG_ALWAYS("Before signing: \n"
+              << offerTx.getJson(JsonOptions::none).toStyledString() << std::endl
+              << "Serialized: " << offerTx.getJson(JsonOptions::none, true)[jss::tx]);
+
+    offerTx.sign(keypair.first, keypair.second);
+
+    auto const serialized = serialize(offerTx);
+
+#ifdef DEBUG_TX_SIGN
+    std::cout << "\nAfter signing: \n"
+        << offerTx.getJson(JsonOptions::none).toStyledString() << std::endl
+        << "Serialized: " << serialized << std::endl;
+#endif
+
+    return serialized;
+}

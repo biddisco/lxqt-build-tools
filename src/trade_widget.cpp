@@ -38,24 +38,30 @@ void trade_widget::set_data(trade_data const &t)
     ui->network->setPalette(palette);
     ui->network->setText(QString::fromStdString(temp));
     //
-    if (t.trade_type_ == trade_type::buy) {
+    if (t.get_trade_type() == trade_type::buy) {
         QPalette palette = ui->buy_sell->palette();
         palette.setColor(QPalette::WindowText, QRgb(0x00FF00));
         ui->buy_sell->setPalette(palette);
         ui->buy_sell->setText("Buy");
+        //
+        ui->taker_getc->setText(to_string(t.taker_getc_).first.c_str());
+        ui->taker_payc->setText(to_string(t.taker_payc_).first.c_str());
+        //
+        ui->taker_get->setText(to_string(t.taker_get_, t.taker_getc_).c_str());
+        ui->taker_pay->setText(to_string(t.taker_pay_, t.taker_payc_).c_str());
     }
     else {
         QPalette palette = ui->buy_sell->palette();
         palette.setColor(QPalette::WindowText, QRgb(0xFF0000));
         ui->buy_sell->setPalette(palette);
         ui->buy_sell->setText("Sell");
+        //
+        ui->taker_getc->setText(to_string(t.taker_payc_).first.c_str());
+        ui->taker_payc->setText(to_string(t.taker_getc_).first.c_str());
+        //
+        ui->taker_get->setText(to_string(t.taker_pay_, t.taker_payc_).c_str());
+        ui->taker_pay->setText(to_string(t.taker_get_, t.taker_getc_).c_str());
     }
-    //
-    ui->taker_getc->setText(to_string(t.taker_getc_).first.c_str());
-    ui->taker_payc->setText(to_string(t.taker_payc_).first.c_str());
-    //
-    ui->taker_get->setText(to_string(t.taker_get_, t.taker_getc_).c_str());
-    ui->taker_pay->setText(to_string(t.taker_pay_, t.taker_payc_).c_str());
     //
     ui->exchange_rate->setText(std::to_string(t.exchange_rate_).c_str());
     // fee shown in currency of our trade

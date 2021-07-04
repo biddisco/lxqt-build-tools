@@ -24,7 +24,8 @@ enum order_type {
 // trade type : buy = 0, sell = 1
 struct trade_data {
     std::shared_ptr<exchange> network_;
-    trade_type trade_type_;
+//    basic_account            *wallet_;
+//    trade_type trade_type_;
     currency_type taker_payc_;
     currency_type taker_getc_;
     double taker_pay_;
@@ -35,19 +36,28 @@ struct trade_data {
     std::string datetime_;
 
     // if we are buying or selling xrp, then how many?
-    double xrp_amount() const {
+    double get_xrp_amount() const {
         // if taker gets xrp, we must be selling xrp
-        if (taker_payc_==currency_type::xrp || taker_getc_==currency_type::xrp) {
-            if (trade_type_ == trade_type::buy) {
-                return taker_get_/exchange_rate_;
-            }
-            else {
-                return taker_pay_;
-            }
+        auto tradetype = get_trade_type();
+        if (tradetype == trade_type::buy) {
+            return taker_pay_;
+        }
+        else if (tradetype == trade_type::sell) {
+            return taker_get_;
         }
         else {
             throw std::runtime_error("Not an xrp transaction");
         }
         return 0;
+    }
+
+    trade_type get_trade_type() const {
+        // if taker pays us xrp, we are buying xrp
+        // if takets gets xrp from us, we are selling it
+        if (taker_payc_ == currency_type::xrp)
+            return trade_type::buy;
+        if (taker_getc_ == currency_type::xrp)
+            return trade_type::sell;
+        return trade_type::trade;
     }
 };

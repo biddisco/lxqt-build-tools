@@ -168,56 +168,43 @@ void currency_widget::execute_trade()
         return;
 
     QString now(QDateTime::currentDateTime().toString());
-    double price_min;
-    double price_max;
+    double price_min = ui->min_price->value();
+    double price_max = ui->max_price->value();
 
-    // if dest is xrp, we are buying it
+    // if taker pays us xrp, we are buying it
     bool buy_order = (taker_payc == currency_type::xrp);
-    price_min = ui->min_price->value();
-    price_max = ui->max_price->value();
     //
     std::vector<trade_data> trades;
     for (int i=0; i<N; ++i) {
+        double taker_get;
+        double taker_pay;
         double price;
         if (N>1) price = price_min + i*(price_max-price_min)/(N-1);
         else price = price_min;
-        double taker_get   = taker_gets/N;
         if (buy_order) {
-            double taker_pay = taker_gets/(price*N);
-            trade_data t{
-                        network_,
-                        buy_order ? trade_type::buy : trade_type::sell,
-                        taker_payc,             // taker pays this currency
-                        this->currency_.type_,  // taker gets this currency
-                        taker_pay,              // taker pays this amount (total)
-                        taker_get,              // taker gets this amount (total)
-                        price,                  // exchange rate
-                        0,          // fee
-                        0,          // Id
-                        now.toStdString(),
-            };
-            trades.push_back(t);
+            taker_get = taker_gets/N;
+            taker_pay = taker_gets/(price*N);
         }
         else {
-            double taker_pay   = taker_gets*price/N;
-            trade_data t{
-                        network_,
-                        buy_order ? trade_type::buy : trade_type::sell,
-                        this->currency_.type_,  // taker gets this currency
-                        taker_payc,             // taker pays this currency
-                        taker_get,              // taker gets this amount (total)
-                        taker_pay,              // taker pays this amount (total)
-                        price,                  // exchange rate
-                        0,          // fee
-                        0,          // Id
-                        now.toStdString(),
-            };
-            trades.push_back(t);
+            taker_get = taker_gets/N;
+            taker_pay = taker_get*price;
         }
+        trade_data t{
+                    network_,
+                    taker_payc,             // taker pays this currency
+                    this->currency_.type_,  // taker gets this currency
+                    taker_pay,              // taker pays this amount (total)
+                    taker_get,              // taker gets this amount (total)
+                    price,                  // exchange rate
+                    0,          // fee
+                    0,          // Id
+                    now.toStdString(),
+        };
+        trades.push_back(t);
     }
     check_trades_dialog d(this, trades);
     if (d.exec()==QDialog::Accepted) {
-        network_->place_buy_sell_orders(trades);
+        network_->place_buy_sell_orders(account_, trades);
     }
 }
 

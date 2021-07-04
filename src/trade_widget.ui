@@ -27,81 +27,13 @@
      </property>
      <layout class="QGridLayout" name="gridLayout">
       <item row="1" column="3">
-       <widget class="QLabel" name="date_time">
-        <property name="text">
-         <string>2021-05-30 20:55:34</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLabel" name="taker_payc">
-        <property name="text">
-         <string>Pay Currency</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLabel" name="buy_sell">
-        <property name="text">
-         <string>buy/sell</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="taker_getc">
-        <property name="text">
-         <string>Get Currency</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="network">
-        <property name="text">
-         <string>Network</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="2">
        <widget class="QLabel" name="fee">
         <property name="text">
          <string>Fee</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="taker_get">
-        <property name="text">
-         <string>amount</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QLabel" name="taker_pay">
-        <property name="text">
-         <string>amount</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
-       <widget class="QLabel" name="exchange_rate">
-        <property name="text">
-         <string>value</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="3">
+      <item row="2" column="4">
        <layout class="QHBoxLayout" name="horizontalLayout_2">
         <item>
          <spacer name="horizontalSpacer">
@@ -141,10 +73,78 @@
         </item>
        </layout>
       </item>
-      <item row="0" column="3">
+      <item row="0" column="4">
        <widget class="QLabel" name="id">
         <property name="text">
          <string>id</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="4">
+       <widget class="QLabel" name="date_time">
+        <property name="text">
+         <string>2021-05-30 20:55:34</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLabel" name="network">
+        <property name="text">
+         <string>Network</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="taker_getc">
+        <property name="text">
+         <string>Get Currency</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLabel" name="taker_get">
+        <property name="text">
+         <string>amount</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QLabel" name="exchange_rate">
+        <property name="text">
+         <string>value</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="taker_payc">
+        <property name="text">
+         <string>Pay Currency</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="taker_pay">
+        <property name="text">
+         <string>amount</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="buy_sell">
+        <property name="text">
+         <string>buy/sell</string>
         </property>
        </widget>
       </item>

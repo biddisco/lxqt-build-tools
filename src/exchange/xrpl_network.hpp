@@ -159,15 +159,16 @@ public:
     void handle_account_orders(ledger_wallet &w, std::string&& data);
 
     bool make_payment(currency &c, basic_account *src, basic_account *dest) override;
-    void cancel_order(trade_data const &t) override {};
+    void cancel_order(trade_data const &t) override;
 
 
     std::vector<std::pair<currency_type, currency_type>> currency_pairs() override;
 
     // place a buy/sell order
-    void place_limit_order(trade_data const &t, bool update_after);
-    void place_buy_sell_orders(std::vector<trade_data> const &trades) override;
+    void place_limit_order(basic_account *acct, trade_data const &t, bool update_after);
+    void place_buy_sell_orders(basic_account *acct, std::vector<trade_data> const &trades) override;
 
+    void submit_signed_transaction(std::string &&signed_tx);
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
     // procesing operations that affect Qt/GUI managed items in a thread safe way

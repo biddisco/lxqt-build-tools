@@ -122,7 +122,7 @@ public:
     // ---------------------------------------
     // place a buy/sell order
     void place_limit_order(trade_data const &t, bool update_after);
-    void place_buy_sell_orders(std::vector<trade_data> const &trades) override;
+    void place_buy_sell_orders(basic_account *acct, std::vector<trade_data> const &trades) override;
     void cancel_order(trade_data const &t) override;
 
     // ----------------------------------------------------------------------------

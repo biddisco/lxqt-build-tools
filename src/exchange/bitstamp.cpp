@@ -209,20 +209,37 @@ void bitstamp_network::handle_open_orders(std::string&& data)
         double amount = std::stod(val["amount"].get< std::string >());
         double price = std::stod(val["price"].get< std::string >());
         double fee = 0;
-        trade_data t{
-            this->get_instance(),
-            // 0=buy, 1=sell
-            (val["type"] == "0") ? trade_type::buy : trade_type::sell,
-            get_currency_type(c1,""),
-            get_currency_type(c2,""),
-            amount,
-            amount*price,
-            price,
-            fee,
-            std::stoull(val["id"].get< std::string >()),
-            val["datetime"]
-        };
-        trades.push_back(t);
+        // 0=buy, 1=sell
+        auto trade_type_ = (val["type"] == "0") ? trade_type::buy : trade_type::sell;
+
+        if (trade_type_ == trade_type::sell) {
+            trade_data t{
+                this->get_instance(),
+                get_currency_type(c2,""),
+                get_currency_type(c1,""),
+                amount*price,
+                amount,
+                price,
+                fee,
+                std::stoull(val["id"].get< std::string >()),
+                val["datetime"]
+            };
+            trades.push_back(t);
+        }
+        else {
+            trade_data t{
+                this->get_instance(),
+                get_currency_type(c1,""),
+                get_currency_type(c2,""),
+                amount,
+                amount*price,
+                price,
+                fee,
+                std::stoull(val["id"].get< std::string >()),
+                val["datetime"]
+            };
+            trades.push_back(t);
+        }
     }
     emit update_wallet_widget(&acct);
 }
@@ -424,20 +441,30 @@ void bitstamp_network::cancel_order(trade_data const &t)
 // ----------------------------------------------------------------------------
 void bitstamp_network::place_limit_order(trade_data const &t, bool update_after)
 {
-    std::string pair = std::string(to_string(t.taker_payc_).first)
-            + std::string(to_string(t.taker_getc_).first) + "/";
-    // make lowercase XRPUSD->xrpud for bitstamp API
-    std::transform(pair.begin(), pair.end(), pair.begin(),
-        [](unsigned char c){ return std::tolower(c); });
+    double amount = t.get_xrp_amount();
 
-    std::string req = std::string("/api/v2/") + (t.trade_type_==trade_type::buy ? "buy/" : "sell/");
-    double amount = t.xrp_amount();
+    // bitstamp trade pair is always xrpusd, so swap symbols accordingly
+    std::string req, data;
+    if (t.get_trade_type()==trade_type::buy) {
+        req = std::string("/api/v2/buy/")
+                + std::string(to_string(t.taker_payc_).first)
+                + std::string(to_string(t.taker_getc_).first) + "/";
+        data = "&amount=" + to_string(amount, t.taker_payc_)
+                + "&price="  + to_string(t.exchange_rate_, t.taker_getc_);
+    }
+    else {
+        req = std::string("/api/v2/sell/")
+                + std::string(to_string(t.taker_getc_).first)
+                + std::string(to_string(t.taker_payc_).first) + "/";
+        data = "&amount=" + to_string(amount, t.taker_getc_)
+                + "&price="  + to_string(t.exchange_rate_, t.taker_payc_);
+    }
+    // make lowercase "XRPUSD"->"xrpusd" for bitstamp API
+    std::transform(req.begin(), req.end(), req.begin(),
+        [](unsigned char c){ return std::tolower(c); });
     //
-    std::string data = "&amount=" + std::to_string(amount)
-            + "&price=" + to_string(t.exchange_rate_, t.taker_getc_);
-    //
-    DEBUG_ALWAYS("Placing order " << req << " " << pair << " " << data);
-    account_request(req + pair, std::move(data), [this, update_after](std::string &&data) {
+    DEBUG_ALWAYS("Placing order " << req << " " << data);
+    account_request(std::move(req), std::move(data), [this, update_after](std::string &&data) {
         DEBUG_ALWAYS("Buy-Limit Order response:\n" << data);
         // refresh order status
         if (update_after) get_open_orders();
@@ -445,7 +472,7 @@ void bitstamp_network::place_limit_order(trade_data const &t, bool update_after)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::place_buy_sell_orders(std::vector<trade_data> const &trades)
+void bitstamp_network::place_buy_sell_orders(basic_account *acct, std::vector<trade_data> const &trades)
 {
     for (auto const &t : trades) {
         if (&t != &trades.back()) place_limit_order(t, false);
