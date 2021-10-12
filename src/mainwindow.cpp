@@ -406,7 +406,8 @@ void GroxMainWindow::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
 
         DEBUG_ONLY("existing " << static_cast<uint64_t>(last_existing) << " new "
                   << static_cast<uint64_t>(first_new));
-        if (first_new - last_existing == 60)
+        // 1 minute candle OHLC data is stored in msecs
+        if (first_new - last_existing == (60 * 1000))
         {
             DEBUG_ONLY("merging data");
             ohlc_samples.append(new_ohlc_samples);
@@ -447,6 +448,8 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
         for (auto o : ohlc_strings)
         {
             ohlc temp(o);
+            // convert 1 minute candle OHLC data to msecs
+            temp.timestamp *= 1000;
             new_ohlc_samples.push_back(QwtOHLCSample(
                 temp.timestamp, temp.open, temp.high, temp.low, temp.close));
             new_ohlc_volumes.push_back(temp.volume);
@@ -455,7 +458,7 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
                   << " new OHLC samples");
         merge_data(new_ohlc_samples, new_ohlc_volumes);
         // what is the last sample we currently have
-        auto end_t = static_cast<uint64_t>(ohlc_samples.back().time);
+        auto end_t = static_cast<uint64_t>(ohlc_samples.back().time/1000);
         std::time_t t(end_t);
         std::tm tm = *std::localtime(&t);
         std::cout << "Data merged up to " << std::put_time(&tm, "%F %T") << std::endl;
@@ -523,7 +526,8 @@ void GroxMainWindow::update_candlestick_data()
     // what is the last sample we currently have
     if (ohlc_samples.size() > 0)
     {
-        start_t = static_cast<uint64_t>(ohlc_samples.back().time);
+        // convert msecs back to secs
+        start_t = static_cast<uint64_t>(ohlc_samples.back().time/1000);
         DEBUG_ALWAYS("Data present up until " << unix_time_to_calendar_time(start_t));
         start_t += 60;    // next sample is 60s after last
     }
@@ -571,7 +575,7 @@ void GroxMainWindow::validate_ohlc()
     {
         uint64_t t1 = static_cast<uint64_t>(li->time);
         uint64_t t2 = static_cast<uint64_t>(i->time);
-        if (t2 - t1 != 60)
+        if (t2 - t1 != (60 * 1000))
         {
             std::cerr << "Validation error at index " << index << " " << t1 << " and "
                       << t2 << "dataseet truncated " << std::endl;
@@ -594,7 +598,7 @@ void GroxMainWindow::read_hdf5()
     //
     if (std::filesystem::exists(app_ini->hdfFileName))
     {
-        DEBUG_ONLY("Opening: " << app_ini->hdfFileName);
+        DEBUG_ALWAYS("Opening: " << app_ini->hdfFileName);
         ohlc_samples.clear();
         ohlc_volumes.clear();
         //
@@ -613,7 +617,6 @@ void GroxMainWindow::read_hdf5()
             ohlc_samples.resize(N);
             status = H5Dread(dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                 ohlc_samples.data());
-
             // read Volume data
             hid_t dset2 = H5Dopen(file, "volume", H5P_DEFAULT);
             hid_t space2 = H5Dget_space(dset2);
@@ -622,7 +625,7 @@ void GroxMainWindow::read_hdf5()
             status = H5Sget_simple_extent_dims(space2, dims2, NULL);
             if (N != dims2[0])
             {
-                throw std::runtime_error("Datasets not same size");
+                throw std::runtime_error("OHLC and Volume datasets not same size");
             }
             ohlc_volumes.resize(N);
             status = H5Dread(dset2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -659,7 +662,7 @@ void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
     validate_ohlc();
     //
     app_settings* app_ini = global_settings();
-    DEBUG_ONLY("Opening: " << app_ini->hdfFileName);
+    DEBUG_ALWAYS("Opening: " << app_ini->hdfFileName);
 
     // In the OHLC dataset:
     // There are 24*60=1440 60s candles per day, and each candle has 5 {t,o,h,l,c} entries,
@@ -860,6 +863,7 @@ void GroxMainWindow::display_offers()
     orders_scrollwidget->widget()->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
 }
 
+// ----------------------------------------------------------------------------
 void GroxMainWindow::closeEvent(QCloseEvent *event)
 {
     saveWindowSettings();
@@ -872,6 +876,7 @@ void GroxMainWindow::showEvent(QShowEvent *event )
     QMainWindow::showEvent(event);
 }
 
+// ----------------------------------------------------------------------------
 void GroxMainWindow::saveWindowSettings()
 {
     app_settings* app_ini = global_settings();
@@ -889,6 +894,7 @@ void GroxMainWindow::saveWindowSettings()
     qDebug() << "Settings saved under:" << settings.fileName();
 }
 
+// ----------------------------------------------------------------------------
 void GroxMainWindow::loadWindowSettings()
 {
     app_settings* app_ini = global_settings();
