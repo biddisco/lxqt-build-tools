@@ -19,15 +19,17 @@ wallet_widget::~wallet_widget()
 }
 
 // ----------------------------------------------------------------------------
-void wallet_widget::set_data(ledger_wallet &w)
+void wallet_widget::set_data(ledger_wallet &w, int decimals)
 {
     ui->ledger_wallet->setTitle(w.name_.c_str());
     ui->address->setText(w.public_.c_str());
-    ui->tag->setText(QString(":") + QString(std::to_string(w.tag_).c_str()));
+    ui->address->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    ui->tag->setText(QString(std::to_string(w.tag_).c_str()));
+    ui->tag->setTextInteractionFlags(Qt::TextSelectableByMouse);
     //
     for (auto &c : w.currencies_) {
         if (c.widget_ == nullptr) {
-            c.widget_ = new currency_widget(6, this);
+            c.widget_ = new currency_widget(decimals, this);
             c.widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
             ui->currencies_layout->addWidget(c.widget_);
         }
@@ -39,17 +41,5 @@ void wallet_widget::set_data(ledger_wallet &w)
 // ----------------------------------------------------------------------------
 void wallet_widget::set_data(bitstamp_account &w)
 {
-    ui->ledger_wallet->setTitle(w.name_.c_str());
-    ui->address->setText(w.public_.c_str());
-    ui->tag->setText(QString(std::to_string(w.tag_).c_str()));
-    //
-    for (auto &c : w.currencies_) {
-        if (c.widget_ == nullptr) {
-            c.widget_ = new currency_widget(2, this);
-            c.widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-            ui->currencies_layout->addWidget(c.widget_);
-        }
-        c.widget_->set_data(&c, &w, w.network_);
-    }
-    update();
+    this->set_data(w, 2);
 }
