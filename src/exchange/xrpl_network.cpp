@@ -206,7 +206,8 @@ void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
         DEBUG_ONLY("Account changes : " << jdata.dump(4));
         nlohmann::json adata = jdata["meta"]["AffectedNodes"];
         for (const auto &a : adata) {
-            try {
+//            try {
+            DEBUG_ALWAYS("AffectedNode : " << jdata.dump(4));
                 if (a.contains("ModifiedNode")) {
                     auto m = a["ModifiedNode"];
                     auto f = m["FinalFields"];
@@ -261,10 +262,10 @@ void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
                         emit nw->transaction_event();
                     }
                 }
-            }
-            catch (...) {
-                DEBUG_ALWAYS("Exception Account changes : " << data);
-            }
+//            }
+//            catch (...) {
+//                DEBUG_ALWAYS("Exception Account changes : " << data);
+//            }
         }
     }
 }
@@ -560,8 +561,9 @@ void xrpl_network::handle_account_orders(ledger_wallet &w, std::string&& data)
             taker_get.currency,
             taker_pay.value,
             taker_get.value,
-            0,
-            0,
+            0.0, // fee %
+            0.0, // fee fixed
+            0,   // id
             offer.at("seq").get<std::uint64_t>(),
             "- no date -"
         };
@@ -752,6 +754,17 @@ void xrpl_network::cancel_order(trade_data const &t)
                 0);
     from->sequence_++;
     submit_signed_transaction(std::move(signed_tx));
+}
+
+// ----------------------------------------------------------------------------
+double xrpl_network::get_fee_percent(const currency_type &c1, const currency_type &c2)
+{
+    return 0.0;
+}
+
+double xrpl_network::get_fee_fixed(const currency_type &c1, const currency_type &c2)
+{
+    return 0.0;
 }
 
 // ----------------------------------------------------------------------------

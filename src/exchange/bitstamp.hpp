@@ -34,6 +34,8 @@ private:
     // usually only one present, but allow for more
     std::vector<bitstamp_account> accounts_;
 
+    std::map<std::pair<std::string, std::string>, double> fee_map_;
+
 public:
     //
     static inline const std::string bitstamp_https_address = "www.bitstamp.net";
@@ -66,7 +68,8 @@ public:
     ~bitstamp_network() override;
 
     // returns a temp vector of account pointers (references)
-    // to be used with caution.
+    // to be used with caution because adding a wallet will
+    // invalidate the pointer references
     std::vector<basic_account*> wallets() override
     {
         std::vector<basic_account*> accts;
@@ -139,7 +142,8 @@ public:
     // function called from websocket subscription to live orderbook data
     static void new_orderbook_data(bitstamp_network*, std::string_view);
 
-
+    double get_fee_percent(const currency_type &c1, const currency_type &c2) override;
+    double get_fee_fixed(const currency_type &c1, const currency_type &c2) override;
 
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
@@ -148,8 +152,8 @@ signals:
     // emitted when new orderbook data has been received and processed
     void orderbook_changed();
 
-    // emitted when new
-    void new_trade_data_ui(QString);
+    // emitted when data for new trades is ready
+    void new_trade_data_ui(live_trades);
 
     // when the wallet widget needs to be updated with new data/currencies
     void update_wallet_widget(bitstamp_account*);

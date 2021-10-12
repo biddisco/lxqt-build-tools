@@ -86,6 +86,35 @@ bool bitstamp_network::can_send(currency &c, exchange *dest)
     return false;
 }
 
+std::string lowercase(std::string data) {
+    std::transform(data.begin(), data.end(), data.begin(),
+        [](unsigned char c){ return std::tolower(c); });
+    return data;
+}
+
+// ----------------------------------------------------------------------------
+double bitstamp_network::get_fee_percent(const currency_type &c1, const currency_type &c2)
+{
+    // for bitstamp we put xrp first : "xrpusd_fee"
+    std::pair<std::string, std::string> cpair;
+    if (c1 == currency_type::xrp) {
+        cpair = std::make_pair(
+                lowercase(to_string(c1).first), lowercase(to_string(c2).first));
+    }
+    else {
+        cpair = std::make_pair(
+                lowercase(to_string(c2).first), lowercase(to_string(c1).first));
+    }
+    const auto val = fee_map_.at(cpair);
+    return val;
+}
+
+// ----------------------------------------------------------------------------
+double bitstamp_network::get_fee_fixed(const currency_type &c1, const currency_type &c2)
+{
+    return 0.0;
+}
+
 // ----------------------------------------------------------------------------
 bool bitstamp_network::make_payment(currency &c, basic_account *src, basic_account *dest)
 {
@@ -179,6 +208,19 @@ void bitstamp_network::handle_account_info(std::string&& data)
         add_currency(eur_bitstamp, acct.currencies_);
     }
 
+    if (jdata.contains("xrpusd_fee")) {
+        double xrpusd_fee = std::stod(jdata["xrpusd_fee"].get<std::string>());
+        std::pair<std::string, std::string> cpair = std::make_pair("xrp", "usd");
+        const auto [it, success] = fee_map_.insert({cpair, xrpusd_fee});
+        if (success) {
+            std::cout << "Inserted bitstamp fee xrp/usd " << xrpusd_fee << std::endl;
+        }
+        else {
+            std::cout << "Overwriting bitstamp fee xrp/usd " << xrpusd_fee << std::endl;
+            fee_map_[cpair] = xrpusd_fee;
+        }
+    }
+
     emit update_wallet_widget(&acct);
 }
 
@@ -208,7 +250,8 @@ void bitstamp_network::handle_open_orders(std::string&& data)
 
         double amount = std::stod(val["amount"].get< std::string >());
         double price = std::stod(val["price"].get< std::string >());
-        double fee = 0;
+        double fee_percent = 0;
+        double fee_fixed = 0;
         // 0=buy, 1=sell
         auto trade_type_ = (val["type"] == "0") ? trade_type::buy : trade_type::sell;
 
@@ -221,7 +264,8 @@ void bitstamp_network::handle_open_orders(std::string&& data)
                 amount*price,
                 amount,
                 price,
-                fee,
+                fee_percent,
+                fee_fixed,
                 std::stoull(val["id"].get< std::string >()),
                 val["datetime"]
             };
@@ -236,7 +280,8 @@ void bitstamp_network::handle_open_orders(std::string&& data)
                 amount,
                 amount*price,
                 price,
-                fee,
+                fee_percent,
+                fee_fixed,
                 std::stoull(val["id"].get< std::string >()),
                 val["datetime"]
             };
@@ -348,20 +393,13 @@ void bitstamp_network::new_trade_data(bitstamp_network* n, std::string_view data
     nlohmann::json jdata = json::parse(data);
     // extract the main subgroup
     jdata = jdata["data"];
-    DEBUG_ONLY(jdata.dump(4));
+    DEBUG_ALWAYS(jdata.dump(4));
 
-    live_trades json_trades = jdata.get<live_trades>();
-
-    // convert json data to trade structs
-    //    live_trades_string json_strings;
-    //    // convert json to vector of structs
-    //    json_strings = jdata.get<live_trades_string>();
-    //    live_trades json_trade(json_strings);
+    live_trades trade_data = jdata.get<live_trades>();
 
     //    emit candlestickdata(ohlc_vector);
 
-    QString datastring = QString::fromStdString(jdata.dump(4));
-    emit n->new_trade_data_ui(datastring);
+    emit n->new_trade_data_ui(trade_data);
 }
 
 // ----------------------------------------------------------------------------
@@ -452,14 +490,14 @@ void bitstamp_network::place_limit_order(trade_data const &t, bool update_after)
                 + std::string(to_string(t.taker_payc_).first)
                 + std::string(to_string(t.taker_getc_).first) + "/";
         data = "&amount=" + to_string(amount, t.taker_payc_)
-                + "&price="  + to_string(t.exchange_rate_, t.taker_getc_);
+                + "&price=" + to_string_with_precision(t.exchange_rate_, 5);
     }
     else {
         req = std::string("/api/v2/sell/")
                 + std::string(to_string(t.taker_getc_).first)
                 + std::string(to_string(t.taker_payc_).first) + "/";
         data = "&amount=" + to_string(amount, t.taker_getc_)
-                + "&price="  + to_string(t.exchange_rate_, t.taker_payc_);
+                + "&price=" + to_string_with_precision(t.exchange_rate_, 5);
     }
     // make lowercase "XRPUSD"->"xrpusd" for bitstamp API
     std::transform(req.begin(), req.end(), req.begin(),

@@ -30,7 +30,8 @@ struct trade_data {
     double taker_pay_;
     double taker_get_;
     double exchange_rate_;
-    double fee_;
+    double fee_percent_;
+    double fee_fixed_;
     std::uint64_t id_;
     std::string datetime_;
 

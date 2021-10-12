@@ -4,6 +4,7 @@
 #include <QtCore>
 //
 #include <string>
+#include <sstream>
 #include <vector>
 #include <algorithm>
 
@@ -52,6 +53,15 @@ std::pair<std::string, std::string> to_string(const currency_type &t);
 // displays an amount such as 1.34 as a string, but uses different numbers
 // of decimal places depending on the currency type (fiat always 2)
 std::string to_string(double amount, currency_type c);
+
+template <typename T>
+std::string to_string_with_precision(const T a_value, const int n = 6)
+{
+    std::ostringstream out;
+    out.precision(n);
+    out << std::fixed << a_value;
+    return out.str();
+}
 
 // ----------------------------------------------------------------------------
 // stream operators

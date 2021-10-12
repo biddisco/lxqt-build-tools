@@ -434,7 +434,7 @@ void bitstamp_order_book::bid_ask_string_to_number(nlohmann::json& json, offer_d
 // ----------------------------------------------------------------------------
 
 // When subscribing to the ledger order book webstream
-// a snapshot is inculded initially with the current state
+// a snapshot is included initially with the current state
 // This function converts the json data into our order book form
 // This function should only be executed once : when connecting to stream
 void xrpl_order_book::accept_json_ledger_snapshot(std::string_view data)

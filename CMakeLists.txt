@@ -1,8 +1,9 @@
 # ------------------------------------------------------------------------------
 # To build grox, the following might be necessary
 # ------------------------------------------------------------------------------
-# sudo apt install build-essential libqt5charts5-dev libqt5opengl5-dev libqt5svg5-dev
-# libhdf5-dev libboost-all-dev
+# sudo apt install build-essential libqt5charts5-dev libqt5opengl5-dev libqt5svg5-dev libcurl4-openssl-dev
+# Assumes hdf5, boost, installed using space environment
+# 
 #
 # Build boost (1.75) on raspberry pi (4) ./bootstrap ./b2 architecture=arm
 # address-model=32 threading=multi link=shared variant=release

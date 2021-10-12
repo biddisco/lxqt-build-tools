@@ -167,7 +167,7 @@ void currency_widget::execute_trade()
     if (taker_gets==0)
         return;
 
-    QString now(QDateTime::currentDateTime().toString());
+    QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
     double price_min = ui->min_price->value();
     double price_max = ui->max_price->value();
 
@@ -197,7 +197,8 @@ void currency_widget::execute_trade()
                     taker_pay,              // taker pays this amount (total)
                     taker_get,              // taker gets this amount (total)
                     price,                  // exchange rate
-                    0,          // fee
+                    network_->get_fee_percent(taker_payc, this->currency_.type_),
+                    network_->get_fee_percent(taker_payc, this->currency_.type_),
                     0,          // Id
                     now.toStdString(),
         };

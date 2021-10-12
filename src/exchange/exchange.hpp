@@ -26,7 +26,8 @@ public:
     virtual std::vector<std::pair<currency_type, currency_type>> currency_pairs() = 0;
     virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const &) = 0;
     virtual std::vector<basic_account*> wallets() = 0;
-
+    virtual double get_fee_percent(const currency_type &c1, const currency_type &c2) = 0;
+    virtual double get_fee_fixed(const currency_type &c1, const currency_type &c2) = 0;
 signals:
     // emitted when a transaction might cause a change in data
     void transaction_event();

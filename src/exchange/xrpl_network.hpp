@@ -171,6 +171,10 @@ public:
     void place_buy_sell_orders(basic_account *acct, std::vector<trade_data> const &trades) override;
 
     void submit_signed_transaction(std::string &&signed_tx);
+
+    double get_fee_percent(const currency_type &c1, const currency_type &c2) override;
+    double get_fee_fixed(const currency_type &c1, const currency_type &c2) override;
+
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
     // procesing operations that affect Qt/GUI managed items in a thread safe way
