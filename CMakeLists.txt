@@ -3,13 +3,16 @@
 # ------------------------------------------------------------------------------
 # sudo apt install build-essential libqt5charts5-dev libqt5opengl5-dev libqt5svg5-dev libcurl4-openssl-dev
 # Assumes hdf5, boost, installed using space environment
-# 
+#
 #
 # Build boost (1.75) on raspberry pi (4) ./bootstrap ./b2 architecture=arm
 # address-model=32 threading=multi link=shared variant=release
 # --prefix=$HOME/apps/boost --without-mpi --without-python --without-graph
 # --without-graph_parallel -j3 install
 #
+# Example cmake invocation
+# cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Debug ~/src/xrp/grox/
+
 cmake_minimum_required(VERSION 3.16)
 cmake_policy(SET CMP0048 NEW)
 cmake_policy(SET CMP0077 NEW)
@@ -30,6 +33,9 @@ set(CMAKE_CXX_STANDARD 17)
 # ------------------------------------------------------------------------------
 option(BUILD_SHARED_LIBS "build shared ripple libraries" OFF)
 
+# ------------------------------------------------------------------------------
+# Testing
+# ------------------------------------------------------------------------------
 enable_testing()
 
 # ------------------------------------------------------------------------------
@@ -54,7 +60,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
 )
 
 # ------------------------------------------------------------------------------
-# FIND : Qt5
+# Find packages
 # ------------------------------------------------------------------------------
 find_package(
   Qt5 REQUIRED QUIET
@@ -66,25 +72,26 @@ find_package(
              Svg
              Concurrent
 )
-find_package(Boost REQUIRED system unit_test_framework)
+
+find_package(Boost   REQUIRED system unit_test_framework)
 find_package(OpenSSL REQUIRED)
-find_package(MPI  REQUIRED COMPONENTS CXX) # needed by hdf5 if compiled with defaults
-find_package(HDF5 REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
+find_package(MPI     REQUIRED COMPONENTS CXX) # needed by hdf5 if compiled with defaults
+find_package(HDF5    REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
 find_package(ZLIB)
 
 # ------------------------------------------------------------------------------
 # Build/Download qwt
 # ------------------------------------------------------------------------------
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/qwt)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/qwt)
   message(STATUS "Using QWT in source tree")
-  set(FETCHCONTENT_SOURCE_DIR_QWT ${CMAKE_CURRENT_SOURCE_DIR}/qwt)
+  set(FETCHCONTENT_SOURCE_DIR_QWT ${CMAKE_CURRENT_SOURCE_DIR}/extern/qwt)
   set(FETCHCONTENT_UPDATES_DISCONNECTED_QWT ON)
 endif()
 
 fetchcontent_declare(
   qwt
   GIT_REPOSITORY $HOME/src/qwt
-  GIT_TAG svn-cmake
+  GIT_TAG develop-cmake
 )
 fetchcontent_getproperties(qwt)
 if(NOT qwt_POPULATED)
@@ -93,7 +100,6 @@ if(NOT qwt_POPULATED)
 endif()
 
 add_subdirectory(extern/range-v3)
-
 
 # ------------------------------------------------------------------------------
 # Find/Build : Rippled library
@@ -105,12 +111,14 @@ if(NOT Ripple_FOUND)
   # flag tells rippled not to link to static boost/etc
   set(static FALSE)
   # look in the current source tree
-  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/rippled/.git)
-    message(STATUS "Using rippled in source tree (${CMAKE_CURRENT_SOURCE_DIR}/rippled)")
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled/.git)
+    message(STATUS "Using rippled in source tree (${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled)")
     # use the source in this directory
-    set(FETCHCONTENT_SOURCE_DIR_RIPPLED ${CMAKE_CURRENT_SOURCE_DIR}/rippled)
+    set(FETCHCONTENT_SOURCE_DIR_RIPPLED ${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled)
     # don't change branches, or pull
     set(FETCHCONTENT_UPDATES_DISCONNECTED_RIPPLED ON)
+    # To setup where Rippled puts its extern projects
+    set(NIH_CACHE_ROOT ${PROJECT_BINARY_DIR}/extern)
   endif()
   fetchcontent_declare(
     rippled
@@ -133,12 +141,13 @@ endif()
 set(GROX_SRC
     src/main.cpp
     src/mainwindow.cpp
-    src/password_dialog.cpp
     #
     src/network/evp-encrypt.cpp
     #
     src/network/websocket-ssl.cpp
     src/network/https-async.cpp
+    #
+    src/data/data_holder.cpp
     #
     src/currency.cpp
     src/ohlc.cpp
@@ -149,11 +158,23 @@ set(GROX_SRC
     src/exchange/xrpl_network.cpp
     src/exchange/bitstamp.cpp
     #
-    src/currency_widget.cpp
-    src/wallet_widget.cpp
-    src/trade_widget.cpp
-    src/check_trades_dialog.cpp
+    src/widgets/password_dialog.cpp
+    src/widgets/currency_widget.cpp
+    src/widgets/wallet_widget.cpp
+    src/widgets/trade_widget.cpp
+    src/widgets/check_trades_dialog.cpp
     #
+    src/plot/OrderBookPlot.cpp
+    src/plot/OrderBookCurve.cpp
+    src/plot/CombinedPriceVolumeCharts.cpp
+    # src/plot/BreakdownPlotMarker.cpp
+    # src/plot/BreakoutPlotMarker.cpp
+    # src/plot/PatternPlotCurve.cpp
+    src/plot/PriceAndPatternPlot.cpp
+    src/plot/PseudoTimeOHLCSample.cpp
+    src/plot/StockChartDateScaleDraw.cpp
+    src/plot/OHLCCurve.cpp
+    src/plot/StockChartPlotZoomer.cpp
     #
     chartSegment/ANDSegmentConstraint.cpp
     chartSegment/ChartSegment.cpp
@@ -169,9 +190,6 @@ set(GROX_SRC
     math/UnsignedIntRange.cpp
     math/XYCoord.cpp
     #
-    plots/OrderBookPlot.cpp
-    plots/OrderBookCurve.cpp
-    plots/CombinedPriceVolumeCharts.cpp
     # patternMatch/AscendingTrianglePatternMatch.cpp
     # patternMatch/CupPatternMatch.cpp
     # patternMatch/CupWithHandlePatternMatch.cpp
@@ -187,14 +205,6 @@ set(GROX_SRC
     # patternMatch/TrianglePatternMatch.cpp patternMatch/VPatternMatch.cpp
     # patternMatch/WedgePatternMatch.cpp
     #
-    patternPlot/BreakdownPlotMarker.cpp
-    patternPlot/BreakoutPlotMarker.cpp
-    patternPlot/PatternPlotCurve.cpp
-    patternPlot/PriceAndPatternPlot.cpp
-    patternPlot/PseudoTimeOHLCSample.cpp
-    patternPlot/StockChartDateScaleDraw.cpp
-    patternPlot/OHLCCurve.cpp
-    patternPlot/StockChartPlotZoomer.cpp
     #
     patternShape/PatternShape.cpp
     # patternShape/PatternShapeCurveGenerator.cpp

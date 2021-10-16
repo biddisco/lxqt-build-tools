@@ -17,9 +17,11 @@
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 //
-#include "PriceAndPatternPlot.h"
-#include "plots/CombinedPriceVolumeCharts.h"
-#include "plots/OrderBookPlot.h"
+#include "src/plot/PriceAndPatternPlot.h"
+#include "src/plot/CombinedPriceVolumeCharts.h"
+#include "src/plot/OrderBookPlot.h"
+//
+#include "src/data/data_holder.hpp"
 //
 #include "ui_mainwindow.h"
 //
@@ -54,10 +56,10 @@ class GroxMainWindow : public QMainWindow
     QScrollArea *accounts_scrollwidget;
     QScrollArea *orders_scrollwidget;
 
+    data_holder hdf5_ohlc_;
+    //
     CombinedPriceVolumeCharts* CombinedPriceVolumeCharts_;
     PriceAndPatternPlot* priceAndPatternPlot_;
-    QVector<QwtOHLCSample> ohlc_samples;
-    std::vector<double> ohlc_volumes;
 
     OrderBookPlot *obp_;
     QTimer *timer_;
@@ -65,6 +67,8 @@ class GroxMainWindow : public QMainWindow
     std::shared_ptr<bitstamp_network> bitstamp_network_;
     std::shared_ptr<xrpl_network> xrpl_network_;
     std::shared_ptr<xrpl_network> xrpl_testnet_;
+    //
+    data_holder bitstamp_xrp_ohlcv;
 
 //    http::request<http::string_body> bitstamp_request_;
 
@@ -78,16 +82,8 @@ public:
     //
     void receive_ohlc_data(std::string&&);
 
-    void create_data_dir();
-    void read_hdf5();
-    void write_hdf5(const QVector<QwtOHLCSample>& samples,
-        const std::vector<double>& volume, const uint64_t update = 0);
     void validate_ohlc();
     void update_candlestick_data();
-
-    // ----------------------------------------------------------------------------
-    void merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
-        const std::vector<double>& new_ohlc_volumes);
 
     void update_balance(std::string_view addr, double oldb, double newb);
     void display_offers();
@@ -124,6 +120,8 @@ public slots:
 //    void xrp_dir_clicked();
 //    void usd_dir_clicked();
     void capture_image();
+
+    void graph_rescale(int range);
 
 private:
     Ui::GroxMainWindow ui;

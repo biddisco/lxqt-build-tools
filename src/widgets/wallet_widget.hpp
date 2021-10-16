@@ -3,7 +3,7 @@
 
 #include <QWidget>
 //
-#include "settings.hpp"
+#include "src/settings.hpp"
 
 namespace Ui {
 class wallet_widget;

@@ -6,9 +6,9 @@
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 #include "src/network/evp-encrypt.hpp"
-#include "src/wallet_widget.hpp"
+#include "src/widgets/wallet_widget.hpp"
 //
-#include "bitstamp.hpp"
+#include "src/exchange/bitstamp.hpp"
 //
 // ----------------------------------------------------------------------------
 bitstamp_network::bitstamp_network()

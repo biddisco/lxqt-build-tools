@@ -18,8 +18,8 @@
 #include <qwt_scale_widget.h>
 #include <qwt_symbol.h>
 //
-#include "plots/OrderBookCurve.h"
-#include "plots/OrderBookPlot.h"
+#include "src/plot/OrderBookCurve.h"
+#include "src/plot/OrderBookPlot.h"
 #include <iostream>
 
 OrderBookPlot::OrderBookPlot(QWidget* parent)

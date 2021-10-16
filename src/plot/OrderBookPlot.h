@@ -3,7 +3,7 @@
 #include <qwt_plot.h>
 #include <qwt_plot_curve.h>
 //
-#include "plots/OrderBookCurve.h"
+#include "src/plot/OrderBookCurve.h"
 
 class OrderBookPlot: public QwtPlot
 {

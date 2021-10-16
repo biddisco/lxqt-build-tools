@@ -17,7 +17,7 @@
 #include "src/exchange/exchange.hpp"
 #include "src/order_book.hpp"
 #include "src/settings.hpp"
-#include "src/currency_widget.hpp"
+#include "src/widgets/currency_widget.hpp"
 
 // ----------------------------------------------------------------------------
 class xrpl_network : public exchange

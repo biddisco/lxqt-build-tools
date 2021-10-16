@@ -26,13 +26,65 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="chart_tab">
          <attribute name="title">
           <string>Chart</string>
          </attribute>
          <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <item>
+             <widget class="QToolButton" name="gt_d">
+              <property name="text">
+               <string>d</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="gt_w">
+              <property name="text">
+               <string>w</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="gt_m">
+              <property name="text">
+               <string>m</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="gt_y">
+              <property name="text">
+               <string>y</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="gt_a">
+              <property name="text">
+               <string>a</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_3">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
           <item>
            <widget class="QSplitter" name="splitter_2">
             <property name="orientation">

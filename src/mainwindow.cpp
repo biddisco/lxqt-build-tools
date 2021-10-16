@@ -13,11 +13,11 @@
 #include <boost/format.hpp>
 //
 #include "mainwindow.hpp"
-#include "password_dialog.hpp"
-#include "wallet_widget.hpp"
-#include "currency_widget.hpp"
-#include "trade_widget.hpp"
-#include "check_trades_dialog.hpp"
+#include "src/widgets/password_dialog.hpp"
+#include "src/widgets/wallet_widget.hpp"
+#include "src/widgets/currency_widget.hpp"
+#include "src/widgets/trade_widget.hpp"
+#include "src/widgets/check_trades_dialog.hpp"
 //
 #include "src/network/evp-encrypt.hpp"
 #include "src/network/https-async.hpp"
@@ -27,8 +27,6 @@
 //
 #include "ohlc.hpp"
 #include "settings.hpp"
-//
-#include "hdf5.h"
 //
 #include <iostream>
 #include <iomanip>
@@ -97,8 +95,13 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     createMenus();
 
     // ----------------------------------
+    app_settings* app_ini = global_settings();
+
+    // ----------------------------------
     // Load existing candlestick data
-    read_hdf5();
+    hdf5_ohlc_.init(app_ini->appDataLocation, app_ini->hdfFileName);
+    hdf5_ohlc_.read_hdf5();
+    emit new_ohlc_data_ui();
 
     // ----------------------------------
     // just an experiment to display an image
@@ -137,9 +140,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     orders_dock->setObjectName("OrdersDock");
     orders_dock->setWidget(orders_scrollwidget);
     addDockWidget(Qt::RightDockWidgetArea, orders_dock.get());
-
-    //
-    app_settings* app_ini = global_settings();
 
     // for each wallet on each network
     for (auto network : app_ini->networks_) {
@@ -318,6 +318,10 @@ void GroxMainWindow::createMenus()
         display_offers();
     } , Qt::QueuedConnection);
 
+    connect(bitstamp_network_.get(), &bitstamp_network::new_trade_data_ui, this, [](live_trades t) {
+        std::cout << "Signal captured : " << t.amount<< std::endl;
+    } , Qt::QueuedConnection);
+
     connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)),
             this, SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
     connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)),
@@ -334,6 +338,30 @@ void GroxMainWindow::createMenus()
     // when a transaction takes place we might need to update wallet/records
     connect(xrpl_network_.get(), SIGNAL(transaction_event()),
             this, SLOT(transaction_event()), Qt::QueuedConnection);
+
+
+    connect(ui.gt_d, &QAbstractButton::clicked, this, [this]() {
+        graph_rescale(0);
+    } , Qt::QueuedConnection);
+    connect(ui.gt_w, &QAbstractButton::clicked, this, [this]() {
+        graph_rescale(1);
+    } , Qt::QueuedConnection);
+
+}
+
+// ----------------------------------------------------------------------------
+// slot to ensure widget updates on GUI thread
+void GroxMainWindow::graph_rescale(int range)
+{
+    auto last_time = hdf5_ohlc_.get_last_sample_time();
+    if (range==0) {
+        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 60*60*24*1000, last_time);
+        priceAndPatternPlot_->replot();
+    }
+    else if (range==1) {
+        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 7*60*60*24*1000, last_time);
+        priceAndPatternPlot_->replot();
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -390,46 +418,6 @@ void GroxMainWindow::execute_usd()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
-    const std::vector<double>& new_ohlc_volumes)
-{
-    uint64_t update = 0;
-    if (ohlc_samples.size() == 0)
-    {
-        ohlc_samples = new_ohlc_samples;
-        ohlc_volumes = new_ohlc_volumes;
-    }
-    else if (!new_ohlc_samples.empty())
-    {
-        auto last_existing = ohlc_samples.back().time;
-        auto first_new = new_ohlc_samples.front().time;
-
-        DEBUG_ONLY("existing " << static_cast<uint64_t>(last_existing) << " new "
-                  << static_cast<uint64_t>(first_new));
-        // 1 minute candle OHLC data is stored in msecs
-        if (first_new - last_existing == (60 * 1000))
-        {
-            DEBUG_ONLY("merging data");
-            ohlc_samples.append(new_ohlc_samples);
-            ohlc_volumes.insert(
-                ohlc_volumes.end(), new_ohlc_volumes.begin(), new_ohlc_volumes.end());
-            if (ohlc_samples.size() != ohlc_volumes.size())
-            {
-                throw std::runtime_error("Data merge problem");
-            }
-            update = new_ohlc_samples.size();
-        }
-        else
-        {
-            throw std::runtime_error("Data OHLC time mismatch in merge");
-        }
-    }
-    // write an update to the main datafile
-    write_hdf5(ohlc_samples, ohlc_volumes, update);
-    emit new_ohlc_data_ui();
-}
-
-// ----------------------------------------------------------------------------
 void GroxMainWindow::receive_ohlc_data(std::string&& data)
 {
     try
@@ -456,9 +444,12 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
         }
         DEBUG_ALWAYS("Received " << ohlc_strings.size()
                   << " new OHLC samples");
-        merge_data(new_ohlc_samples, new_ohlc_volumes);
+        hdf5_ohlc_.merge_data(new_ohlc_samples, new_ohlc_volumes);
+        emit new_ohlc_data_ui();
+
         // what is the last sample we currently have
-        auto end_t = static_cast<uint64_t>(ohlc_samples.back().time/1000);
+        auto last_time = hdf5_ohlc_.get_last_sample_time();
+        auto end_t = static_cast<uint64_t>(last_time/1000);
         std::time_t t(end_t);
         std::tm tm = *std::localtime(&t);
         std::cout << "Data merged up to " << std::put_time(&tm, "%F %T") << std::endl;
@@ -473,8 +464,8 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::new_ohlc_data()
 {
-    if (!ohlc_samples.empty())
-        priceAndPatternPlot_->set_OHLC_data(ohlc_samples);
+    if (!hdf5_ohlc_.empty())
+        priceAndPatternPlot_->set_OHLC_data(hdf5_ohlc_.get_data());
 }
 
 // ----------------------------------------------------------------------------
@@ -524,10 +515,10 @@ void GroxMainWindow::update_candlestick_data()
 {
     uint64_t start_t = 0;
     // what is the last sample we currently have
-    if (ohlc_samples.size() > 0)
+    if (!hdf5_ohlc_.empty())
     {
         // convert msecs back to secs
-        start_t = static_cast<uint64_t>(ohlc_samples.back().time/1000);
+        start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time()/1000);
         DEBUG_ALWAYS("Data present up until " << unix_time_to_calendar_time(start_t));
         start_t += 60;    // next sample is 60s after last
     }
@@ -548,233 +539,6 @@ void GroxMainWindow::start_websocket()
 {
     bitstamp_network_->connect(io_contexts);
     update_candlestick_data();
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::create_data_dir()
-{
-    namespace fs = std::filesystem;
-    app_settings* app_ini = global_settings();
-    if (!fs::exists(app_ini->appDataLocation))
-    {
-        if (!fs::create_directory(app_ini->appDataLocation))
-        {
-            throw std::runtime_error("Failed to create dir " + app_ini->appDataLocation);
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::validate_ohlc()
-{
-    using cit = QVector<QwtOHLCSample>::const_iterator;
-    cit li = ohlc_samples.begin();
-    bool valid = true;
-    uint64_t index = 0;
-    for (cit i = ohlc_samples.begin() + 1; i != ohlc_samples.end(); ++i)
-    {
-        uint64_t t1 = static_cast<uint64_t>(li->time);
-        uint64_t t2 = static_cast<uint64_t>(i->time);
-        if (t2 - t1 != (60 * 1000))
-        {
-            std::cerr << "Validation error at index " << index << " " << t1 << " and "
-                      << t2 << "dataseet truncated " << std::endl;
-            valid = false;
-            break;
-        }
-        li = i;
-        index++;
-    }
-    ohlc_samples.resize(index + 1);
-    ohlc_volumes.resize(index + 1);
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::read_hdf5()
-{
-    create_data_dir();
-    //
-    app_settings* app_ini = global_settings();
-    //
-    if (std::filesystem::exists(app_ini->hdfFileName))
-    {
-        DEBUG_ALWAYS("Opening: " << app_ini->hdfFileName);
-        ohlc_samples.clear();
-        ohlc_volumes.clear();
-        //
-        hid_t file = H5Fopen(app_ini->hdfFileName.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-        // check if datasets exist
-        if (H5Lexists(file, "ohlc", H5P_DEFAULT) > 0)
-        {
-            // read OHLC data
-            hid_t dset1 = H5Dopen(file, "ohlc", H5P_DEFAULT);
-            hid_t space1 = H5Dget_space(dset1);
-            const int ndims1 = H5Sget_simple_extent_ndims(space1);
-            hsize_t dims1[ndims1];
-            herr_t status = H5Sget_simple_extent_dims(space1, dims1, NULL);
-            //
-            int N = dims1[0] / (sizeof(QwtOHLCSample) / sizeof(double));
-            ohlc_samples.resize(N);
-            status = H5Dread(dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                ohlc_samples.data());
-            // read Volume data
-            hid_t dset2 = H5Dopen(file, "volume", H5P_DEFAULT);
-            hid_t space2 = H5Dget_space(dset2);
-            const int ndims2 = H5Sget_simple_extent_ndims(space2);
-            hsize_t dims2[ndims2];
-            status = H5Sget_simple_extent_dims(space2, dims2, NULL);
-            if (N != dims2[0])
-            {
-                throw std::runtime_error("OHLC and Volume datasets not same size");
-            }
-            ohlc_volumes.resize(N);
-            status = H5Dread(dset2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                ohlc_volumes.data());
-
-            // free/close datasets
-            status = H5Dclose(dset1);
-            status = H5Dclose(dset2);
-            // free/close dataspaces
-            status = H5Sclose(space1);
-            status = H5Sclose(space2);
-        }
-        // free/close file
-        herr_t status = H5Fclose(file);
-    }
-    else
-    {
-        DEBUG_ONLY("Creating empty: " << app_ini->hdfFileName);
-
-        // Create a new file using default properties.
-        hid_t file_id = H5Fcreate(
-            app_ini->hdfFileName.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-        herr_t status = H5Fclose(file_id);
-    }
-    emit new_ohlc_data_ui();
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::write_hdf5(const QVector<QwtOHLCSample>& samples,
-    const std::vector<double>& volume, const uint64_t update)
-{
-    // check data before attempting to write to disk
-    //    if (debug_level>0)
-    validate_ohlc();
-    //
-    app_settings* app_ini = global_settings();
-    DEBUG_ALWAYS("Opening: " << app_ini->hdfFileName);
-
-    // In the OHLC dataset:
-    // There are 24*60=1440 60s candles per day, and each candle has 5 {t,o,h,l,c} entries,
-    // so the chunking size ought to be around 1440 * 5 = 7200 elements minimum,
-    // a week's data will be 50400 doubles, so a nice binary number size for
-    // chunking dimensions will be 65536
-    //
-    // The volume dataset has only 1 double per entry so we'll use a chunk dimension
-    // 4 times less, of 16384
-    //
-    // Use unlimited size so that the data can be extended arbitrarily
-
-    const uint64_t ohlc_size = sizeof(QwtOHLCSample) / sizeof(double);
-    const uint64_t N = samples.size() * ohlc_size;
-    hsize_t ohlc_dims[1] = {N};
-    hsize_t vol_dims[1] = {volume.size()};
-    hsize_t max_dims[1] = {H5S_UNLIMITED};
-    hsize_t chunk_dim1[1] = {65536};
-    hsize_t chunk_dim2[1] = {16384};
-    herr_t status;
-
-    // open the file, use UNLIMITED for main dimension so we can extend datasets
-    hid_t file = H5Fopen(app_ini->hdfFileName.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-
-    // create datasets if they do not exist already
-    if (H5Lexists(file, "ohlc", H5P_DEFAULT) <= 0)
-    {
-        if (update != 0)
-        {
-            throw std::runtime_error("Cannot extend dataset before it exists");
-        }
-        // create a property list to set the chunking property on our OHLC dataset
-        hid_t dprop1 = H5Pcreate(H5P_DATASET_CREATE);
-        status = H5Pset_chunk(dprop1, 1, chunk_dim1);
-
-        // write OHLC data,
-        hid_t space1 = H5Screate_simple(1, ohlc_dims, max_dims);
-        hid_t dset1 = H5Dcreate(
-            file, "ohlc", H5T_IEEE_F64LE, space1, H5P_DEFAULT, dprop1, H5P_DEFAULT);
-        status = H5Dwrite(
-            dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, samples.data());
-
-        // create a property list to set the chunking property on our volume dataset
-        hid_t dprop2 = H5Pcreate(H5P_DATASET_CREATE);
-        status = H5Pset_chunk(dprop2, 1, chunk_dim2);
-
-        // write Volume data
-        hid_t space2 = H5Screate_simple(1, vol_dims, max_dims);
-        hid_t dset2 = H5Dcreate(
-            file, "volume", H5T_IEEE_F64LE, space2, H5P_DEFAULT, dprop2, H5P_DEFAULT);
-        status = H5Dwrite(
-            dset2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, volume.data());
-        // free/close datasets
-        status = H5Dclose(dset1);
-        status = H5Dclose(dset2);
-        // free/close properties
-        status = H5Pclose(dprop1);
-        status = H5Pclose(dprop2);
-        // free/close dataspaces
-        status = H5Sclose(space1);
-        status = H5Sclose(space2);
-    }
-
-    // if we are extending a dataset
-    else if (update > 0)
-    {
-        DEBUG_ONLY("Extending datasets by: " << update);
-        uint64_t offset = samples.size() - update;
-        hsize_t offset1[1] = {offset * ohlc_size};
-        hsize_t ext1[1] = {update * ohlc_size};
-        hsize_t offset2[1] = {offset};
-        hsize_t ext2[1] = {update};
-
-        hid_t dset1 = H5Dopen(file, "ohlc", H5P_DEFAULT);
-        // extend dataset to new size
-        status = H5Dextend(dset1, ohlc_dims);
-        // Select a hyperslab from the file dataspace
-        hid_t fspace1 = H5Dget_space(dset1);
-        // select hyperslab in new dataset : start, stride(NULL), count, block(NULL)
-        status = H5Sselect_hyperslab(fspace1, H5S_SELECT_SET, offset1, NULL, ext1, NULL);
-        // Define memory space that we write our new data from
-        hid_t dspace1 = H5Screate_simple(1, ext1, NULL);
-        // Write new data to the hyperslab
-        status = H5Dwrite(
-            dset1, H5T_NATIVE_DOUBLE, dspace1, fspace1, H5P_DEFAULT, &samples[offset]);
-
-        hid_t dset2 = H5Dopen(file, "volume", H5P_DEFAULT);
-        // extend dataset to new size
-        status = H5Dextend(dset2, vol_dims);
-        // Select a hyperslab from the file dataspace
-        hid_t fspace2 = H5Dget_space(dset2);
-        // select hyperslab in new dataset : start, stride(NULL), count, block(NULL)
-        status = H5Sselect_hyperslab(fspace2, H5S_SELECT_SET, offset2, NULL, ext2, NULL);
-        // Define memory space that we write our new data from
-        hid_t dspace2 = H5Screate_simple(1, ext2, NULL);
-        // Write new data to the hyperslab
-        status = H5Dwrite(
-            dset2, H5T_NATIVE_DOUBLE, dspace2, fspace2, H5P_DEFAULT, &volume[offset]);
-
-        // free/close datasets
-        status = H5Dclose(dset1);
-        status = H5Dclose(dset2);
-        // free/close dataspaces
-        status = H5Sclose(fspace1);
-        status = H5Sclose(fspace2);
-        status = H5Sclose(dspace1);
-        status = H5Sclose(dspace2);
-    }
-    // free/close file
-    status = H5Fclose(file);
-
-    DEBUG_ONLY("Dataset size: " << ohlc_samples.size());
 }
 
 // ----------------------------------------------------------------------------

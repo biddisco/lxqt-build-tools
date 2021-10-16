@@ -3,7 +3,9 @@
 //
 #include <string>
 //
+#include <ripple/protocol/Issue.h>
 #include <ripple/protocol/Sign.h>
+#include <ripple/protocol/UintTypes.h>
 //
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
@@ -11,13 +13,10 @@
 //
 #include "src/order_book.hpp"
 #include "src/settings.hpp"
-#include "src/currency_widget.hpp"
+#include "src/widgets/currency_widget.hpp"
 #include "src/exchange/xrpl_network.hpp"
 #include "src/exchange/bitstamp.hpp"
 #include "src/exchange/xrpl.hpp"
-//
-#include <ripple/protocol/UintTypes.h>
-#include <ripple/protocol/Issue.h>
 //
 #define line_string "# ---------------------------------\n"
 

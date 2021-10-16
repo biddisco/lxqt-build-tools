@@ -8,8 +8,8 @@
 
 #include "src/network/evp-encrypt.hpp"
 #include "mainwindow.hpp"
-#include "password_dialog.hpp"
-#include "settings.hpp"
+#include "src/widgets/password_dialog.hpp"
+#include "src/settings.hpp"
 
 // ----------------------------------------------------------------------------
 app_settings* global_settings()

@@ -8,7 +8,7 @@
 //
 #include "ui_password_dialog.h"
 //
-#include "settings.hpp"
+#include "src/settings.hpp"
 
 class password_dialog : public QDialog
 {

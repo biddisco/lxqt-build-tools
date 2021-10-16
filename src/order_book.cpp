@@ -22,8 +22,8 @@
 #include "nlohmann/json.hpp"
 #include "ohlc.hpp"
 //
-#include "plots/OrderBookCurve.h"
-#include "plots/OrderBookPlot.h"
+#include "src/plot/OrderBookCurve.h"
+#include "src/plot/OrderBookPlot.h"
 //
 #include "order_book.hpp"
 
