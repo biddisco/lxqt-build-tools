@@ -1,8 +1,13 @@
-#include "StockChartDateScaleDraw.h"
+#include <cmath>
+//
 #include <QDebug>
-#include <math.h>
-#include "QDateHelper.h"
+//
 #include <qwt_text.h>
+//
+#include <boost/date_time.hpp>
+//
+#include "src/util/QDateHelper.h"
+#include "StockChartDateScaleDraw.h"
 
 StockChartDateScaleDraw::StockChartDateScaleDraw(Qt::TimeSpec /*timeSpec*/)
 {

@@ -101,7 +101,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // Load existing candlestick data
     hdf5_ohlc_.init(app_ini->appDataLocation, app_ini->hdfFileName);
     hdf5_ohlc_.read_hdf5();
-    emit new_ohlc_data_ui();
 
     // ----------------------------------
     // just an experiment to display an image
@@ -189,6 +188,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     calcWidth = char_size*140 + 8;
     ui.arbitrage_orders->setMinimumWidth(calcWidth);
     //ui.arbitrage_orders->setMaximumWidth(calcWidth);
+
+    // tell GUI about data loaded
+    emit new_ohlc_data_ui();
 }
 
 // ----------------------------------------------------------------------------
@@ -346,6 +348,12 @@ void GroxMainWindow::createMenus()
     connect(ui.gt_w, &QAbstractButton::clicked, this, [this]() {
         graph_rescale(1);
     } , Qt::QueuedConnection);
+    connect(ui.gt_m, &QAbstractButton::clicked, this, [this]() {
+        graph_rescale(2);
+    } , Qt::QueuedConnection);
+    connect(ui.gt_y, &QAbstractButton::clicked, this, [this]() {
+        graph_rescale(3);
+    } , Qt::QueuedConnection);
 
 }
 
@@ -355,13 +363,19 @@ void GroxMainWindow::graph_rescale(int range)
 {
     auto last_time = hdf5_ohlc_.get_last_sample_time();
     if (range==0) {
-        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 60*60*24*1000, last_time);
-        priceAndPatternPlot_->replot();
+        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 60.0*60.0*24.0*1000.0, last_time);
     }
     else if (range==1) {
-        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 7*60*60*24*1000, last_time);
-        priceAndPatternPlot_->replot();
+        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 7*60.0*60.0*24.0*1000.0, last_time);
     }
+    else if (range==2) {
+        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 31*60.0*60.0*24.0*1000.0, last_time);
+    }
+    else if (range==3) {
+        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 365.0*60.0*60.0*24.0*1000.0, last_time);
+    }
+    priceAndPatternPlot_->axisScaleDraw(QwtAxis::YLeft)->invalidateCache();
+    priceAndPatternPlot_->replot();
 }
 
 // ----------------------------------------------------------------------------
@@ -466,6 +480,10 @@ void GroxMainWindow::new_ohlc_data()
 {
     if (!hdf5_ohlc_.empty())
         priceAndPatternPlot_->set_OHLC_data(hdf5_ohlc_.get_data());
+
+    // default 1 day display
+    graph_rescale(0);
+    priceAndPatternPlot_->replot();
 }
 
 // ----------------------------------------------------------------------------

@@ -2,7 +2,6 @@
 //
 #include <qwt_date.h>
 //
-#include "QDateHelper.h"
 #include "OHLCCurve.h"
 
 OHLCCurve::OHLCCurve(const QVector<QwtOHLCSample> &chartData)

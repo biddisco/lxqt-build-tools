@@ -1,4 +1,7 @@
-
+#include <QMouseEvent>
+#include <QDebug>
+#include <QWheelEvent>
+//
 #include <qwt_legend.h>
 #include <qwt_plot_zoneitem.h>
 #include <qwt_plot_renderer.h>
@@ -17,26 +20,111 @@
 #include <qwt_plot_legenditem.h>
 #include <qwt_plot_magnifier.h>
 #include <qwt_plot_panner.h>
+#include <qwt_scale_engine.h>
 #include <qwt_scale_widget.h>
 //
+#include <sstream>
 #include <assert.h>
 
 #include "PriceAndPatternPlot.h"
 
-#include "StockChartDateScaleDraw.h"
-#include "StockChartPlotZoomer.h"
-#include "OHLCCurve.h"
-#include "QDateHelper.h"
+#include "src/plot/StockChartDateScaleDraw.h"
+#include "src/plot/StockChartPlotZoomer.h"
+#include "src/plot/OHLCCurve.h"
+#include "src/util/QDateHelper.h"
 
-//#include "PeriodValSegment.h"
-//#include "DoubleBottomScanner.h"
-//#include "PatternShapeGenerator.h"
-//#include "MultiPatternScanner.h"
-//#include "PatternMatchFilter.h"
-//#include "SymetricTriangleScanner.h"
-#include <sstream>
-#include <qwt_scale_engine.h>
 
+// ----------------------------------------------------------------------------
+class CustomPanner: public QwtPlotPanner
+{
+
+public:
+    explicit CustomPanner(QWidget* parent) : QwtPlotPanner(parent){}
+
+virtual bool eventFilter( QObject * object, QEvent * event)
+{
+    if ( object == NULL || object != parentWidget() )
+            return false;
+
+    switch ( event->type() )
+    {
+        case QEvent::MouseButtonPress:
+        {
+            widgetMousePressEvent( static_cast<QMouseEvent *>( event ) );
+            break;
+        }
+        case QEvent::MouseMove:
+        {
+            break;
+            QMouseEvent * evr = static_cast<QMouseEvent *>( event );
+            widgetMouseMoveEvent( evr );
+            widgetMouseReleaseEvent( evr  );
+            setMouseButton(evr->button(), evr->modifiers());
+            widgetMousePressEvent( evr);
+            break;
+        }
+        case QEvent::MouseButtonRelease:
+        {
+            QMouseEvent * evr = static_cast<QMouseEvent *>( event );
+            widgetMouseReleaseEvent( static_cast<QMouseEvent *>( event ) );
+            break;
+            grab();
+        }
+        case QEvent::KeyPress:
+        {
+            widgetKeyPressEvent( static_cast<QKeyEvent *>( event ) );
+            break;
+        }
+        case QEvent::KeyRelease:
+        {
+            widgetKeyReleaseEvent( static_cast<QKeyEvent *>( event ) );
+            break;
+        }
+        case QEvent::Paint:
+        {
+            if ( isVisible() )
+                return true;
+            break;
+        }
+        case QEvent::Wheel:
+        {
+            QWheelEvent* we = static_cast<QWheelEvent*>(event);
+            auto d = we->angleDelta();
+            qDebug() << we->angleDelta();
+            qDebug() << we->pixelDelta();
+            // sideways swipe
+            if (std::abs(d.x()) >= std::abs(d.y())) {
+                QMouseEvent ev1(QEvent::MouseMove, we->position(), Qt::MouseButton::LeftButton, Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
+                setMouseButton(ev1.button(), ev1.modifiers());
+                widgetMousePressEvent( &ev1);
+
+                QPoint p2(we->position().x() + d.x()/2, we->position().y() + d.y()/2);
+                QMouseEvent ev2(QEvent::MouseMove, p2, Qt::MouseButton::LeftButton, Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
+                widgetMouseMoveEvent( &ev2 );
+                widgetMouseReleaseEvent( &ev2 );
+            }
+
+            break;
+        }
+        case QEvent::NativeGesture:
+        {
+            qreal value = static_cast<QNativeGestureEvent*>(event)->value();
+
+            if (value > 0) {
+                 qDebug() << static_cast<QNativeGestureEvent*>(event)->value();
+            }
+            else if (value < 0) {
+                 qDebug() << static_cast<QNativeGestureEvent*>(event)->value();            }
+            break;
+        }
+        default:;
+    }
+
+    return false;
+   }
+};
+
+// ----------------------------------------------------------------------------
 PriceAndPatternPlot::PriceAndPatternPlot( QWidget *parent ):
     QwtPlot( parent )
 {
@@ -85,10 +173,10 @@ PriceAndPatternPlot::PriceAndPatternPlot( QWidget *parent ):
 //    plotZoomer_->setAxisEnabled(Qt::YAxis, false);
 
 
-//    QwtPlotPanner *panner = new QwtPlotPanner( canvas() );
-//    panner->setMouseButton(Qt::LeftButton, Qt::ShiftModifier);
-//    panner->setAxisEnabled(Qt::XAxis, true);
-//    panner->setAxisEnabled(Qt::YAxis, false);
+    QwtPlotPanner *panner = new CustomPanner( canvas() );
+    panner->setMouseButton(Qt::LeftButton, Qt::ShiftModifier);
+    panner->setAxisEnabled(Qt::XAxis, true);
+    panner->setAxisEnabled(Qt::YAxis, false);
 
     // Attach a dotted-line grid to the plot.
     QwtPlotGrid *grid = new QwtPlotGrid();
@@ -133,6 +221,7 @@ PriceAndPatternPlot::PriceAndPatternPlot( QWidget *parent ):
     setupWheelZooming();
 }
 
+// ----------------------------------------------------------------------------
 void PriceAndPatternPlot::clearPatternPlots()
 {
     // Detach and delete any existing plot curves
@@ -185,17 +274,19 @@ void PriceAndPatternPlot::populateOnePatternShape(const PatternMatchPtr &pattern
 }
 */
 
-void PriceAndPatternPlot::populatePatternMatchesShapes(const PatternMatchListPtr &patternMatches)
-{
-    clearPatternPlots();
+//// ----------------------------------------------------------------------------
+//void PriceAndPatternPlot::populatePatternMatchesShapes(const PatternMatchListPtr &patternMatches)
+//{
+//    clearPatternPlots();
 
-    for(PatternMatchList::iterator matchesIter = patternMatches->begin();
-        matchesIter != patternMatches->end(); matchesIter++)
-    {
-//        populateOnePatternShape(*matchesIter);
-    }
-}
+//    for(PatternMatchList::iterator matchesIter = patternMatches->begin();
+//        matchesIter != patternMatches->end(); matchesIter++)
+//    {
+////        populateOnePatternShape(*matchesIter);
+//    }
+//}
 
+// ----------------------------------------------------------------------------
 void PriceAndPatternPlot::set_OHLC_data(const QVector<QwtOHLCSample> &ohlc)
 {
     // remove any pattern plots
@@ -229,8 +320,6 @@ void PriceAndPatternPlot::set_OHLC_data(const QVector<QwtOHLCSample> &ohlc)
     // Update the chart data for the plot zoomer, so it can show a curser with appropriate data.
     // plotZoomer_->setChartData(instrSelInfo->chartData());
 
-    replot();
-
     // The following has the effect of freezing the maximum zoom coordinates to the
     // initial scale of the chart. This needs to happen after replot(). The scale
     // for zooming needs to be reset whenever the chart data changes.
@@ -239,6 +328,7 @@ void PriceAndPatternPlot::set_OHLC_data(const QVector<QwtOHLCSample> &ohlc)
 
 }
 
+// ----------------------------------------------------------------------------
 //void PriceAndPatternPlot::populateChartData(const InstrumentSelectionInfoPtr &instrSelInfo)
 //{
 
@@ -270,6 +360,7 @@ void PriceAndPatternPlot::set_OHLC_data(const QVector<QwtOHLCSample> &ohlc)
 
 //}
 
+// ----------------------------------------------------------------------------
 void PriceAndPatternPlot::setMode( int style )
 {
     QwtPlotTradingCurve::SymbolStyle symbolStyle =
@@ -286,18 +377,21 @@ void PriceAndPatternPlot::setMode( int style )
     replot();
 }
 
+// ----------------------------------------------------------------------------
 void PriceAndPatternPlot::showItem( QwtPlotItem *item, bool on )
 {
     item->setVisible( on );
     replot();
 }
 
+// ----------------------------------------------------------------------------
 void PriceAndPatternPlot::exportPlot()
 {
     QwtPlotRenderer renderer;
     renderer.exportTo( this, "stockchart.pdf" );
 }
 
+// ----------------------------------------------------------------------------
 void PriceAndPatternPlot::setupWheelZooming()
 {
     return;

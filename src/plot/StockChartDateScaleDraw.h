@@ -3,8 +3,6 @@
 
 #include <qwt_date_scale_draw.h>
 
-#include "PeriodValSegment.h"
-
 class StockChartDateScaleDraw : public QwtDateScaleDraw
 {
 private:

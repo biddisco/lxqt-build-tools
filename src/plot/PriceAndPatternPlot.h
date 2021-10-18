@@ -6,8 +6,6 @@
 #include <qwt_plot.h>
 #include <qwt_samples.h>
 
-#include "PatternMatch.h"
-#include "PeriodValSegment.h"
 #include "StockChartPlotZoomer.h"
 //#include "InstrumentSelectionInfo.h"
 #include "StockChartDateScaleDraw.h"
@@ -58,8 +56,6 @@ public:
     void set_OHLC_data(const QVector<QwtOHLCSample> &ohlc);
 
     void clearPatternPlots();
-    void populateOnePatternShape(const PatternMatchPtr &patternMatch);
-    void populatePatternMatchesShapes(const PatternMatchListPtr &patternMatches);
     void setupWheelZooming();
 
 public Q_SLOTS:

@@ -6,9 +6,7 @@
 #include <qwt_plot.h>
 //
 #include "PriceAndPatternPlot.h"
-#include "VolumePlot.h"
 #include <QGridLayout>
-//#include "InstrumentSelectionInfo.h"
 
 class CombinedPriceVolumeCharts : public QFrame
 {
@@ -17,7 +15,7 @@ class CombinedPriceVolumeCharts : public QFrame
 
 private:
     PriceAndPatternPlot *priceAndPatternPlot_;
-    VolumePlot *volumePlot_;
+//    VolumePlot *volumePlot_;
 
 
 public:

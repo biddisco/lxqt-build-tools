@@ -1,5 +1,6 @@
+#include <cmath>
+//
 #include <qpen.h>
-#include "QDateHelper.h"
 #include <qwt_date.h>
 #include <qwt_text.h>
 #include "StockChartPlotZoomer.h"
@@ -44,7 +45,7 @@ QwtText StockChartPlotZoomer::trackerTextF( const QPointF &pos ) const
         double centerAlignedTrackerXVal = pos.x() +
                 STOCK_CHART_PLOT_ZOOMER_CENTER_ALIGN_X_ADJUSTMENT_FACTOR;
 
-        unsigned int chartDataIndex = floor(centerAlignedTrackerXVal);
+        unsigned int chartDataIndex = std::floor(centerAlignedTrackerXVal);
         if (chartScale_)
         {
 //            PeriodValCltn::iterator indexIter = chartData_->segBegin();

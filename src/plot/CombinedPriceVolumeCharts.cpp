@@ -8,7 +8,6 @@
 //
 #include "src/plot/CombinedPriceVolumeCharts.h"
 #include "PriceAndPatternPlot.h"
-#include "DoubleRange.h"
 
 CombinedPriceVolumeCharts::CombinedPriceVolumeCharts(QWidget *parent):
     QFrame( parent )
@@ -21,8 +20,8 @@ CombinedPriceVolumeCharts::CombinedPriceVolumeCharts(QWidget *parent):
     priceAndPatternPlot_ = new PriceAndPatternPlot(this);
     layout->addWidget( priceAndPatternPlot_,0,0 );
 
-    volumePlot_ = new VolumePlot(this);
-    layout->addWidget( volumePlot_, 1, 0 );
+//    volumePlot_ = new VolumePlot(this);
+//    layout->addWidget( volumePlot_, 1, 0 );
 
     layout->setRowStretch(0,80);
     layout->setRowStretch(1,20);
@@ -61,5 +60,5 @@ CombinedPriceVolumeCharts::CombinedPriceVolumeCharts(QWidget *parent):
 void CombinedPriceVolumeCharts::scaleDivChanged()
 {
     qDebug() << "Stacked Stock Charts: scaleDivChange()";
-    volumePlot_->rescaleAxis(priceAndPatternPlot_->axisScaleDiv( QwtPlot::xBottom ));
+//    volumePlot_->rescaleAxis(priceAndPatternPlot_->axisScaleDiv( QwtPlot::xBottom ));
 }
