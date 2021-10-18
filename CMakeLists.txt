@@ -13,6 +13,9 @@
 # Example cmake invocation
 # cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Debug ~/src/xrp/grox/
 
+# ------------------------------------------------------------------------------
+# @TODO : add acknowledgement to https://github.com/sroehling/ChartPatternFinderDesktop
+# ------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.16)
 cmake_policy(SET CMP0048 NEW)
 cmake_policy(SET CMP0077 NEW)
@@ -84,25 +87,53 @@ find_package(ZLIB)
 # ------------------------------------------------------------------------------
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/qwt)
   message(STATUS "Using QWT in source tree")
+  # use the source in this directory
   set(FETCHCONTENT_SOURCE_DIR_QWT ${CMAKE_CURRENT_SOURCE_DIR}/extern/qwt)
+  # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_QWT ON)
 endif()
 
+# If we must pull a fresh copy, setup git location/branch and set shallow flag
 fetchcontent_declare(
   qwt
   GIT_REPOSITORY $HOME/src/qwt
   GIT_TAG develop-cmake
+  GIT_SHALLOW TRUE
 )
 fetchcontent_getproperties(qwt)
 if(NOT qwt_POPULATED)
+  message(STATUS "Downloading QWT source...")
   fetchcontent_populate(qwt)
   add_subdirectory(${qwt_SOURCE_DIR} ${qwt_BINARY_DIR})
 endif()
 
-add_subdirectory(extern/range-v3)
+# ------------------------------------------------------------------------------
+# Build/Download range-v3 library
+# ------------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/range-v3)
+  message(STATUS "Using Range-v3 in source tree")
+  # use the source in this directory
+  set(FETCHCONTENT_SOURCE_DIR_RANGE-V3 ${CMAKE_CURRENT_SOURCE_DIR}/extern/range-v3)
+  # don't change branches, or pull
+  set(FETCHCONTENT_UPDATES_DISCONNECTED_RANGE-V3 ON)
+endif()
+
+# If we must pull a fresh copy, setup git location/branch and set shallow flag
+fetchcontent_declare(
+  range-v3
+  GIT_REPOSITORY https://github.com/ericniebler/range-v3.git
+  GIT_TAG master
+  GIT_SHALLOW TRUE
+)
+fetchcontent_getproperties(range-v3)
+if(NOT range-v3_POPULATED)
+  message(STATUS "Downloading range-v3 source...")
+  fetchcontent_populate(range-v3)
+  add_subdirectory(${range-v3_SOURCE_DIR} ${range-v3_BINARY_DIR})
+endif()
 
 # ------------------------------------------------------------------------------
-# Find/Build : Rippled library
+# Find/Build/Download rippled library
 # ------------------------------------------------------------------------------
 # try to find a system version
 find_package(Ripple QUIET)
@@ -120,6 +151,8 @@ if(NOT Ripple_FOUND)
     # To setup where Rippled puts its extern projects
     set(NIH_CACHE_ROOT ${PROJECT_BINARY_DIR}/extern)
   endif()
+
+  # If we must pull a fresh copy, setup git location/branch and set shallow flag
   fetchcontent_declare(
     rippled
     GIT_REPOSITORY https://github.com/ripple/rippled.git
@@ -139,89 +172,51 @@ endif()
 # ------------------------------------------------------------------------------
 
 set(GROX_SRC
+
+    # main application
     src/main.cpp
     src/mainwindow.cpp
-    #
-    src/network/evp-encrypt.cpp
-    #
-    src/network/websocket-ssl.cpp
-    src/network/https-async.cpp
-    #
-    src/data/data_holder.cpp
-    #
+
+    # application utility
     src/currency.cpp
     src/ohlc.cpp
     src/order_book.cpp
-    #
+
+    # cryptograohy
+    src/network/evp-encrypt.cpp
+
+    # networking asio etc
+    src/network/websocket-ssl.cpp
+    src/network/https-async.cpp
+
+    # data, hdf5
+    src/data/data_holder.cpp
+
+    # exchange Apis
     src/exchange/xrpl.cpp
     src/exchange/exchange.cpp
     src/exchange/xrpl_network.cpp
     src/exchange/bitstamp.cpp
-    #
+
+    # widgets and dialogs
     src/widgets/password_dialog.cpp
     src/widgets/currency_widget.cpp
     src/widgets/wallet_widget.cpp
     src/widgets/trade_widget.cpp
     src/widgets/check_trades_dialog.cpp
-    #
+
+    # plotting
     src/plot/OrderBookPlot.cpp
     src/plot/OrderBookCurve.cpp
     src/plot/CombinedPriceVolumeCharts.cpp
-    # src/plot/BreakdownPlotMarker.cpp
-    # src/plot/BreakoutPlotMarker.cpp
-    # src/plot/PatternPlotCurve.cpp
     src/plot/PriceAndPatternPlot.cpp
     src/plot/PseudoTimeOHLCSample.cpp
     src/plot/StockChartDateScaleDraw.cpp
     src/plot/OHLCCurve.cpp
     src/plot/StockChartPlotZoomer.cpp
-    #
-    chartSegment/ANDSegmentConstraint.cpp
-    chartSegment/ChartSegment.cpp
-    chartSegment/SegmentValsCloseToLinearEq.cpp
-    chartSegment/SlopeWithinRangeConstraint.cpp
-    #
-    date/DateValue.cpp
-    date/TimeHelper.cpp
-    #
-    math/DoubleRange.cpp
-    math/LinearEquation.cpp
-    math/MathHelper.cpp
-    math/UnsignedIntRange.cpp
-    math/XYCoord.cpp
-    #
-    # patternMatch/AscendingTrianglePatternMatch.cpp
-    # patternMatch/CupPatternMatch.cpp
-    # patternMatch/CupWithHandlePatternMatch.cpp
-    # patternMatch/CupWithoutHandlePatternMatch.cpp
-    # patternMatch/DescendingTrianglePatternMatch.cpp
-    # patternMatch/DoubleBottomPatternMatch.cpp
-    # patternMatch/FallingWedgePatternMatch.cpp
-    # patternMatch/PatternMatchBreakoutInfo.cpp patternMatch/PatternMatch.cpp
-    # patternMatch/PatternMatchVisitor.cpp
-    # patternMatch/RectanglePatternMatch.cpp
-    # patternMatch/RisingWedgePatternMatch.cpp
-    # patternMatch/SymetricTrianglePatternMatch.cpp
-    # patternMatch/TrianglePatternMatch.cpp patternMatch/VPatternMatch.cpp
-    # patternMatch/WedgePatternMatch.cpp
-    #
-    #
-    patternShape/PatternShape.cpp
-    # patternShape/PatternShapeCurveGenerator.cpp
-    # patternShape/PatternShapeGenerator.cpp
-    patternShape/PatternShapePoint.cpp
-    #
-    quoteData/PeriodVal.cpp
-    quoteData/PeriodValSegment.cpp
-    quoteData/PeriodValueRef.cpp
-    quoteData/PerValCltnSlidingWindow.cpp
-    #
-    util/QDateHelper.cpp
-    util/SettingsHelper.cpp
-    #
-    volumePlot/VolumePlot.cpp
-    volumePlot/VolumePlotCurve.cpp
-    volumePlot/VolumeYAxisScaleDraw.cpp
+
+    # utils
+    src/util/QDateHelper.cpp
 )
 
 # -----------------------------------------------------------------------------
@@ -242,16 +237,7 @@ target_include_directories(
   grox
   PUBLIC ${Boost_INCLUDE_DIRS}
          ${HDF5_INCLUDE_DIRS}
-         ${CMAKE_CURRENT_SOURCE_DIR}/date
-         ${CMAKE_CURRENT_SOURCE_DIR}/math
-         ${CMAKE_CURRENT_SOURCE_DIR}/log
-         ${CMAKE_CURRENT_SOURCE_DIR}/util
-         ${CMAKE_CURRENT_SOURCE_DIR}/quoteData
-         ${CMAKE_CURRENT_SOURCE_DIR}/patternPlot
-         ${CMAKE_CURRENT_SOURCE_DIR}/volumePlot
-         ${CMAKE_CURRENT_SOURCE_DIR}/patternMatch
-         ${CMAKE_CURRENT_SOURCE_DIR}/patternShape
-         ${CMAKE_CURRENT_SOURCE_DIR}/chartSegment
+         ${CMAKE_CURRENT_SOURCE_DIR}/extern # nlohmann/json
 )
 
 if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
@@ -288,13 +274,21 @@ target_link_libraries(
 )
 
 # ---------------------------------------------------
+# Convenience var for test setup
+# ---------------------------------------------------
+set(TEST_INC_DIRS
+    ${Boost_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern # nlohmann/json
+)
+
+# ---------------------------------------------------
 # test websocket code
 # ---------------------------------------------------
 set(WS_SRC src/network/websocket-ssl.cpp src/network/test/test-websocket.cpp)
 
 add_executable(test-websocket ${WS_SRC})
 
-target_include_directories(test-websocket PUBLIC ${Boost_INCLUDE_DIRS})
+target_include_directories(test-websocket PUBLIC ${TEST_INC_DIRS})
 
 target_link_libraries(
   test-websocket PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL pthread
@@ -307,7 +301,7 @@ set(HTTPS_SRC src/network/https-async.cpp src/network/test/test-https.cpp)
 
 add_executable(test-https ${HTTPS_SRC})
 
-target_include_directories(test-https PUBLIC ${Boost_INCLUDE_DIRS})
+target_include_directories(test-https PUBLIC ${TEST_INC_DIRS})
 
 target_link_libraries(test-https PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL pthread)
 
@@ -319,7 +313,7 @@ set(LOGIN_SRC src/network/test/test-login.cpp src/network/https-async.cpp
 )
 add_executable(test-login ${LOGIN_SRC})
 
-target_include_directories(test-login PUBLIC ${Boost_INCLUDE_DIRS})
+target_include_directories(test-login PUBLIC ${TEST_INC_DIRS})
 
 target_link_libraries(
   test-login PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL curl uuid pthread
@@ -365,35 +359,35 @@ endif()
 # belle - client test against bitstamp API
 # ---------------------------------------------------
 add_executable(test-belle-client src/network/test/test-belle-client.cpp)
-target_include_directories(test-belle-client PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
+target_include_directories(test-belle-client PUBLIC extern/belle/include ${TEST_INC_DIRS})
 target_link_libraries(test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
 
 # ---------------------------------------------------
 # belle - client test against bitstamp API
 # ---------------------------------------------------
 add_executable(test-belle-client-request src/network/test/test-belle-client-request.cpp)
-target_include_directories(test-belle-client-request PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
+target_include_directories(test-belle-client-request PUBLIC extern/belle/include ${TEST_INC_DIRS})
 target_link_libraries(test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
 
 # ---------------------------------------------------
 # belle - websocket test against ripple API
 # ---------------------------------------------------
 add_executable(test-belle-websocket src/network/test/test-belle-websocket.cpp)
-target_include_directories(test-belle-websocket PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
+target_include_directories(test-belle-websocket PUBLIC extern/belle/include ${TEST_INC_DIRS})
 target_link_libraries(test-belle-websocket PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
 
 # ---------------------------------------------------
 # belle - example original https test client/server
 # ---------------------------------------------------
 add_executable(test-belle-https-client ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/client/https/src/main.cc)
-target_include_directories(test-belle-https-client PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
+target_include_directories(test-belle-https-client PUBLIC extern/belle/include ${TEST_INC_DIRS})
 target_link_libraries(test-belle-https-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
 target_compile_definitions(test-belle-https-client
     PRIVATE BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
 )
 
 add_executable(test-belle-https-server ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/server/https/src/main.cc)
-target_include_directories(test-belle-https-server PUBLIC extern/belle/include ${Boost_INCLUDE_DIRS})
+target_include_directories(test-belle-https-server PUBLIC extern/belle/include ${TEST_INC_DIRS})
 target_link_libraries(test-belle-https-server PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
 target_compile_definitions(test-belle-https-server
     PRIVATE BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
