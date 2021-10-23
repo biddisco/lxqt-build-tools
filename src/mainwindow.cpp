@@ -342,6 +342,12 @@ void GroxMainWindow::createMenus()
             this, SLOT(transaction_event()), Qt::QueuedConnection);
 
 
+    connect(ui.gt_6, &QAbstractButton::clicked, this, [this]() {
+        graph_rescale(-2);
+    } , Qt::QueuedConnection);
+    connect(ui.gt_12, &QAbstractButton::clicked, this, [this]() {
+        graph_rescale(-1);
+    } , Qt::QueuedConnection);
     connect(ui.gt_d, &QAbstractButton::clicked, this, [this]() {
         graph_rescale(0);
     } , Qt::QueuedConnection);
@@ -354,7 +360,9 @@ void GroxMainWindow::createMenus()
     connect(ui.gt_y, &QAbstractButton::clicked, this, [this]() {
         graph_rescale(3);
     } , Qt::QueuedConnection);
-
+    connect(ui.gt_a, &QAbstractButton::clicked, this, [this]() {
+        graph_rescale(4);
+    } , Qt::QueuedConnection);
 }
 
 // ----------------------------------------------------------------------------
@@ -362,19 +370,32 @@ void GroxMainWindow::createMenus()
 void GroxMainWindow::graph_rescale(int range)
 {
     auto last_time = hdf5_ohlc_.get_last_sample_time();
-    if (range==0) {
-        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 60.0*60.0*24.0*1000.0, last_time);
+    auto day = 60.0*60.0*24.0*1000.0;
+    double t1=0, t2 = last_time;
+    if (range==-2) {
+        t1 = last_time - 0.25*day;
+    }
+    else if (range==-1) {
+        t1 = last_time - 0.5*day;
+    }
+    else if (range==0) {
+        t1 = last_time - 1.0*day;
     }
     else if (range==1) {
-        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 7*60.0*60.0*24.0*1000.0, last_time);
+        t1 = last_time - 7*day;
     }
     else if (range==2) {
-        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 31*60.0*60.0*24.0*1000.0, last_time);
+        t1 = last_time - 31*day;
     }
     else if (range==3) {
-        priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, last_time - 365.0*60.0*60.0*24.0*1000.0, last_time);
+        t1 = last_time - 365*day;
     }
-    priceAndPatternPlot_->axisScaleDraw(QwtAxis::YLeft)->invalidateCache();
+    else {
+        t1 = hdf5_ohlc_.get_first_sample_time();
+    }
+    auto minmax = hdf5_ohlc_.get_min_max_window(t1, t2, 0.05);
+    priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, t1, t2);
+    priceAndPatternPlot_->setAxisScale(QwtAxis::YLeft, minmax.minval_, minmax.maxval_);
     priceAndPatternPlot_->replot();
 }
 

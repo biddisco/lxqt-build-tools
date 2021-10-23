@@ -36,6 +36,20 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_2">
             <item>
+             <widget class="QToolButton" name="gt_6">
+              <property name="text">
+               <string>¼d</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="gt_12">
+              <property name="text">
+               <string>½d</string>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QToolButton" name="gt_d">
               <property name="text">
                <string>d</string>

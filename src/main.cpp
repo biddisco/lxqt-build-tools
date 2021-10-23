@@ -148,11 +148,12 @@ int main(int argc, char* argv[])
     app_settings* app_ini = global_settings();
     QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
     //
-    if (std::getenv("rand1") != nullptr)
+    if (std::getenv("rand3") != nullptr)
     {
         // generate a base64 encoded pw : bash commmand : echo "password" | base64
-        std::string raw = std::getenv("rand1");
+        std::string raw = std::getenv("rand3");
         app_ini->grox_password = base64_decode(raw).toStdString();
+        app_ini->grox_password = app_ini->grox_password.substr(8,13);
     }
     else
     {
@@ -200,8 +201,8 @@ int main(int argc, char* argv[])
             base64_decode(settings.value("EncryptedData/API_key", "").toByteArray());
         bitstamp.API_key =
             encryptor.decrypt(secure_string(API_key.data(), API_key.size()));
-        if (std::getenv("rand2")) {
-            bitstamp.API_key = std::getenv("rand2");
+        if (std::getenv("Rand2")) {
+            bitstamp.API_key = std::getenv("Rand2");
             std::cout << "Using key from ENV" << std::endl;
         }
         //
@@ -209,8 +210,8 @@ int main(int argc, char* argv[])
             base64_decode(settings.value("EncryptedData/API_secret", "").toByteArray());
         bitstamp.API_secret =
             encryptor.decrypt(secure_string(API_secret.data(), API_secret.size()));
-        if (std::getenv("rand3")) {
-            bitstamp.API_secret = std::getenv("rand3");
+        if (std::getenv("Rand3")) {
+            bitstamp.API_secret = std::getenv("Rand3");
             std::cout << "Using sec from ENV" << std::endl;
         }
         //

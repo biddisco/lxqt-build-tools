@@ -9,6 +9,12 @@
 //
 #include "hdf5.h"
 
+struct minmax_pair
+{
+    double minval_;
+    double maxval_;
+};
+
 class data_holder
 {
 protected:
@@ -38,5 +44,11 @@ public:
     //
     bool   empty();
     double get_last_sample_time();
+    double get_first_sample_time();
     QVector<QwtOHLCSample> const &get_data();
+
+    //
+    minmax_pair get_min_max(double start_time, double end_time) const;
+    minmax_pair get_min_max_window(double start_time, double end_time, double percent) const;
+
 };

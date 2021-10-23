@@ -285,7 +285,42 @@ double data_holder::get_last_sample_time()
 }
 
 // ----------------------------------------------------------------------------
+double data_holder::get_first_sample_time()
+{
+    if (!empty()) {
+        return ohlc_samples.front().time;
+    }
+    return 0;
+}
+
+// ----------------------------------------------------------------------------
 QVector<QwtOHLCSample> const &data_holder::get_data()
 {
     return ohlc_samples;
+}
+
+// ----------------------------------------------------------------------------
+minmax_pair data_holder::get_min_max(double start_time, double end_time) const
+{
+    double init_time = ohlc_samples.front().time;
+    if (start_time-init_time<0)
+        start_time = init_time;
+    size_t sample1 = std::max(size_t(0), static_cast<size_t>((start_time-init_time)/(60 * 1000)));
+    size_t sample2 = 1 + static_cast<size_t>((end_time-init_time)/(60 * 1000));
+    minmax_pair result{1E99, -1E99};
+    for (size_t i=sample1; i<sample2; ++i) {
+        auto const &ohlc = ohlc_samples[i];
+        result.minval_ = std::min(result.minval_, ohlc.low);
+        result.maxval_ = std::max(result.maxval_, ohlc.high);
+    }
+    return result;
+}
+
+// ----------------------------------------------------------------------------
+minmax_pair data_holder::get_min_max_window(double start_time, double end_time, double percent) const
+{
+    minmax_pair result = get_min_max(start_time, end_time);
+    auto diff = result.maxval_ - result.minval_;
+    if (diff == 0.0) diff = result.maxval_*0.05;
+    return {result.minval_ - percent*diff, result.maxval_ + percent*diff};
 }
