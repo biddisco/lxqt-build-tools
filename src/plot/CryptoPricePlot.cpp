@@ -26,109 +26,22 @@
 #include <sstream>
 #include <assert.h>
 
-#include "PriceAndPatternPlot.h"
+#include "src/plot/CryptoPricePlot.hpp"
 
 #include "src/plot/StockChartDateScaleDraw.h"
 #include "src/plot/StockChartPlotZoomer.h"
 #include "src/plot/OHLCCurve.h"
+#include "src/plot/PlotInteractor.hpp"
 #include "src/util/QDateHelper.h"
 
-
 // ----------------------------------------------------------------------------
-class CustomPanner: public QwtPlotPanner
+CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
+    : QwtPlot( parent )
+    , data_holder_(data)
+    , PlotInteractor_(nullptr)
+    , timescaleDraw_(nullptr)
 {
-
-public:
-    explicit CustomPanner(QWidget* parent) : QwtPlotPanner(parent){}
-
-virtual bool eventFilter( QObject * object, QEvent * event)
-{
-    if ( object == NULL || object != parentWidget() )
-            return false;
-
-    switch ( event->type() )
-    {
-        case QEvent::MouseButtonPress:
-        {
-            widgetMousePressEvent( static_cast<QMouseEvent *>( event ) );
-            break;
-        }
-        case QEvent::MouseMove:
-        {
-            break;
-            QMouseEvent * evr = static_cast<QMouseEvent *>( event );
-            widgetMouseMoveEvent( evr );
-            widgetMouseReleaseEvent( evr  );
-            setMouseButton(evr->button(), evr->modifiers());
-            widgetMousePressEvent( evr);
-            break;
-        }
-        case QEvent::MouseButtonRelease:
-        {
-            QMouseEvent * evr = static_cast<QMouseEvent *>( event );
-            widgetMouseReleaseEvent( static_cast<QMouseEvent *>( event ) );
-            break;
-            grab();
-        }
-        case QEvent::KeyPress:
-        {
-            widgetKeyPressEvent( static_cast<QKeyEvent *>( event ) );
-            break;
-        }
-        case QEvent::KeyRelease:
-        {
-            widgetKeyReleaseEvent( static_cast<QKeyEvent *>( event ) );
-            break;
-        }
-        case QEvent::Paint:
-        {
-            if ( isVisible() )
-                return true;
-            break;
-        }
-        case QEvent::Wheel:
-        {
-            QWheelEvent* we = static_cast<QWheelEvent*>(event);
-            auto d = we->angleDelta();
-            qDebug() << we->angleDelta();
-            qDebug() << we->pixelDelta();
-            // sideways swipe
-            if (std::abs(d.x()) >= std::abs(d.y())) {
-                QMouseEvent ev1(QEvent::MouseMove, we->position(), Qt::MouseButton::LeftButton, Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
-                setMouseButton(ev1.button(), ev1.modifiers());
-                widgetMousePressEvent( &ev1);
-
-                QPoint p2(we->position().x() + d.x()/2, we->position().y() + d.y()/2);
-                QMouseEvent ev2(QEvent::MouseMove, p2, Qt::MouseButton::LeftButton, Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
-                widgetMouseMoveEvent( &ev2 );
-                widgetMouseReleaseEvent( &ev2 );
-            }
-
-            break;
-        }
-        case QEvent::NativeGesture:
-        {
-            qreal value = static_cast<QNativeGestureEvent*>(event)->value();
-
-            if (value > 0) {
-                 qDebug() << static_cast<QNativeGestureEvent*>(event)->value();
-            }
-            else if (value < 0) {
-                 qDebug() << static_cast<QNativeGestureEvent*>(event)->value();            }
-            break;
-        }
-        default:;
-    }
-
-    return false;
-   }
-};
-
-// ----------------------------------------------------------------------------
-PriceAndPatternPlot::PriceAndPatternPlot( QWidget *parent ):
-    QwtPlot( parent )
-{
-    setTitle( "" );
+//    setTitle("XRP");
 
     QwtLinearScaleEngine *scaleEngine = new QwtLinearScaleEngine(10);
 
@@ -167,16 +80,17 @@ PriceAndPatternPlot::PriceAndPatternPlot( QWidget *parent ):
 //    zoom_y->setAxisEnabled(Qt::ZAxis, false);
 
     // TODO: Check the memory ownership/leak for the following allocation
-    plotZoomer_ = new StockChartPlotZoomer( canvas() );
+    //plotZoomer_ = new StockChartPlotZoomer( canvas() );
 //    plotZoomer_->setWheelModifiers(Qt::ControlModifier);
 //    plotZoomer_->setAxisEnabled(Qt::XAxis, false);
 //    plotZoomer_->setAxisEnabled(Qt::YAxis, false);
 
 
-    QwtPlotPanner *panner = new CustomPanner( canvas() );
+    PlotInteractor *panner = new PlotInteractor( this, data_holder_);
     panner->setMouseButton(Qt::LeftButton, Qt::ShiftModifier);
     panner->setAxisEnabled(Qt::XAxis, true);
     panner->setAxisEnabled(Qt::YAxis, false);
+    panner->setEnabled(true);
 
     // Attach a dotted-line grid to the plot.
     QwtPlotGrid *grid = new QwtPlotGrid();
@@ -222,15 +136,15 @@ PriceAndPatternPlot::PriceAndPatternPlot( QWidget *parent ):
 }
 
 // ----------------------------------------------------------------------------
-void PriceAndPatternPlot::clearPatternPlots()
-{
-    // Detach and delete any existing plot curves
-    this->detachItems(QwtPlotItem::Rtti_PlotCurve,true);
-    this->detachItems(QwtPlotItem::Rtti_PlotMarker,true);
-}
+//void CryptoPricePlot::clearPatternPlots()
+//{
+//    // Detach and delete any existing plot curves
+//    this->detachItems(QwtPlotItem::Rtti_PlotCurve,true);
+//    this->detachItems(QwtPlotItem::Rtti_PlotMarker,true);
+//}
 
 /*
-void PriceAndPatternPlot::populateOnePatternShape(const PatternMatchPtr &patternMatch)
+void CryptoPricePlot::populateOnePatternShape(const PatternMatchPtr &patternMatch)
 {
     PatternShapeGenerator shapeGen;
     PatternShapePtr patternShape = shapeGen.generateShape(*patternMatch);
@@ -275,7 +189,7 @@ void PriceAndPatternPlot::populateOnePatternShape(const PatternMatchPtr &pattern
 */
 
 //// ----------------------------------------------------------------------------
-//void PriceAndPatternPlot::populatePatternMatchesShapes(const PatternMatchListPtr &patternMatches)
+//void CryptoPricePlot::populatePatternMatchesShapes(const PatternMatchListPtr &patternMatches)
 //{
 //    clearPatternPlots();
 
@@ -287,22 +201,18 @@ void PriceAndPatternPlot::populateOnePatternShape(const PatternMatchPtr &pattern
 //}
 
 // ----------------------------------------------------------------------------
-void PriceAndPatternPlot::set_OHLC_data(const QVector<QwtOHLCSample> &ohlc)
+void CryptoPricePlot::set_data(data_holder *data_holder)
 {
-    // remove any pattern plots
-    clearPatternPlots();
+    data_holder_ = data_holder;
+    auto ohlc = data_holder_->get_data();
 
-    // remove the old chart data curve and delete it
-    this->detachItems(QwtPlotItem::Rtti_PlotTradingCurve, true);
-
-    setTitle("XRP");
 
     //    QwtDateScaleDraw *scaleDraw = new StockChartDateScaleDraw( Qt::UTC, instrSelInfo->chartData() );
     //    setAxisScaleDraw( QwtPlot::xBottom, scaleDraw );
 
     // only need to do this on first init
     if (!timescaleDraw_) {
-        timescaleDraw_ = new QwtDateScaleDraw/*StockChartDateScaleDraw*/(Qt::TimeSpec::UTC);
+        timescaleDraw_ = new QwtDateScaleDraw(Qt::TimeSpec::UTC);
         setAxisScaleDraw( QwtPlot::xBottom, timescaleDraw_ );
     }
 
@@ -323,13 +233,13 @@ void PriceAndPatternPlot::set_OHLC_data(const QVector<QwtOHLCSample> &ohlc)
     // The following has the effect of freezing the maximum zoom coordinates to the
     // initial scale of the chart. This needs to happen after replot(). The scale
     // for zooming needs to be reset whenever the chart data changes.
-    plotZoomer_->setZoomBase(false);
-    plotZoomer_->setChartScale(timescaleDraw_);
+//    plotZoomer_->setZoomBase(false);
+//    plotZoomer_->setChartScale(timescaleDraw_);
 
 }
 
 // ----------------------------------------------------------------------------
-//void PriceAndPatternPlot::populateChartData(const InstrumentSelectionInfoPtr &instrSelInfo)
+//void CryptoPricePlot::populateChartData(const InstrumentSelectionInfoPtr &instrSelInfo)
 //{
 
 //    clearPatternPlots();
@@ -361,7 +271,7 @@ void PriceAndPatternPlot::set_OHLC_data(const QVector<QwtOHLCSample> &ohlc)
 //}
 
 // ----------------------------------------------------------------------------
-void PriceAndPatternPlot::setMode( int style )
+void CryptoPricePlot::setMode( int style )
 {
     QwtPlotTradingCurve::SymbolStyle symbolStyle =
         static_cast<QwtPlotTradingCurve::SymbolStyle>( style );
@@ -378,21 +288,21 @@ void PriceAndPatternPlot::setMode( int style )
 }
 
 // ----------------------------------------------------------------------------
-void PriceAndPatternPlot::showItem( QwtPlotItem *item, bool on )
+void CryptoPricePlot::showItem( QwtPlotItem *item, bool on )
 {
     item->setVisible( on );
     replot();
 }
 
 // ----------------------------------------------------------------------------
-void PriceAndPatternPlot::exportPlot()
+void CryptoPricePlot::exportPlot()
 {
     QwtPlotRenderer renderer;
     renderer.exportTo( this, "stockchart.pdf" );
 }
 
 // ----------------------------------------------------------------------------
-void PriceAndPatternPlot::setupWheelZooming()
+void CryptoPricePlot::setupWheelZooming()
 {
     return;
     QwtPlotPanner *pan_x = new QwtPlotPanner( canvas() );

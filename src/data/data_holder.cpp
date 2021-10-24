@@ -303,11 +303,11 @@ QVector<QwtOHLCSample> const &data_holder::get_data()
 minmax_pair data_holder::get_min_max(double start_time, double end_time) const
 {
     double init_time = ohlc_samples.front().time;
-    if (start_time-init_time<0)
-        start_time = init_time;
+    start_time = std::max(start_time, init_time);
+    end_time   = std::min(end_time, ohlc_samples.back().time);
     size_t sample1 = std::max(size_t(0), static_cast<size_t>((start_time-init_time)/(60 * 1000)));
     size_t sample2 = 1 + static_cast<size_t>((end_time-init_time)/(60 * 1000));
-    minmax_pair result{1E99, -1E99};
+    minmax_pair result{1E99, 0};
     for (size_t i=sample1; i<sample2; ++i) {
         auto const &ohlc = ohlc_samples[i];
         result.minval_ = std::min(result.minval_, ohlc.low);
@@ -321,6 +321,9 @@ minmax_pair data_holder::get_min_max_window(double start_time, double end_time, 
 {
     minmax_pair result = get_min_max(start_time, end_time);
     auto diff = result.maxval_ - result.minval_;
-    if (diff == 0.0) diff = result.maxval_*0.05;
+    if (result.maxval_ == 0.0)
+        return {0.0, 0.1};
+    if (diff == 0.0)
+        diff = result.maxval_*0.05;
     return {result.minval_ - percent*diff, result.maxval_ + percent*diff};
 }

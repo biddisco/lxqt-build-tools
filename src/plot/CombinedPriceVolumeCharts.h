@@ -5,7 +5,7 @@
 #include <qframe.h>
 #include <qwt_plot.h>
 //
-#include "PriceAndPatternPlot.h"
+#include "CryptoPricePlot.hpp"
 #include <QGridLayout>
 
 class CombinedPriceVolumeCharts : public QFrame
@@ -14,16 +14,16 @@ class CombinedPriceVolumeCharts : public QFrame
 
 
 private:
-    PriceAndPatternPlot *priceAndPatternPlot_;
+    CryptoPricePlot *CryptoPricePlot_;
 //    VolumePlot *volumePlot_;
 
 
 public:
-    CombinedPriceVolumeCharts(QWidget * parent = NULL );
+    CombinedPriceVolumeCharts(QWidget *, data_holder *);
     virtual ~CombinedPriceVolumeCharts() {}
 
 //    void populateChartData(const InstrumentSelectionInfoPtr &instrSelInfo);
-    PriceAndPatternPlot *priceAndPatternPlot() const { return priceAndPatternPlot_; }
+    CryptoPricePlot *get_CryptoPricePlot() const { return CryptoPricePlot_; }
 
 private Q_SLOTS:
     void scaleDivChanged();

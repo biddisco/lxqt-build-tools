@@ -208,8 +208,10 @@ set(GROX_SRC
     # plotting
     src/plot/OrderBookPlot.cpp
     src/plot/OrderBookCurve.cpp
+    src/plot/CryptoPricePlot.cpp
+    src/plot/PlotInteractor.cpp
+
     src/plot/CombinedPriceVolumeCharts.cpp
-    src/plot/PriceAndPatternPlot.cpp
     src/plot/PseudoTimeOHLCSample.cpp
     src/plot/StockChartDateScaleDraw.cpp
     src/plot/OHLCCurve.cpp

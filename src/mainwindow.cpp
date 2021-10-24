@@ -54,11 +54,12 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     ui.setupUi(this);
     //
     mainwindow = this;
+
     //
     // Create candlestick/volume plots
     //
-    CombinedPriceVolumeCharts_ = new CombinedPriceVolumeCharts(this);
-    priceAndPatternPlot_ = CombinedPriceVolumeCharts_->priceAndPatternPlot();
+    CombinedPriceVolumeCharts_ = new CombinedPriceVolumeCharts(this, &hdf5_ohlc_);
+    cryptoPricePlot_ = CombinedPriceVolumeCharts_->get_CryptoPricePlot();
     ui.candlestick_layout->addWidget(CombinedPriceVolumeCharts_, 30);
 
     // ----------------------------------
@@ -394,9 +395,9 @@ void GroxMainWindow::graph_rescale(int range)
         t1 = hdf5_ohlc_.get_first_sample_time();
     }
     auto minmax = hdf5_ohlc_.get_min_max_window(t1, t2, 0.05);
-    priceAndPatternPlot_->setAxisScale(QwtAxis::XBottom, t1, t2);
-    priceAndPatternPlot_->setAxisScale(QwtAxis::YLeft, minmax.minval_, minmax.maxval_);
-    priceAndPatternPlot_->replot();
+    cryptoPricePlot_->setAxisScale(QwtAxis::XBottom, t1, t2);
+    cryptoPricePlot_->setAxisScale(QwtAxis::YLeft, minmax.minval_, minmax.maxval_);
+    cryptoPricePlot_->replot();
 }
 
 // ----------------------------------------------------------------------------
@@ -500,11 +501,11 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
 void GroxMainWindow::new_ohlc_data()
 {
     if (!hdf5_ohlc_.empty())
-        priceAndPatternPlot_->set_OHLC_data(hdf5_ohlc_.get_data());
+        cryptoPricePlot_->set_data(&hdf5_ohlc_);
 
     // default 1 day display
     graph_rescale(0);
-    priceAndPatternPlot_->replot();
+    cryptoPricePlot_->replot();
 }
 
 // ----------------------------------------------------------------------------
