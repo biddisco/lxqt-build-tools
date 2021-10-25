@@ -5,6 +5,8 @@
 #include "src/plot/CryptoPricePlot.hpp"
 
 #include <QwtScaleMap>
+#include <QwtScaleDiv>
+//
 #include "qwt_panner.h"
 #include "qwt_picker.h"
 #include "qwt_painter.h"

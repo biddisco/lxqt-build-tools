@@ -8,6 +8,9 @@
 #include <QDockWidget>
 #include <QScrollBar>
 //
+#include <QwtScaleMap>
+#include <QwtScaleDiv>
+//
 #include <filesystem>
 //
 #include <boost/format.hpp>
@@ -102,6 +105,11 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // Load existing candlestick data
     hdf5_ohlc_.init(app_ini->appDataLocation, app_ini->hdfFileName);
     hdf5_ohlc_.read_hdf5();
+    if (!hdf5_ohlc_.empty()) {
+        cryptoPricePlot_->set_data(&hdf5_ohlc_);
+        // start by displaying one day of data
+        graph_rescale(0);
+    }
 
     // ----------------------------------
     // just an experiment to display an image
@@ -189,9 +197,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     calcWidth = char_size*140 + 8;
     ui.arbitrage_orders->setMinimumWidth(calcWidth);
     //ui.arbitrage_orders->setMaximumWidth(calcWidth);
-
-    // tell GUI about data loaded
-    emit new_ohlc_data_ui();
 }
 
 // ----------------------------------------------------------------------------
@@ -372,31 +377,51 @@ void GroxMainWindow::graph_rescale(int range)
 {
     auto last_time = hdf5_ohlc_.get_last_sample_time();
     auto day = 60.0*60.0*24.0*1000.0;
+    auto hour = 60.0*60.0*1000.0;
     double t1=0, t2 = last_time;
+    double stepSize = 0;
     if (range==-2) {
         t1 = last_time - 0.25*day;
+        stepSize = hour;
     }
     else if (range==-1) {
         t1 = last_time - 0.5*day;
+        stepSize = 2*hour;
     }
     else if (range==0) {
         t1 = last_time - 1.0*day;
+        stepSize = 4*hour;
     }
     else if (range==1) {
         t1 = last_time - 7*day;
+        stepSize = day;
     }
     else if (range==2) {
         t1 = last_time - 31*day;
+        stepSize = 7*day;
     }
     else if (range==3) {
+        t1 = last_time - 365*day;
+        stepSize = 31*day;
+    }
+    // special case, to extend current view with new data
+    else if (range==100) {
         t1 = last_time - 365*day;
     }
     else {
         t1 = hdf5_ohlc_.get_first_sample_time();
     }
     auto minmax = hdf5_ohlc_.get_min_max_window(t1, t2, 0.05);
-    cryptoPricePlot_->setAxisScale(QwtAxis::XBottom, t1, t2);
+    cryptoPricePlot_->setAxisScale(QwtAxis::XBottom, t1, t2, stepSize);
     cryptoPricePlot_->setAxisScale(QwtAxis::YLeft, minmax.minval_, minmax.maxval_);
+    cryptoPricePlot_->replot();
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::new_ohlc_data()
+{
+    // don't change axes, just update data series and replot
+    cryptoPricePlot_->update_data_array(&hdf5_ohlc_);
     cryptoPricePlot_->replot();
 }
 
@@ -495,17 +520,6 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
         std::cerr << "JSON error decoding OHLC data: " << e.what() << "\n"
                   << data << std::endl << std::endl;
     }
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::new_ohlc_data()
-{
-    if (!hdf5_ohlc_.empty())
-        cryptoPricePlot_->set_data(&hdf5_ohlc_);
-
-    // default 1 day display
-    graph_rescale(0);
-    cryptoPricePlot_->replot();
 }
 
 // ----------------------------------------------------------------------------

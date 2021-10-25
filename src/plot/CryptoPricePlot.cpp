@@ -23,6 +23,8 @@
 #include <qwt_scale_engine.h>
 #include <qwt_scale_widget.h>
 //
+#include <QwtDateScaleDraw>
+//
 #include <sstream>
 #include <assert.h>
 
@@ -40,15 +42,22 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
     , data_holder_(data)
     , PlotInteractor_(nullptr)
     , timescaleDraw_(nullptr)
+    , ohlc_curve_(nullptr)
 {
 //    setTitle("XRP");
 
-    QwtLinearScaleEngine *scaleEngine = new QwtLinearScaleEngine(10);
+    // only need to do this on first init
+    timescaleDraw_   = new QwtDateScaleDraw(Qt::TimeSpec::UTC);
+    timescaleEngine_ = new QwtDateScaleEngine(Qt::TimeSpec::UTC);
+    setAxisScaleDraw( QwtPlot::xBottom, timescaleDraw_ );
+    setAxisScaleEngine( QwtPlot::xBottom, timescaleEngine_ );
 
-    setAxisScaleEngine( QwtPlot::xBottom, scaleEngine );
+    // Enable autoscaling for axes
+    setAxisAutoScale( QwtPlot::yLeft );
+    setAxisAutoScale( QwtPlot::xBottom);
+
     setAxisLabelRotation( QwtPlot::xBottom, -50.0 );
     setAxisLabelAlignment( QwtPlot::xBottom, Qt::AlignLeft | Qt::AlignBottom );
-
 
     // The following is needed to properly adjust the RHS of the X axis. Otherwise,
     // there is space on the RHS.
@@ -201,31 +210,32 @@ void CryptoPricePlot::populateOnePatternShape(const PatternMatchPtr &patternMatc
 //}
 
 // ----------------------------------------------------------------------------
-void CryptoPricePlot::set_data(data_holder *data_holder)
+void CryptoPricePlot::update_data_array(data_holder *data_holder)
 {
     data_holder_ = data_holder;
-    auto ohlc = data_holder_->get_data();
 
-
-    //    QwtDateScaleDraw *scaleDraw = new StockChartDateScaleDraw( Qt::UTC, instrSelInfo->chartData() );
-    //    setAxisScaleDraw( QwtPlot::xBottom, scaleDraw );
-
-    // only need to do this on first init
-    if (!timescaleDraw_) {
-        timescaleDraw_ = new QwtDateScaleDraw(Qt::TimeSpec::UTC);
-        setAxisScaleDraw( QwtPlot::xBottom, timescaleDraw_ );
+    // remove old plot from graph
+    if (ohlc_curve_) {
+        ohlc_curve_->detach();
+        delete ohlc_curve_;
     }
 
     // create a new plotting curve for OHLC data
-    OHLCCurve *chartDataCurve = new OHLCCurve(ohlc);
+    // (plot data is refcounted by Qwt)
+    auto ohlc = data_holder_->get_data();
+    ohlc_curve_ = new OHLCCurve(ohlc);
 
     // bind it to this plot and turn on display
-    chartDataCurve->attach( this );
-    showItem( chartDataCurve, true );
+    ohlc_curve_->attach(this);
+    showItem(ohlc_curve_, true);
+}
 
-    // Rescale the plot based upon the boundaries of the current chart data
-    setAxisAutoScale( QwtPlot::yLeft );
-    setAxisAutoScale( QwtPlot::xBottom);
+// ----------------------------------------------------------------------------
+void CryptoPricePlot::set_data(data_holder *data_holder)
+{
+
+    update_data_array(data_holder);
+
 
     // Update the chart data for the plot zoomer, so it can show a curser with appropriate data.
     // plotZoomer_->setChartData(instrSelInfo->chartData());
