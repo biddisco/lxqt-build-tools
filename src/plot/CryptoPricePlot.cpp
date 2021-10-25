@@ -24,40 +24,59 @@
 #include <qwt_scale_widget.h>
 //
 #include <QwtDateScaleDraw>
+#include <QwtScaleMap>
 //
 #include <sstream>
 #include <assert.h>
 
 #include "src/plot/CryptoPricePlot.hpp"
+#include "src/plot/CryptoDateScaleDraw.hpp"
 
-#include "src/plot/StockChartDateScaleDraw.h"
-#include "src/plot/StockChartPlotZoomer.h"
+#include "src/plot/CryptoDateScaleDraw.hpp"
 #include "src/plot/OHLCCurve.h"
 #include "src/plot/PlotInteractor.hpp"
 #include "src/util/QDateHelper.h"
+/*
 
+QDateTime local(QDateTime::currentDateTime());
+QDateTime UTC(local.toUTC());
+QDateTime dt(UTC.date(), UTC.time(), Qt::LocalTime);
+qDebug() << "Local time is:" << local;
+qDebug() << "UTC time is:" << UTC;
+qDebug() << "No difference between times:" << local.secsTo(UTC);
+qDebug() << "Here is the difference between times:" << local.secsTo(dt);
+qDebug() << "Here is the difference between times:" << dt.secsTo(local);
+
+*/
 // ----------------------------------------------------------------------------
 CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
     : QwtPlot( parent )
     , data_holder_(data)
-    , PlotInteractor_(nullptr)
+    , plot_interactor_(nullptr)
     , timescaleDraw_(nullptr)
+    , timescaleEngine_(nullptr)
     , ohlc_curve_(nullptr)
 {
-//    setTitle("XRP");
+    setTitle("XRP");
 
-    // only need to do this on first init
-    timescaleDraw_   = new QwtDateScaleDraw(Qt::TimeSpec::UTC);
-    timescaleEngine_ = new QwtDateScaleEngine(Qt::TimeSpec::UTC);
+    // find difference between local time and UTC, for 'correct' date/time axis
+    QDateTime local(QDateTime::currentDateTime());
+    QDateTime UTC(local.toUTC());
+    QDateTime dt(UTC.date(), UTC.time(), Qt::LocalTime);
+
+    // setup date/time axis scaling and tick draw
+    timescaleDraw_   = new CryptoDateScaleDraw(Qt::TimeSpec::OffsetFromUTC);
+    timescaleEngine_ = new QwtDateScaleEngine(Qt::TimeSpec::OffsetFromUTC);
+    timescaleDraw_->setUtcOffset(dt.secsTo(local));
+    timescaleEngine_->setUtcOffset(dt.secsTo(local));
     setAxisScaleDraw( QwtPlot::xBottom, timescaleDraw_ );
     setAxisScaleEngine( QwtPlot::xBottom, timescaleEngine_ );
 
-    // Enable autoscaling for axes
+    // @TODO :needed? Enable autoscaling for axes
     setAxisAutoScale( QwtPlot::yLeft );
     setAxisAutoScale( QwtPlot::xBottom);
 
-    setAxisLabelRotation( QwtPlot::xBottom, -50.0 );
-    setAxisLabelAlignment( QwtPlot::xBottom, Qt::AlignLeft | Qt::AlignBottom );
+    setAxisLabelAlignment( QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom );
 
     // The following is needed to properly adjust the RHS of the X axis. Otherwise,
     // there is space on the RHS.
@@ -67,44 +86,21 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
     this->setContentsMargins( 4, 4, 4, 4 );
 
     // Use this to reduce the graph scale inside the inner plot area
-    this->plotLayout()->setCanvasMargin( 0, QwtPlot::yRight );
+    this->plotLayout()->setCanvasMargin( 16, QwtPlot::yRight );
 
-    this->axisScaleEngine(QwtPlot::yRight)->setMargins(1000, 1000);
+    // not sure about this, no yRight axis setup
+    this->axisScaleEngine(QwtPlot::yRight)->setMargins(8, 8);
 
-    // LeftButton for the zooming
-    // MidButton for the panning
-    // RightButton: zoom out by 1
-    // Ctrl+RighButton: zoom out to full size
+    plot_interactor_ = new PlotInteractor( this, data_holder_);
+//    plot_interactor_->setMouseButton(Qt::LeftButton, Qt::ShiftModifier);
+//    plot_interactor_->setAxisEnabled(Qt::XAxis, true);
+//    plot_interactor_->setAxisEnabled(Qt::YAxis, false);
+//    plot_interactor_->setEnabled(true);
 
-//    QwtPlotMagnifier *zoom_x = new QwtPlotMagnifier( canvas() );
-//    zoom_x->setWheelModifiers(Qt::ShiftModifier);
-//    zoom_x->setAxisEnabled(Qt::XAxis, false);
-//    zoom_x->setAxisEnabled(Qt::YAxis, true);
-//    zoom_x->setAxisEnabled(Qt::ZAxis, false);
-
-//    QwtPlotMagnifier *zoom_y = new QwtPlotMagnifier( canvas() );
-//    zoom_y->setWheelModifiers(Qt::ControlModifier);
-//    zoom_y->setAxisEnabled(Qt::XAxis, true);
-//    zoom_y->setAxisEnabled(Qt::YAxis, false);
-//    zoom_y->setAxisEnabled(Qt::ZAxis, false);
-
-    // TODO: Check the memory ownership/leak for the following allocation
-    //plotZoomer_ = new StockChartPlotZoomer( canvas() );
-//    plotZoomer_->setWheelModifiers(Qt::ControlModifier);
-//    plotZoomer_->setAxisEnabled(Qt::XAxis, false);
-//    plotZoomer_->setAxisEnabled(Qt::YAxis, false);
-
-
-    PlotInteractor *panner = new PlotInteractor( this, data_holder_);
-    panner->setMouseButton(Qt::LeftButton, Qt::ShiftModifier);
-    panner->setAxisEnabled(Qt::XAxis, true);
-    panner->setAxisEnabled(Qt::YAxis, false);
-    panner->setEnabled(true);
-
-    // Attach a dotted-line grid to the plot.
+    // Attach a dotted-line grid to the plot
     QwtPlotGrid *grid = new QwtPlotGrid();
     grid->setItemAttribute(grid->Legend, false);
-    grid->setPen(QColor(Qt::lightGray), 0.0, Qt::PenStyle::DotLine);
+    grid->setPen(QColor(Qt::darkGray), 0.0, Qt::PenStyle::DotLine);
     grid->attach(this);
 
     // Override the size policy. Otherwise, the plot may not scale to
@@ -118,7 +114,7 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
     legend->attach(this);
 
     // main canvas color - dark, but not black
-    static const QColor c( 0x28, 0x28, 0x28 );
+    static const QColor c("#18191b");
 
     // QWidget : fill background before painting (color = QPalette::Window)
     setAutoFillBackground( true );
@@ -131,83 +127,16 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
 
     // x axis
     QPalette palette1 = axisWidget(Axis::xBottom)->palette();
-    palette1.setColor( QPalette::WindowText, Qt::lightGray); // for ticks
-    palette1.setColor( QPalette::Text, Qt::lightGray);	     // for ticks' labels
+    palette1.setColor( QPalette::WindowText, Qt::lightGray); // ticks
+    palette1.setColor( QPalette::Text, Qt::lightGray);	     // tick labels
     axisWidget(Axis::xBottom)->setPalette( palette1 );
 
     // y axis
     QPalette palette2 = axisWidget(Axis::yLeft)->palette();
-    palette2.setColor( QPalette::WindowText, Qt::lightGray); // for ticks
-    palette2.setColor( QPalette::Text, Qt::lightGray);	     // for ticks' labels
+    palette2.setColor( QPalette::WindowText, Qt::lightGray); // ticks
+    palette2.setColor( QPalette::Text, Qt::lightGray);	     // tick labels
     axisWidget(Axis::yLeft)->setPalette( palette2 );
-
-    setupWheelZooming();
 }
-
-// ----------------------------------------------------------------------------
-//void CryptoPricePlot::clearPatternPlots()
-//{
-//    // Detach and delete any existing plot curves
-//    this->detachItems(QwtPlotItem::Rtti_PlotCurve,true);
-//    this->detachItems(QwtPlotItem::Rtti_PlotMarker,true);
-//}
-
-/*
-void CryptoPricePlot::populateOnePatternShape(const PatternMatchPtr &patternMatch)
-{
-    PatternShapeGenerator shapeGen;
-    PatternShapePtr patternShape = shapeGen.generateShape(*patternMatch);
-    PatternShapePointVectorVectorPtr curveShapes = patternShape->curveShapes();
-
-
-    // Re-populate with the pattern for the given patternMatch
-    for(PatternShapePointVectorVector::iterator curveShapeIter = curveShapes->begin();
-        curveShapeIter != curveShapes->end(); curveShapeIter++)
-    {
-        bool doCurveFit = true;
-        QwtPlotCurve *patternMatchPlot = new PatternPlotCurve(*curveShapeIter,doCurveFit);
-        patternMatchPlot->attach(this);
-    }
-
-    PatternShapePointVectorVectorPtr lineShapes = patternShape->lineShapes();
-    for(PatternShapePointVectorVector::iterator lineShapeIter = lineShapes->begin();
-        lineShapeIter != lineShapes->end(); lineShapeIter++)
-    {
-        bool doCurveFit = false;
-        QwtPlotCurve *patternMatchPlot = new PatternPlotCurve(*lineShapeIter,doCurveFit);
-        patternMatchPlot->attach(this);
-    }
-
-
-    if(patternMatch->breakoutInfo)
-    {
-        BreakoutPlotMarker *breakoutPlotMarker = new BreakoutPlotMarker(
-                    patternMatch->breakoutInfo->pseudoXVal(),patternMatch->breakoutInfo->breakoutPrice());
-        breakoutPlotMarker->attach(this);
-    }
-    else if(patternMatch->breakdownInfo)
-    {
-        BreakdownPlotMarker *breakdownPlotMarker = new BreakdownPlotMarker(
-                    patternMatch->breakdownInfo->pseudoXVal(),patternMatch->breakdownInfo->breakoutPrice());
-        breakdownPlotMarker->attach(this);
-    }
-
-    replot();
-
-}
-*/
-
-//// ----------------------------------------------------------------------------
-//void CryptoPricePlot::populatePatternMatchesShapes(const PatternMatchListPtr &patternMatches)
-//{
-//    clearPatternPlots();
-
-//    for(PatternMatchList::iterator matchesIter = patternMatches->begin();
-//        matchesIter != patternMatches->end(); matchesIter++)
-//    {
-////        populateOnePatternShape(*matchesIter);
-//    }
-//}
 
 // ----------------------------------------------------------------------------
 void CryptoPricePlot::update_data_array(data_holder *data_holder)
@@ -231,54 +160,6 @@ void CryptoPricePlot::update_data_array(data_holder *data_holder)
 }
 
 // ----------------------------------------------------------------------------
-void CryptoPricePlot::set_data(data_holder *data_holder)
-{
-
-    update_data_array(data_holder);
-
-
-    // Update the chart data for the plot zoomer, so it can show a curser with appropriate data.
-    // plotZoomer_->setChartData(instrSelInfo->chartData());
-
-    // The following has the effect of freezing the maximum zoom coordinates to the
-    // initial scale of the chart. This needs to happen after replot(). The scale
-    // for zooming needs to be reset whenever the chart data changes.
-//    plotZoomer_->setZoomBase(false);
-//    plotZoomer_->setChartScale(timescaleDraw_);
-
-}
-
-// ----------------------------------------------------------------------------
-//void CryptoPricePlot::populateChartData(const InstrumentSelectionInfoPtr &instrSelInfo)
-//{
-
-//    clearPatternPlots();
-//    this->detachItems(QwtPlotItem::Rtti_PlotTradingCurve,true);
-
-//    setTitle(instrSelInfo->instrumentName());
-
-//    QwtDateScaleDraw *scaleDraw = new StockChartDateScaleDraw( Qt::UTC,instrSelInfo->chartData() );
-//    setAxisScaleDraw( QwtPlot::xBottom, scaleDraw );
-
-//    StockChartPlotCurve *chartDataCurve = new StockChartPlotCurve(instrSelInfo->chartData());
-//    chartDataCurve->attach( this );
-//    showItem( chartDataCurve, true );
-
-//    // Rescale the plot based upon the boundaries of the current chart data
-//    setAxisAutoScale( QwtPlot::yLeft );
-//    setAxisAutoScale( QwtPlot::xBottom);
-
-//    // Update the chart data for the plot zoomer, so it can show a curser with appropriate data.
-//    plotZoomer_->setChartData(instrSelInfo->chartData());
-
-//    replot();
-
-//    // The following has the effect of freezing the maximum zoom coordinates to the
-//    // initial scale of the chart. This needs to happen after replot(). The scale
-//    // for zooming needs to be reset whenever the chart data changes.
-//    plotZoomer_->setZoomBase(false);
-
-//}
 
 // ----------------------------------------------------------------------------
 void CryptoPricePlot::setMode( int style )
@@ -312,29 +193,22 @@ void CryptoPricePlot::exportPlot()
 }
 
 // ----------------------------------------------------------------------------
-void CryptoPricePlot::setupWheelZooming()
+void CryptoPricePlot::adjust_candle_size()
 {
-    return;
-    QwtPlotPanner *pan_x = new QwtPlotPanner( canvas() );
-    pan_x->setMouseButton(Qt::NoButton, Qt::ShiftModifier);
-    pan_x->setAxisEnabled(Qt::XAxis, true);
-    pan_x->setAxisEnabled(Qt::YAxis, false);
+/*
+    const QwtAxisId axisId(QwtAxis::XBottom);
 
-    QwtPlotPanner *pan_y = new QwtPlotPanner( canvas() );
-    pan_y->setMouseButton(Qt::NoButton, Qt::ControlModifier);
-    pan_y->setAxisEnabled(Qt::XAxis, false);
-    pan_y->setAxisEnabled(Qt::YAxis, true);
+    // get the pixel/plot coordinate transform
+    const QwtScaleMap map = canvasMap(axisId);
 
-
-    QwtPlotMagnifier *zoom_x = new QwtPlotMagnifier( canvas() );
-    zoom_x->setWheelModifiers(Qt::ShiftModifier);
-    zoom_x->setAxisEnabled(Qt::XAxis, false);
-    zoom_x->setAxisEnabled(Qt::YAxis, true);
-    zoom_x->setAxisEnabled(Qt::ZAxis, false);
-
-    QwtPlotMagnifier *zoom_y = new QwtPlotMagnifier( canvas() );
-    zoom_y->setWheelModifiers(Qt::ControlModifier);
-    zoom_y->setAxisEnabled(Qt::XAxis, false);
-    zoom_y->setAxisEnabled(Qt::YAxis, false);
-
+    // get the number of pixels occupied by a 60s candle
+    double lower = axisScaleDiv(axisId).lowerBound();
+    double p1 = map.transform(lower);
+    double p2 = map.transform(lower + 60.0*1000.0);
+    //
+//    ohlc_curve_->setMinSymbolWidth(1.0);
+//    ohlc_curve_->setMaxSymbolWidth(std::max(1.0, p2-p1));
+*/
+    //
+    ohlc_curve_->setSymbolExtent(0.8 * 60.0*1000.0);
 }

@@ -91,6 +91,7 @@ CryptoPricePlot* PlotInteractor::plot()
     return qobject_cast< CryptoPricePlot* >( w );
 }
 
+// ----------------------------------------------------------------------------
 //! Return plot widget, containing the observed plot canvas
 const CryptoPricePlot* PlotInteractor::plot() const
 {
@@ -200,7 +201,7 @@ void PlotInteractor::zoomCanvas( int dx, int dy )
     if ( dx == 0 && dy == 0 )
         return;
 
-    QwtPlot* plot = this->plot();
+    CryptoPricePlot* plot = this->plot();
     if ( plot == NULL )
         return;
 
@@ -216,15 +217,15 @@ void PlotInteractor::zoomCanvas( int dx, int dy )
     for (auto axisPos : axes)
     {
         const QwtAxisId axisId( axisPos );
-
         if ( !m_data->isAxisEnabled[axisId] )
             continue;
 
         // get the pixel/plot coordinate transform
         const QwtScaleMap map = plot->canvasMap( axisId );
 
-        // get the current min/max in pixel coords
+        // get the current min in pixel coords
         const double p1 = map.transform( plot->axisScaleDiv( axisId ).lowerBound() );
+        // get the current max in world coords
         double d2 = plot->axisScaleDiv( axisId ).upperBound();
 
         // transform new pixel range back to world coords
@@ -246,6 +247,7 @@ void PlotInteractor::zoomCanvas( int dx, int dy )
         plot->setAxisScale( axisId, d1, d2 );
     }
 
+    plot->adjust_candle_size();
     plot->setAutoReplot( doAutoReplot );
     plot->replot();
 }

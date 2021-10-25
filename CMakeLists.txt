@@ -210,12 +210,10 @@ set(GROX_SRC
     src/plot/OrderBookCurve.cpp
     src/plot/CryptoPricePlot.cpp
     src/plot/PlotInteractor.cpp
+    src/plot/CryptoDateScaleDraw.cpp
 
     src/plot/CombinedPriceVolumeCharts.cpp
-    src/plot/PseudoTimeOHLCSample.cpp
-    src/plot/StockChartDateScaleDraw.cpp
     src/plot/OHLCCurve.cpp
-    src/plot/StockChartPlotZoomer.cpp
 
     # utils
     src/util/QDateHelper.cpp

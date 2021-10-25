@@ -16,7 +16,7 @@ class CryptoPricePlot: public QwtPlot
 
 private:
     data_holder        *data_holder_;
-    PlotInteractor     *PlotInteractor_;
+    PlotInteractor     *plot_interactor_;
     QwtDateScaleDraw   *timescaleDraw_;
     QwtDateScaleEngine *timescaleEngine_;
     OHLCCurve          *ohlc_curve_;
@@ -24,10 +24,9 @@ private:
 public:
     CryptoPricePlot(QWidget *, data_holder *);
     //
-    void set_data(data_holder *data_holder);
     void update_data_array(data_holder *data_holder);
-
-    void setupWheelZooming();
+    //
+    void adjust_candle_size();
 
 public Q_SLOTS:
     void setMode( int );

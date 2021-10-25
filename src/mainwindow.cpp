@@ -106,7 +106,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     hdf5_ohlc_.init(app_ini->appDataLocation, app_ini->hdfFileName);
     hdf5_ohlc_.read_hdf5();
     if (!hdf5_ohlc_.empty()) {
-        cryptoPricePlot_->set_data(&hdf5_ohlc_);
+        cryptoPricePlot_->update_data_array(&hdf5_ohlc_);
         // start by displaying one day of data
         graph_rescale(0);
     }
@@ -414,6 +414,7 @@ void GroxMainWindow::graph_rescale(int range)
     auto minmax = hdf5_ohlc_.get_min_max_window(t1, t2, 0.05);
     cryptoPricePlot_->setAxisScale(QwtAxis::XBottom, t1, t2, stepSize);
     cryptoPricePlot_->setAxisScale(QwtAxis::YLeft, minmax.minval_, minmax.maxval_);
+    cryptoPricePlot_->adjust_candle_size();
     cryptoPricePlot_->replot();
 }
 
