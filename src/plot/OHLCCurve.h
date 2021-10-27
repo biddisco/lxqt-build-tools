@@ -7,5 +7,7 @@
 class OHLCCurve : public QwtPlotTradingCurve
 {
 public:
-    OHLCCurve(const QVector<QwtOHLCSample> &chartData);
+    using QwtPlotTradingCurve::QwtPlotTradingCurve;
+    explicit OHLCCurve(const QVector<QwtOHLCSample> &chartData);
+    explicit OHLCCurve(const QString& title = QString());
 };

@@ -4,10 +4,10 @@
 //
 #include "OHLCCurve.h"
 
-OHLCCurve::OHLCCurve(const QVector<QwtOHLCSample> &chartData)
+OHLCCurve::OHLCCurve(const QString& title)
+    : QwtPlotTradingCurve(title)
 {
-    setSamples( chartData );
-    setTitle( "Price" ); // for the legend
+    //setTitle(title); // for the legend
     setItemAttribute(QwtPlotItem::Legend, false); // Legend not needed for price plot
     setOrientation( Qt::Vertical );
 
@@ -15,7 +15,7 @@ OHLCCurve::OHLCCurve(const QVector<QwtOHLCSample> &chartData)
     // first value being 0, the second value 1, and so on. This allows
     // values to be aligned across weekends, etc. We therefore size
     // the bars for this integral scale.
-    setSymbolExtent(60.0*1000.0);
+    setSymbolExtent(0.8 * 60.0*1000.0);
     setMinSymbolWidth(0.1);
     setMaxSymbolWidth(0.0);
 
@@ -24,4 +24,10 @@ OHLCCurve::OHLCCurve(const QVector<QwtOHLCSample> &chartData)
     setSymbolPen(QwtPlotTradingCurve::Decreasing, QColor("#df4249"));
     setSymbolBrush(QwtPlotTradingCurve::Increasing, QColor("#159f49"));
     setSymbolBrush(QwtPlotTradingCurve::Decreasing, QColor("#df4249"));
+}
+
+OHLCCurve::OHLCCurve(const QVector<QwtOHLCSample> &chartData)
+    : OHLCCurve("Price")
+{
+    setSamples( chartData );
 }

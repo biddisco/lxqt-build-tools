@@ -10,7 +10,7 @@ public:
     explicit OrderBookCurve(const QString &title = QString());
 
     virtual void  drawLines (QPainter *p, const QwtScaleMap &xMap,
-                             const QwtScaleMap &yMap, const QRectF &canvasRect, int from, int to) const;
+                             const QwtScaleMap &yMap, const QRectF &canvasRect, int from, int to) const override;
 
     void setSegmentInfo(int segmentStartIndex, int segmentFinisIndex, const QColor & color, double thickness);
 

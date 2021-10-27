@@ -1,3 +1,6 @@
+#include <iomanip>
+#include <iostream>
+//
 #include <QMouseEvent>
 #include <QDebug>
 //
@@ -16,6 +19,14 @@
 #include <qevent.h>
 #include <qcursor.h>
 #include <qbitmap.h>
+
+//
+#ifndef DEBUG_ONLY
+# define DEBUG_ONLY(x)
+# define DEBUG_ALWAYS(x) { \
+    std::stringstream temp; temp << x; \
+    std::cout << temp.str() << std::endl; }
+#endif
 
 class PlotInteractor::PrivateData
 {
@@ -246,7 +257,11 @@ void PlotInteractor::zoomCanvas( int dx, int dy )
 
         plot->setAxisScale( axisId, d1, d2 );
     }
-
+    // if the zoom went out of bounds, just exit without changing anything
+    if (new_xmin>=new_xmax) {
+        DEBUG_ALWAYS("Error in zoom calculation")
+        return;
+    }
     plot->adjust_candle_size();
     plot->setAutoReplot( doAutoReplot );
     plot->replot();

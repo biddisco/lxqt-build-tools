@@ -25,6 +25,8 @@
 //
 #include <QwtDateScaleDraw>
 #include <QwtScaleMap>
+#include <QwtPlotDirectPainter>
+#include <QwtSeriesData>
 //
 #include <sstream>
 #include <assert.h>
@@ -36,18 +38,7 @@
 #include "src/plot/OHLCCurve.h"
 #include "src/plot/PlotInteractor.hpp"
 #include "src/util/QDateHelper.h"
-/*
 
-QDateTime local(QDateTime::currentDateTime());
-QDateTime UTC(local.toUTC());
-QDateTime dt(UTC.date(), UTC.time(), Qt::LocalTime);
-qDebug() << "Local time is:" << local;
-qDebug() << "UTC time is:" << UTC;
-qDebug() << "No difference between times:" << local.secsTo(UTC);
-qDebug() << "Here is the difference between times:" << local.secsTo(dt);
-qDebug() << "Here is the difference between times:" << dt.secsTo(local);
-
-*/
 // ----------------------------------------------------------------------------
 CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
     : QwtPlot( parent )
@@ -56,6 +47,8 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
     , timescaleDraw_(nullptr)
     , timescaleEngine_(nullptr)
     , ohlc_curve_(nullptr)
+    , live_data_(nullptr)
+    , direct_painter_(nullptr)
 {
     setTitle("XRP");
 
@@ -156,7 +149,52 @@ void CryptoPricePlot::update_data_array(data_holder *data_holder)
 
     // bind it to this plot and turn on display
     ohlc_curve_->attach(this);
-    showItem(ohlc_curve_, true);
+    ohlc_curve_->setVisible(true);
+}
+
+    class OHLCData : public QwtTradingChartData
+    {
+      public:
+//        virtual QRectF boundingRect() const QWT_OVERRIDE
+//        {
+//            if ( cachedBoundingRect.width() < 0.0 )
+//                cachedBoundingRect = qwtBoundingRect( *this );
+//            return cachedBoundingRect;
+//        }
+
+        inline void append( const QwtOHLCSample& data )
+        {
+            m_samples += data;
+        }
+
+        void clear()
+        {
+            m_samples.clear();
+            m_samples.squeeze();
+            cachedBoundingRect = QRectF( 0.0, 0.0, -1.0, -1.0 );
+        }
+    };
+
+// ----------------------------------------------------------------------------
+void CryptoPricePlot::update_live_data(QwtOHLCSample new_sample)
+{
+    qDebug() << "New data " << new_sample.open << "\n";
+    OHLCData* data;
+    // The live data is typically only a few samples
+    if (!live_data_) {
+        direct_painter_ = new QwtPlotDirectPainter(this);
+        live_data_ = new OHLCCurve("new data");
+        live_data_->setData(new OHLCData());
+        data = static_cast<OHLCData*>( live_data_->data() );
+        data->append(new_sample);
+        live_data_->attach(this);
+        live_data_->setVisible(true);
+    }
+    else {
+        data = static_cast<OHLCData*>( live_data_->data() );
+        data->append(new_sample);
+    }
+    direct_painter_->drawSeries(live_data_, 0, data->size() - 1 );
 }
 
 // ----------------------------------------------------------------------------
@@ -209,6 +247,4 @@ void CryptoPricePlot::adjust_candle_size()
 //    ohlc_curve_->setMinSymbolWidth(1.0);
 //    ohlc_curve_->setMaxSymbolWidth(std::max(1.0, p2-p1));
 */
-    //
-    ohlc_curve_->setSymbolExtent(0.8 * 60.0*1000.0);
 }

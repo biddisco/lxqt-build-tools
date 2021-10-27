@@ -76,7 +76,7 @@ struct live_trades {
 Q_DECLARE_METATYPE(live_trades)
 Q_DECLARE_METATYPE(std::vector<live_trades>*)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_trades,
-    amount, amount_str, buy_order_id, id, microtimestamp, price_str, sell_order_id, timestamp, type);
+    amount, amount_str, buy_order_id, id, microtimestamp, price, price_str, sell_order_id, timestamp, type);
 
 // ----------------------------------------------------------------------------
 // bitstamp websocket order book

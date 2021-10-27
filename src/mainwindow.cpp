@@ -107,8 +107,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     hdf5_ohlc_.read_hdf5();
     if (!hdf5_ohlc_.empty()) {
         cryptoPricePlot_->update_data_array(&hdf5_ohlc_);
-        // start by displaying one day of data
-        graph_rescale(0);
+        // start by displaying 1/4 day of data
+        graph_rescale(-2);
     }
 
     // ----------------------------------
@@ -326,8 +326,10 @@ void GroxMainWindow::createMenus()
         display_offers();
     } , Qt::QueuedConnection);
 
-    connect(bitstamp_network_.get(), &bitstamp_network::new_trade_data_ui, this, [](live_trades t) {
-        std::cout << "Signal captured : " << t.amount<< std::endl;
+    connect(bitstamp_network_.get(), &bitstamp_network::new_trade_data_ui, this, [this](live_trades t) {
+        auto p = t.price;
+        QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p+0.001, p-0.001, p);
+        cryptoPricePlot_->update_live_data(new_sample);
     } , Qt::QueuedConnection);
 
     connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)),
