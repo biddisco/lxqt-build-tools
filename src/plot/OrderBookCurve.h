@@ -1,9 +1,18 @@
 #pragma once
 
-#include <QList>
-#include <qwt_plot_curve.h>
+// STL
 #include <mutex>
+#include <vector>
+// Qt
+#include <QList>
+#include <QString>
+#include <QPainter>
+#include <QPen>
+// Qwt
+#include <QwtScaleMap>
+#include <QwtPlotCurve>
 
+// ----------------------------------------------------------------------------
 class OrderBookCurve : public QwtPlotCurve
 {
 public:

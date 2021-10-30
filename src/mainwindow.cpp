@@ -68,11 +68,11 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // ----------------------------------
     // Create orderbook plot
     //
-    obp_ = new OrderBookPlot(); // std::make_shared<OrderBookPlot>();
+    obp_ = nullptr;
+    obp_ = new OrderBookPlot();
     obp_->setMinimumSize(384,256);
-    //obp_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    ui.order_plot_layout->addWidget(obp_/*.get()*/, 0);
-
+    //
+    ui.order_plot_layout->addWidget(obp_, 0);
 
     // ----------------------------------
     // create bitstamp exchange interface
@@ -328,7 +328,7 @@ void GroxMainWindow::createMenus()
 
     connect(bitstamp_network_.get(), &bitstamp_network::new_trade_data_ui, this, [this](live_trades t) {
         auto p = t.price;
-        QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p+0.001, p-0.001, p);
+        QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p);
         cryptoPricePlot_->update_live_data(new_sample);
     } , Qt::QueuedConnection);
 

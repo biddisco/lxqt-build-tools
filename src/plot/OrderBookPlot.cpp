@@ -1,27 +1,22 @@
-#include <qwt_date.h>
-#include <qwt_date_scale_draw.h>
-#include <qwt_date_scale_engine.h>
-#include <qwt_legend.h>
-#include <qwt_legend_label.h>
-#include <qwt_plot.h>
-#include <qwt_plot_barchart.h>
-#include <qwt_plot_curve.h>
-#include <qwt_plot_grid.h>
-#include <qwt_plot_layout.h>
-#include <qwt_plot_legenditem.h>
-#include <qwt_plot_magnifier.h>
-#include <qwt_plot_panner.h>
-#include <qwt_plot_renderer.h>
-#include <qwt_plot_tradingcurve.h>
-#include <qwt_plot_zoneitem.h>
-#include <qwt_scale_engine.h>
-#include <qwt_scale_widget.h>
-#include <qwt_symbol.h>
-//
+// STL
+#include <iostream>
+// Qt
+#include <QDateTime>
+#include <QFont>
+#include <QPalette>
+// Qwt
+#include <QwtPlot>
+#include <QwtLinearScaleEngine>
+#include <QwtPlotGrid>
+#include <QwtPlotLegendItem>
+#include <QwtPlotRenderer>
+#include <QwtScaleWidget>
+#include <QwtText>
+// Grox
 #include "src/plot/OrderBookCurve.h"
 #include "src/plot/OrderBookPlot.h"
-#include <iostream>
 
+// ----------------------------------------------------------------------------
 OrderBookPlot::OrderBookPlot(QWidget* parent)
   : QwtPlot(parent)
 {
@@ -121,12 +116,14 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
     enableAxis(QwtPlot::yRight);
 }
 
+// ----------------------------------------------------------------------------
 OrderBookPlot::~OrderBookPlot()
 {
     // dummy destructor;
     std::cout << "Destroying orderbook plot" << std::endl;
 }
 
+// ----------------------------------------------------------------------------
 void OrderBookPlot::clearPlot()
 {
     // Detach and delete any existing plot curves
@@ -134,33 +131,21 @@ void OrderBookPlot::clearPlot()
     this->detachItems(QwtPlotItem::Rtti_PlotMarker, true);
 }
 
-void OrderBookPlot::setMode(int style)
-{
-    QwtPlotTradingCurve::SymbolStyle symbolStyle =
-        static_cast<QwtPlotTradingCurve::SymbolStyle>(style);
-
-    QwtPlotItemList curves = itemList(QwtPlotItem::Rtti_PlotTradingCurve);
-    for (int i = 0; i < curves.size(); i++)
-    {
-        QwtPlotTradingCurve* curve = static_cast<QwtPlotTradingCurve*>(curves[i]);
-        curve->setSymbolStyle(symbolStyle);
-    }
-
-    replot();
-}
-
+// ----------------------------------------------------------------------------
 void OrderBookPlot::showItem(QwtPlotItem* item, bool on)
 {
     item->setVisible(on);
     replot();
 }
 
+// ----------------------------------------------------------------------------
 void OrderBookPlot::exportPlot()
 {
     QwtPlotRenderer renderer;
     renderer.exportTo(this, "stockchart.pdf");
 }
 
+// ----------------------------------------------------------------------------
 void OrderBookPlot::update_time_and_replot()
 {
     QString now = QDateTime::currentDateTime().toUTC().toString("yyyy-MM-dd hh:mm:ss");

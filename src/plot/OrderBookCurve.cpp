@@ -1,8 +1,19 @@
+// STL
 #include <mutex>
-//
-#include "OrderBookCurve.h"
+#include <vector>
+// Qt
+#include <QList>
+#include <QString>
 #include <QPainter>
+#include <QPen>
+// Qwt
+#include <QwtScaleMap>
+#include <QwtPlotCurve>
+#include <QwtPlotItem>
+// Grox
+#include "OrderBookCurve.h"
 
+// ----------------------------------------------------------------------------
 OrderBookCurve::OrderBookCurve(const QString& title)
   : QwtPlotCurve(title)
 {
@@ -15,6 +26,7 @@ OrderBookCurve::OrderBookCurve(const QString& title)
     setCurveAttribute(QwtPlotCurve::Fitted, false);
 }
 
+// ----------------------------------------------------------------------------
 void OrderBookCurve::drawLines(QPainter* p, const QwtScaleMap& xMap,
     const QwtScaleMap& yMap, const QRectF& canvasRect, int from, int to) const
 {
@@ -40,6 +52,7 @@ void OrderBookCurve::drawLines(QPainter* p, const QwtScaleMap& xMap,
         QwtPlotCurve::drawLines(p, xMap, yMap, canvasRect, from, to);
 }
 
+// ----------------------------------------------------------------------------
 void OrderBookCurve::setSegmentInfo(
     int segmentStartIndex, int segmentFinisIndex, const QColor& color, double thickness)
 {
@@ -54,6 +67,7 @@ void OrderBookCurve::setSegmentInfo(
     m_segFinish.push_back(segmentFinisIndex);
 }
 
+// ----------------------------------------------------------------------------
 void OrderBookCurve::clear_samples()
 {
     // when we are changing daya
@@ -63,6 +77,7 @@ void OrderBookCurve::clear_samples()
                 static_cast<float*>(nullptr), static_cast<float*>(nullptr), 0);
 }
 
+// ----------------------------------------------------------------------------
 void OrderBookCurve::setRawSamples_locked(
     std::vector<float> const &xData, std::vector<float> const &yData)
 {

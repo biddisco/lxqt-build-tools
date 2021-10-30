@@ -1,16 +1,16 @@
 #pragma once
 
-#include <qwt_plot.h>
-#include <qwt_plot_curve.h>
-//
+// Qt
+#include <QFont>
+// Qwt
+#include <QwtPlot>
+// Grox
 #include "src/plot/OrderBookCurve.h"
 
+// ----------------------------------------------------------------------------
 class OrderBookPlot: public QwtPlot
 {
     Q_OBJECT
-
-private:
-
 
 public:
     OrderBookPlot( QWidget * = NULL );
@@ -30,7 +30,6 @@ public:
 
 public Q_SLOTS:
     void update_time_and_replot();
-    void setMode( int );
     void exportPlot();
 
 private Q_SLOTS:

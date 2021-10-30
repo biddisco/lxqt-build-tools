@@ -96,6 +96,8 @@ order_book_base::~order_book_base()
 
 void order_book_base::update_graph_limits(bool primary)
 {
+    if (!OrderBookPlot_) return;
+
 //    if (!primary) return;
     // just in case multiple iinvocations overlap, not critical
     static std::atomic<bool> in_function = false;
