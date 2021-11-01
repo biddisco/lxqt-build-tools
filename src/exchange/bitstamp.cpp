@@ -393,7 +393,7 @@ void bitstamp_network::new_trade_data(bitstamp_network* n, std::string_view data
     nlohmann::json jdata = json::parse(data);
     // extract the main subgroup
     jdata = jdata["data"];
-    DEBUG_ALWAYS(jdata.dump(4));
+    DEBUG_ONLY(jdata.dump(4));
 
     live_trades trade_data = jdata.get<live_trades>();
 

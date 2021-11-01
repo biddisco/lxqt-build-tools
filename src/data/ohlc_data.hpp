@@ -1,0 +1,47 @@
+#pragma once
+
+// Qwt
+#include <QwtInterval>
+#include <QwtSeriesData>
+#include <QwtTradingChartData>
+
+#include <iostream>
+
+class OHLCData : public QwtTradingChartData
+{
+  public:
+    inline static const float minute = 60.0*1000.0;
+    inline static const float hour   = minute*60;
+    inline static const float day    = hour*24;
+
+  public:
+    OHLCData() : QwtTradingChartData() {}
+    ~OHLCData() {}
+
+    QwtInterval minmax_limits(size_t from, size_t to) const
+    {
+        auto const &init = m_samples[from];
+        QwtInterval result(init.low, init.high);
+        for (size_t i=from; i<=to; ++i) {
+            auto const &ohlc = m_samples[i];
+            result |= ohlc.low;
+            result |= ohlc.high;
+        }
+        return result;
+    }
+
+    inline void append( const QwtOHLCSample& data )
+    {
+        m_samples += data;
+    }
+
+    void clear()
+    {
+        m_samples.clear();
+        m_samples.squeeze();
+        cachedBoundingRect = QRectF( 0.0, 0.0, -1.0, -1.0 );
+    }
+
+    QVector<QwtOHLCSample> const &data() const { return m_samples; }
+    QVector<QwtOHLCSample> &data() { return m_samples; };
+};

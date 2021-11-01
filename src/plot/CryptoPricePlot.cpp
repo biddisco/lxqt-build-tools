@@ -1,39 +1,28 @@
-#include <QMouseEvent>
-#include <QDebug>
-#include <QWheelEvent>
-//
-#include <qwt_legend.h>
-#include <qwt_plot_zoneitem.h>
-#include <qwt_plot_renderer.h>
-#include <qwt_plot_panner.h>
-#include <qwt_plot_layout.h>
-#include <qwt_legend_label.h>
-#include <qwt_date.h>
-#include <qwt_date_scale_engine.h>
-#include <qwt_date_scale_draw.h>
-#include <qwt_plot.h>
-#include <qwt_plot_grid.h>
-#include <qwt_plot_curve.h>
-#include <qwt_symbol.h>
-#include <qwt_legend.h>
-#include <qwt_plot_barchart.h>
-#include <qwt_plot_legenditem.h>
-#include <qwt_plot_magnifier.h>
-#include <qwt_plot_panner.h>
-#include <qwt_scale_engine.h>
-#include <qwt_scale_widget.h>
-//
-#include <QwtDateScaleDraw>
-#include <QwtScaleMap>
-#include <QwtPlotDirectPainter>
-#include <QwtSeriesData>
-//
+// STL
 #include <sstream>
-#include <assert.h>
+#include <cassert>
+// Qt
+#include <QDateTime>
+#include <QDebug>
+#include <QMouseEvent>
+#include <QWheelEvent>
+// Qwt
+#include <QwtDateScaleDraw>
+#include <QwtDateScaleEngine>
+#include <QwtPlot>
+#include <QwtPlotDirectPainter>
+#include <QwtPlotGrid>
+#include <QwtPlotLayout>
+#include <QwtPlotLegendItem>
+#include <QwtPlotRenderer>
+#include <QwtScaleMap>
+#include <QwtScaleWidget>
+#include <QwtSeriesData>
+// Grox
+#include "src/data/ohlc_data.hpp"
 
 #include "src/plot/CryptoPricePlot.hpp"
 #include "src/plot/CryptoDateScaleDraw.hpp"
-
 #include "src/plot/CryptoDateScaleDraw.hpp"
 #include "src/plot/OHLCCurve.h"
 #include "src/plot/PlotInteractor.hpp"
@@ -47,7 +36,7 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
     , timescaleDraw_(nullptr)
     , timescaleEngine_(nullptr)
     , ohlc_curve_(nullptr)
-    , live_data_(nullptr)
+    , live_curve_(nullptr)
     , direct_painter_(nullptr)
 {
     setTitle("XRP");
@@ -132,72 +121,47 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
 }
 
 // ----------------------------------------------------------------------------
+CryptoPricePlot::~CryptoPricePlot()
+{
+}
+
+// ----------------------------------------------------------------------------
 void CryptoPricePlot::update_data_array(data_holder *data_holder)
 {
     data_holder_ = data_holder;
 
-    // remove old plot from graph
     if (ohlc_curve_) {
-        ohlc_curve_->detach();
-        delete ohlc_curve_;
-    }
-
-    // create a new plotting curve for OHLC data
-    // (plot data is refcounted by Qwt)
-    auto ohlc = data_holder_->get_data();
-    ohlc_curve_ = new OHLCCurve(ohlc);
-
-    // bind it to this plot and turn on display
-    ohlc_curve_->attach(this);
-    ohlc_curve_->setVisible(true);
-}
-
-    class OHLCData : public QwtTradingChartData
-    {
-      public:
-//        virtual QRectF boundingRect() const QWT_OVERRIDE
-//        {
-//            if ( cachedBoundingRect.width() < 0.0 )
-//                cachedBoundingRect = qwtBoundingRect( *this );
-//            return cachedBoundingRect;
-//        }
-
-        inline void append( const QwtOHLCSample& data )
-        {
-            m_samples += data;
-        }
-
-        void clear()
-        {
-            m_samples.clear();
-            m_samples.squeeze();
-            cachedBoundingRect = QRectF( 0.0, 0.0, -1.0, -1.0 );
-        }
-    };
-
-// ----------------------------------------------------------------------------
-void CryptoPricePlot::update_live_data(QwtOHLCSample new_sample)
-{
-    qDebug() << "New data " << new_sample.open << "\n";
-    OHLCData* data;
-    // The live data is typically only a few samples
-    if (!live_data_) {
-        direct_painter_ = new QwtPlotDirectPainter(this);
-        live_data_ = new OHLCCurve("new data");
-        live_data_->setData(new OHLCData());
-        data = static_cast<OHLCData*>( live_data_->data() );
-        data->append(new_sample);
-        live_data_->attach(this);
-        live_data_->setVisible(true);
+        // mark data as changed
+        ohlc_curve_->itemChanged();
     }
     else {
-        data = static_cast<OHLCData*>( live_data_->data() );
-        data->append(new_sample);
+        // create a new plotting curve for OHLC data
+        auto ohlc = data_holder_->get_samples();
+        ohlc_curve_ = new OHLCCurve(ohlc);
+        // bind it to this plot and turn on display
+        ohlc_curve_->attach(this);
+        ohlc_curve_->setVisible(true);
     }
-    direct_painter_->drawSeries(live_data_, 0, data->size() - 1 );
 }
 
 // ----------------------------------------------------------------------------
+void CryptoPricePlot::update_live_data(QwtOHLCSample const &new_sample)
+{
+    qDebug() << "New data " << new_sample.open << "\n";
+
+    data_holder_->add_live_data(new_sample);
+    // The live data is typically only a small number of samples
+    if (!live_curve_) {
+        direct_painter_ = new QwtPlotDirectPainter(this);
+        live_curve_ = new OHLCCurve(data_holder_->get_live_samples());
+        live_curve_->attach(this);
+        live_curve_->setVisible(true);
+    }
+    else {
+        live_curve_->itemChanged();
+    }
+    direct_painter_->drawSeries(live_curve_, 0, data_holder_->get_live_data().size() - 1 );
+}
 
 // ----------------------------------------------------------------------------
 void CryptoPricePlot::setMode( int style )
@@ -242,7 +206,7 @@ void CryptoPricePlot::adjust_candle_size()
     // get the number of pixels occupied by a 60s candle
     double lower = axisScaleDiv(axisId).lowerBound();
     double p1 = map.transform(lower);
-    double p2 = map.transform(lower + 60.0*1000.0);
+    double p2 = map.transform(lower + OHLCData::minute);
     //
 //    ohlc_curve_->setMinSymbolWidth(1.0);
 //    ohlc_curve_->setMaxSymbolWidth(std::max(1.0, p2-p1));

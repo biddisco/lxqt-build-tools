@@ -67,8 +67,6 @@ class GroxMainWindow : public QMainWindow
     std::shared_ptr<bitstamp_network> bitstamp_network_;
     std::shared_ptr<xrpl_network> xrpl_network_;
     std::shared_ptr<xrpl_network> xrpl_testnet_;
-    //
-    data_holder bitstamp_xrp_ohlcv;
 
 //    http::request<http::string_body> bitstamp_request_;
 

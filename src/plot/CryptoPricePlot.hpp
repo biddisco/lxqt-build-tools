@@ -22,14 +22,15 @@ private:
     QwtDateScaleDraw        *timescaleDraw_;
     QwtDateScaleEngine      *timescaleEngine_;
     OHLCCurve               *ohlc_curve_;
-    OHLCCurve               *live_data_;
+    OHLCCurve               *live_curve_;
     QwtPlotDirectPainter    *direct_painter_;
 
 public:
     CryptoPricePlot(QWidget *, data_holder *);
+    ~CryptoPricePlot();
     //
     void update_data_array(data_holder *data_holder);
-    void update_live_data(QwtOHLCSample new_sample);
+    void update_live_data(QwtOHLCSample const &new_sample);
     //
     void adjust_candle_size();
 

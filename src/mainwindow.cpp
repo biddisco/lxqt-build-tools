@@ -69,8 +69,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // Create orderbook plot
     //
     obp_ = nullptr;
-    obp_ = new OrderBookPlot();
-    obp_->setMinimumSize(384,256);
+//    obp_ = new OrderBookPlot();
+//    obp_->setMinimumSize(384,256);
     //
     ui.order_plot_layout->addWidget(obp_, 0);
 
@@ -378,44 +378,42 @@ void GroxMainWindow::createMenus()
 void GroxMainWindow::graph_rescale(int range)
 {
     auto last_time = hdf5_ohlc_.get_last_sample_time();
-    auto day = 60.0*60.0*24.0*1000.0;
-    auto hour = 60.0*60.0*1000.0;
     double t1=0, t2 = last_time;
     double stepSize = 0;
     if (range==-2) {
-        t1 = last_time - 0.25*day;
-        stepSize = hour;
+        t1 = last_time - 0.25*OHLCData::day;
+        stepSize = OHLCData::hour;
     }
     else if (range==-1) {
-        t1 = last_time - 0.5*day;
-        stepSize = 2*hour;
+        t1 = last_time - 0.5*OHLCData::day;
+        stepSize = 2*OHLCData::hour;
     }
     else if (range==0) {
-        t1 = last_time - 1.0*day;
-        stepSize = 4*hour;
+        t1 = last_time - 1.0*OHLCData::day;
+        stepSize = 4*OHLCData::hour;
     }
     else if (range==1) {
-        t1 = last_time - 7*day;
-        stepSize = day;
+        t1 = last_time - 7*OHLCData::day;
+        stepSize = OHLCData::day;
     }
     else if (range==2) {
-        t1 = last_time - 31*day;
-        stepSize = 7*day;
+        t1 = last_time - 31*OHLCData::day;
+        stepSize = 7*OHLCData::day;
     }
     else if (range==3) {
-        t1 = last_time - 365*day;
-        stepSize = 31*day;
+        t1 = last_time - 365*OHLCData::day;
+        stepSize = 31*OHLCData::day;
     }
     // special case, to extend current view with new data
     else if (range==100) {
-        t1 = last_time - 365*day;
+        t1 = last_time - 365*OHLCData::day;
     }
     else {
         t1 = hdf5_ohlc_.get_first_sample_time();
     }
     auto minmax = hdf5_ohlc_.get_min_max_window(t1, t2, 0.05);
     cryptoPricePlot_->setAxisScale(QwtAxis::XBottom, t1, t2, stepSize);
-    cryptoPricePlot_->setAxisScale(QwtAxis::YLeft, minmax.minval_, minmax.maxval_);
+    cryptoPricePlot_->setAxisScale(QwtAxis::YLeft, minmax.minValue(), minmax.maxValue());
     cryptoPricePlot_->adjust_candle_size();
     cryptoPricePlot_->replot();
 }

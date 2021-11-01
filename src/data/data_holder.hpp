@@ -1,30 +1,32 @@
 #pragma once
 
+// STL
+#include <vector>
 // Qt
 #include <QVector>
 // Qwt
 #include <QwtOHLCSample>
-// STL
-#include <vector>
-//
+// Grox
+#include "src/data/ohlc_data.hpp"
+// extern
 #include "hdf5.h"
-
-struct minmax_pair
-{
-    double minval_;
-    double maxval_;
-};
 
 class data_holder
 {
 protected:
     std::string data_dir_;
     std::string file_name_;
-    //
-    QVector<QwtOHLCSample> ohlc_samples;
+
+    // persistent downloaded data
+    OHLCData           *ohlc_samples;
     std::vector<double> ohlc_volumes;
 
+    // live trade data to be included
+    OHLCData           *live_samples;
+
 public:
+    data_holder();
+
     void init(std::string data_dir, std::string filename)
     {
         data_dir_ = data_dir;
@@ -32,23 +34,51 @@ public:
         //
         create_data_dir();
     };
-    //
+
+    // Checks that all data has consecutive time stamps. Important
+    // when merging new dowloaded data with old to ensure no gaps
+    // jave crpt in
     void validate_ohlc();
+
+    // Add new downloaded data to the existing dataset
     void merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
         const std::vector<double>& new_ohlc_volumes);
-    //
+
+    // Make sure that the initial data dir is present
     void create_data_dir();
+
+    // read datasets from hdf5 file
     void read_hdf5();
+
+    // write out data to hdf5
     void write_hdf5(const QVector<QwtOHLCSample>& samples,
         const std::vector<double>& volume, const uint64_t update = 0);
-    //
+
+    // empty : true if size==0, false otherwise
     bool   empty();
+
+    // Get first/last sample time, value is returned as UTC = unix time stamp * 1000
     double get_last_sample_time();
     double get_first_sample_time();
-    QVector<QwtOHLCSample> const &get_data();
 
-    //
-    minmax_pair get_min_max(double start_time, double end_time) const;
-    minmax_pair get_min_max_window(double start_time, double end_time, double percent) const;
+    // Get the min max OHLC value for a given time range, min and max
+    // are the lowest of the lows, and highest of the highs in the OHLC samples
+    QwtInterval get_min_max(OHLCData const &samples, double start_time, double end_time) const;
+    QwtInterval get_min_max(double start_time, double end_time) const;
+
+    // Returns the min/max values, expanded by a small % so that scaling of graph
+    // axes can adjust to allow a small window on ehter side of the min/max
+    QwtInterval get_min_max_window(double start_time, double end_time, double percent) const;
+
+    // access the underlying data vector
+    OHLCData *get_samples() { return ohlc_samples; }
+    QVector<QwtOHLCSample> const &get_data() { return ohlc_samples->data(); }
+
+    // add a new trade sample to build live OHLC candles
+    void add_live_data(QwtOHLCSample new_sample);
+
+    // access the underlying data vector for live samples
+    OHLCData *get_live_samples() { return live_samples; }
+    QVector<QwtOHLCSample> const &get_live_data() { return live_samples->data(); }
 
 };

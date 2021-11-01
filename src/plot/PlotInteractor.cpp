@@ -196,8 +196,8 @@ void PlotInteractor::panCanvas( int dx, int dy )
         else
         {
             const auto minmax = data_holder_->get_min_max_window(new_xmin, new_xmax, 0.05);
-            d1 = minmax.minval_;
-            d2 = minmax.maxval_;
+            d1 = minmax.minValue();
+            d2 = minmax.maxValue();
         }
 
         plot->setAxisScale( axisId, d1, d2 );
@@ -251,8 +251,8 @@ void PlotInteractor::zoomCanvas( int dx, int dy )
         else
         {
             const auto minmax = data_holder_->get_min_max_window(new_xmin, new_xmax, 0.05);
-            d1 = minmax.minval_;
-            d2 = minmax.maxval_;
+            d1 = minmax.minValue();
+            d2 = minmax.maxValue();
         }
 
         plot->setAxisScale( axisId, d1, d2 );
