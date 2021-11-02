@@ -170,7 +170,7 @@ void PlotInteractor::panCanvas( int dx, int dy )
     // use them to do Y
     auto axes = {QwtAxis::XBottom, QwtAxis::YLeft, QwtAxis::YRight };
 
-    double new_xmin, new_xmax;
+    double new_xmin=0, new_xmax=0;
     for (auto axisPos : axes)
     {
         const QwtAxisId axisId( axisPos );
@@ -188,10 +188,8 @@ void PlotInteractor::panCanvas( int dx, int dy )
         double d1, d2;
         if ( QwtAxis::isXAxis( axisPos ) )
         {
-            d1 = map.invTransform( p1 - dx );
-            d2 = map.invTransform( p2 - dx );
-            new_xmin = d1;
-            new_xmax = d2;
+            new_xmin = d1 = map.invTransform( p1 - dx );
+            new_xmax = d2 = map.invTransform( p2 - dx );
         }
         else
         {
@@ -231,20 +229,25 @@ void PlotInteractor::zoomCanvas( int dx, int dy )
         if ( !m_data->isAxisEnabled[axisId] )
             continue;
 
-        // get the pixel/plot coordinate transform
-        const QwtScaleMap map = plot->canvasMap( axisId );
-
-        // get the current min in pixel coords
-        const double p1 = map.transform( plot->axisScaleDiv( axisId ).lowerBound() );
-        // get the current max in world coords
-        double d2 = plot->axisScaleDiv( axisId ).upperBound();
-
-        // transform new pixel range back to world coords
-        // leave maxbound unchanged, but zoom by extending lowerbound
-        double d1;
+        double d1, d2;
         if ( QwtAxis::isXAxis( axisPos ) )
         {
-            d1 = map.invTransform( p1 + dy );
+            // get the pixel/plot coordinate transform
+            const QwtScaleMap map = plot->canvasMap( axisId );
+
+            // left right and mouse pos in world coords
+            double x1 = plot->axisScaleDiv( axisId ).lowerBound();
+            double x2 = plot->axisScaleDiv( axisId ).upperBound();
+            double xd = x2-x1;
+            // mouse pos in world coords
+            double xm = map.invTransform(m_data->initialPos.x());
+
+            // the amount we are going to zoom by depends on wheel amount
+            double p1  = map.transform(x1);
+            double xy  = map.invTransform(p1-dy)-x1;
+
+            d2 = (x2*xd + x2*xy - xm*xy)/xd;
+            d1  = d2 - xd - xy;
             new_xmin = d1;
             new_xmax = d2;
         }
@@ -270,7 +273,7 @@ void PlotInteractor::zoomCanvas( int dx, int dy )
 // ----------------------------------------------------------------------------
 bool PlotInteractor::eventFilter( QObject * object, QEvent * event)
 {
-    if ( object == NULL || object != parentWidget() )
+    if ( object == nullptr || plot()==nullptr || object != plot()->canvas() )
             return false;
 
     switch ( event->type() )
@@ -278,6 +281,9 @@ bool PlotInteractor::eventFilter( QObject * object, QEvent * event)
         // 2 finger trackpad movements appear as scroll events
         case QEvent::Wheel:
         {
+            QMouseEvent * evr = static_cast<QMouseEvent *>( event );
+            m_data->initialPos = m_data->pos = evr->pos();
+            //
             QWheelEvent* we = static_cast<QWheelEvent*>(event);
             auto d = we->angleDelta();
             // sideways swipe
@@ -319,12 +325,6 @@ bool PlotInteractor::eventFilter( QObject * object, QEvent * event)
         case QEvent::KeyRelease:
         {
             widgetKeyReleaseEvent( static_cast<QKeyEvent *>( event ) );
-            break;
-        }
-        case QEvent::Paint:
-        {
-            if ( parentWidget()->isVisible() )
-                return true;
             break;
         }
 
@@ -403,16 +403,15 @@ void PlotInteractor::setEnabled( bool on )
     {
         m_data->isEnabled = on;
 
-        QWidget* w = parentWidget();
-        if ( w )
+        if (this->plot() && this->plot()->canvas())
         {
             if ( m_data->isEnabled )
             {
-                w->installEventFilter( this );
+                this->plot()->canvas()->installEventFilter( this );
             }
             else
             {
-                w->removeEventFilter( this );
+                this->plot()->canvas()->removeEventFilter( this );
             }
         }
     }
