@@ -10,9 +10,9 @@
 class OHLCData : public QwtTradingChartData
 {
   public:
-    inline static const float minute = 60.0*1000.0;
-    inline static const float hour   = minute*60;
-    inline static const float day    = hour*24;
+    inline static const double minute = 60.0*1000.0;
+    inline static const double hour   = minute*60;
+    inline static const double day    = hour*24;
 
   public:
     OHLCData() : QwtTradingChartData() {}

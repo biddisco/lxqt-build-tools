@@ -15,8 +15,8 @@ CryptoDateScaleDraw::CryptoDateScaleDraw(Qt::TimeSpec timeSpec)
 {
     setDateFormat(QwtDate::Minute, "hh:mm");
     setDateFormat(QwtDate::Hour,   "hh:mm");
-    setDateFormat(QwtDate::Day,    "dd");
-    setDateFormat(QwtDate::Week,   "dd MMM");
+    setDateFormat(QwtDate::Day,    "ddd\ndd MMM");
+    setDateFormat(QwtDate::Week,   "ddd\ndd MMM");
     setDateFormat(QwtDate::Month,  "MMM");
     setDateFormat(QwtDate::Year,   "yyyy");
 }

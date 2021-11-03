@@ -11,11 +11,11 @@
 // extern
 #include "hdf5.h"
 
-class data_holder
+// ----------------------------------------------------------------------------
+struct ohlc_dataset
 {
-protected:
-    std::string data_dir_;
-    std::string file_name_;
+    // resolution/width of a candlestick
+    double resolution_;
 
     // persistent downloaded data
     OHLCData           *ohlc_samples;
@@ -23,6 +23,27 @@ protected:
 
     // live trade data to be included
     OHLCData           *live_samples;
+
+    ohlc_dataset(double res);
+
+    double get_resolution() {
+        return resolution_;
+    }
+
+    // Add new downloaded data to the existing dataset
+    uint64_t merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
+        const std::vector<double>& new_ohlc_volumes);
+
+};
+
+// ----------------------------------------------------------------------------
+class data_holder
+{
+protected:
+    std::string data_dir_;
+    std::string file_name_;
+
+    ohlc_dataset candles_;
 
 public:
     data_holder();
@@ -36,9 +57,10 @@ public:
     };
 
     // Checks that all data has consecutive time stamps. Important
-    // when merging new dowloaded data with old to ensure no gaps
-    // jave crpt in
-    void validate_ohlc();
+    // when merging new downloaded data with old to ensure no gaps
+    // have crpt in
+    void validate_ohlc(QVector<QwtOHLCSample> const &samples, double res);
+
 
     // Add new downloaded data to the existing dataset
     void merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
@@ -49,13 +71,14 @@ public:
 
     // read datasets from hdf5 file
     void read_hdf5();
+    void read_hdf5(QVector<QwtOHLCSample> &data, std::vector<double> &volumes);
 
     // write out data to hdf5
     void write_hdf5(const QVector<QwtOHLCSample>& samples,
         const std::vector<double>& volume, const uint64_t update = 0);
 
     // empty : true if size==0, false otherwise
-    bool   empty();
+    bool empty();
 
     // Get first/last sample time, value is returned as UTC = unix time stamp * 1000
     double get_last_sample_time();
@@ -71,14 +94,12 @@ public:
     QwtInterval get_min_max_window(double start_time, double end_time, double percent) const;
 
     // access the underlying data vector
-    OHLCData *get_samples() { return ohlc_samples; }
-    QVector<QwtOHLCSample> const &get_data() { return ohlc_samples->data(); }
+    OHLCData *get_samples() { return candles_.ohlc_samples; }
+    QVector<QwtOHLCSample> const &get_data() { return candles_.ohlc_samples->data(); }
 
     // add a new trade sample to build live OHLC candles
     void add_live_data(QwtOHLCSample new_sample);
 
     // access the underlying data vector for live samples
-    OHLCData *get_live_samples() { return live_samples; }
-    QVector<QwtOHLCSample> const &get_live_data() { return live_samples->data(); }
-
+    OHLCData *get_live_samples() { return candles_.live_samples; }
 };

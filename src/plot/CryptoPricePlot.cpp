@@ -160,7 +160,7 @@ void CryptoPricePlot::update_live_data(QwtOHLCSample const &new_sample)
     else {
         live_curve_->itemChanged();
     }
-    direct_painter_->drawSeries(live_curve_, 0, data_holder_->get_live_data().size() - 1 );
+    direct_painter_->drawSeries(live_curve_, 0, data_holder_->get_live_samples()->size() - 1 );
 }
 
 // ----------------------------------------------------------------------------
@@ -197,18 +197,4 @@ void CryptoPricePlot::exportPlot()
 // ----------------------------------------------------------------------------
 void CryptoPricePlot::adjust_candle_size()
 {
-/*
-    const QwtAxisId axisId(QwtAxis::XBottom);
-
-    // get the pixel/plot coordinate transform
-    const QwtScaleMap map = canvasMap(axisId);
-
-    // get the number of pixels occupied by a 60s candle
-    double lower = axisScaleDiv(axisId).lowerBound();
-    double p1 = map.transform(lower);
-    double p2 = map.transform(lower + OHLCData::minute);
-    //
-//    ohlc_curve_->setMinSymbolWidth(1.0);
-//    ohlc_curve_->setMaxSymbolWidth(std::max(1.0, p2-p1));
-*/
 }

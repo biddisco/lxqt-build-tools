@@ -15,11 +15,11 @@
 using nlohmann::json;
 
 struct ohlc_string {
-    std::string  close;
+    std::string  timestamp;
+    std::string  open;
     std::string  high;
     std::string  low;
-    std::string  open;
-    std::string  timestamp;
+    std::string  close;
     std::string  volume;
     //
     ohlc_string() = default;
@@ -28,31 +28,32 @@ struct ohlc_string {
 Q_DECLARE_METATYPE(ohlc_string)
 Q_DECLARE_METATYPE(std::vector<ohlc_string>*)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ohlc_string,
-    close, high, low, open, timestamp, volume);
+    timestamp, open, high, low, close, volume);
 
 struct ohlc {
-    double   close;
-    double   high;
-    double   low;
-    double   open;
-    double   timestamp;
-    double   volume;
+    double time;
+    double open;
+    double high;
+    double low;
+    double close;
+    //
+    double volume;
     //
     ohlc() = default;
     ohlc(const ohlc_string &s) {
-        close       = std::atof(s.close.c_str());
+        time        = std::atof(s.timestamp.c_str());
+        open        = std::atof(s.open.c_str());
         high        = std::atof(s.high.c_str());
         low         = std::atof(s.low.c_str());
-        open        = std::atof(s.open.c_str());
+        close       = std::atof(s.close.c_str());
         volume      = std::atof(s.volume.c_str());
-        timestamp   = std::atof(s.timestamp.c_str());
     }
 };
 
 Q_DECLARE_METATYPE(ohlc)
 Q_DECLARE_METATYPE(std::vector<ohlc>*)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ohlc,
-    close, high, low, open, timestamp, volume);
+    time, open, high, low, close, volume);
 
 
 // ----------------------------------------------------------------------------

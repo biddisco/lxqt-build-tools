@@ -67,8 +67,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // Create orderbook plot
     //
     obp_ = nullptr;
-//    obp_ = new OrderBookPlot();
-//    obp_->setMinimumSize(384,256);
+    obp_ = new OrderBookPlot();
+    obp_->setMinimumSize(384,256);
     //
     ui.order_plot_layout->addWidget(obp_, 0);
 
@@ -498,9 +498,9 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
         {
             ohlc temp(o);
             // convert 1 minute candle OHLC data to msecs
-            temp.timestamp *= 1000;
+            temp.time *= 1000;
             new_ohlc_samples.push_back(QwtOHLCSample(
-                temp.timestamp, temp.open, temp.high, temp.low, temp.close));
+                temp.time, temp.open, temp.high, temp.low, temp.close));
             new_ohlc_volumes.push_back(temp.volume);
         }
         DEBUG_ALWAYS("Received " << ohlc_strings.size()
