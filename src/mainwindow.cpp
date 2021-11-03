@@ -13,8 +13,6 @@
 //
 #include <filesystem>
 //
-#include <boost/format.hpp>
-//
 #include "mainwindow.hpp"
 #include "src/widgets/password_dialog.hpp"
 #include "src/widgets/wallet_widget.hpp"
@@ -553,35 +551,31 @@ void GroxMainWindow::update_account_balances()
 }
 
 // ----------------------------------------------------------------------------
-static std::mutex time_mutex;
-std::string unix_time_to_calendar_time(uint64_t unixtime)
+// unixtime * 1000 is msecs since 1970/1/1
+std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
 {
-    // we use a mutex here, because std::localtime isn't threadsafe
-    std::lock_guard<std::mutex> lock(time_mutex);
-    std::time_t t(unixtime);
-    std::tm tm = *std::localtime(&t);
-    std::stringstream temp;
-    temp << std::put_time(&tm, "%F %T");
-    return temp.str();
+    QDateTime dt = QDateTime::fromMSecsSinceEpoch(unixmsecs);
+    return QLocale().toString( dt, "yyyy-MM-dd hh:mm:ss").toStdString();
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::update_candlestick_data()
 {
-    uint64_t start_t = 0;
+    uint64_t req_t = 0, start_t = 0;
     // what is the last sample we currently have
     if (!hdf5_ohlc_.empty())
     {
         // convert msecs back to secs
-        start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time()/1000);
-        DEBUG_ALWAYS("Data present up until " << unix_time_to_calendar_time(start_t));
-        start_t += 60;    // next sample is 60s after last
+        start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time());
+        std::string s = msecs_unix_to_calendar_time(start_t);
+        DEBUG_ALWAYS("Data present up until " << s);
+        req_t = start_t/1000 + 60;    // next sample is 60s after last
     }
-    std::cout << "Requesting candlestick data from " << unix_time_to_calendar_time(start_t) << std::endl;
+    std::cout << "Requesting candlestick data from " << msecs_unix_to_calendar_time(req_t*1000) << std::endl;
 
-    // @TODO add futures here to make dependency chain simpler
-    bitstamp_network_->request_new_candlestick_data(start_t, [this, start_t](auto& ctx, bool more) {
-        std::cout << "Received candlestick data from " << unix_time_to_calendar_time(start_t) << std::endl;
+    // @TODO add futures here to make dependency chain simpler?
+    bitstamp_network_->request_new_candlestick_data(req_t, [this, req_t](auto& ctx, bool more) {
+        std::cout << "Received candlestick data from " << msecs_unix_to_calendar_time(req_t*1000) << std::endl;
         this->receive_ohlc_data(std::move(ctx.res.body()));
         if (more) {
             this->update_candlestick_data();
