@@ -233,6 +233,7 @@ void GroxMainWindow::createActions()
 {
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q), this, SLOT(close()));
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_C), this, SLOT(start_websocket()));
+    new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_D), this, SLOT(restore_dockwindows()));
 //    //
 //    actionQuit = ui.menubar->addAction(tr("Quit"));
 //    actionQuit->setMenuRole(QAction::QuitRole);
@@ -590,6 +591,12 @@ void GroxMainWindow::start_websocket()
     update_candlestick_data();
 }
 
+// ----------------------------------------------------------------------------
+void GroxMainWindow::restore_dockwindows()
+{
+    accounts_dock->show();
+    orders_dock->show();
+}
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 void GroxMainWindow::perform_arbitrage()
