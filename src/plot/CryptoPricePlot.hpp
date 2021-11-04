@@ -11,6 +11,7 @@ class QwtDateScaleDraw;
 class QwtDateScaleEngine;
 class QwtPlotDirectPainter;
 class QwtPlotCurve;
+class QwtPlotPicker;
 
 class CryptoPricePlot: public QwtPlot
 {
@@ -24,6 +25,7 @@ private:
     OHLCCurve               *ohlc_curve_;
     OHLCCurve               *live_curve_;
     QwtPlotDirectPainter    *direct_painter_;
+    QwtPlotPicker           *crosshairs_;
 
 public:
     CryptoPricePlot(QWidget *, data_holder *);

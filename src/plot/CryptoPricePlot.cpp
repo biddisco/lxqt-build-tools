@@ -23,7 +23,7 @@
 
 #include "src/plot/CryptoPricePlot.hpp"
 #include "src/plot/CryptoDateScaleDraw.hpp"
-#include "src/plot/CryptoDateScaleDraw.hpp"
+#include "src/plot/CryptoPicker.hpp"
 #include "src/plot/OHLCCurve.h"
 #include "src/plot/PlotInteractor.hpp"
 #include "src/util/QDateHelper.h"
@@ -74,10 +74,7 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
     this->axisScaleEngine(QwtPlot::yRight)->setMargins(8, 8);
 
     plot_interactor_ = new PlotInteractor( this, data_holder_);
-//    plot_interactor_->setMouseButton(Qt::LeftButton, Qt::ShiftModifier);
-//    plot_interactor_->setAxisEnabled(Qt::XAxis, true);
-//    plot_interactor_->setAxisEnabled(Qt::YAxis, false);
-//    plot_interactor_->setEnabled(true);
+    crosshairs_ = new CryptoPicker(this->canvas());
 
     // Attach a dotted-line grid to the plot
     QwtPlotGrid *grid = new QwtPlotGrid();
