@@ -1,31 +1,32 @@
 #pragma once
 
+// Qt
 #include <QWidget>
+// Qwt
 #include <QwtAxis>
 #include <QwtAxisId>
-//
-#include <QwtGlobal>
-//
-#include "src/plot/PlotInteractor.hpp"
+#include <QwtScaleDiv>
+// Grox
+#include "src/plot/ohlc_interactor.hpp"
 #include "src/data/data_holder.hpp"
 
-class CryptoPricePlot;
+class ohlc_price_plot;
 class QCursor;
 class QPixmap;
 
-class QWT_EXPORT PlotInteractor : public QObject
+class QWT_EXPORT ohlc_interactor : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit PlotInteractor(CryptoPricePlot* plot, data_holder *data);
-    virtual ~PlotInteractor();
+    explicit ohlc_interactor(ohlc_price_plot* plot, data_holder *data);
+    virtual ~ohlc_interactor();
 
     QWidget* parentWidget();
     const QWidget* parentWidget() const;
     //
-    CryptoPricePlot* plot();
-    const CryptoPricePlot* plot() const;
+    ohlc_price_plot* plot();
+    const ohlc_price_plot* plot() const;
 
     void setAxisEnabled( QwtAxisId axisId, bool on );
     bool isAxisEnabled( QwtAxisId ) const;

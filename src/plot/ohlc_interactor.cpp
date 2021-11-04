@@ -1,25 +1,16 @@
+// STL
 #include <iomanip>
 #include <iostream>
-//
+// Qt
 #include <QMouseEvent>
 #include <QDebug>
-//
-#include "src/plot/PlotInteractor.hpp"
-#include "src/plot/CryptoPricePlot.hpp"
-
+// Qwt
+#include <QwtAxis>
+#include <QwtPlot>
 #include <QwtScaleMap>
-#include <QwtScaleDiv>
-//
-#include "qwt_panner.h"
-#include "qwt_picker.h"
-#include "qwt_painter.h"
-
-#include <qpainter.h>
-#include <qpixmap.h>
-#include <qevent.h>
-#include <qcursor.h>
-#include <qbitmap.h>
-
+// Grox
+#include "src/plot/ohlc_interactor.hpp"
+#include "src/plot/ohlc_price_plot.hpp"
 //
 #ifndef DEBUG_ONLY
 # define DEBUG_ONLY(x)
@@ -28,7 +19,7 @@
     std::cout << temp.str() << std::endl; }
 #endif
 
-class PlotInteractor::PrivateData
+class ohlc_interactor::PrivateData
 {
   public:
     PrivateData()
@@ -58,10 +49,10 @@ class PlotInteractor::PrivateData
 
     bool isEnabled;
 
-    CryptoPricePlot* plot;
+    ohlc_price_plot* plot;
 };
 
-PlotInteractor::PlotInteractor(CryptoPricePlot* parent, data_holder *data)
+ohlc_interactor::ohlc_interactor(ohlc_price_plot* parent, data_holder *data)
     : QObject( parent )
     , data_holder_(data)
 {
@@ -76,19 +67,19 @@ PlotInteractor::PlotInteractor(CryptoPricePlot* parent, data_holder *data)
 }
 
 //! Destructor
-PlotInteractor::~PlotInteractor()
+ohlc_interactor::~ohlc_interactor()
 {
     delete m_data;
 }
 
 //! \return Parent widget, where the rescaling happens
-QWidget* PlotInteractor::parentWidget()
+QWidget* ohlc_interactor::parentWidget()
 {
     return qobject_cast< QWidget* >( parent() );
 }
 
 //! \return Parent widget, where the rescaling happens
-const QWidget* PlotInteractor::parentWidget() const
+const QWidget* ohlc_interactor::parentWidget() const
 {
     return qobject_cast< const QWidget* >( parent() );
 }
@@ -96,18 +87,18 @@ const QWidget* PlotInteractor::parentWidget() const
 
 // ----------------------------------------------------------------------------
 //! Return plot widget, containing the observed plot canvas
-CryptoPricePlot* PlotInteractor::plot()
+ohlc_price_plot* ohlc_interactor::plot()
 {
     QWidget* w = parentWidget();
-    return qobject_cast< CryptoPricePlot* >( w );
+    return qobject_cast< ohlc_price_plot* >( w );
 }
 
 // ----------------------------------------------------------------------------
 //! Return plot widget, containing the observed plot canvas
-const CryptoPricePlot* PlotInteractor::plot() const
+const ohlc_price_plot* ohlc_interactor::plot() const
 {
     const QWidget* w = parentWidget();
-    return qobject_cast< const CryptoPricePlot* >( w );
+    return qobject_cast< const ohlc_price_plot* >( w );
 }
 
 /*!
@@ -121,7 +112,7 @@ const CryptoPricePlot* PlotInteractor::plot() const
 
    \sa isAxisEnabled(), moveCanvas()
  */
-void PlotInteractor::setAxisEnabled( QwtAxisId axisId, bool on )
+void ohlc_interactor::setAxisEnabled( QwtAxisId axisId, bool on )
 {
     if ( QwtAxis::isValid( axisId ) )
         m_data->isAxisEnabled[axisId] = on;
@@ -135,7 +126,7 @@ void PlotInteractor::setAxisEnabled( QwtAxisId axisId, bool on )
 
    \sa setAxisEnabled(), moveCanvas()
  */
-bool PlotInteractor::isAxisEnabled( QwtAxisId axisId ) const
+bool ohlc_interactor::isAxisEnabled( QwtAxisId axisId ) const
 {
     if ( QwtAxis::isValid( axisId ) )
         return m_data->isAxisEnabled[axisId];
@@ -150,10 +141,10 @@ bool PlotInteractor::isAxisEnabled( QwtAxisId axisId ) const
    \param dx Pixel offset in x direction
    \param dy Pixel offset in y direction
 
-   \sa PlotInteractor::panned()
+   \sa ohlc_interactor::panned()
  */
 
-void PlotInteractor::panCanvas( int dx, int dy )
+void ohlc_interactor::panCanvas( int dx, int dy )
 {
     if ( dx == 0 && dy == 0 )
         return;
@@ -205,12 +196,12 @@ void PlotInteractor::panCanvas( int dx, int dy )
     plot->replot();
 }
 
-void PlotInteractor::zoomCanvas( int dx, int dy )
+void ohlc_interactor::zoomCanvas( int dx, int dy )
 {
     if ( dx == 0 && dy == 0 )
         return;
 
-    CryptoPricePlot* plot = this->plot();
+    ohlc_price_plot* plot = this->plot();
     if ( plot == NULL )
         return;
 
@@ -271,7 +262,7 @@ void PlotInteractor::zoomCanvas( int dx, int dy )
 }
 
 // ----------------------------------------------------------------------------
-bool PlotInteractor::eventFilter( QObject * object, QEvent * event)
+bool ohlc_interactor::eventFilter( QObject * object, QEvent * event)
 {
     if ( object == nullptr || plot()==nullptr || object != plot()->canvas() )
             return false;
@@ -350,7 +341,7 @@ bool PlotInteractor::eventFilter( QObject * object, QEvent * event)
    Change the mouse button and modifiers used for panning
    The defaults are Qt::LeftButton and Qt::NoModifier
  */
-void PlotInteractor::setMouseButton( Qt::MouseButton button,
+void ohlc_interactor::setMouseButton( Qt::MouseButton button,
     Qt::KeyboardModifiers modifiers )
 {
     m_data->button = button;
@@ -358,7 +349,7 @@ void PlotInteractor::setMouseButton( Qt::MouseButton button,
 }
 
 //! Get mouse button and modifiers used for panning
-void PlotInteractor::getMouseButton( Qt::MouseButton& button,
+void ohlc_interactor::getMouseButton( Qt::MouseButton& button,
     Qt::KeyboardModifiers& modifiers ) const
 {
     button = m_data->button;
@@ -372,7 +363,7 @@ void PlotInteractor::getMouseButton( Qt::MouseButton& button,
    \param key Key ( See Qt::Keycode )
    \param modifiers Keyboard modifiers
  */
-void PlotInteractor::setAbortKey( int key,
+void ohlc_interactor::setAbortKey( int key,
     Qt::KeyboardModifiers modifiers )
 {
     m_data->abortKey = key;
@@ -380,7 +371,7 @@ void PlotInteractor::setAbortKey( int key,
 }
 
 //! Get the abort key and modifiers
-void PlotInteractor::getAbortKey( int& key,
+void ohlc_interactor::getAbortKey( int& key,
     Qt::KeyboardModifiers& modifiers ) const
 {
     key = m_data->abortKey;
@@ -397,7 +388,7 @@ void PlotInteractor::getAbortKey( int& key,
    \param on true or false
    \sa isEnabled(), eventFilter()
  */
-void PlotInteractor::setEnabled( bool on )
+void ohlc_interactor::setEnabled( bool on )
 {
     if ( m_data->isEnabled != on )
     {
@@ -421,13 +412,13 @@ void PlotInteractor::setEnabled( bool on )
    \return true when enabled, false otherwise
    \sa setEnabled, eventFilter()
  */
-bool PlotInteractor::isEnabled() const
+bool ohlc_interactor::isEnabled() const
 {
     return m_data->isEnabled;
 }
 
 
-void PlotInteractor::widgetMouseInitEvent( QMouseEvent* mouseEvent)
+void ohlc_interactor::widgetMouseInitEvent( QMouseEvent* mouseEvent)
 {
     m_data->initialPos = m_data->pos = mouseEvent->pos();
 }
@@ -439,7 +430,7 @@ void PlotInteractor::widgetMouseInitEvent( QMouseEvent* mouseEvent)
    \sa eventFilter(), widgetMouseReleaseEvent(),
       widgetMouseMoveEvent(),
  */
-void PlotInteractor::widgetMousePressEvent( QMouseEvent* mouseEvent )
+void ohlc_interactor::widgetMousePressEvent( QMouseEvent* mouseEvent )
 {
     m_data->initialPos = m_data->pos = mouseEvent->pos();
 }
@@ -450,7 +441,7 @@ void PlotInteractor::widgetMousePressEvent( QMouseEvent* mouseEvent )
    \param mouseEvent Mouse event
    \sa eventFilter(), widgetMousePressEvent(), widgetMouseReleaseEvent()
  */
-void PlotInteractor::widgetMouseMoveEvent( QMouseEvent* mouseEvent )
+void ohlc_interactor::widgetMouseMoveEvent( QMouseEvent* mouseEvent )
 {
     if ( !parentWidget()->isVisible() )
         return;
@@ -473,7 +464,7 @@ void PlotInteractor::widgetMouseMoveEvent( QMouseEvent* mouseEvent )
    \sa eventFilter(), widgetMousePressEvent(),
       widgetMouseMoveEvent(),
  */
-void PlotInteractor::widgetMouseReleaseEvent( QMouseEvent* mouseEvent )
+void ohlc_interactor::widgetMouseReleaseEvent( QMouseEvent* mouseEvent )
 {
     if ( parentWidget()->isVisible() )
     {
@@ -493,7 +484,7 @@ void PlotInteractor::widgetMouseReleaseEvent( QMouseEvent* mouseEvent )
    \param keyEvent Key event
    \sa eventFilter(), widgetKeyReleaseEvent()
  */
-void PlotInteractor::widgetKeyPressEvent( QKeyEvent* keyEvent )
+void ohlc_interactor::widgetKeyPressEvent( QKeyEvent* keyEvent )
 {
     if ( ( keyEvent->key() == m_data->abortKey )
         && ( keyEvent->modifiers() == m_data->abortKeyModifiers ) )
@@ -507,7 +498,7 @@ void PlotInteractor::widgetKeyPressEvent( QKeyEvent* keyEvent )
    \param keyEvent Key event
    \sa eventFilter(), widgetKeyReleaseEvent()
  */
-void PlotInteractor::widgetKeyReleaseEvent( QKeyEvent* keyEvent )
+void ohlc_interactor::widgetKeyReleaseEvent( QKeyEvent* keyEvent )
 {
     Q_UNUSED( keyEvent );
 }

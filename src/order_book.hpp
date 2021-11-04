@@ -20,7 +20,7 @@
 #include <range/v3/all.hpp>
 //
 #include "nlohmann/json.hpp"
-#include "ohlc.hpp"
+#include "json_types.hpp"
 //
 #include "src/plot/OrderBookCurve.h"
 #include "src/plot/OrderBookPlot.h"

@@ -4,19 +4,27 @@
 #include <QwtInterval>
 #include <QwtSeriesData>
 #include <QwtTradingChartData>
+#include <QwtOHLCSample>
 
-#include <iostream>
-
-class OHLCData : public QwtTradingChartData
+class ohlc_chart_data : public QwtTradingChartData
 {
   public:
-    inline static const double minute = 60.0*1000.0;
-    inline static const double hour   = minute*60;
-    inline static const double day    = hour*24;
+    static constexpr double minute   = 60.0*1000.0;
+    static constexpr double minute3  = minute*3;
+    static constexpr double minute5  = minute*5;
+    static constexpr double minute15 = minute*15;
+    static constexpr double minute30 = minute*30;
+    static constexpr double hour     = minute*60;
+    static constexpr double hour2    = hour*2;
+    static constexpr double hour4    = hour*4;
+    static constexpr double hour6    = hour*6;
+    static constexpr double hour12   = hour*12;
+    static constexpr double day      = hour*24;
+    static constexpr double day3     = day*3;
 
   public:
-    OHLCData() : QwtTradingChartData() {}
-    ~OHLCData() {}
+    ohlc_chart_data() : QwtTradingChartData() {}
+    ~ohlc_chart_data() {}
 
     QwtInterval minmax_limits(size_t from, size_t to) const
     {

@@ -6,7 +6,7 @@
 #include <iostream>
 //
 #include "nlohmann/json.hpp"
-#include "ohlc.hpp"
+#include "json_types.hpp"
 
 std::ostream& operator<<(std::ostream& os, const xrp_amount &x) {
     os << "Value: " << x.value << " " << "Currency: ";

@@ -2,13 +2,10 @@
 
 #include <QwtDateScaleDraw>
 
-class CryptoDateScaleDraw : public QwtDateScaleDraw
+class ohlc_date_scaledraw : public QwtDateScaleDraw
 {
-private:
-    //
-
 public:
-    CryptoDateScaleDraw(Qt::TimeSpec);
+    ohlc_date_scaledraw(Qt::TimeSpec);
     //
     virtual QwtText label(double) const override;
 };

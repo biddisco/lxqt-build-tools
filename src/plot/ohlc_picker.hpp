@@ -12,10 +12,10 @@
 #include <QwtScaleMap>
 #include <QwtText>
 
-class CryptoPicker : public QwtPlotPicker
+class ohlc_picker : public QwtPlotPicker
 {
 public:
-    CryptoPicker(QWidget* canvas)
+    ohlc_picker(QWidget* canvas)
         : QwtPlotPicker(canvas)
     {
         setTrackerMode(QwtPlotPicker::ActiveOnly);

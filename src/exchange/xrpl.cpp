@@ -1,7 +1,10 @@
+// STL
 #include <algorithm>
 #include <string>
 #include <iostream>
-//
+// Grox
+#include "src/debug.hpp"
+// extern
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/to_string.h>
 #include <ripple/protocol/AccountID.h>
@@ -16,13 +19,6 @@
 #include <ripple/protocol/jss.h>
 #include <ripple/protocol/Issue.h>
 #include <ripple/protocol/tokens.h>
-
-#ifndef DEBUG_ONLY
-# define DEBUG_ONLY(x)
-# define DEBUG_ALWAYS(x) { \
-    std::stringstream temp; temp << x; \
-    std::cout << temp.str() << std::endl; }
-#endif
 
 // ----------------------------------------------------------------------------
 std::string serialize(ripple::STTx const& tx)

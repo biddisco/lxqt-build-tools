@@ -17,7 +17,7 @@
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 //
-#include "src/plot/CryptoPricePlot.hpp"
+#include "src/plot/ohlc_price_plot.hpp"
 #include "src/plot/CombinedPriceVolumeCharts.h"
 #include "src/plot/OrderBookPlot.h"
 //
@@ -59,7 +59,7 @@ class GroxMainWindow : public QMainWindow
     data_holder hdf5_ohlc_;
     //
     CombinedPriceVolumeCharts* CombinedPriceVolumeCharts_;
-    CryptoPricePlot* cryptoPricePlot_;
+    ohlc_price_plot* cryptoPricePlot_;
 
     OrderBookPlot *obp_;
     QTimer *timer_;

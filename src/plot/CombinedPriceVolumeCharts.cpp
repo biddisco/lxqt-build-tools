@@ -7,7 +7,7 @@
 #include <qwt_scale_draw.h>
 //
 #include "src/plot/CombinedPriceVolumeCharts.h"
-#include "CryptoPricePlot.hpp"
+#include "ohlc_price_plot.hpp"
 
 CombinedPriceVolumeCharts::CombinedPriceVolumeCharts(QWidget *parent, data_holder *data)
     : QFrame( parent )
@@ -17,8 +17,8 @@ CombinedPriceVolumeCharts::CombinedPriceVolumeCharts(QWidget *parent, data_holde
     layout->setSpacing(0);
     layout->setMargin(4);
 
-    CryptoPricePlot_ = new CryptoPricePlot(this, data);
-    layout->addWidget( CryptoPricePlot_,0,0 );
+    ohlc_price_plot_ = new ohlc_price_plot(this, data);
+    layout->addWidget( ohlc_price_plot_,0,0 );
 
 //    volumePlot_ = new VolumePlot(this);
 //    layout->addWidget( volumePlot_, 1, 0 );
@@ -29,16 +29,16 @@ CombinedPriceVolumeCharts::CombinedPriceVolumeCharts(QWidget *parent, data_holde
     setObjectName("CombinedPriceVolumeCharts");
     setStyleSheet("#CombinedPriceVolumeCharts { border: 2px solid gray; }");
 
-    connect( CryptoPricePlot_->axisWidget( QwtPlot::xBottom ),
+    connect( ohlc_price_plot_->axisWidget( QwtPlot::xBottom ),
         SIGNAL( scaleDivChanged() ), SLOT( scaleDivChanged() ) );
 }
 
 //void CombinedPriceVolumeCharts::populateChartData(const InstrumentSelectionInfoPtr &instrSelInfo)
 //{
 //    volumePlot_->populateChartData(instrSelInfo);
-//    CryptoPricePlot_->populateChartData(instrSelInfo);
+//    ohlc_price_plot_->populateChartData(instrSelInfo);
 
-//    QwtScaleWidget *priceScaleWidget = CryptoPricePlot_->axisWidget( QwtPlot::yLeft );
+//    QwtScaleWidget *priceScaleWidget = ohlc_price_plot_->axisWidget( QwtPlot::yLeft );
 //    QwtScaleDraw *priceScaleDraw = priceScaleWidget->scaleDraw();
 //    priceScaleDraw->setMinimumExtent( 0.0 );
 //    double priceExtent = priceScaleDraw->extent( priceScaleWidget->font() );
@@ -60,5 +60,5 @@ CombinedPriceVolumeCharts::CombinedPriceVolumeCharts(QWidget *parent, data_holde
 void CombinedPriceVolumeCharts::scaleDivChanged()
 {
 //    qDebug() << "Stacked Stock Charts: scaleDivChange()";
-//    volumePlot_->rescaleAxis(CryptoPricePlot_->axisScaleDiv( QwtPlot::xBottom ));
+//    volumePlot_->rescaleAxis(ohlc_price_plot_->axisScaleDiv( QwtPlot::xBottom ));
 }

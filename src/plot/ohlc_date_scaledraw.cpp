@@ -1,16 +1,14 @@
+// STL
 #include <cmath>
-//
+// Qt
 #include <QDebug>
+// Qwt
+#include <QwtText>
 //
-#include <qwt_text.h>
-//
-#include <boost/date_time.hpp>
-//
-#include "src/util/QDateHelper.h"
-#include "src/plot/CryptoDateScaleDraw.hpp"
+#include "src/plot/ohlc_date_scaledraw.hpp"
 
 // ----------------------------------------------------------------------------
-CryptoDateScaleDraw::CryptoDateScaleDraw(Qt::TimeSpec timeSpec)
+ohlc_date_scaledraw::ohlc_date_scaledraw(Qt::TimeSpec timeSpec)
     : QwtDateScaleDraw(timeSpec)
 {
     setDateFormat(QwtDate::Minute, "hh:mm");
@@ -22,7 +20,7 @@ CryptoDateScaleDraw::CryptoDateScaleDraw(Qt::TimeSpec timeSpec)
 }
 
 // ----------------------------------------------------------------------------
-QwtText CryptoDateScaleDraw::label(double value) const
+QwtText ohlc_date_scaledraw::label(double value) const
 {
     const QDateTime dt = toDateTime(value);
     auto interval = intervalType(scaleDiv());

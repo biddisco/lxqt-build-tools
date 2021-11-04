@@ -179,7 +179,7 @@ set(GROX_SRC
 
     # application utility
     src/currency.cpp
-    src/ohlc.cpp
+    src/json_types.cpp
     src/order_book.cpp
 
     # cryptograohy
@@ -191,6 +191,7 @@ set(GROX_SRC
 
     # data, hdf5
     src/data/data_holder.cpp
+    src/data/ohlc_dataset.cpp
 
     # exchange Apis
     src/exchange/xrpl.cpp
@@ -208,12 +209,12 @@ set(GROX_SRC
     # plotting
     src/plot/OrderBookPlot.cpp
     src/plot/OrderBookCurve.cpp
-    src/plot/CryptoPricePlot.cpp
-    src/plot/PlotInteractor.cpp
-    src/plot/CryptoDateScaleDraw.cpp
+    src/plot/ohlc_chart_curve.cpp
+    src/plot/ohlc_date_scaledraw.cpp
+    src/plot/ohlc_interactor.cpp
+    src/plot/ohlc_price_plot.cpp
 
     src/plot/CombinedPriceVolumeCharts.cpp
-    src/plot/OHLCCurve.cpp
 
     # utils
     src/util/QDateHelper.cpp

@@ -19,17 +19,15 @@
 #include <QwtScaleWidget>
 #include <QwtSeriesData>
 // Grox
-#include "src/data/ohlc_data.hpp"
-
-#include "src/plot/CryptoPricePlot.hpp"
-#include "src/plot/CryptoDateScaleDraw.hpp"
-#include "src/plot/CryptoPicker.hpp"
-#include "src/plot/OHLCCurve.h"
-#include "src/plot/PlotInteractor.hpp"
-#include "src/util/QDateHelper.h"
+#include "src/plot/ohlc_chart_data.hpp"
+#include "src/plot/ohlc_price_plot.hpp"
+#include "src/plot/ohlc_date_scaledraw.hpp"
+#include "src/plot/ohlc_interactor.hpp"
+#include "src/plot/ohlc_picker.hpp"
+#include "src/plot/ohlc_chart_curve.hpp"
 
 // ----------------------------------------------------------------------------
-CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
+ohlc_price_plot::ohlc_price_plot(QWidget *parent, data_holder *data)
     : QwtPlot( parent )
     , data_holder_(data)
     , plot_interactor_(nullptr)
@@ -47,7 +45,7 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
     QDateTime dt(UTC.date(), UTC.time(), Qt::LocalTime);
 
     // setup date/time axis scaling and tick draw
-    timescaleDraw_   = new CryptoDateScaleDraw(Qt::TimeSpec::OffsetFromUTC);
+    timescaleDraw_   = new ohlc_date_scaledraw(Qt::TimeSpec::OffsetFromUTC);
     timescaleEngine_ = new QwtDateScaleEngine(Qt::TimeSpec::OffsetFromUTC);
     timescaleDraw_->setUtcOffset(dt.secsTo(local));
     timescaleEngine_->setUtcOffset(dt.secsTo(local));
@@ -73,8 +71,8 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
     // not sure about this, no yRight axis setup
     this->axisScaleEngine(QwtPlot::yRight)->setMargins(8, 8);
 
-    plot_interactor_ = new PlotInteractor( this, data_holder_);
-    crosshairs_ = new CryptoPicker(this->canvas());
+    plot_interactor_ = new ohlc_interactor( this, data_holder_);
+    crosshairs_ = new ohlc_picker(this->canvas());
 
     // Attach a dotted-line grid to the plot
     QwtPlotGrid *grid = new QwtPlotGrid();
@@ -118,12 +116,12 @@ CryptoPricePlot::CryptoPricePlot(QWidget *parent, data_holder *data)
 }
 
 // ----------------------------------------------------------------------------
-CryptoPricePlot::~CryptoPricePlot()
+ohlc_price_plot::~ohlc_price_plot()
 {
 }
 
 // ----------------------------------------------------------------------------
-void CryptoPricePlot::update_data_array(data_holder *data_holder)
+void ohlc_price_plot::update_data_array(data_holder *data_holder)
 {
     data_holder_ = data_holder;
 
@@ -134,7 +132,7 @@ void CryptoPricePlot::update_data_array(data_holder *data_holder)
     else {
         // create a new plotting curve for OHLC data
         auto ohlc = data_holder_->get_samples();
-        ohlc_curve_ = new OHLCCurve(ohlc);
+        ohlc_curve_ = new ohlc_chart_curve(ohlc);
         // bind it to this plot and turn on display
         ohlc_curve_->attach(this);
         ohlc_curve_->setVisible(true);
@@ -142,7 +140,7 @@ void CryptoPricePlot::update_data_array(data_holder *data_holder)
 }
 
 // ----------------------------------------------------------------------------
-void CryptoPricePlot::update_live_data(QwtOHLCSample const &new_sample)
+void ohlc_price_plot::update_live_data(QwtOHLCSample const &new_sample)
 {
     qDebug() << "New data " << new_sample.open << "\n";
 
@@ -150,7 +148,7 @@ void CryptoPricePlot::update_live_data(QwtOHLCSample const &new_sample)
     // The live data is typically only a small number of samples
     if (!live_curve_) {
         direct_painter_ = new QwtPlotDirectPainter(this);
-        live_curve_ = new OHLCCurve(data_holder_->get_live_samples());
+        live_curve_ = new ohlc_chart_curve(data_holder_->get_live_samples());
         live_curve_->attach(this);
         live_curve_->setVisible(true);
     }
@@ -161,7 +159,7 @@ void CryptoPricePlot::update_live_data(QwtOHLCSample const &new_sample)
 }
 
 // ----------------------------------------------------------------------------
-void CryptoPricePlot::setMode( int style )
+void ohlc_price_plot::setMode( int style )
 {
     QwtPlotTradingCurve::SymbolStyle symbolStyle =
         static_cast<QwtPlotTradingCurve::SymbolStyle>( style );
@@ -178,20 +176,20 @@ void CryptoPricePlot::setMode( int style )
 }
 
 // ----------------------------------------------------------------------------
-void CryptoPricePlot::showItem( QwtPlotItem *item, bool on )
+void ohlc_price_plot::showItem( QwtPlotItem *item, bool on )
 {
     item->setVisible( on );
     replot();
 }
 
 // ----------------------------------------------------------------------------
-void CryptoPricePlot::exportPlot()
+void ohlc_price_plot::exportPlot()
 {
     QwtPlotRenderer renderer;
     renderer.exportTo( this, "stockchart.pdf" );
 }
 
 // ----------------------------------------------------------------------------
-void CryptoPricePlot::adjust_candle_size()
+void ohlc_price_plot::adjust_candle_size()
 {
 }

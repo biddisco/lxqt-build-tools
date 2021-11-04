@@ -1,3 +1,9 @@
+// STL
+#include <iostream>
+#include <iomanip>
+#include <ctime>
+#include <filesystem>
+// Qt
 #include <QAction>
 #include <QApplication>
 #include <QDateTime>
@@ -7,12 +13,7 @@
 #include <QMessageBox>
 #include <QDockWidget>
 #include <QScrollBar>
-//
-#include <QwtScaleMap>
-#include <QwtScaleDiv>
-//
-#include <filesystem>
-//
+// Grox
 #include "mainwindow.hpp"
 #include "src/widgets/password_dialog.hpp"
 #include "src/widgets/wallet_widget.hpp"
@@ -20,25 +21,15 @@
 #include "src/widgets/trade_widget.hpp"
 #include "src/widgets/check_trades_dialog.hpp"
 //
+#include "src/debug.hpp"
 #include "src/network/evp-encrypt.hpp"
 #include "src/network/https-async.hpp"
 //
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
 //
-#include "ohlc.hpp"
+#include "json_types.hpp"
 #include "settings.hpp"
-//
-#include <iostream>
-#include <iomanip>
-#include <ctime>
-//
-#ifndef DEBUG_ONLY
-# define DEBUG_ONLY(x)
-# define DEBUG_ALWAYS(x) { \
-    std::stringstream temp; temp << x; \
-    std::cout << temp.str() << std::endl; }
-#endif
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
@@ -60,7 +51,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // Create candlestick/volume plots
     //
     CombinedPriceVolumeCharts_ = new CombinedPriceVolumeCharts(this, &hdf5_ohlc_);
-    cryptoPricePlot_ = CombinedPriceVolumeCharts_->get_CryptoPricePlot();
+    cryptoPricePlot_ = CombinedPriceVolumeCharts_->get_ohlc_price_plot();
     ui.candlestick_layout->addWidget(CombinedPriceVolumeCharts_, 30);
 
     // ----------------------------------
@@ -380,32 +371,32 @@ void GroxMainWindow::graph_rescale(int range)
     double t1=0, t2 = last_time;
     double stepSize = 0;
     if (range==-2) {
-        t1 = last_time - 0.25*OHLCData::day;
-        stepSize = OHLCData::hour;
+        t1 = last_time - 0.25*ohlc_chart_data::day;
+        stepSize = ohlc_chart_data::hour;
     }
     else if (range==-1) {
-        t1 = last_time - 0.5*OHLCData::day;
-        stepSize = 2*OHLCData::hour;
+        t1 = last_time - 0.5*ohlc_chart_data::day;
+        stepSize = 2*ohlc_chart_data::hour;
     }
     else if (range==0) {
-        t1 = last_time - 1.0*OHLCData::day;
-        stepSize = 4*OHLCData::hour;
+        t1 = last_time - 1.0*ohlc_chart_data::day;
+        stepSize = 4*ohlc_chart_data::hour;
     }
     else if (range==1) {
-        t1 = last_time - 7*OHLCData::day;
-        stepSize = OHLCData::day;
+        t1 = last_time - 7*ohlc_chart_data::day;
+        stepSize = ohlc_chart_data::day;
     }
     else if (range==2) {
-        t1 = last_time - 31*OHLCData::day;
-        stepSize = 7*OHLCData::day;
+        t1 = last_time - 31*ohlc_chart_data::day;
+        stepSize = 7*ohlc_chart_data::day;
     }
     else if (range==3) {
-        t1 = last_time - 365*OHLCData::day;
-        stepSize = 31*OHLCData::day;
+        t1 = last_time - 365*ohlc_chart_data::day;
+        stepSize = 31*ohlc_chart_data::day;
     }
     // special case, to extend current view with new data
     else if (range==100) {
-        t1 = last_time - 365*OHLCData::day;
+        t1 = last_time - 365*ohlc_chart_data::day;
     }
     else {
         t1 = hdf5_ohlc_.get_first_sample_time();

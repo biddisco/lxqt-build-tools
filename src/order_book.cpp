@@ -1,8 +1,4 @@
-// to pass structs as params we must declare metatypes to Qt
-#include <QtCore>
-//
-#include <qwt_scale_div.h>
-//
+// STL
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
@@ -12,20 +8,23 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-//
-#include <boost/format.hpp>
-#include <boost/iterator/zip_iterator.hpp>
-//
-#include <range/v3/algorithm.hpp>
-#include <range/v3/all.hpp>
-//
-#include "nlohmann/json.hpp"
-#include "ohlc.hpp"
+// Qt
+#include <QtCore>
+// Grox
+#include "src/debug.hpp"
+#include "json_types.hpp"
 //
 #include "src/plot/OrderBookCurve.h"
 #include "src/plot/OrderBookPlot.h"
 //
 #include "order_book.hpp"
+// extern
+#include "nlohmann/json.hpp"
+//
+#include <boost/format.hpp>
+//
+#include <range/v3/algorithm.hpp>
+#include <range/v3/all.hpp>
 
 bool startswith(std::string_view str, std::string_view sub)
 {

@@ -2,6 +2,7 @@
 //
 #include <string>
 //
+#include "src/debug.hpp"
 #include "src/exchange/xrpl_network.hpp"
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"

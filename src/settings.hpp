@@ -10,7 +10,7 @@
 #include "src/network/evp-encrypt.hpp"
 //
 #include "order_book.hpp"
-#include "ohlc.hpp"
+#include "json_types.hpp"
 #include "currency.hpp"
 #include "src/exchange/exchange.hpp"
 //

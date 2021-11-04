@@ -2,65 +2,11 @@
 #include <iostream>
 #include <cmath>
 //
+#include "src/debug.hpp"
 #include "src/data/data_holder.hpp"
-//
-#ifndef DEBUG_ONLY
-# define DEBUG_ONLY(x)
-# define DEBUG_ALWAYS(x) { \
-    std::stringstream temp; temp << x; \
-    std::cout << temp.str() << std::endl; }
-#endif
 
 // ----------------------------------------------------------------------------
-ohlc_dataset::ohlc_dataset(double res)
-    : resolution_(res)
-{
-    // we do not destroy these in the destructor because they are given to the
-    // plot curve object which deletes them when it is destroyed
-    ohlc_samples = new OHLCData();
-    live_samples = new OHLCData();
-}
-
-// ----------------------------------------------------------------------------
-uint64_t ohlc_dataset::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
-    const std::vector<double>& new_ohlc_volumes)
-{
-    uint64_t update = 0;
-    if (ohlc_samples->data().size() == 0)
-    {
-        ohlc_samples->data() = new_ohlc_samples;
-        ohlc_volumes = new_ohlc_volumes;
-    }
-    else if (!new_ohlc_samples.empty())
-    {
-        auto last_existing = ohlc_samples->data().back().time;
-        auto first_new = new_ohlc_samples.front().time;
-
-        DEBUG_ONLY("existing " << static_cast<uint64_t>(last_existing) << " new "
-                  << static_cast<uint64_t>(first_new));
-        // 1 minute candle OHLC data is stored in msecs
-        if (first_new - last_existing == (60 * 1000))
-        {
-            DEBUG_ONLY("merging data");
-            ohlc_samples->data().append(new_ohlc_samples);
-            ohlc_volumes.insert(
-                ohlc_volumes.end(), new_ohlc_volumes.begin(), new_ohlc_volumes.end());
-            if (size_t(ohlc_samples->data().size()) != ohlc_volumes.size())
-            {
-                throw std::runtime_error("Data merge problem");
-            }
-            update = new_ohlc_samples.size();
-        }
-        else
-        {
-            throw std::runtime_error("Data OHLC time mismatch in merge");
-        }
-    }
-    return update;
-}
-
-// ----------------------------------------------------------------------------
-data_holder::data_holder() : candles_(OHLCData::minute)
+data_holder::data_holder() : candles_(ohlc_chart_data::minute)
 {
 }
 
@@ -74,29 +20,6 @@ void data_holder::create_data_dir()
         {
             throw std::runtime_error("Failed to create dir " + data_dir_);
         }
-    }
-}
-
-// ----------------------------------------------------------------------------
-void data_holder::validate_ohlc(QVector<QwtOHLCSample> const &samples, double res)
-{
-    using cit = QVector<QwtOHLCSample>::const_iterator;
-    cit li = samples.begin();
-    bool valid = true;
-    uint64_t index = 0;
-    for (cit i = samples.begin() + 1; i != samples.end(); ++i)
-    {
-        uint64_t t1 = static_cast<uint64_t>(li->time);
-        uint64_t t2 = static_cast<uint64_t>(i->time);
-        if (t2 - t1 != res)
-        {
-            std::cerr << "Validation error at index " << index << " " << t1 << " and "
-                      << t2 << "dataset truncated " << std::endl;
-            valid = false;
-            break;
-        }
-        li = i;
-        index++;
     }
 }
 
@@ -182,7 +105,7 @@ void data_holder::write_hdf5(QVector<QwtOHLCSample> const &samples,
 {
     // check data before attempting to write to disk
     //    if (debug_level>0)
-    validate_ohlc(samples, OHLCData::minute);
+    ohlc_dataset::validate_ohlc(samples, ohlc_chart_data::minute);
     //
     DEBUG_ALWAYS("Opening: " << file_name_);
 
@@ -332,7 +255,7 @@ double data_holder::get_first_sample_time()
 }
 
 // ----------------------------------------------------------------------------
-QwtInterval data_holder::get_min_max(OHLCData const &samples, double start_time, double end_time) const
+QwtInterval data_holder::get_min_max(ohlc_chart_data const &samples, double start_time, double end_time) const
 {
     if (samples.data().empty()) return QwtInterval();
     double init_time = samples.data().front().time;
@@ -374,7 +297,7 @@ QwtInterval data_holder::get_min_max_window(double start_time, double end_time, 
 void data_holder::add_live_data(QwtOHLCSample new_sample)
 {
     // snap sample to last minute in which it occured
-    new_sample.time = OHLCData::minute*std::trunc(new_sample.time/OHLCData::minute);
+    new_sample.time = ohlc_chart_data::minute*std::trunc(new_sample.time/ohlc_chart_data::minute);
 
     // if this is the first one, just add it
     if (candles_.live_samples->data().empty()) {
@@ -383,13 +306,13 @@ void data_holder::add_live_data(QwtOHLCSample new_sample)
     // update existing OHLC candle with new data
     else {
         double init_time = candles_.live_samples->data().front().time;
-        size_t index = static_cast<size_t>((new_sample.time-init_time)/OHLCData::minute);
+        size_t index = static_cast<size_t>((new_sample.time-init_time)/ohlc_chart_data::minute);
         if (index>=candles_.live_samples->size()) {
             // if there are gaps between incoming data, fill them with last close
             auto prev = candles_.live_samples->data().back();
             prev.high = prev.low = prev.open = prev.close;
             for (size_t s=candles_.live_samples->size(); s<=index; ++s) {
-                prev.time += OHLCData::minute;
+                prev.time += ohlc_chart_data::minute;
                 candles_.live_samples->append(prev);
             }
         }

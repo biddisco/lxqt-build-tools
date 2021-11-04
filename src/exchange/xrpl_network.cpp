@@ -1,12 +1,10 @@
+// STL
+#include <string>
+// Qt
 #include <QObject>
 #include <QString>
 //
-#include <string>
-//
-#include <ripple/protocol/Issue.h>
-#include <ripple/protocol/Sign.h>
-#include <ripple/protocol/UintTypes.h>
-//
+#include "src/debug.hpp"
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 #include "src/network/evp-encrypt.hpp"
@@ -17,7 +15,10 @@
 #include "src/exchange/xrpl_network.hpp"
 #include "src/exchange/bitstamp.hpp"
 #include "src/exchange/xrpl.hpp"
-//
+// extern
+#include <ripple/protocol/Issue.h>
+#include <ripple/protocol/Sign.h>
+#include <ripple/protocol/UintTypes.h>
 #define line_string "# ---------------------------------\n"
 
 // ----------------------------------------------------------------------------

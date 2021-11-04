@@ -1,10 +1,11 @@
+// Qt
 #include <QPen>
-//
+// Qwt
 #include <qwt_date.h>
-//
-#include "OHLCCurve.h"
+// Grox
+#include "src/plot/ohlc_chart_curve.hpp"
 
-OHLCCurve::OHLCCurve(const QString& title)
+ohlc_chart_curve::ohlc_chart_curve(const QString& title)
     : QwtPlotTradingCurve(title)
 {
     //setTitle(title); // for the legend
@@ -15,7 +16,7 @@ OHLCCurve::OHLCCurve(const QString& title)
     // first value being 0, the second value 1, and so on. This allows
     // values to be aligned across weekends, etc. We therefore size
     // the bars for this integral scale.
-    setSymbolExtent(0.8 * OHLCData::minute);
+    setSymbolExtent(0.8 * ohlc_chart_data::minute);
     setMinSymbolWidth(0.1);
     setMaxSymbolWidth(0.0);
 
@@ -26,14 +27,14 @@ OHLCCurve::OHLCCurve(const QString& title)
     setSymbolBrush(QwtPlotTradingCurve::Decreasing, QColor("#df4249"));
 }
 
-OHLCCurve::OHLCCurve(OHLCData *chartData)
-    : OHLCCurve("Price")
+ohlc_chart_curve::ohlc_chart_curve(ohlc_chart_data *chartData)
+    : ohlc_chart_curve("Price")
 {
     setData(chartData);
 }
 
-OHLCCurve::OHLCCurve(const QVector<QwtOHLCSample> &chartData)
-    : OHLCCurve("Price")
+ohlc_chart_curve::ohlc_chart_curve(const QVector<QwtOHLCSample> &chartData)
+    : ohlc_chart_curve("Price")
 {
     setSamples(chartData);
 }
