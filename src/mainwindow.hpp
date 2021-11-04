@@ -21,7 +21,7 @@
 #include "src/plot/CombinedPriceVolumeCharts.h"
 #include "src/plot/OrderBookPlot.h"
 //
-#include "src/data/data_holder.hpp"
+#include "src/data/ohlc_dataset_manager.hpp"
 //
 #include "ui_mainwindow.h"
 //
@@ -56,7 +56,7 @@ class GroxMainWindow : public QMainWindow
     QScrollArea *accounts_scrollwidget;
     QScrollArea *orders_scrollwidget;
 
-    data_holder hdf5_ohlc_;
+    ohlc_dataset_manager hdf5_ohlc_;
     //
     CombinedPriceVolumeCharts* CombinedPriceVolumeCharts_;
     ohlc_price_plot* cryptoPricePlot_;

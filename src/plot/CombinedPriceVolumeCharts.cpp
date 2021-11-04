@@ -9,7 +9,7 @@
 #include "src/plot/CombinedPriceVolumeCharts.h"
 #include "ohlc_price_plot.hpp"
 
-CombinedPriceVolumeCharts::CombinedPriceVolumeCharts(QWidget *parent, data_holder *data)
+CombinedPriceVolumeCharts::CombinedPriceVolumeCharts(QWidget *parent, ohlc_dataset_manager *data)
     : QFrame( parent )
 {
     QGridLayout *layout = new QGridLayout( this );

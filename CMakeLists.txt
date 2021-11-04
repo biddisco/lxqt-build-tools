@@ -190,7 +190,7 @@ set(GROX_SRC
     src/network/https-async.cpp
 
     # data, hdf5
-    src/data/data_holder.cpp
+    src/data/ohlc_dataset_manager.cpp
     src/data/ohlc_dataset.cpp
 
     # exchange Apis

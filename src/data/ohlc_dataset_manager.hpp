@@ -13,16 +13,17 @@
 #include "hdf5.h"
 
 // ----------------------------------------------------------------------------
-class data_holder
+class ohlc_dataset_manager
 {
 protected:
     std::string data_dir_;
     std::string file_name_;
 
-    ohlc_dataset candles_;
+    // a map of datasets, key is resolution
+    std::map<double, ohlc_dataset> candles_;
 
 public:
-    data_holder();
+    ohlc_dataset_manager();
 
     void init(std::string data_dir, std::string filename)
     {
@@ -31,11 +32,6 @@ public:
         //
         create_data_dir();
     };
-
-
-    // Add new downloaded data to the existing dataset
-    void merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
-        const std::vector<double>& new_ohlc_volumes);
 
     // Make sure that the initial data dir is present
     void create_data_dir();
@@ -48,8 +44,13 @@ public:
     void write_hdf5(const QVector<QwtOHLCSample>& samples,
         const std::vector<double>& volume, const uint64_t update = 0);
 
+    // Add new downloaded data to an existing dataset
+    void merge_data(double res,
+                    const QVector<QwtOHLCSample>& new_ohlc_samples,
+                    const std::vector<double>& new_ohlc_volumes);
+
     // empty : true if size==0, false otherwise
-    bool empty();
+//    bool empty();
 
     // Get first/last sample time, value is returned as UTC = unix time stamp * 1000
     double get_last_sample_time();
@@ -65,12 +66,12 @@ public:
     QwtInterval get_min_max_window(double start_time, double end_time, double percent) const;
 
     // access the underlying data vector
-    ohlc_chart_data *get_samples() { return candles_.ohlc_samples; }
-    QVector<QwtOHLCSample> const &get_data() { return candles_.ohlc_samples->data(); }
+    ohlc_chart_data *get_samples() { return candles_.begin()->second.ohlc_samples; }
+//    QVector<QwtOHLCSample> const &get_data() { return candles_.ohlc_samples->data(); }
 
     // add a new trade sample to build live OHLC candles
     void add_live_data(QwtOHLCSample new_sample);
 
     // access the underlying data vector for live samples
-    ohlc_chart_data *get_live_samples() { return candles_.live_samples; }
+    ohlc_chart_data *get_live_samples() { return candles_.begin()->second.live_samples; }
 };

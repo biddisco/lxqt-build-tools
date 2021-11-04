@@ -52,9 +52,9 @@ class ohlc_interactor::PrivateData
     ohlc_price_plot* plot;
 };
 
-ohlc_interactor::ohlc_interactor(ohlc_price_plot* parent, data_holder *data)
+ohlc_interactor::ohlc_interactor(ohlc_price_plot* parent, ohlc_dataset_manager *data)
     : QObject( parent )
-    , data_holder_(data)
+    , ohlc_dataset_manager_(data)
 {
     m_data = new PrivateData();
 
@@ -184,7 +184,7 @@ void ohlc_interactor::panCanvas( int dx, int dy )
         }
         else
         {
-            const auto minmax = data_holder_->get_min_max_window(new_xmin, new_xmax, 0.05);
+            const auto minmax = ohlc_dataset_manager_->get_min_max_window(new_xmin, new_xmax, 0.05);
             d1 = minmax.minValue();
             d2 = minmax.maxValue();
         }
@@ -244,7 +244,7 @@ void ohlc_interactor::zoomCanvas( int dx, int dy )
         }
         else
         {
-            const auto minmax = data_holder_->get_min_max_window(new_xmin, new_xmax, 0.05);
+            const auto minmax = ohlc_dataset_manager_->get_min_max_window(new_xmin, new_xmax, 0.05);
             d1 = minmax.minValue();
             d2 = minmax.maxValue();
         }

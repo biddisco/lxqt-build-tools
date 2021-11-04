@@ -27,9 +27,9 @@
 #include "src/plot/ohlc_chart_curve.hpp"
 
 // ----------------------------------------------------------------------------
-ohlc_price_plot::ohlc_price_plot(QWidget *parent, data_holder *data)
+ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     : QwtPlot( parent )
-    , data_holder_(data)
+    , ohlc_dataset_manager_(data)
     , plot_interactor_(nullptr)
     , timescaleDraw_(nullptr)
     , timescaleEngine_(nullptr)
@@ -71,7 +71,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, data_holder *data)
     // not sure about this, no yRight axis setup
     this->axisScaleEngine(QwtPlot::yRight)->setMargins(8, 8);
 
-    plot_interactor_ = new ohlc_interactor( this, data_holder_);
+    plot_interactor_ = new ohlc_interactor( this, ohlc_dataset_manager_);
     crosshairs_ = new ohlc_picker(this->canvas());
 
     // Attach a dotted-line grid to the plot
@@ -121,9 +121,9 @@ ohlc_price_plot::~ohlc_price_plot()
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::update_data_array(data_holder *data_holder)
+void ohlc_price_plot::update_data_array(ohlc_dataset_manager *ohlc_dataset_manager)
 {
-    data_holder_ = data_holder;
+    ohlc_dataset_manager_ = ohlc_dataset_manager;
 
     if (ohlc_curve_) {
         // mark data as changed
@@ -131,7 +131,7 @@ void ohlc_price_plot::update_data_array(data_holder *data_holder)
     }
     else {
         // create a new plotting curve for OHLC data
-        auto ohlc = data_holder_->get_samples();
+        auto ohlc = ohlc_dataset_manager_->get_samples();
         ohlc_curve_ = new ohlc_chart_curve(ohlc);
         // bind it to this plot and turn on display
         ohlc_curve_->attach(this);
@@ -144,18 +144,18 @@ void ohlc_price_plot::update_live_data(QwtOHLCSample const &new_sample)
 {
     qDebug() << "New data " << new_sample.open << "\n";
 
-    data_holder_->add_live_data(new_sample);
+    ohlc_dataset_manager_->add_live_data(new_sample);
     // The live data is typically only a small number of samples
     if (!live_curve_) {
         direct_painter_ = new QwtPlotDirectPainter(this);
-        live_curve_ = new ohlc_chart_curve(data_holder_->get_live_samples());
+        live_curve_ = new ohlc_chart_curve(ohlc_dataset_manager_->get_live_samples());
         live_curve_->attach(this);
         live_curve_->setVisible(true);
     }
     else {
         live_curve_->itemChanged();
     }
-    direct_painter_->drawSeries(live_curve_, 0, data_holder_->get_live_samples()->size() - 1 );
+    direct_painter_->drawSeries(live_curve_, 0, ohlc_dataset_manager_->get_live_samples()->size() - 1 );
 }
 
 // ----------------------------------------------------------------------------

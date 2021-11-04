@@ -19,7 +19,7 @@ private:
 
 
 public:
-    CombinedPriceVolumeCharts(QWidget *, data_holder *);
+    CombinedPriceVolumeCharts(QWidget *, ohlc_dataset_manager *);
     virtual ~CombinedPriceVolumeCharts() {}
 
 //    void populateChartData(const InstrumentSelectionInfoPtr &instrSelInfo);

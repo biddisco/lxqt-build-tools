@@ -94,11 +94,10 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // Load existing candlestick data
     hdf5_ohlc_.init(app_ini->appDataLocation, app_ini->hdfFileName);
     hdf5_ohlc_.read_hdf5();
-    if (!hdf5_ohlc_.empty()) {
-        cryptoPricePlot_->update_data_array(&hdf5_ohlc_);
-        // start by displaying 1/4 day of data
-        graph_rescale(-2);
-    }
+
+    cryptoPricePlot_->update_data_array(&hdf5_ohlc_);
+    // start by displaying 1/4 day of data
+    graph_rescale(-2);
 
     // ----------------------------------
     // just an experiment to display an image
@@ -496,7 +495,7 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
         }
         DEBUG_ALWAYS("Received " << ohlc_strings.size()
                   << " new OHLC samples");
-        hdf5_ohlc_.merge_data(new_ohlc_samples, new_ohlc_volumes);
+        hdf5_ohlc_.merge_data(ohlc_chart_data::minute, new_ohlc_samples, new_ohlc_volumes);
         emit new_ohlc_data_ui();
 
         // what is the last sample we currently have
@@ -554,15 +553,13 @@ std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
 void GroxMainWindow::update_candlestick_data()
 {
     uint64_t req_t = 0, start_t = 0;
-    // what is the last sample we currently have
-    if (!hdf5_ohlc_.empty())
-    {
-        // convert msecs back to secs
-        start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time());
-        std::string s = msecs_unix_to_calendar_time(start_t);
-        DEBUG_ALWAYS("Data present up until " << s);
-        req_t = start_t/1000 + 60;    // next sample is 60s after last
-    }
+    // what is the most recent sample we currently have
+    start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time());
+    std::string s = msecs_unix_to_calendar_time(start_t);
+    DEBUG_ALWAYS("Data present up until " << s);
+    // convert to unix timestamp : next sample is 60s after last
+    req_t = start_t/1000 + 60;
+
     std::cout << "Requesting candlestick data from " << msecs_unix_to_calendar_time(req_t*1000) << std::endl;
 
     // @TODO add futures here to make dependency chain simpler?

@@ -36,6 +36,4 @@ struct ohlc_dataset
     // when merging new downloaded data with old to ensure no gaps
     // have crpt in
     static void validate_ohlc(QVector<QwtOHLCSample> const &samples, double res);
-
 };
-
