@@ -381,10 +381,12 @@ void GroxMainWindow::createMenus()
     connect(ui.candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
         if (index>0) {
             double res = ohlc_chart_data::available_resolutions()[index-1];
-            set_candle_size(res);
+            cryptoPricePlot_->set_auto_candle_resolution(false);
+            cryptoPricePlot_->adjust_candle_size(res);
         }
         else {
-            set_candle_size(0);
+            cryptoPricePlot_->set_auto_candle_resolution(true);
+            cryptoPricePlot_->adjust_candle_size(0);
         }
     } , Qt::QueuedConnection);
 }
@@ -438,18 +440,9 @@ void GroxMainWindow::graph_rescale(int range)
 }
 
 // ----------------------------------------------------------------------------
-// slot to ensure widget updates on GUI thread
-void GroxMainWindow::set_candle_size(double res)
-{
-    cryptoPricePlot_->set_auto_candle_resolution(res==0);
-    cryptoPricePlot_->adjust_candle_size(res);
-}
-
-// ----------------------------------------------------------------------------
 void GroxMainWindow::new_ohlc_data()
 {
     // don't change axes, just update data series and replot
-    cryptoPricePlot_->update_data_array();
     cryptoPricePlot_->replot();
 }
 

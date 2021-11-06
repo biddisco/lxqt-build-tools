@@ -10,8 +10,7 @@
 #include "src/data/ohlc_datasets.hpp"
 
 // ----------------------------------------------------------------------------
-ohlc_datasets::ohlc_datasets(double res)
-    : resolution_(res)
+ohlc_datasets::ohlc_datasets()
 {
     // we do not destroy these in the destructor because they are given to the
     // plot curve object which deletes them when it is destroyed
@@ -106,7 +105,7 @@ ohlc_datasets *ohlc_datasets::resample(double res)
 {
     if (ohlc_samples_->data().empty()) return nullptr;
     //
-    ohlc_datasets *result = new ohlc_datasets(res);
+    ohlc_datasets *result = new ohlc_datasets();
     //
     QwtOHLCSample current_ohlc;
     current_ohlc.time = 0;

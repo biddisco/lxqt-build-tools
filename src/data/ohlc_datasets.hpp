@@ -13,9 +13,6 @@
 // ----------------------------------------------------------------------------
 struct ohlc_datasets
 {
-    // resolution/width of a candlestick
-    double resolution_;
-
     // persistent downloaded data
     ohlc_chart_data    *ohlc_samples_;
     std::vector<double> ohlc_volumes_;
@@ -25,12 +22,8 @@ struct ohlc_datasets
     ohlc_chart_data    *live_samples_;
     ohlc_chart_curve   *live_curve_;
 
-    ohlc_datasets(double res);
+    ohlc_datasets();
     ~ohlc_datasets();
-
-    double get_resolution() {
-        return resolution_;
-    }
 
     // Add new downloaded data to the existing dataset
     uint64_t merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,

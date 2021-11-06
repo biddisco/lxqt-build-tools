@@ -16,6 +16,8 @@
 #include <QwtPlotLayout>
 #include <QwtPlotLegendItem>
 #include <QwtPlotRenderer>
+#include <QwtPlotTextLabel>
+#include <QwtTextLabel>
 #include <QwtScaleMap>
 #include <QwtScaleWidget>
 #include <QwtSeriesData>
@@ -117,6 +119,9 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     palette2.setColor( QPalette::WindowText, Qt::lightGray); // ticks
     palette2.setColor( QPalette::Text, Qt::lightGray);	     // tick labels
     axisWidget(Axis::yLeft)->setPalette( palette2 );
+
+    candle_label_ = new QwtTextLabel(this);
+    candle_label_->setMargin(0);
 }
 
 // ----------------------------------------------------------------------------
@@ -137,11 +142,6 @@ void ohlc_price_plot::set_data(ohlc_dataset_manager *ohlc_dataset_manager)
         data->ohlc_curve_->setVisible(first);
         first = false;
     }
-}
-
-// ----------------------------------------------------------------------------
-void ohlc_price_plot::update_data_array()
-{
 }
 
 // ----------------------------------------------------------------------------
@@ -181,21 +181,29 @@ void ohlc_price_plot::adjust_candle_size(double res)
             if (r<xm) {
                 // if we have not changed value, just exit
                 if (r==last_auto_res) return;
-                std::cout << "changing resolution to " << r.name_ << std::endl;
-                // set the desired resolution to this scale and break out of loop
                 res = last_auto_res = r;
+                //
                 break;
             }
         }
     }
     // user selected resolution
-    auto resolutions = ohlc_dataset_manager_->get_dataset_resolutions();
-    for (auto r : resolutions) {
+    for (const auto &r : ohlc_chart_data::available_resolutions()) {
         auto *data = ohlc_dataset_manager_->get_dataset(r);
         data->ohlc_curve_->setSymbolExtent(0.8 * r);
         data->ohlc_curve_->setVisible(r==res);
+        if (r==res) {
+            QwtText candle_label(r.name_);
+            candle_label.setRenderFlags( Qt::AlignLeft | Qt::AlignTop );
+            if (auto_candle_resolution())
+                candle_label.setColor(Qt::magenta);
+            else
+                candle_label.setColor(Qt::red);
+            candle_label_->setText(candle_label);
+        }
     }
     candle_resolution_ = res;
+
     replot();
 }
 

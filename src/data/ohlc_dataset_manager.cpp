@@ -8,7 +8,7 @@
 // ----------------------------------------------------------------------------
 ohlc_dataset_manager::ohlc_dataset_manager()
 {
-    ohlc_datasets *min_res = new ohlc_datasets(ohlc_chart_data::minute);
+    ohlc_datasets *min_res = new ohlc_datasets();
     candles_.insert(std::make_pair(ohlc_chart_data::minute, min_res));
 }
 

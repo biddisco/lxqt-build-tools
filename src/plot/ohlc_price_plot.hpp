@@ -2,7 +2,6 @@
 
 // Qwt
 #include <QwtPlot>
-#include <QwtPlotItem>
 // Grox
 #include "src/plot/ohlc_interactor.hpp"
 
@@ -12,7 +11,10 @@ class QwtDateScaleDraw;
 class QwtDateScaleEngine;
 class QwtPlotDirectPainter;
 class QwtPlotCurve;
+class QwtPlotItem;
 class QwtPlotPicker;
+class QwtPlotTextLabel;
+class QwtTextLabel;
 
 class ohlc_price_plot: public QwtPlot
 {
@@ -24,6 +26,7 @@ private:
     QwtDateScaleEngine            *timescaleEngine_;
     QwtPlotDirectPainter          *direct_painter_;
     QwtPlotPicker                 *crosshairs_;
+    QwtTextLabel                  *candle_label_;
     ohlc_dataset_manager          *ohlc_dataset_manager_;
     double                         candle_resolution_;
     bool                           auto_candle_resolution_;
@@ -33,7 +36,6 @@ public:
     ~ohlc_price_plot();
     //
     void set_data(ohlc_dataset_manager *ohlc_dataset_manager);
-    void update_data_array();
     void update_live_data(QwtOHLCSample const &new_sample);
     //
     void adjust_candle_size(double res);
