@@ -101,25 +101,64 @@ void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other)
 }
 
 // ----------------------------------------------------------------------------
-ohlc_datasets *ohlc_datasets::resample(double res)
+uint64_t sample_index(double init, double time, double res)
 {
-    if (ohlc_samples_->data().empty()) return nullptr;
-    //
+    uint64_t i = static_cast<uint64_t>((time-init)/res);
+    return std::max(uint64_t(0), i);
+}
+
+// ----------------------------------------------------------------------------
+// resample from res2 to res1
+ohlc_datasets *ohlc_datasets::resample(double res1, double res2)
+{
     ohlc_datasets *result = new ohlc_datasets();
-    //
-    QwtOHLCSample current_ohlc;
-    current_ohlc.time = 0;
-    for (QVector<QwtOHLCSample>::const_iterator it=ohlc_samples_->data().begin(); it!=ohlc_samples_->data().end(); ++it) {
-        double quantized_time = res*static_cast<uint64_t>(it->time/res);
+    result->resample_update(res1, this, res2);
+    return result;
+}
+
+// ----------------------------------------------------------------------------
+// res1 is reolution of this dataset, res2 is (higher) resolution of other
+ohlc_datasets *ohlc_datasets::resample_update(double res1, ohlc_datasets *other, double res2)
+{
+    if (other->ohlc_samples_->data().empty()) return this;
+
+    // Get the final point of this dataset if present
+    double T;
+    if (!ohlc_samples_->data().empty()) {
+        T = ohlc_samples_->data().back().time;
+    }
+    // otherwise, just use the first point of the other dataset
+    else {
+        T = other->ohlc_samples_->data().front().time;
+        // insert a dummy sample we will overwrite
+        ohlc_samples_->data().append(QwtOHLCSample());
+    }
+
+    // What index in the high res data maps to our time T
+    auto init2 = other->ohlc_samples_->data().front().time;
+    uint64_t that_sample = sample_index(init2, T, res2);
+
+    // we will start a fresh candle from this time T
+    QwtOHLCSample current_ohlc = other->ohlc_samples_->data()[that_sample];
+    current_ohlc.time = res1*static_cast<uint64_t>(init2/res1);
+
+    // iterate over all higher res samples for T onwards
+    for (QVector<QwtOHLCSample>::const_iterator
+         it=other->ohlc_samples_->data().begin() + that_sample;
+         it<other->ohlc_samples_->data().end(); ++it)
+    {
+        double quantized_time = res1*static_cast<uint64_t>(it->time/res1);
+        // if the time is not the same as our current candle, start a new one
         if (quantized_time != current_ohlc.time) {
             current_ohlc = *it;
             current_ohlc.time = quantized_time;
-            result->ohlc_samples_->append(current_ohlc);
+            ohlc_samples_->append(current_ohlc);
         }
+        // overwrite the current candle with updated numbers
         else {
             update_QwtOHLCSample(current_ohlc, *it);
-            result->ohlc_samples_->data().back() = current_ohlc;
+            ohlc_samples_->data().back() = current_ohlc;
         }
     }
-    return result;
+    return this;
 }

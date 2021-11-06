@@ -66,9 +66,13 @@ public:
     std::vector<double> get_dataset_resolutions();
 
     // access the underlying data vector
-    ohlc_datasets *get_dataset(double resolution) const {
-        return candles_.at(resolution);
+    ohlc_datasets *get_dataset(double resolution) const
+    {
+        if (candles_.find(resolution)!=candles_.end())
+            return candles_.at(resolution);
+        return nullptr;
     }
+
     void add_dataset(double resolution, ohlc_datasets *new_data) {
         candles_[resolution] = new_data;
     }

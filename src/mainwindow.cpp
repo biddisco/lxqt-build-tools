@@ -100,7 +100,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     const auto &resolutions = ohlc_chart_data::available_resolutions();
     for (size_t i=1; i<resolutions.size(); ++i) {
         auto const &res = resolutions[i];
-        auto new_data = hdf5_ohlc_.get_dataset(res.base_)->resample(res);
+        auto new_data = hdf5_ohlc_.get_dataset(res.base_)->resample(res, res.base_);
         if (new_data) {
             hdf5_ohlc_.add_dataset(res, new_data);
         }
@@ -442,6 +442,22 @@ void GroxMainWindow::graph_rescale(int range)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::new_ohlc_data()
 {
+    // get all available candle resolutions, except highest res
+    // since we we use that one to generate all the others
+    const auto &resolutions = ohlc_chart_data::available_resolutions();
+    for (size_t i=1; i<resolutions.size(); ++i) {
+        auto const &res = resolutions[i];
+        auto data = hdf5_ohlc_.get_dataset(res);
+        if (data) {
+            data->resample_update(res.res_, hdf5_ohlc_.get_dataset(res.base_), res.base_);
+        }
+        else {
+            data = hdf5_ohlc_.get_dataset(res.base_)->resample(res, res.base_);
+            hdf5_ohlc_.add_dataset(res, data);
+        }
+    }
+
+
     // don't change axes, just update data series and replot
     cryptoPricePlot_->replot();
 }

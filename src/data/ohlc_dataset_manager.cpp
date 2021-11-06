@@ -232,12 +232,6 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
     DEBUG_ONLY("Dataset size: " << data.size());
 }
 
-//// ----------------------------------------------------------------------------
-//bool ohlc_dataset_manager::empty()
-//{
-//    return (candles_.begin()->second->ohlc_samples_->data().size() == 0 || candles_.begin()->second->ohlc_volumes_.size() == 0);
-//}
-
 // ----------------------------------------------------------------------------
 double ohlc_dataset_manager::get_last_sample_time()
 {

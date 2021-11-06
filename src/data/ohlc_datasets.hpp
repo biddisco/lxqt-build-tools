@@ -37,5 +37,6 @@ struct ohlc_datasets
     // Resample the current dataset to a new resolution, it is assumed (without checks)
     // that the new lower resolution is an exact multiople of the current one
     // giving a simple N:1 downsizing
-    ohlc_datasets *resample(double res);
+    ohlc_datasets *resample(double res1, double res2);
+    ohlc_datasets *resample_update(double res1, ohlc_datasets *other, double res2);
 };
