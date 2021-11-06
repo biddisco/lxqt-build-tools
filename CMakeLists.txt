@@ -191,7 +191,7 @@ set(GROX_SRC
 
     # data, hdf5
     src/data/ohlc_dataset_manager.cpp
-    src/data/ohlc_dataset.cpp
+    src/data/ohlc_datasets.cpp
 
     # exchange Apis
     src/exchange/xrpl.cpp

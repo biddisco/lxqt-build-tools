@@ -95,7 +95,18 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     hdf5_ohlc_.init(app_ini->appDataLocation, app_ini->hdfFileName);
     hdf5_ohlc_.read_hdf5();
 
-    cryptoPricePlot_->update_data_array(&hdf5_ohlc_);
+    // get all available candle resolutions, except highest res
+    // since we we use that one to generate all the others
+    const auto &resolutions = ohlc_chart_data::available_resolutions();
+    for (size_t i=1; i<resolutions.size(); ++i) {
+        auto const &res = resolutions[i];
+        auto new_data = hdf5_ohlc_.get_dataset(res.base_)->resample(res);
+        if (new_data) {
+            hdf5_ohlc_.add_dataset(res, new_data);
+        }
+    }
+
+    cryptoPricePlot_->set_data(&hdf5_ohlc_);
     // start by displaying 1/4 day of data
     graph_rescale(-2);
 
@@ -185,6 +196,12 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     calcWidth = char_size*140 + 8;
     ui.arbitrage_orders->setMinimumWidth(calcWidth);
     //ui.arbitrage_orders->setMaximumWidth(calcWidth);
+
+    QStringList slist("Auto");
+    for (const auto &r : ohlc_chart_data::available_resolutions()) {
+        slist << r.name_;
+    }
+    ui.candle_res->addItems(slist);
 }
 
 // ----------------------------------------------------------------------------
@@ -360,6 +377,16 @@ void GroxMainWindow::createMenus()
     connect(ui.gt_a, &QAbstractButton::clicked, this, [this]() {
         graph_rescale(4);
     } , Qt::QueuedConnection);
+
+    connect(ui.candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
+        if (index>0) {
+            double res = ohlc_chart_data::available_resolutions()[index-1];
+            set_candle_size(res);
+        }
+        else {
+            set_candle_size(0);
+        }
+    } , Qt::QueuedConnection);
 }
 
 // ----------------------------------------------------------------------------
@@ -400,18 +427,29 @@ void GroxMainWindow::graph_rescale(int range)
     else {
         t1 = hdf5_ohlc_.get_first_sample_time();
     }
-    auto minmax = hdf5_ohlc_.get_min_max_window(t1, t2, 0.05);
+    auto minmax = hdf5_ohlc_.get_min_max_window(cryptoPricePlot_->get_candle_resolution(), t1, t2, 0.05);
     cryptoPricePlot_->setAxisScale(QwtAxis::XBottom, t1, t2, stepSize);
     cryptoPricePlot_->setAxisScale(QwtAxis::YLeft, minmax.minValue(), minmax.maxValue());
-    cryptoPricePlot_->adjust_candle_size();
     cryptoPricePlot_->replot();
+    if (cryptoPricePlot_->auto_candle_resolution()) {
+        cryptoPricePlot_->adjust_candle_size(0);
+        cryptoPricePlot_->replot();
+    }
+}
+
+// ----------------------------------------------------------------------------
+// slot to ensure widget updates on GUI thread
+void GroxMainWindow::set_candle_size(double res)
+{
+    cryptoPricePlot_->set_auto_candle_resolution(res==0);
+    cryptoPricePlot_->adjust_candle_size(res);
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::new_ohlc_data()
 {
     // don't change axes, just update data series and replot
-    cryptoPricePlot_->update_data_array(&hdf5_ohlc_);
+    cryptoPricePlot_->update_data_array();
     cryptoPricePlot_->replot();
 }
 

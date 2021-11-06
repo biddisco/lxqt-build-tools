@@ -149,7 +149,7 @@ void ohlc_interactor::panCanvas( int dx, int dy )
     if ( dx == 0 && dy == 0 )
         return;
 
-    QwtPlot* plot = this->plot();
+    ohlc_price_plot* plot = this->plot();
     if ( plot == NULL )
         return;
 
@@ -184,7 +184,8 @@ void ohlc_interactor::panCanvas( int dx, int dy )
         }
         else
         {
-            const auto minmax = ohlc_dataset_manager_->get_min_max_window(new_xmin, new_xmax, 0.05);
+            const auto minmax = ohlc_dataset_manager_->get_min_max_window(
+                        plot->get_candle_resolution(), new_xmin, new_xmax, 0.05);
             d1 = minmax.minValue();
             d2 = minmax.maxValue();
         }
@@ -244,7 +245,8 @@ void ohlc_interactor::zoomCanvas( int dx, int dy )
         }
         else
         {
-            const auto minmax = ohlc_dataset_manager_->get_min_max_window(new_xmin, new_xmax, 0.05);
+            const auto minmax = ohlc_dataset_manager_->get_min_max_window(
+                        plot->get_candle_resolution(), new_xmin, new_xmax, 0.05);
             d1 = minmax.minValue();
             d2 = minmax.maxValue();
         }
@@ -256,7 +258,9 @@ void ohlc_interactor::zoomCanvas( int dx, int dy )
         DEBUG_ALWAYS("Error in zoom calculation")
         return;
     }
-    plot->adjust_candle_size();
+    if (plot->auto_candle_resolution()) {
+        plot->adjust_candle_size(0);
+    }
     plot->setAutoReplot( doAutoReplot );
     plot->replot();
 }

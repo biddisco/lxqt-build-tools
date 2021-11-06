@@ -8,21 +8,25 @@
 #include <QwtOHLCSample>
 // Grox
 #include "src/plot/ohlc_chart_data.hpp"
+#include "src/plot/ohlc_chart_curve.hpp"
 
 // ----------------------------------------------------------------------------
-struct ohlc_dataset
+struct ohlc_datasets
 {
     // resolution/width of a candlestick
     double resolution_;
 
     // persistent downloaded data
-    ohlc_chart_data    *ohlc_samples;
-    std::vector<double> ohlc_volumes;
+    ohlc_chart_data    *ohlc_samples_;
+    std::vector<double> ohlc_volumes_;
+    ohlc_chart_curve   *ohlc_curve_;
 
     // live trade data to be included
-    ohlc_chart_data    *live_samples;
+    ohlc_chart_data    *live_samples_;
+    ohlc_chart_curve   *live_curve_;
 
-    ohlc_dataset(double res);
+    ohlc_datasets(double res);
+    ~ohlc_datasets();
 
     double get_resolution() {
         return resolution_;
@@ -34,6 +38,11 @@ struct ohlc_dataset
 
     // Checks that all data has consecutive time stamps. Important
     // when merging new downloaded data with old to ensure no gaps
-    // have crpt in
+    // have crept in
     static void validate_ohlc(QVector<QwtOHLCSample> const &samples, double res);
+
+    // Resample the current dataset to a new resolution, it is assumed (without checks)
+    // that the new lower resolution is an exact multiople of the current one
+    // giving a simple N:1 downsizing
+    ohlc_datasets *resample(double res);
 };

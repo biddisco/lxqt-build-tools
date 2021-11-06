@@ -7,7 +7,7 @@
 // Qwt
 #include <QwtOHLCSample>
 // Grox
-#include "src/data/ohlc_dataset.hpp"
+#include "src/data/ohlc_datasets.hpp"
 #include "src/plot/ohlc_chart_data.hpp"
 // extern
 #include "hdf5.h"
@@ -20,10 +20,11 @@ protected:
     std::string file_name_;
 
     // a map of datasets, key is resolution
-    std::map<double, ohlc_dataset> candles_;
+    std::map<double, ohlc_datasets*> candles_;
 
 public:
     ohlc_dataset_manager();
+    ~ohlc_dataset_manager();
 
     void init(std::string data_dir, std::string filename)
     {
@@ -46,11 +47,8 @@ public:
 
     // Add new downloaded data to an existing dataset
     void merge_data(double res,
-                    const QVector<QwtOHLCSample>& new_ohlc_samples,
+                    const QVector<QwtOHLCSample>& new_ohlc_samples_,
                     const std::vector<double>& new_ohlc_volumes);
-
-    // empty : true if size==0, false otherwise
-//    bool empty();
 
     // Get first/last sample time, value is returned as UTC = unix time stamp * 1000
     double get_last_sample_time();
@@ -58,20 +56,30 @@ public:
 
     // Get the min max OHLC value for a given time range, min and max
     // are the lowest of the lows, and highest of the highs in the OHLC samples
-    QwtInterval get_min_max(ohlc_chart_data const &samples, double start_time, double end_time) const;
-    QwtInterval get_min_max(double start_time, double end_time) const;
+    QwtInterval get_min_max(ohlc_chart_data const *dataset, double res, double start_time, double end_time) const;
+    QwtInterval get_min_max(double res, double start_time, double end_time) const;
 
     // Returns the min/max values, expanded by a small % so that scaling of graph
     // axes can adjust to allow a small window on ehter side of the min/max
-    QwtInterval get_min_max_window(double start_time, double end_time, double percent) const;
+    QwtInterval get_min_max_window(double res, double start_time, double end_time, double percent) const;
+
+    std::vector<double> get_dataset_resolutions();
 
     // access the underlying data vector
-    ohlc_chart_data *get_samples() { return candles_.begin()->second.ohlc_samples; }
-//    QVector<QwtOHLCSample> const &get_data() { return candles_.ohlc_samples->data(); }
+    ohlc_datasets *get_dataset(double resolution) const {
+        return candles_.at(resolution);
+    }
+    void add_dataset(double resolution, ohlc_datasets *new_data) {
+        candles_[resolution] = new_data;
+    }
+
+    ohlc_chart_data *get_samples() { return candles_.begin()->second->ohlc_samples_; }
 
     // add a new trade sample to build live OHLC candles
     void add_live_data(QwtOHLCSample new_sample);
 
+    ohlc_chart_curve *get_live_curve();
+
     // access the underlying data vector for live samples
-    ohlc_chart_data *get_live_samples() { return candles_.begin()->second.live_samples; }
+    ohlc_chart_data *get_live_data();
 };

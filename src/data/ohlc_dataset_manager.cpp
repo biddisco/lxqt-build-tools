@@ -8,40 +8,46 @@
 // ----------------------------------------------------------------------------
 ohlc_dataset_manager::ohlc_dataset_manager()
 {
-    candles_.insert(
-        std::make_pair(ohlc_chart_data::minute, ohlc_dataset(ohlc_chart_data::minute)));
+    ohlc_datasets *min_res = new ohlc_datasets(ohlc_chart_data::minute);
+    candles_.insert(std::make_pair(ohlc_chart_data::minute, min_res));
+}
+
+// ----------------------------------------------------------------------------
+ohlc_dataset_manager::~ohlc_dataset_manager()
+{
+    for (auto d : candles_) {
+        delete d.second;
+    }
+    candles_.clear();
 }
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::create_data_dir()
 {
     namespace fs = std::filesystem;
-    if (!fs::exists(data_dir_))
+    if (!fs::exists(data_dir_) && !fs::create_directory(data_dir_))
     {
-        if (!fs::create_directory(data_dir_))
-        {
-            throw std::runtime_error("Failed to create dir " + data_dir_);
-        }
+        throw std::runtime_error("Failed to create dir " + data_dir_);
     }
 }
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::merge_data(
-        double res,
-        const QVector<QwtOHLCSample>& new_ohlc_samples,
-        const std::vector<double>& new_ohlc_volumes)
+        const double res,
+        const QVector<QwtOHLCSample>& new_ohlc_samples_,
+        const std::vector<double>& new_ohlc_volumes_)
 {
-    uint64_t update = candles_.begin()->second.merge_data(new_ohlc_samples, new_ohlc_volumes);
+    uint64_t update = candles_.begin()->second->merge_data(new_ohlc_samples_, new_ohlc_volumes_);
     // write an update to the main datafile
     if (update>0) {
-        write_hdf5(candles_.begin()->second.ohlc_samples->data(), candles_.begin()->second.ohlc_volumes, update);
+        write_hdf5(candles_.begin()->second->ohlc_samples_->data(), candles_.begin()->second->ohlc_volumes_, update);
     }
 }
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::read_hdf5()
 {
-    read_hdf5(candles_.begin()->second.ohlc_samples->data(), candles_.begin()->second.ohlc_volumes);
+    read_hdf5(candles_.begin()->second->ohlc_samples_->data(), candles_.begin()->second->ohlc_volumes_);
 }
 
 // ----------------------------------------------------------------------------
@@ -109,7 +115,7 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
 {
     // check data before attempting to write to disk
     //    if (debug_level>0)
-    ohlc_dataset::validate_ohlc(samples, ohlc_chart_data::minute);
+    ohlc_datasets::validate_ohlc(samples, ohlc_chart_data::minute);
     //
     DEBUG_ALWAYS("Opening: " << file_name_);
 
@@ -229,18 +235,18 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
 //// ----------------------------------------------------------------------------
 //bool ohlc_dataset_manager::empty()
 //{
-//    return (candles_.begin()->second.ohlc_samples->data().size() == 0 || candles_.begin()->second.ohlc_volumes.size() == 0);
+//    return (candles_.begin()->second->ohlc_samples_->data().size() == 0 || candles_.begin()->second->ohlc_volumes_.size() == 0);
 //}
 
 // ----------------------------------------------------------------------------
 double ohlc_dataset_manager::get_last_sample_time()
 {
     double last = 0;
-    if (!candles_.begin()->second.ohlc_samples->data().empty()) {
-        last = candles_.begin()->second.ohlc_samples->data().back().time;
+    if (!candles_.begin()->second->ohlc_samples_->data().empty()) {
+        last = candles_.begin()->second->ohlc_samples_->data().back().time;
     }
-    if (!candles_.begin()->second.live_samples->data().empty()) {
-        last = std::max(last, candles_.begin()->second.live_samples->data().back().time);
+    if (!candles_.begin()->second->live_samples_->data().empty()) {
+        last = std::max(last, candles_.begin()->second->live_samples_->data().back().time);
     }
     return last;
 }
@@ -249,51 +255,64 @@ double ohlc_dataset_manager::get_last_sample_time()
 double ohlc_dataset_manager::get_first_sample_time()
 {
     double first = 0;
-    if (!candles_.begin()->second.ohlc_samples->data().empty()) {
-        first = candles_.begin()->second.ohlc_samples->data().front().time;
+    if (!candles_.begin()->second->ohlc_samples_->data().empty()) {
+        first = candles_.begin()->second->ohlc_samples_->data().front().time;
     }
-    if (!candles_.begin()->second.live_samples->data().empty()) {
-        first = std::min(first, candles_.begin()->second.live_samples->data().front().time);
+    if (!candles_.begin()->second->live_samples_->data().empty()) {
+        first = std::min(first, candles_.begin()->second->live_samples_->data().front().time);
     }
     return first;
 }
 
 // ----------------------------------------------------------------------------
-QwtInterval ohlc_dataset_manager::get_min_max(ohlc_chart_data const &samples, double start_time, double end_time) const
+QwtInterval ohlc_dataset_manager::get_min_max(ohlc_chart_data const *dataset, double res, double start_time, double end_time) const
 {
-    if (samples.data().empty()) return QwtInterval();
-    double init_time = samples.data().front().time;
-    double last_time = samples.data().back().time;
-    // if graph is too far right or left, return invalid limits
-    if (start_time>last_time || end_time<init_time) return QwtInterval();
+    if (dataset->data().empty()) return QwtInterval();
+    //
+    QwtInterval result;
+    //
+    double init_time = dataset->data().front().time;
+    double last_time = dataset->data().back().time;
     //
     start_time = std::max(start_time, init_time);
     end_time   = std::min(end_time, last_time);
-    size_t sample1 = static_cast<size_t>((start_time-init_time)/(60 * 1000));
-    size_t sample2 = static_cast<size_t>((end_time-init_time)/(60 * 1000));
-/*
-    // if graph is too far right, show last point range
-    if (start_time>last_time)
-        return samples.minmax_limits(sample2, sample2);
-    // if graph is too far left, show first point range
-    if (end_time<init_time)
-        return samples.minmax_limits(sample1, sample1);
-*/
-    return samples.minmax_limits(sample1, sample2);
+    size_t sample1 = static_cast<size_t>((start_time-init_time)/res);
+    size_t sample2 = static_cast<size_t>((end_time-init_time)/res);
+    // if graph is too far right, show last point range, mark flags as invalid
+    if (start_time>last_time) {
+        result = dataset->minmax_limits(sample2, sample2);
+        result.setBorderFlags(QwtInterval::BorderFlag(255));
+    }
+    // if graph is too far left, show first point range, mark flags as invalid
+    else if (end_time<init_time) {
+        result = dataset->minmax_limits(sample1, sample1);
+        result.setBorderFlags(QwtInterval::BorderFlag(255));
+    }
+    else {
+        result = dataset->minmax_limits(sample1, sample2);
+    }
+    return result;
 }
 
 // ----------------------------------------------------------------------------
-QwtInterval ohlc_dataset_manager::get_min_max(double start_time, double end_time) const
+QwtInterval ohlc_dataset_manager::get_min_max(double res, double start_time, double end_time) const
 {
-    auto mm1 = get_min_max(*candles_.begin()->second.ohlc_samples, start_time, end_time);
-    auto mm2 = get_min_max(*candles_.begin()->second.live_samples, start_time, end_time);
+    // min max uses the current dataset resolution for main plot
+    auto mm1 = get_min_max(get_dataset(res)->ohlc_samples_, res, start_time, end_time);
+
+    // live data is always at highest resolution, but if it is out of range, ignore it
+    res = ohlc_chart_data::minute;
+    auto mm2 = get_min_max(get_dataset(res)->live_samples_, res, start_time, end_time);
+    if (mm2.borderFlags()==QwtInterval::BorderFlag(255)) {
+        return mm1;
+    }
     return mm1.unite(mm2);
 }
 
 // ----------------------------------------------------------------------------
-QwtInterval ohlc_dataset_manager::get_min_max_window(double start_time, double end_time, double percent) const
+QwtInterval ohlc_dataset_manager::get_min_max_window(double res, double start_time, double end_time, double percent) const
 {
-    QwtInterval result = get_min_max(start_time, end_time);
+    QwtInterval result = get_min_max(res, start_time, end_time);
     auto diff = result.width();
     if (result.maxValue() == 0.0)
         return {0.0, 0.1};
@@ -303,29 +322,43 @@ QwtInterval ohlc_dataset_manager::get_min_max_window(double start_time, double e
 }
 
 // ----------------------------------------------------------------------------
+ohlc_chart_data *ohlc_dataset_manager::get_live_data()
+{
+    ohlc_datasets *temp = get_dataset(ohlc_chart_data::minute);
+    return temp->live_samples_;
+}
+
+// ----------------------------------------------------------------------------
+ohlc_chart_curve *ohlc_dataset_manager::get_live_curve()
+{
+    ohlc_datasets *temp = get_dataset(ohlc_chart_data::minute);
+    return temp->live_curve_;
+}
+
+// ----------------------------------------------------------------------------
 void ohlc_dataset_manager::add_live_data(QwtOHLCSample new_sample)
 {
     // snap sample to last minute in which it occured
     new_sample.time = ohlc_chart_data::minute*std::trunc(new_sample.time/ohlc_chart_data::minute);
 
     // if this is the first one, just add it
-    if (candles_.begin()->second.live_samples->data().empty()) {
-        candles_.begin()->second.live_samples->append(new_sample);
+    if (candles_.begin()->second->live_samples_->data().empty()) {
+        candles_.begin()->second->live_samples_->append(new_sample);
     }
     // update existing OHLC candle with new data
     else {
-        double init_time = candles_.begin()->second.live_samples->data().front().time;
+        double init_time = candles_.begin()->second->live_samples_->data().front().time;
         size_t index = static_cast<size_t>((new_sample.time-init_time)/ohlc_chart_data::minute);
-        if (index>=candles_.begin()->second.live_samples->size()) {
+        if (index>=candles_.begin()->second->live_samples_->size()) {
             // if there are gaps between incoming data, fill them with last close
-            auto prev = candles_.begin()->second.live_samples->data().back();
+            auto prev = candles_.begin()->second->live_samples_->data().back();
             prev.high = prev.low = prev.open = prev.close;
-            for (size_t s=candles_.begin()->second.live_samples->size(); s<=index; ++s) {
+            for (size_t s=candles_.begin()->second->live_samples_->size(); s<=index; ++s) {
                 prev.time += ohlc_chart_data::minute;
-                candles_.begin()->second.live_samples->append(prev);
+                candles_.begin()->second->live_samples_->append(prev);
             }
         }
-        auto &old_sample = candles_.begin()->second.live_samples->data()[index];
+        auto &old_sample = candles_.begin()->second->live_samples_->data()[index];
         old_sample.low   = std::min(old_sample.low, new_sample.low);
         old_sample.high  = std::max(old_sample.high, new_sample.high);
         old_sample.close = new_sample.open;
@@ -335,3 +368,11 @@ void ohlc_dataset_manager::add_live_data(QwtOHLCSample new_sample)
 }
 
 // ----------------------------------------------------------------------------
+std::vector<double> ohlc_dataset_manager::get_dataset_resolutions()
+{
+    std::vector<double> result;
+    for (auto k : candles_) {
+        result.push_back(k.first);
+    }
+    return result;
+}

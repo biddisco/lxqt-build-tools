@@ -120,6 +120,7 @@ public slots:
 //    void usd_dir_clicked();
     void capture_image();
 
+    void set_candle_size(double res);
     void graph_rescale(int range);
 
 private:

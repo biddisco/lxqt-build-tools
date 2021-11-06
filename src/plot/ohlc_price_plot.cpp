@@ -1,4 +1,5 @@
 // STL
+#include <iostream>
 #include <sstream>
 #include <cassert>
 // Qt
@@ -25,19 +26,22 @@
 #include "src/plot/ohlc_interactor.hpp"
 #include "src/plot/ohlc_picker.hpp"
 #include "src/plot/ohlc_chart_curve.hpp"
-
+//
+#include <range/v3/view.hpp>
 // ----------------------------------------------------------------------------
 ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     : QwtPlot( parent )
-    , ohlc_dataset_manager_(data)
     , plot_interactor_(nullptr)
     , timescaleDraw_(nullptr)
     , timescaleEngine_(nullptr)
-    , ohlc_curve_(nullptr)
-    , live_curve_(nullptr)
     , direct_painter_(nullptr)
+    , ohlc_dataset_manager_(data)
+    , auto_candle_resolution_(true)
 {
     setTitle("XRP");
+
+    // default start up resolution
+    candle_resolution_ = ohlc_chart_data::minute;
 
     // find difference between local time and UTC, for 'correct' date/time axis
     QDateTime local(QDateTime::currentDateTime());
@@ -121,22 +125,23 @@ ohlc_price_plot::~ohlc_price_plot()
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::update_data_array(ohlc_dataset_manager *ohlc_dataset_manager)
+void ohlc_price_plot::set_data(ohlc_dataset_manager *ohlc_dataset_manager)
 {
     ohlc_dataset_manager_ = ohlc_dataset_manager;
+    auto resolutions = ohlc_dataset_manager_->get_dataset_resolutions();
+    bool first = true;
+    for (auto r : resolutions) {
+        auto *data = ohlc_dataset_manager_->get_dataset(r);
+        // bind it to this plot
+        data->ohlc_curve_->attach(this);
+        data->ohlc_curve_->setVisible(first);
+        first = false;
+    }
+}
 
-    if (ohlc_curve_) {
-        // mark data as changed
-        ohlc_curve_->itemChanged();
-    }
-    else {
-        // create a new plotting curve for OHLC data
-        auto ohlc = ohlc_dataset_manager_->get_samples();
-        ohlc_curve_ = new ohlc_chart_curve(ohlc);
-        // bind it to this plot and turn on display
-        ohlc_curve_->attach(this);
-        ohlc_curve_->setVisible(true);
-    }
+// ----------------------------------------------------------------------------
+void ohlc_price_plot::update_data_array()
+{
 }
 
 // ----------------------------------------------------------------------------
@@ -146,16 +151,52 @@ void ohlc_price_plot::update_live_data(QwtOHLCSample const &new_sample)
 
     ohlc_dataset_manager_->add_live_data(new_sample);
     // The live data is typically only a small number of samples
-    if (!live_curve_) {
+    if (!direct_painter_) {
         direct_painter_ = new QwtPlotDirectPainter(this);
-        live_curve_ = new ohlc_chart_curve(ohlc_dataset_manager_->get_live_samples());
-        live_curve_->attach(this);
-        live_curve_->setVisible(true);
+        ohlc_dataset_manager_->get_live_curve()->attach(this);
+        ohlc_dataset_manager_->get_live_curve()->setVisible(true);
     }
     else {
-        live_curve_->itemChanged();
+        ohlc_dataset_manager_->get_live_curve()->itemChanged();
     }
-    direct_painter_->drawSeries(live_curve_, 0, ohlc_dataset_manager_->get_live_samples()->size() - 1 );
+    direct_painter_->drawSeries(ohlc_dataset_manager_->get_live_curve(),
+        0, ohlc_dataset_manager_->get_live_data()->size() - 1 );
+}
+
+// ----------------------------------------------------------------------------
+void ohlc_price_plot::adjust_candle_size(double res)
+{
+    // to track the last auto change we made
+    static double last_auto_res = 0;
+
+    // auto mode
+    if (res==0) {
+        // if we don't find a usable coarser resolution, use 1m
+        res = ohlc_chart_data::minute;
+        // get the pixel/plot coordinate transform
+        const QwtScaleMap map = canvasMap(QwtAxis::XBottom);
+        // try for candle around ~10 pixels - How big in world coords?
+        double xm = map.invTransform(10) - map.invTransform(0);
+        for (const auto &r : ranges::views::reverse(ohlc_chart_data::available_resolutions())) {
+            if (r<xm) {
+                // if we have not changed value, just exit
+                if (r==last_auto_res) return;
+                std::cout << "changing resolution to " << r.name_ << std::endl;
+                // set the desired resolution to this scale and break out of loop
+                res = last_auto_res = r;
+                break;
+            }
+        }
+    }
+    // user selected resolution
+    auto resolutions = ohlc_dataset_manager_->get_dataset_resolutions();
+    for (auto r : resolutions) {
+        auto *data = ohlc_dataset_manager_->get_dataset(r);
+        data->ohlc_curve_->setSymbolExtent(0.8 * r);
+        data->ohlc_curve_->setVisible(r==res);
+    }
+    candle_resolution_ = res;
+    replot();
 }
 
 // ----------------------------------------------------------------------------
@@ -186,10 +227,5 @@ void ohlc_price_plot::showItem( QwtPlotItem *item, bool on )
 void ohlc_price_plot::exportPlot()
 {
     QwtPlotRenderer renderer;
-    renderer.exportTo( this, "stockchart.pdf" );
-}
-
-// ----------------------------------------------------------------------------
-void ohlc_price_plot::adjust_candle_size()
-{
+    renderer.exportTo( this, "grox.pdf" );
 }

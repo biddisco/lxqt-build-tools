@@ -4,6 +4,7 @@
 #include <QDateTime>
 #include <QPen>
 #include <QPoint>
+#include <QLocale>
 // Qwt
 #include <QwtAxis>
 #include <QwtPlot>
@@ -11,6 +12,8 @@
 #include <QwtPickerMachine>
 #include <QwtScaleMap>
 #include <QwtText>
+//
+#include "src/plot/ohlc_price_plot.hpp"
 
 class ohlc_picker : public QwtPlotPicker
 {
@@ -27,11 +30,29 @@ public:
         setTrackerPen(QPen(Qt::darkGray));
     }
 
+    QPointF quantize_x_coord(const QPointF& pos) const
+    {
+        // get the pixel/plot coordinate transform
+        ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
+        if (!plot_) return pos;
+        //
+        const QwtScaleMap map = plot_->canvasMap(QwtAxis::XBottom);
+        double p1 = map.invTransform(pos.x());
+        double res = plot_->get_candle_resolution();
+        p1 = res*static_cast<uint64_t>((p1+res/2.0)/res);
+        p1 = map.transform(p1);
+        return QPointF(p1, pos.y());
+    }
+
     virtual QwtText trackerTextF(const QPointF& pos) const QWT_OVERRIDE
     {
-        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(pos.x());
+        ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
+        if (!plot_) return QwtText();
+        //
+        double res = plot_->get_candle_resolution();
+        double p1 = res*static_cast<uint64_t>((pos.x()+res/2.0)/res);
+        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(p1);
         QString s = QLocale().toString(dt, "dd-MM-yy hh:mm");
-
         QwtText text(s);
         text.setColor(Qt::lightGray);
         //            QColor c = rubberBandPen().color();
@@ -45,21 +66,12 @@ public:
     QPolygon adjustedPoints(const QPolygon &points) const QWT_OVERRIDE
     {
         QPolygon adjusted;
-        if(points.size() == 1)
+        // we only handle hLine so far
+        if (points.size() == 1)
         {
-            // get the pixel/plot coordinate transform
-            auto axis = QwtAxis::XBottom;
-            QwtPlot *plot_ = dynamic_cast<QwtPlot*>(canvas()->parentWidget());
-            if(!plot_) return adjusted;
-            const QwtScaleMap map = plot_->canvasMap(axis);
-
             // Map the x coord to the chart, snap it to a bin,
             // then invert the mapping
-            double p1 = map.invTransform(points[0].x());
-            p1 = 60000.0*static_cast<uint64_t>((p1+30000.0)/60000.0);
-            p1 = map.transform(p1);
-            QPoint p(p1, points[0].y());
-            adjusted += p;
+            adjusted += QPoint(quantize_x_coord(points[0]).x(), points[0].y());
         }
         return adjusted;
     }

@@ -1,26 +1,50 @@
 #pragma once
 
+// STL
+#include <vector>
 // Qwt
 #include <QwtInterval>
 #include <QwtSeriesData>
 #include <QwtTradingChartData>
 #include <QwtOHLCSample>
 
+struct candle_res {
+    // this is the actual resolution of the candle
+    const double res_;
+    // this is used when resampling to know which res to use
+    const double base_;
+    // A simple name that will appear in menus
+    const char *name_;
+    // operators to make access easy
+    constexpr operator double() const { return res_; }
+    constexpr operator const char*() const { return name_; }
+};
+
 class ohlc_chart_data : public QwtTradingChartData
 {
   public:
-    static constexpr double minute   = 60.0*1000.0;
-    static constexpr double minute3  = minute*3;
-    static constexpr double minute5  = minute*5;
-    static constexpr double minute15 = minute*15;
-    static constexpr double minute30 = minute*30;
-    static constexpr double hour     = minute*60;
-    static constexpr double hour2    = hour*2;
-    static constexpr double hour4    = hour*4;
-    static constexpr double hour6    = hour*6;
-    static constexpr double hour12   = hour*12;
-    static constexpr double day      = hour*24;
-    static constexpr double day3     = day*3;
+    static constexpr candle_res minute   = {60*1000,   1,        "1m" };
+    static constexpr candle_res minute3  = {minute*3,  minute,   "3m" };
+    static constexpr candle_res minute5  = {minute*5,  minute,   "5m" };
+    static constexpr candle_res minute15 = {minute*15, minute5,  "15m"};
+    static constexpr candle_res minute30 = {minute*30, minute15, "30m"};
+    static constexpr candle_res hour     = {minute*60, minute30, "1h" };
+    static constexpr candle_res hour2    = {hour*2,    hour,     "2h" };
+    static constexpr candle_res hour4    = {hour*4,    hour2,    "4h" };
+    static constexpr candle_res hour6    = {hour*6,    hour2,    "6h" };
+    static constexpr candle_res hour12   = {hour*12,   hour6,    "12h"};
+    static constexpr candle_res day      = {hour*24,   hour12,   "1d" };
+    static constexpr candle_res day3     = {day*3,     day,      "3d" };
+
+    // for easy access to array of all available resolutions
+    static const std::vector<candle_res> &available_resolutions()
+    {
+        static const std::vector<candle_res> resolutions = {
+            minute, minute3, minute5, minute15, minute30,
+            hour, hour2, hour4, hour6, hour12, day, day3
+        };
+        return resolutions;
+    }
 
   public:
     ohlc_chart_data() : QwtTradingChartData() {}
