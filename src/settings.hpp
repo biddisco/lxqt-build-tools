@@ -70,6 +70,7 @@ struct bitstamp_account : public ledger_wallet {
         if (c.type_ == currency_type::xrp) return public_;
         if (c.type_ == currency_type::usd_bitstamp) return currency::bitstamp_trust;
         if (c.type_ == currency_type::eur_bitstamp) return currency::bitstamp_trust;
+        return "";
     }
 };
 

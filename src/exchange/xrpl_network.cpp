@@ -625,6 +625,7 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
     }
     from->sequence_++;
     submit_signed_transaction(std::move(signed_tx));
+    return true;
 }
 
 // ----------------------------------------------------------------------------

@@ -128,7 +128,10 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     accounts_scrollwidget->setWidget(accounts_frame);
     accounts_dock = std::make_shared<QDockWidget>("Accounts", this);
     accounts_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
-    accounts_dock->setFeatures(QDockWidget::AllDockWidgetFeatures);
+    accounts_dock->setFeatures(
+            QDockWidget::DockWidgetClosable | 
+            QDockWidget::DockWidgetMovable |
+            QDockWidget::DockWidgetFloatable);
     accounts_dock->setObjectName("AccountsDock");
     accounts_dock->setWidget(accounts_scrollwidget);
     addDockWidget(Qt::RightDockWidgetArea, accounts_dock.get());
@@ -143,7 +146,10 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     orders_scrollwidget->setWidget(main_frame);
     orders_dock = std::make_shared<QDockWidget>("Orders", this);
     orders_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
-    orders_dock->setFeatures(QDockWidget::AllDockWidgetFeatures);
+    orders_dock->setFeatures(
+            QDockWidget::DockWidgetClosable | 
+            QDockWidget::DockWidgetMovable |
+            QDockWidget::DockWidgetFloatable);
     orders_dock->setObjectName("OrdersDock");
     orders_dock->setWidget(orders_scrollwidget);
     addDockWidget(Qt::RightDockWidgetArea, orders_dock.get());
