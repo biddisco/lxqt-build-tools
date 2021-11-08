@@ -37,17 +37,18 @@ void ohlc_dataset_manager::merge_data(
         const QVector<QwtOHLCSample>& new_ohlc_samples_,
         const std::vector<double>& new_ohlc_volumes_)
 {
-    uint64_t update = candles_.begin()->second->merge_data(new_ohlc_samples_, new_ohlc_volumes_);
-    // write an update to the main datafile
-    if (update>0) {
-        write_hdf5(candles_.begin()->second->ohlc_samples_->data(), candles_.begin()->second->ohlc_volumes_, update);
-    }
+    ohlc_datasets *data = candles_[res];
+    // returns the number of samples that are 'new'
+    uint64_t update = data->merge_data(new_ohlc_samples_, new_ohlc_volumes_);
+    // write new samples to the main datafile
+    write_hdf5(data->ohlc_samples_->data(), data->ohlc_volumes_, update);
 }
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::read_hdf5()
 {
-    read_hdf5(candles_.begin()->second->ohlc_samples_->data(), candles_.begin()->second->ohlc_volumes_);
+    read_hdf5(candles_.begin()->second->ohlc_samples_->data(),
+              candles_.begin()->second->ohlc_volumes_);
 }
 
 // ----------------------------------------------------------------------------
@@ -145,10 +146,6 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
     // create datasets if they do not exist already
     if (H5Lexists(file, "ohlc", H5P_DEFAULT) <= 0)
     {
-        if (update != 0)
-        {
-            throw std::runtime_error("Cannot extend dataset before it exists");
-        }
         // create a property list to set the chunking property on our OHLC dataset
         hid_t dprop1 = H5Pcreate(H5P_DATASET_CREATE);
         status = H5Pset_chunk(dprop1, 1, chunk_dim1);

@@ -35,6 +35,15 @@
 extern void generate_encrypted_ini_data(password_dialog& npw);
 
 // ----------------------------------------------------------------------------
+// unixtime * 1000 is msecs since 1970/1/1
+std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
+{
+    QDateTime dt = QDateTime::fromMSecsSinceEpoch(unixmsecs);
+    return QLocale().toString( dt, "yyyy-MM-dd hh:mm:ss").toStdString();
+}
+
+
+// ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)
   : QMainWindow(parent)
 {
@@ -129,7 +138,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     accounts_dock = std::make_shared<QDockWidget>("Accounts", this);
     accounts_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
     accounts_dock->setFeatures(
-            QDockWidget::DockWidgetClosable | 
+            QDockWidget::DockWidgetClosable |
             QDockWidget::DockWidgetMovable |
             QDockWidget::DockWidgetFloatable);
     accounts_dock->setObjectName("AccountsDock");
@@ -147,7 +156,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     orders_dock = std::make_shared<QDockWidget>("Orders", this);
     orders_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
     orders_dock->setFeatures(
-            QDockWidget::DockWidgetClosable | 
+            QDockWidget::DockWidgetClosable |
             QDockWidget::DockWidgetMovable |
             QDockWidget::DockWidgetFloatable);
     orders_dock->setObjectName("OrdersDock");
@@ -172,9 +181,11 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // ----------------------------------
     // Subscribe to xrpl events
     //
+#if 1
     xrpl_network_->subscribe_orderbook(io_contexts);
     xrpl_network_->subscribe_accounts(io_contexts);
     xrpl_testnet_->subscribe_accounts(io_contexts);
+#endif
 
     // Run the I/O service on some threads.
     for (int i=0; i<2; ++i) {
@@ -457,6 +468,8 @@ void GroxMainWindow::graph_rescale(int range)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::new_ohlc_data()
 {
+    if (!enable_multiresolution_) return;
+    //
     // get all available candle resolutions, except highest res
     // since we we use that one to generate all the others
     const auto &resolutions = ohlc_chart_data::available_resolutions();
@@ -562,10 +575,7 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
 
         // what is the last sample we currently have
         auto last_time = hdf5_ohlc_.get_last_sample_time();
-        auto end_t = static_cast<uint64_t>(last_time/1000);
-        std::time_t t(end_t);
-        std::tm tm = *std::localtime(&t);
-        std::cout << "Data merged up to " << std::put_time(&tm, "%F %T") << std::endl;
+        std::cout << "Data merged up to " << msecs_unix_to_calendar_time(last_time) << std::endl;
     }
     catch (std::exception& e)
     {
@@ -604,21 +614,20 @@ void GroxMainWindow::update_account_balances()
 }
 
 // ----------------------------------------------------------------------------
-// unixtime * 1000 is msecs since 1970/1/1
-std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
-{
-    QDateTime dt = QDateTime::fromMSecsSinceEpoch(unixmsecs);
-    return QLocale().toString( dt, "yyyy-MM-dd hh:mm:ss").toStdString();
-}
-
-// ----------------------------------------------------------------------------
 void GroxMainWindow::update_candlestick_data()
 {
     uint64_t req_t = 0, start_t = 0;
     // what is the most recent sample we currently have
     start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time());
-    std::string s = msecs_unix_to_calendar_time(start_t);
-    DEBUG_ALWAYS("Data present up until " << s);
+    if (start_t == 0) {
+        start_t = 1483225200*1000.0;
+        std::string s = msecs_unix_to_calendar_time(start_t);
+        DEBUG_ALWAYS("No Data present : requesting from " << s);
+    }
+    else {
+        std::string s = msecs_unix_to_calendar_time(start_t);
+        DEBUG_ALWAYS("Data present up until " << s);
+    }
     // convert to unix timestamp : next sample is 60s after last
     req_t = start_t/1000 + 60;
 

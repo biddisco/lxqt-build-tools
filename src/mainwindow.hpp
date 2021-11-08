@@ -68,6 +68,7 @@ class GroxMainWindow : public QMainWindow
     std::shared_ptr<xrpl_network> xrpl_network_;
     std::shared_ptr<xrpl_network> xrpl_testnet_;
 
+    bool enable_multiresolution_ = true;
 //    http::request<http::string_body> bitstamp_request_;
 
 public:

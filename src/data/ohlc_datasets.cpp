@@ -40,6 +40,7 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
     {
         ohlc_samples_->data() = new_ohlc_samples_;
         ohlc_volumes_ = new_ohlc_volumes_;
+        return ohlc_samples_->size();
     }
     else if (!new_ohlc_samples_.empty())
     {
@@ -49,22 +50,38 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
         DEBUG_ONLY("existing " << static_cast<uint64_t>(last_existing) << " new "
                   << static_cast<uint64_t>(first_new));
         // 1 minute candle OHLC data is stored in msecs
-        if (first_new - last_existing == ohlc_chart_data::minute)
+        if (first_new - last_existing != ohlc_chart_data::minute)
         {
-            DEBUG_ONLY("merging data");
-            ohlc_samples_->data().append(new_ohlc_samples_);
-            ohlc_volumes_.insert(
-                ohlc_volumes_.end(), new_ohlc_volumes_.begin(), new_ohlc_volumes_.end());
-            if (size_t(ohlc_samples_->data().size()) != ohlc_volumes_.size())
-            {
-                throw std::runtime_error("Data merge problem");
+            // How many missing samples are there?
+            int N = (first_new - last_existing) / ohlc_chart_data::minute;
+            if (N<=0) {
+                throw std::runtime_error("Data OHLC time mismatch in merge");
             }
-            update = new_ohlc_samples_.size();
+            auto prev = ohlc_samples_->data().back();
+            // got from 1 to N to add N-1 samples with time offsets from 1
+            for (int i=1; i<N; ++i) {
+                QwtOHLCSample dummy(last_existing + i*ohlc_chart_data::minute,
+                                    prev.close, prev.close, prev.close, prev.close);
+                ohlc_samples_->data().append(dummy);
+                ohlc_volumes_.push_back(0);
+            }
+            update += (N-1);
         }
-        else
+        // try again with dummy data inserted into gap
+        last_existing = ohlc_samples_->data().back().time;
+
+        DEBUG_ONLY("existing " << static_cast<uint64_t>(last_existing) << " new "
+                  << static_cast<uint64_t>(first_new));
+
+        DEBUG_ONLY("merging data");
+        ohlc_samples_->data().append(new_ohlc_samples_);
+        ohlc_volumes_.insert(
+            ohlc_volumes_.end(), new_ohlc_volumes_.begin(), new_ohlc_volumes_.end());
+        if (size_t(ohlc_samples_->data().size()) != ohlc_volumes_.size())
         {
-            throw std::runtime_error("Data OHLC time mismatch in merge");
+            throw std::runtime_error("Data merge problem");
         }
+        update += new_ohlc_samples_.size();
     }
     return update;
 }
