@@ -11,7 +11,7 @@
 struct candle_res {
     // this is the actual resolution of the candle
     const double res_;
-    // this is used when resampling to know which res to use
+    // this is used when resampling to know which (higher) res to use
     const double base_;
     // A simple name that will appear in menus
     const char *name_;
@@ -46,8 +46,15 @@ class ohlc_chart_data : public QwtTradingChartData
         return resolutions;
     }
 
+  protected:
+    double resolution_;
+
   public:
-    ohlc_chart_data() : QwtTradingChartData() {}
+    ohlc_chart_data(double resolution)
+        : QwtTradingChartData()
+        , resolution_(resolution)
+    {}
+
     ~ohlc_chart_data() {}
 
     QwtInterval minmax_limits(size_t from, size_t to) const
@@ -72,6 +79,14 @@ class ohlc_chart_data : public QwtTradingChartData
         m_samples.clear();
         m_samples.squeeze();
         cachedBoundingRect = QRectF( 0.0, 0.0, -1.0, -1.0 );
+    }
+
+    double get_resolution() const { return resolution_; }
+
+    inline int64_t sample_index(double time) const
+    {
+        int64_t i = static_cast<int64_t>((time-m_samples[0].time)/resolution_);
+        return std::max(int64_t(0), i);
     }
 
     QVector<QwtOHLCSample> const &data() const { return m_samples; }

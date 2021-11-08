@@ -22,7 +22,7 @@ struct ohlc_datasets
     ohlc_chart_data    *live_samples_;
     ohlc_chart_curve   *live_curve_;
 
-    ohlc_datasets();
+    ohlc_datasets(double res);
     ~ohlc_datasets();
 
     // Add new downloaded data to the existing dataset

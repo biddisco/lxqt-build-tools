@@ -389,6 +389,15 @@ void GroxMainWindow::createMenus()
             cryptoPricePlot_->adjust_candle_size(0);
         }
     } , Qt::QueuedConnection);
+
+    connect(ui.heikin, QOverload<int>::of(&QCheckBox::stateChanged), this, [this](int state){
+        if (state) {
+            cryptoPricePlot_->setMode(ohlc_chart_curve::HeikinAshi);
+        }
+        else {
+            cryptoPricePlot_->setMode(QwtPlotTradingCurve::SymbolStyle::CandleStick);
+        }
+    } , Qt::QueuedConnection);
 }
 
 // ----------------------------------------------------------------------------

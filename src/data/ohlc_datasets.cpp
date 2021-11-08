@@ -10,13 +10,13 @@
 #include "src/data/ohlc_datasets.hpp"
 
 // ----------------------------------------------------------------------------
-ohlc_datasets::ohlc_datasets()
+ohlc_datasets::ohlc_datasets(double res)
 {
     // we do not destroy these in the destructor because they are given to the
     // plot curve object which deletes them when it is destroyed
-    ohlc_samples_ = new ohlc_chart_data();
+    ohlc_samples_ = new ohlc_chart_data(res);
     ohlc_curve_   = new ohlc_chart_curve(ohlc_samples_);
-    live_samples_ = new ohlc_chart_data();
+    live_samples_ = new ohlc_chart_data(res);
     live_curve_   = new ohlc_chart_curve(live_samples_);
 }
 
@@ -111,7 +111,7 @@ uint64_t sample_index(double init, double time, double res)
 // resample from res2 to res1
 ohlc_datasets *ohlc_datasets::resample(double res1, double res2)
 {
-    ohlc_datasets *result = new ohlc_datasets();
+    ohlc_datasets *result = new ohlc_datasets(res1);
     result->resample_update(res1, this, res2);
     return result;
 }
