@@ -145,6 +145,7 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
     {
         const QwtOHLCSample &s = sample(i);
         QwtOHLCSample translatedSample;
+        int brushIndex;
 
         if (symbolStyleCopy == ohlc_chart_curve::HeikinAshi) {
             // first point in plot needs a prev open/close
@@ -163,6 +164,10 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
             prev_open  = open;
             prev_close = close;
 
+            brushIndex = (open < close)
+                ? QwtPlotTradingCurve::Increasing
+                : QwtPlotTradingCurve::Decreasing;
+
             translatedSample.time = timeMap->transform(s.time);
             translatedSample.open = valueMap->transform(open);
             translatedSample.high = valueMap->transform(high);
@@ -171,16 +176,15 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
 
         }
         else {
+            brushIndex = (s.open < s.close)
+                ? QwtPlotTradingCurve::Increasing
+                : QwtPlotTradingCurve::Decreasing;
             translatedSample.time = timeMap->transform(s.time);
             translatedSample.open = valueMap->transform(s.open);
             translatedSample.high = valueMap->transform(s.high);
             translatedSample.low = valueMap->transform(s.low);
             translatedSample.close = valueMap->transform(s.close);
         }
-
-        const int brushIndex = (s.open < s.close)
-            ? QwtPlotTradingCurve::Increasing
-            : QwtPlotTradingCurve::Decreasing;
 
         QPen pen = symbolPenCopy[brushIndex];
         pen.setCapStyle(Qt::FlatCap);
