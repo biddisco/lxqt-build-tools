@@ -96,8 +96,8 @@ endif()
 # If we must pull a fresh copy, setup git location/branch and set shallow flag
 fetchcontent_declare(
   qwt
-  GIT_REPOSITORY $HOME/src/qwt
-  GIT_TAG develop-cmake
+  GIT_REPOSITORY $ENV{HOME}/src/qwt
+  GIT_TAG svn-cmake
   GIT_SHALLOW TRUE
 )
 fetchcontent_getproperties(qwt)
