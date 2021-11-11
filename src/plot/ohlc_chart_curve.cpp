@@ -7,6 +7,7 @@
 #include <QwtDate>
 #include <QwtPainter>
 #include <QwtMath>
+#include <QwtPlot>
 // Grox
 #include "src/plot/ohlc_chart_curve.hpp"
 
@@ -36,6 +37,9 @@ ohlc_chart_curve::ohlc_chart_curve(ohlc_chart_data *chartData)
     setSymbolPenHA(QwtPlotTradingCurve::Decreasing, QColor("#ef5350"));
     setSymbolBrushHA(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));
     setSymbolBrushHA(QwtPlotTradingCurve::Decreasing, QColor("#ef5350"));
+
+    setYAxis(QwtPlot::yRight);
+
 }
 
 // ----------------------------------------------------------------------------

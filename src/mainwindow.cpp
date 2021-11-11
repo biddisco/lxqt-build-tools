@@ -457,7 +457,7 @@ void GroxMainWindow::graph_rescale(int range)
     }
     auto minmax = hdf5_ohlc_.get_min_max_window(cryptoPricePlot_->get_candle_resolution(), t1, t2, 0.05);
     cryptoPricePlot_->setAxisScale(QwtAxis::XBottom, t1, t2, stepSize);
-    cryptoPricePlot_->setAxisScale(QwtAxis::YLeft, minmax.minValue(), minmax.maxValue());
+    cryptoPricePlot_->setAxisScale(QwtAxis::YRight, minmax.minValue(), minmax.maxValue());
     cryptoPricePlot_->replot();
     if (cryptoPricePlot_->auto_candle_resolution()) {
         cryptoPricePlot_->adjust_candle_size(0);

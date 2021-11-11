@@ -59,7 +59,9 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     setAxisScaleEngine( QwtPlot::xBottom, timescaleEngine_ );
 
     // @TODO :needed? Enable autoscaling for axes
-    setAxisAutoScale( QwtPlot::yLeft );
+    setAxisVisible( QwtAxis::YLeft, false);
+    setAxisVisible( QwtAxis::YRight, true );
+    setAxisAutoScale( QwtPlot::yRight );
     setAxisAutoScale( QwtPlot::xBottom);
 
     setAxisLabelAlignment( QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom );
@@ -115,10 +117,10 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     axisWidget(Axis::xBottom)->setPalette( palette1 );
 
     // y axis
-    QPalette palette2 = axisWidget(Axis::yLeft)->palette();
+    QPalette palette2 = axisWidget(Axis::yRight)->palette();
     palette2.setColor( QPalette::WindowText, Qt::lightGray); // ticks
     palette2.setColor( QPalette::Text, Qt::lightGray);	     // tick labels
-    axisWidget(Axis::yLeft)->setPalette( palette2 );
+    axisWidget(Axis::yRight)->setPalette( palette2 );
 
     candle_label_ = new QwtTextLabel(this);
     candle_label_->setMargin(0);
