@@ -10,6 +10,7 @@
 #include <QwtPlot>
 #include <QwtPlotPicker>
 #include <QwtPickerMachine>
+#include <QwtScaleEngine>
 #include <QwtScaleMap>
 #include <QwtText>
 //
@@ -18,9 +19,18 @@
 class ohlc_picker : public QwtPlotPicker
 {
 public:
+    mutable QPointF last_coord;
+    QwtTextLabel  *price_label;
+
     ohlc_picker(QWidget* canvas)
         : QwtPlotPicker(canvas)
+        , last_coord(0,0)
+        , price_label(nullptr)
     {
+        ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas->parentWidget());
+        QwtScaleWidget* aw = plot_->axisWidget(QwtAxis::YRight);
+        price_label = new QwtTextLabel(canvas->parentWidget());
+
         setTrackerMode(QwtPlotPicker::ActiveOnly);
         setRubberBand(
                     QwtPicker::RubberBand(int(QwtPicker::HLineRubberBand) + int(QwtPicker::VLineRubberBand)));
@@ -28,6 +38,7 @@ public:
         // pale blue "#8589cf"
         setRubberBandPen(QPen(QBrush("#8589cf"), 1, Qt::DashLine));
         setTrackerPen(QPen(Qt::darkGray));
+
     }
 
     QPointF quantize_x_coord(const QPointF& pos) const
@@ -55,11 +66,8 @@ public:
         QString s = QLocale().toString(dt, "dd-MM-yy hh:mm");
         QwtText text(s);
         text.setColor(Qt::lightGray);
-        //            QColor c = rubberBandPen().color();
-        //            text.setBorderPen(QPen(c));
-        //            text.setBorderRadius(6);
-        //            c.setAlpha(170);
-        //text.setBackgroundBrush(c);
+        //
+        last_coord = pos;
         return text;
     }
 
@@ -74,6 +82,41 @@ public:
             adjusted += QPoint(quantize_x_coord(points[0]).x(), points[0].y());
         }
         return adjusted;
+    }
+
+    virtual void updateDisplay() QWT_OVERRIDE
+    {
+        QwtPlotPicker::updateDisplay();
+
+        if (!price_label) return;
+
+        // axis widget
+        ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
+        QwtScaleWidget* aw = plot_->axisWidget(QwtAxis::YRight);
+        auto awg = aw->geometry();
+        // scaling mapper
+        const QwtScaleMap map = plot_->canvasMap(QwtAxis::YRight);
+        auto y = map.transform(last_coord.y());
+        // setup string
+        QString str = QString::number(last_coord.y(), 'g', 4);
+        QwtText trackerText(str);
+        QColor c("#555555");
+        c.setAlpha(200);
+        trackerText.setColor(Qt::white);
+        trackerText.setBorderPen(QPen(c, 1));
+        trackerText.setBackgroundBrush(c);
+        trackerText.setLayoutAttribute(QwtText::LayoutAttribute::MinimumLayout, true);
+        trackerText.setRenderFlags(Qt::AlignLeft| Qt::AlignVCenter);
+        // get size of text that will be drawn
+        auto s = trackerText.textSize();
+        // position the label
+        price_label->setText(trackerText);
+        auto g = price_label->geometry();
+
+        g.moveTo(awg.x() + 11, awg.y() + y - s.height());
+        price_label->setGeometry(g.x(), g.y(),
+                                 awg.width() - 12, s.height()+2);
+
     }
 
 };
