@@ -13,6 +13,7 @@
 #include <QwtScaleEngine>
 #include <QwtScaleMap>
 #include <QwtText>
+#include <QwtTextLabel>
 //
 #include "src/plot/ohlc_price_plot.hpp"
 
@@ -98,7 +99,7 @@ public:
         const QwtScaleMap map = plot_->canvasMap(QwtAxis::YRight);
         auto y = map.transform(last_coord.y());
         // setup string
-        QString str = QString::number(last_coord.y(), 'g', 4);
+        QString str = QString::number(last_coord.y(), 'f', 4);
         QwtText trackerText(str);
         QColor c("#555555");
         c.setAlpha(200);
@@ -106,16 +107,15 @@ public:
         trackerText.setBorderPen(QPen(c, 1));
         trackerText.setBackgroundBrush(c);
         trackerText.setLayoutAttribute(QwtText::LayoutAttribute::MinimumLayout, true);
-        trackerText.setRenderFlags(Qt::AlignLeft| Qt::AlignVCenter);
+        trackerText.setRenderFlags(Qt::AlignLeft | Qt::AlignVCenter);
         // get size of text that will be drawn
         auto s = trackerText.textSize();
         // position the label
         price_label->setText(trackerText);
         auto g = price_label->geometry();
 
-        g.moveTo(awg.x() + 11, awg.y() + y - s.height());
-        price_label->setGeometry(g.x(), g.y(),
-                                 awg.width() - 12, s.height()+2);
+        g.moveTo(awg.x() + 11, awg.y() + y - s.height() - 8/2);
+        price_label->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
 
     }
 

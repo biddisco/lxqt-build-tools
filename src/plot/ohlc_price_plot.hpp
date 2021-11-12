@@ -7,6 +7,7 @@
 
 class ohlc_dataset_manager;
 class ohlc_chart_curve;
+class ohlc_price_scaledraw;
 class QwtDateScaleDraw;
 class QwtDateScaleEngine;
 class QwtPlotDirectPainter;
@@ -22,6 +23,7 @@ class ohlc_price_plot: public QwtPlot
 
 private:
     ohlc_interactor               *plot_interactor_;
+    ohlc_price_scaledraw          *pricescaleDraw_;
     QwtDateScaleDraw              *timescaleDraw_;
     QwtDateScaleEngine            *timescaleEngine_;
     QwtPlotDirectPainter          *direct_painter_;

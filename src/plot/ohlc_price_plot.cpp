@@ -30,6 +30,21 @@
 #include "src/plot/ohlc_chart_curve.hpp"
 //
 #include <range/v3/view.hpp>
+
+// ----------------------------------------------------------------------------
+// Just a simple override to make the number of decimals consistent
+class ohlc_price_scaledraw : public QwtScaleDraw
+{
+public:
+    ohlc_price_scaledraw() : QwtScaleDraw() {}
+
+    QwtText label(double value) const QWT_OVERRIDE
+    {
+        QString num = QString::number(value,'f',4);
+        return num;
+    }
+};
+
 // ----------------------------------------------------------------------------
 ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     : QwtPlot( parent )
@@ -63,6 +78,9 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     setAxisVisible( QwtAxis::YRight, true );
     setAxisAutoScale( QwtPlot::yRight );
     setAxisAutoScale( QwtPlot::xBottom);
+
+    pricescaleDraw_ = new ohlc_price_scaledraw();
+    setAxisScaleDraw(QwtPlot::yRight, pricescaleDraw_);
 
     setAxisLabelAlignment( QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom );
 
