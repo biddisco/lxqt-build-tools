@@ -13,6 +13,11 @@
 #include <QMessageBox>
 #include <QDockWidget>
 #include <QScrollBar>
+// Qwt
+#include <QwtAxis>
+#include <QwtOHLCSample>
+#include <QwtScaleDraw>
+#include <QwtScaleEngine>
 // Grox
 #include "mainwindow.hpp"
 #include "src/widgets/password_dialog.hpp"
@@ -30,6 +35,10 @@
 //
 #include "json_types.hpp"
 #include "settings.hpp"
+
+#define get_live_trades 1
+#define subscribe_xrpl_events 1
+#define enable_multiresolution 1
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
@@ -59,9 +68,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     // Create candlestick/volume plots
     //
-    CombinedPriceVolumeCharts_ = new CombinedPriceVolumeCharts(this, &hdf5_ohlc_);
-    cryptoPricePlot_ = CombinedPriceVolumeCharts_->get_ohlc_price_plot();
-    ui.candlestick_layout->addWidget(CombinedPriceVolumeCharts_, 30);
+    cryptoPricePlot_ = new ohlc_price_plot(this, &hdf5_ohlc_);
+    ui.candlestick_layout->addWidget(cryptoPricePlot_, 30);
 
     // ----------------------------------
     // Create orderbook plot
@@ -181,7 +189,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // ----------------------------------
     // Subscribe to xrpl events
     //
-#if 1
+#ifdef subscribe_xrpl_events
     xrpl_network_->subscribe_orderbook(io_contexts);
     xrpl_network_->subscribe_accounts(io_contexts);
     xrpl_testnet_->subscribe_accounts(io_contexts);
@@ -225,7 +233,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 GroxMainWindow::~GroxMainWindow()
 {
     delete timer_;
-    delete CombinedPriceVolumeCharts_;
+    delete cryptoPricePlot_;
     delete obp_;
 }
 
@@ -399,11 +407,17 @@ void GroxMainWindow::createMenus()
         if (index>0) {
             double res = ohlc_chart_data::available_resolutions()[index-1];
             cryptoPricePlot_->set_auto_candle_resolution(false);
-            cryptoPricePlot_->adjust_candle_size(res);
+            if (cryptoPricePlot_->adjust_candle_size(res)) {
+                cryptoPricePlot_->adjust_data_scaling(&hdf5_ohlc_);
+            }
+            cryptoPricePlot_->replot();
         }
         else {
             cryptoPricePlot_->set_auto_candle_resolution(true);
-            cryptoPricePlot_->adjust_candle_size(0);
+            if (cryptoPricePlot_->adjust_candle_size(0)) {
+                cryptoPricePlot_->adjust_data_scaling(&hdf5_ohlc_);
+            }
+            cryptoPricePlot_->replot();
         }
     } , Qt::QueuedConnection);
 
@@ -423,30 +437,23 @@ void GroxMainWindow::graph_rescale(int range)
 {
     auto last_time = hdf5_ohlc_.get_last_sample_time();
     double t1=0, t2 = last_time;
-    double stepSize = 0;
     if (range==-2) {
         t1 = last_time - 0.25*ohlc_chart_data::day;
-        stepSize = ohlc_chart_data::hour;
     }
     else if (range==-1) {
         t1 = last_time - 0.5*ohlc_chart_data::day;
-        stepSize = 2*ohlc_chart_data::hour;
     }
     else if (range==0) {
         t1 = last_time - 1.0*ohlc_chart_data::day;
-        stepSize = 4*ohlc_chart_data::hour;
     }
     else if (range==1) {
         t1 = last_time - 7*ohlc_chart_data::day;
-        stepSize = ohlc_chart_data::day;
     }
     else if (range==2) {
         t1 = last_time - 31*ohlc_chart_data::day;
-        stepSize = 7*ohlc_chart_data::day;
     }
     else if (range==3) {
         t1 = last_time - 365*ohlc_chart_data::day;
-        stepSize = 31*ohlc_chart_data::day;
     }
     // special case, to extend current view with new data
     else if (range==100) {
@@ -455,20 +462,15 @@ void GroxMainWindow::graph_rescale(int range)
     else {
         t1 = hdf5_ohlc_.get_first_sample_time();
     }
-    auto minmax = hdf5_ohlc_.get_min_max_window(cryptoPricePlot_->get_candle_resolution(), t1, t2, 0.05);
-    cryptoPricePlot_->setAxisScale(QwtAxis::XBottom, t1, t2, stepSize);
-    cryptoPricePlot_->setAxisScale(QwtAxis::YRight, minmax.minValue(), minmax.maxValue());
-    cryptoPricePlot_->replot();
-    if (cryptoPricePlot_->auto_candle_resolution()) {
-        cryptoPricePlot_->adjust_candle_size(0);
-        cryptoPricePlot_->replot();
-    }
+    cryptoPricePlot_->update_time_axis(t1, t2, &hdf5_ohlc_);
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::new_ohlc_data()
 {
-    if (!enable_multiresolution_) return;
+#ifndef enable_multiresolution
+    return;
+#endif
     //
     // get all available candle resolutions, except highest res
     // since we we use that one to generate all the others
@@ -484,7 +486,6 @@ void GroxMainWindow::new_ohlc_data()
             hdf5_ohlc_.add_dataset(res, data);
         }
     }
-
 
     // don't change axes, just update data series and replot
     cryptoPricePlot_->replot();
@@ -553,11 +554,9 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
         std::vector<ohlc_string> ohlc_strings = jdata.get<std::vector<ohlc_string>>();
         //
         QVector<QwtOHLCSample> new_ohlc_samples;
-        std::vector<double> new_ohlc_volumes;
         //
         const auto N = ohlc_strings.size();
         new_ohlc_samples.reserve(N);
-        new_ohlc_volumes.reserve(N);
         //
         for (auto o : ohlc_strings)
         {
@@ -565,12 +564,11 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
             // convert 1 minute candle OHLC data to msecs
             temp.time *= 1000;
             new_ohlc_samples.push_back(QwtOHLCSample(
-                temp.time, temp.open, temp.high, temp.low, temp.close));
-            new_ohlc_volumes.push_back(temp.volume);
+                temp.time, temp.open, temp.high, temp.low, temp.close, temp.volume));
         }
         DEBUG_ALWAYS("Received " << ohlc_strings.size()
                   << " new OHLC samples");
-        hdf5_ohlc_.merge_data(ohlc_chart_data::minute, new_ohlc_samples, new_ohlc_volumes);
+        hdf5_ohlc_.merge_data(ohlc_chart_data::minute, new_ohlc_samples);
         emit new_ohlc_data_ui();
 
         // what is the last sample we currently have
@@ -620,7 +618,7 @@ void GroxMainWindow::update_candlestick_data()
     // what is the most recent sample we currently have
     start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time());
     if (start_t == 0) {
-        start_t = 1483225200*1000.0;
+        start_t = 1496275200*1000.0;
         std::string s = msecs_unix_to_calendar_time(start_t);
         DEBUG_ALWAYS("No Data present : requesting from " << s);
     }
@@ -646,7 +644,9 @@ void GroxMainWindow::update_candlestick_data()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::start_websocket()
 {
+#ifdef get_live_trades
     bitstamp_network_->connect(io_contexts);
+#endif
     update_candlestick_data();
 }
 

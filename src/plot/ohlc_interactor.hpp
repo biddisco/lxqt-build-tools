@@ -77,7 +77,6 @@ Q_SIGNALS:
     void moved( int dx, int dy );
 
 protected:
-    virtual void widgetMouseInitEvent( QMouseEvent* );
     virtual void widgetMousePressEvent( QMouseEvent* );
     virtual void widgetMouseReleaseEvent( QMouseEvent* );
     virtual void widgetMouseMoveEvent( QMouseEvent* );

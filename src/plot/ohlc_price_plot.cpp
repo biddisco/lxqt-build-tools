@@ -35,19 +35,18 @@
 // Just a simple override to make the number of decimals consistent
 class ohlc_price_scaledraw : public QwtScaleDraw
 {
+    int dec_;
 public:
-    ohlc_price_scaledraw() : QwtScaleDraw() {}
+    ohlc_price_scaledraw(int N) : QwtScaleDraw(), dec_(N) {}
 
-    QwtText label(double value) const QWT_OVERRIDE
-    {
-        QString num = QString::number(value,'f',4);
-        return num;
+    QwtText label(double value) const QWT_OVERRIDE {
+        return QString::number(value, 'f', dec_);
     }
 };
 
 // ----------------------------------------------------------------------------
 ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
-    : QwtPlot( parent )
+    : QwtPlot(parent)
     , plot_interactor_(nullptr)
     , timescaleDraw_(nullptr)
     , timescaleEngine_(nullptr)
@@ -65,40 +64,38 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     QDateTime UTC(local.toUTC());
     QDateTime dt(UTC.date(), UTC.time(), Qt::LocalTime);
 
-    // setup date/time axis scaling and tick draw
+    // X axis : setup date/time axis scaling and tick draw
     timescaleDraw_   = new ohlc_date_scaledraw(Qt::TimeSpec::OffsetFromUTC);
     timescaleEngine_ = new QwtDateScaleEngine(Qt::TimeSpec::OffsetFromUTC);
     timescaleDraw_->setUtcOffset(dt.secsTo(local));
     timescaleEngine_->setUtcOffset(dt.secsTo(local));
-    setAxisScaleDraw( QwtPlot::xBottom, timescaleDraw_ );
-    setAxisScaleEngine( QwtPlot::xBottom, timescaleEngine_ );
 
-    // @TODO :needed? Enable autoscaling for axes
-    setAxisVisible( QwtAxis::YLeft, false);
-    setAxisVisible( QwtAxis::YRight, true );
-    setAxisAutoScale( QwtPlot::yRight );
-    setAxisAutoScale( QwtPlot::xBottom);
+    // Adjust the RHS of the X axis. Otherwise, there is space on the RHS.
+    timescaleEngine_->setAttribute(QwtScaleEngine::Floating, true);
+    setAxisScaleDraw(QwtPlot::xBottom, timescaleDraw_);
+    setAxisScaleEngine(QwtPlot::xBottom, timescaleEngine_);
+    setAxisLabelAlignment(QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom);
 
-    pricescaleDraw_ = new ohlc_price_scaledraw();
+    // Y axis : setup price axis scaling and tick draw
+    pricescaleDraw_ = new ohlc_price_scaledraw(4);
     setAxisScaleDraw(QwtPlot::yRight, pricescaleDraw_);
 
-    setAxisLabelAlignment( QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom );
-
-    // The following is needed to properly adjust the RHS of the X axis. Otherwise,
-    // there is space on the RHS.
-    axisScaleEngine(QwtPlot::xBottom)->setAttribute(QwtScaleEngine::Floating,true);
+    // No auto scaling - we do scaling in the interactor zoom/pan class
+    setAxisAutoScale(QwtPlot::yLeft,   false);
+    setAxisAutoScale(QwtPlot::yRight,  false);
+    setAxisAutoScale(QwtPlot::xBottom, false);
+    //
+    setAxisVisible(QwtAxis::YLeft,  false);
+    setAxisVisible(QwtAxis::YRight, true);
 
     // bring the graph slightly inside the borders to leave a small outer margin
-    this->setContentsMargins( 4, 4, 4, 4 );
+    setContentsMargins(4, 4, 4, 4);
 
-    // Use this to reduce the graph scale inside the inner plot area
-    this->plotLayout()->setCanvasMargin( 16, QwtPlot::yRight );
+    // A custom interactor for zooming/panning
+    plot_interactor_ = new ohlc_interactor(this, ohlc_dataset_manager_);
 
-    // not sure about this, no yRight axis setup
-    this->axisScaleEngine(QwtPlot::yRight)->setMargins(8, 8);
-
-    plot_interactor_ = new ohlc_interactor( this, ohlc_dataset_manager_);
-    crosshairs_ = new ohlc_picker(this->canvas());
+    // Custom crosshairs to show current cursor pos
+    crosshairs_ = new ohlc_picker(canvas());
 
     // Attach a dotted-line grid to the plot
     QwtPlotGrid *grid = new QwtPlotGrid();
@@ -106,42 +103,44 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     grid->setPen(QColor(Qt::darkGray), 0.0, Qt::PenStyle::DotLine);
     grid->attach(this);
 
-    // Override the size policy. Otherwise, the plot may not scale to
-    // the desired dimensions from the grid layout.
-    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-    setMinimumSize(0,0);
-
-    // Attach a legend internal to the plot
-    QwtPlotLegendItem *legend = new QwtPlotLegendItem();
-    legend->setAlignmentInCanvas(Qt::Alignment(Qt::AlignTop | Qt::AlignLeft));
-    legend->attach(this);
+    // QWidget : fill background before painting (color = QPalette::Window)
+    setAutoFillBackground(true);
 
     // main canvas color - dark, but not black
     static const QColor c("#18191b");
 
-    // QWidget : fill background before painting (color = QPalette::Window)
-    setAutoFillBackground( true );
-
-    // palette for widget
+    // palette for widget colours
     QPalette palette0 = palette();
-    palette0.setColor( QPalette::Window, c);
+    palette0.setColor(QPalette::Window, c);
     canvas()->setPalette(palette0);
     setPalette(palette0);
 
-    // x axis
+    // x axis colours
     QPalette palette1 = axisWidget(Axis::xBottom)->palette();
-    palette1.setColor( QPalette::WindowText, Qt::lightGray); // ticks
-    palette1.setColor( QPalette::Text, Qt::lightGray);	     // tick labels
-    axisWidget(Axis::xBottom)->setPalette( palette1 );
+    palette1.setColor(QPalette::WindowText, Qt::lightGray); // ticks
+    palette1.setColor(QPalette::Text, Qt::lightGray);	    // tick labels
+    axisWidget(Axis::xBottom)->setPalette(palette1);
 
-    // y axis
+    // yr axis colours
     QPalette palette2 = axisWidget(Axis::yRight)->palette();
-    palette2.setColor( QPalette::WindowText, Qt::lightGray); // ticks
-    palette2.setColor( QPalette::Text, Qt::lightGray);	     // tick labels
-    axisWidget(Axis::yRight)->setPalette( palette2 );
+    palette2.setColor(QPalette::WindowText, Qt::lightGray); // ticks
+    palette2.setColor(QPalette::Text, Qt::lightGray);	    // tick labels
+    axisWidget(Axis::yRight)->setPalette(palette2);
 
+    // yl axis colours
+    QPalette palette3 = axisWidget(Axis::yLeft)->palette();
+    palette3.setColor(QPalette::WindowText, Qt::lightGray); // ticks
+    palette3.setColor(QPalette::Text, Qt::lightGray);	    // tick labels
+    axisWidget(Axis::yLeft)->setPalette(palette3);
+
+    // Small label we use to show current candle resolution
     candle_label_ = new QwtTextLabel(this);
     candle_label_->setMargin(0);
+
+    // Override the Qt size policy. Otherwise, the plot may not scale to
+    // the desired dimensions from the grid layout.
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    setMinimumSize(0,0);
 }
 
 // ----------------------------------------------------------------------------
@@ -180,11 +179,11 @@ void ohlc_price_plot::update_live_data(QwtOHLCSample const &new_sample)
         ohlc_dataset_manager_->get_live_curve()->itemChanged();
     }
     direct_painter_->drawSeries(ohlc_dataset_manager_->get_live_curve(),
-        0, ohlc_dataset_manager_->get_live_data()->size() - 1 );
+        0, ohlc_dataset_manager_->get_live_data()->size() - 1);
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::adjust_candle_size(double res)
+bool ohlc_price_plot::adjust_candle_size(double res)
 {
     // to track the last auto change we made
     static double last_auto_res = 0;
@@ -200,12 +199,15 @@ void ohlc_price_plot::adjust_candle_size(double res)
         for (const auto &r : ranges::views::reverse(ohlc_chart_data::available_resolutions())) {
             if (r<xm) {
                 // if we have not changed value, just exit
-                if (r==last_auto_res) return;
+                if (r==last_auto_res) return false;
                 res = last_auto_res = r;
                 //
                 break;
             }
         }
+    }
+    else {
+        last_auto_res = 0;
     }
     // user selected resolution
     for (const auto &r : ohlc_chart_data::available_resolutions()) {
@@ -214,7 +216,7 @@ void ohlc_price_plot::adjust_candle_size(double res)
         data->ohlc_curve_->setVisible(r==res);
         if (r==res) {
             QwtText candle_label(r.name_);
-            candle_label.setRenderFlags( Qt::AlignLeft | Qt::AlignTop );
+            candle_label.setRenderFlags(Qt::AlignLeft | Qt::AlignTop);
             if (auto_candle_resolution())
                 candle_label.setColor(Qt::magenta);
             else
@@ -223,31 +225,30 @@ void ohlc_price_plot::adjust_candle_size(double res)
         }
     }
     candle_resolution_ = res;
-
-    replot();
+    return true;
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::setMode( int style )
+void ohlc_price_plot::setMode(int style)
 {
     QwtPlotTradingCurve::SymbolStyle symbolStyle =
-        static_cast<QwtPlotTradingCurve::SymbolStyle>( style );
+        static_cast<QwtPlotTradingCurve::SymbolStyle>(style);
 
-    QwtPlotItemList curves = itemList( QwtPlotItem::Rtti_PlotTradingCurve );
-    for ( int i = 0; i < curves.size(); i++ )
+    QwtPlotItemList curves = itemList(QwtPlotItem::Rtti_PlotTradingCurve);
+    for (int i = 0; i < curves.size(); i++)
     {
         QwtPlotTradingCurve *curve =
-            static_cast<QwtPlotTradingCurve *>( curves[i] );
-        curve->setSymbolStyle( symbolStyle );
+            static_cast<QwtPlotTradingCurve *>(curves[i]);
+        curve->setSymbolStyle(symbolStyle);
     }
 
     replot();
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::showItem( QwtPlotItem *item, bool on )
+void ohlc_price_plot::showItem(QwtPlotItem *item, bool on)
 {
-    item->setVisible( on );
+    item->setVisible(on);
     replot();
 }
 
@@ -255,5 +256,51 @@ void ohlc_price_plot::showItem( QwtPlotItem *item, bool on )
 void ohlc_price_plot::exportPlot()
 {
     QwtPlotRenderer renderer;
-    renderer.exportTo( this, "grox.pdf" );
+    renderer.exportTo(this, "grox.pdf");
+}
+
+// ----------------------------------------------------------------------------
+void ohlc_price_plot::update_time_axis(double t1, double t2, ohlc_dataset_manager *data)
+{
+    const bool doAutoReplot = autoReplot();
+    setAutoReplot(false);
+
+    // update the X axis with new min max
+    setAxisScale(QwtAxis::XBottom, t1, t2);
+
+    // find the min/max price for this new range
+    auto minmax = data->get_min_max_window(
+                get_candle_resolution(), t1, t2, 0.05);
+
+    // update the Y price axis with min max
+    setAxisScale(QwtAxis::YRight, minmax.min_price_, minmax.max_price_);
+
+    // update the Y volume axis with min max
+    setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
+
+    // scale change might trigger a candle resolution update
+    if (auto_candle_resolution()) {
+        // when candle resolution changes, the high/low values of candles do not
+        // change, so the scale is ok, but the volume bars are wrong, so
+        // recompute the volume min/max if the candle size changes
+        updateAxes();
+        if (adjust_candle_size(0)) {
+            minmax = data->get_min_max_window(
+                        get_candle_resolution(), t1, t2, 0.05);
+            setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
+        }
+    }
+
+    setAutoReplot(doAutoReplot);
+    replot();
+}
+
+// ----------------------------------------------------------------------------
+void ohlc_price_plot::adjust_data_scaling(ohlc_dataset_manager *data)
+{
+    const double t1 = axisScaleDiv(QwtAxis::XBottom).lowerBound();
+    const double t2 = axisScaleDiv(QwtAxis::XBottom).upperBound();
+    auto minmax = data->get_min_max_window(
+                get_candle_resolution(), t1, t2, 0.05);
+    setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
 }

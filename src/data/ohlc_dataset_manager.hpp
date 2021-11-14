@@ -39,29 +39,28 @@ public:
 
     // read datasets from hdf5 file
     void read_hdf5();
-    void read_hdf5(QVector<QwtOHLCSample> &data, std::vector<double> &volumes);
+    void read_hdf5(QVector<QwtOHLCSample> &data);
 
     // write out data to hdf5
     void write_hdf5(const QVector<QwtOHLCSample>& samples,
-        const std::vector<double>& volume, const uint64_t update = 0);
+        const uint64_t update = 0);
 
     // Add new downloaded data to an existing dataset
     void merge_data(double res,
-                    const QVector<QwtOHLCSample>& new_ohlc_samples_,
-                    const std::vector<double>& new_ohlc_volumes);
+                    const QVector<QwtOHLCSample>& new_ohlc_samples_);
 
     // Get first/last sample time, value is returned as UTC = unix time stamp * 1000
     double get_last_sample_time();
     double get_first_sample_time();
 
-    // Get the min max OHLC value for a given time range, min and max
-    // are the lowest of the lows, and highest of the highs in the OHLC samples
-    QwtInterval get_min_max(ohlc_chart_data const *dataset, double res, double start_time, double end_time) const;
-    QwtInterval get_min_max(double res, double start_time, double end_time) const;
+    // Get the min/max OHLC values for a given time range
+    // Returns the lowest of the lows, and highest of the highs in the OHLC samples
+    ohlcv_minmax get_min_max(ohlc_chart_data const *dataset, double res, double start_time, double end_time) const;
+    ohlcv_minmax get_min_max(double res, double start_time, double end_time) const;
 
     // Returns the min/max values, expanded by a small % so that scaling of graph
     // axes can adjust to allow a small window on ehter side of the min/max
-    QwtInterval get_min_max_window(double res, double start_time, double end_time, double percent) const;
+    ohlcv_minmax get_min_max_window(double res, double start_time, double end_time, double percent) const;
 
     std::vector<double> get_dataset_resolutions();
 

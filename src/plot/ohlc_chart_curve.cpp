@@ -11,6 +11,8 @@
 // Grox
 #include "src/plot/ohlc_chart_curve.hpp"
 
+constexpr double volume_reduction = 0.25;
+
 // ----------------------------------------------------------------------------
 ohlc_chart_curve::ohlc_chart_curve(ohlc_chart_data *chartData)
     : QwtPlotTradingCurve()
@@ -38,6 +40,12 @@ ohlc_chart_curve::ohlc_chart_curve(ohlc_chart_data *chartData)
     setSymbolBrushHA(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));
     setSymbolBrushHA(QwtPlotTradingCurve::Decreasing, QColor("#ef5350"));
 
+    // Bitstamp colors : Darkish green "#159f49", Darkish red "#df4249"
+    setSymbolPenVolume(QwtPlotTradingCurve::Increasing, QColor("#17472b"));
+    setSymbolPenVolume(QwtPlotTradingCurve::Decreasing, QColor("#5e272b"));
+    setSymbolBrushVolume(QwtPlotTradingCurve::Increasing, QColor("#17472b"));
+    setSymbolBrushVolume(QwtPlotTradingCurve::Decreasing, QColor("#5e272b"));
+
     setYAxis(QwtPlot::yRight);
 
 }
@@ -55,39 +63,50 @@ void ohlc_chart_curve::setSymbolBrushHA(Direction d, const QBrush &b)
 }
 
 // ----------------------------------------------------------------------------
+void ohlc_chart_curve::setSymbolPenVolume(Direction d, const QPen &p)
+{
+    VolumePen[d] = p;
+}
+
+// ----------------------------------------------------------------------------
+void ohlc_chart_curve::setSymbolBrushVolume(Direction d, const QBrush &b)
+{
+    VolumeBrush[d] = b;
+}
+
+// ----------------------------------------------------------------------------
 void ohlc_chart_curve::drawSeries(QPainter*painter,
     const QwtScaleMap& xMap, const QwtScaleMap& yMap,
     const QRectF& canvasRect, int from, int to) const
 {
+    if (to < 0) to = dataSize() - 1;
+    if (from < 0) from = 0;
+    if (from > to) return;
+
+    painter->save();
+
+    // draw volume first so that candles are always visible over the top
+    auto plot_ = plot();
+    QwtScaleMap ymap = plot_->canvasMap(QwtPlot::yLeft);
+    drawVolume(painter, xMap, ymap, canvasRect, from, to);
+
     // Heikin Ashi uses a movingg average, so the first point needs special treatment
     start_heikin = true;
 
-    // Overridden draw function to handle Heikin Ashi plot
-    QwtPlotTradingCurve::drawSeries(painter, xMap, yMap, canvasRect, from, to);
+    if (symbolStyle() != QwtPlotTradingCurve::NoSymbol)
+        drawSymbols(painter, xMap, yMap, canvasRect, from, to);
+
+    painter->restore();
 }
 
 // ----------------------------------------------------------------------------
-// Not used since we only plot indices that are known to be in the right range
-//static inline bool qwtIsSampleInside(const QwtOHLCSample& sample,
-//    double tMin, double tMax, double vMin, double vMax)
-//{
-//    const double t = sample.time;
-//    const QwtInterval interval = sample.boundingInterval();
-
-//    const bool isOffScreen = (t < tMin) || (t > tMax)
-//        || (interval.maxValue() < vMin) || (interval.minValue() > vMax);
-
-//    return !isOffScreen;
-//}
-
-// ----------------------------------------------------------------------------
-// Note that the to draw Heikin Ashi candles, we do not need to override the
+// Note that to draw Heikin Ashi candles, we do not need to override the
 // DrawUSerSymbol method, because the candles are the same shape/size as normal
-// candles -we just need to modifiy the open/close/low/high vars to handle the
+// candles - we just need to modifiy the open/close/low/high vars to handle the
 // averaging as we iterate.
 void ohlc_chart_curve::drawSymbols(QPainter* painter,
-    const QwtScaleMap& xMap, const QwtScaleMap& yMap,
-    const QRectF& canvasRect, int from, int to) const
+                                   const QwtScaleMap& xMap, const QwtScaleMap& yMap,
+                                   const QRectF& canvasRect, int from, int to) const
 {
     // some vars are private the the Qwt Trading plot, so we must make copies
     QPen symbolPenCopy[2];
@@ -107,33 +126,11 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
     }
 
     const QRectF tr = QwtScaleMap::invTransform(xMap, yMap, canvasRect);
+    double tMin = tr.left();
+    double tMax = tr.right();
+    double vMin = tr.top();
+    double vMax = tr.bottom();
 
-    const QwtScaleMap* timeMap, * valueMap;
-    double tMin, tMax, vMin, vMax;
-
-    const Qt::Orientation orient = orientation();
-    if (orient == Qt::Vertical)
-    {
-        timeMap = &xMap;
-        valueMap = &yMap;
-
-        tMin = tr.left();
-        tMax = tr.right();
-        vMin = tr.top();
-        vMax = tr.bottom();
-    }
-    else
-    {
-        timeMap = &yMap;
-        valueMap = &xMap;
-
-        vMin = tr.left();
-        vMax = tr.right();
-        tMin = tr.top();
-        tMax = tr.bottom();
-    }
-
-    const bool inverted = timeMap->isInverting();
     const bool doAlign = QwtPainter::roundingAlignment(painter);
 
     double symbolWidth = scaledSymbolWidth(xMap, yMap, canvasRect);
@@ -154,8 +151,16 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
         if (symbolStyleCopy == ohlc_chart_curve::HeikinAshi) {
             // first point in plot needs a prev open/close
             if (start_heikin) {
-                prev_open  = s.open;
-                prev_close = s.close;
+                // for first iteration, we need previous open/close
+                if (i==from && i>0) {
+                    const QwtOHLCSample &prev = sample(i-1);
+                    prev_open  = prev.open;
+                    prev_close = prev.close;
+                }
+                else if (i==from) {
+                    prev_open  = s.open;
+                    prev_close = s.close;
+                }
                 start_heikin = false;
             }
 
@@ -169,25 +174,25 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
             prev_close = close;
 
             brushIndex = (open < close)
-                ? QwtPlotTradingCurve::Increasing
-                : QwtPlotTradingCurve::Decreasing;
+                    ? QwtPlotTradingCurve::Increasing
+                    : QwtPlotTradingCurve::Decreasing;
 
-            translatedSample.time = timeMap->transform(s.time);
-            translatedSample.open = valueMap->transform(open);
-            translatedSample.high = valueMap->transform(high);
-            translatedSample.low = valueMap->transform(low);
-            translatedSample.close = valueMap->transform(close);
+            translatedSample.time = xMap.transform(s.time);
+            translatedSample.open = yMap.transform(open);
+            translatedSample.high = yMap.transform(high);
+            translatedSample.low = yMap.transform(low);
+            translatedSample.close = yMap.transform(close);
 
         }
         else {
             brushIndex = (s.open < s.close)
-                ? QwtPlotTradingCurve::Increasing
-                : QwtPlotTradingCurve::Decreasing;
-            translatedSample.time = timeMap->transform(s.time);
-            translatedSample.open = valueMap->transform(s.open);
-            translatedSample.high = valueMap->transform(s.high);
-            translatedSample.low = valueMap->transform(s.low);
-            translatedSample.close = valueMap->transform(s.close);
+                    ? QwtPlotTradingCurve::Increasing
+                    : QwtPlotTradingCurve::Decreasing;
+            translatedSample.time = xMap.transform(s.time);
+            translatedSample.open = yMap.transform(s.open);
+            translatedSample.high = yMap.transform(s.high);
+            translatedSample.low = yMap.transform(s.low);
+            translatedSample.close = yMap.transform(s.close);
         }
 
         QPen pen = symbolPenCopy[brushIndex];
@@ -204,37 +209,75 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
             translatedSample.close = qRound(translatedSample.close);
         }
 
-        switch(symbolStyleCopy)
-        {
-            case Bar:
-            {
-                drawBar(painter, translatedSample,
-                    orient, inverted, symbolWidth);
-                break;
-            }
-            case CandleStick:
-            {
-                painter->setBrush(symbolBrushCopy[ brushIndex ]);
-                drawCandleStick(painter, translatedSample,
-                    orient, symbolWidth);
-                break;
-            }
-            case HeikinAshi:
-            {
-                painter->setBrush(symbolBrushCopy[ brushIndex ]);
-                drawCandleStick(painter, translatedSample,
-                    orient, symbolWidth);
-                break;
-            }
-            default:
-            {
-                if (symbolStyleCopy >= UserSymbol)
-                {
-                    painter->setBrush(symbolBrushCopy[ brushIndex ]);
-                    drawUserSymbol(painter, SymbolStyle(symbolStyleCopy),
-                        translatedSample, orient, inverted, symbolWidth);
-                }
-            }
-        }
+        painter->setBrush(symbolBrushCopy[ brushIndex ]);
+        drawCandleStick(painter, translatedSample,
+                        Qt::Orientation::Vertical, symbolWidth);
     }
+}
+
+// ----------------------------------------------------------------------------
+// Note that to draw Heikin Ashi candles, we do not need to override the
+// DrawUSerSymbol method, because the candles are the same shape/size as normal
+// candles - we just need to modifiy the open/close/low/high vars to handle the
+// averaging as we iterate.
+void ohlc_chart_curve::drawVolume(QPainter* painter,
+                                  const QwtScaleMap& xMap, const QwtScaleMap& yMap,
+                                  const QRectF& canvasRect, int from, int to) const
+{
+    const QRectF tr = QwtScaleMap::invTransform(xMap, yMap, canvasRect);
+    double tMin = tr.left();
+    double tMax = tr.right();
+
+    const bool doAlign = QwtPainter::roundingAlignment(painter);
+
+    double symbolWidth = scaledSymbolWidth(xMap, yMap, canvasRect);
+    if (doAlign)
+        symbolWidth = std::floor(0.5 * symbolWidth) * 2.0;
+
+    // find the min/max indices that we need to iterate over
+    ohlc_chart_data const *chartData = dynamic_cast<ohlc_chart_data const *>(data());
+    from = std::max(int64_t(0), chartData->sample_index(tMin));
+    to   = std::min(int64_t(chartData->data().size()-1), chartData->sample_index(tMax));
+
+    for (int i = from; i <= to; i++)
+    {
+        const QwtOHLCSample &s = sample(i);
+
+        int brushIndex = (s.open <= s.close)
+                ? QwtPlotTradingCurve::Increasing
+                : QwtPlotTradingCurve::Decreasing;
+
+        double translatedTime = xMap.transform(s.time);
+        double translatedV0   = yMap.transform(0.0);
+        double translatedV1   = yMap.transform(s.volume * volume_reduction);
+
+        if (doAlign)
+        {
+            translatedTime = qRound(translatedTime);
+            translatedV0   = qRound(translatedV0);
+            translatedV1   = qRound(translatedV1);
+        }
+
+        QPen pen = VolumePen[brushIndex];
+        pen.setCapStyle(Qt::FlatCap);
+        painter->setPen(pen);
+        painter->setBrush( VolumeBrush[brushIndex] );
+
+
+        const QwtOHLCSample translatedSample(translatedTime,
+            0.0, translatedV1, translatedV0, 0.0, 0.0);
+
+        drawVolumeBar(painter, translatedSample, symbolWidth);
+    }
+}
+
+// ----------------------------------------------------------------------------
+void ohlc_chart_curve::drawVolumeBar( QPainter* painter,
+    const QwtOHLCSample& sample, double width ) const
+{
+    QRectF rect( sample.time - 0.5 * width,
+                 sample.low,
+                 width,
+                 sample.high - sample.low);
+    QwtPainter::drawRect( painter, rect );
 }

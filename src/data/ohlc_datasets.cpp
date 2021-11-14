@@ -2,8 +2,6 @@
 #include <vector>
 // Qt
 #include <QVector>
-// Qwt
-#include <QwtOHLCSample>
 // Grox
 #include "src/debug.hpp"
 #include "src/plot/ohlc_chart_data.hpp"
@@ -32,14 +30,12 @@ ohlc_datasets::~ohlc_datasets()
 }
 
 // ----------------------------------------------------------------------------
-uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples_,
-    const std::vector<double>& new_ohlc_volumes_)
+uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples_)
 {
     uint64_t update = 0;
     if (ohlc_samples_->data().size() == 0)
     {
         ohlc_samples_->data() = new_ohlc_samples_;
-        ohlc_volumes_ = new_ohlc_volumes_;
         return ohlc_samples_->size();
     }
     else if (!new_ohlc_samples_.empty())
@@ -61,9 +57,8 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
             // got from 1 to N to add N-1 samples with time offsets from 1
             for (int i=1; i<N; ++i) {
                 QwtOHLCSample dummy(last_existing + i*ohlc_chart_data::minute,
-                                    prev.close, prev.close, prev.close, prev.close);
+                                    prev.close, prev.close, prev.close, prev.close, 0.0);
                 ohlc_samples_->data().append(dummy);
-                ohlc_volumes_.push_back(0);
             }
             update += (N-1);
         }
@@ -75,12 +70,6 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
 
         DEBUG_ONLY("merging data");
         ohlc_samples_->data().append(new_ohlc_samples_);
-        ohlc_volumes_.insert(
-            ohlc_volumes_.end(), new_ohlc_volumes_.begin(), new_ohlc_volumes_.end());
-        if (size_t(ohlc_samples_->data().size()) != ohlc_volumes_.size())
-        {
-            throw std::runtime_error("Data merge problem");
-        }
         update += new_ohlc_samples_.size();
     }
     return update;
@@ -89,32 +78,32 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
 // ----------------------------------------------------------------------------
 void ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, double res)
 {
-    using cit = QVector<QwtOHLCSample>::const_iterator;
-    cit li = samples.begin();
-    bool valid = true;
-    uint64_t index = 0;
-    for (cit i = samples.begin() + 1; i != samples.end(); ++i)
+    if (samples.empty()) return;
+    //
+    double init_time = samples.begin()->time;
+
+    for (int64_t index=0; index<samples.size(); ++ index)
     {
-        uint64_t t1 = static_cast<uint64_t>(li->time);
-        uint64_t t2 = static_cast<uint64_t>(i->time);
-        if (t2 - t1 != res)
+        const QwtOHLCSample &s1 = samples.at(index);
+        //
+        double expected_time = init_time + (res*index);
+        if (expected_time != s1.time)
         {
-            std::cerr << "Validation error at index " << index << " " << t1 << " and "
-                      << t2 << "dataset truncated " << std::endl;
-            valid = false;
-            break;
+            std::cerr << "Validation error at index " << index << " " << expected_time << " and "
+                      << s1.time << "dataset truncated " << std::endl;
+            throw std::runtime_error("OHLC data integrity failure");
         }
-        li = i;
-        index++;
     }
+    DEBUG_ALWAYS("OHLC Data samples validated " << samples.size());
 }
 
 // ----------------------------------------------------------------------------
 void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other)
 {
-    ohlc.low  = std::min(ohlc.low, other.low);
-    ohlc.high = std::max(ohlc.high, other.high);
-    ohlc.close = other.close;
+    ohlc.low    = std::min(ohlc.low, other.low);
+    ohlc.high   = std::max(ohlc.high, other.high);
+    ohlc.close  = other.close;
+    ohlc.volume = ohlc.volume + other.volume;
 }
 
 // ----------------------------------------------------------------------------

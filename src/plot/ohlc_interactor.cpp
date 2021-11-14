@@ -8,9 +8,11 @@
 #include <QwtAxis>
 #include <QwtPlot>
 #include <QwtScaleMap>
+#include <QwtScaleEngine>
 // Grox
 #include "src/plot/ohlc_interactor.hpp"
 #include "src/plot/ohlc_price_plot.hpp"
+
 //
 #ifndef DEBUG_ONLY
 # define DEBUG_ONLY(x)
@@ -23,14 +25,14 @@ class ohlc_interactor::PrivateData
 {
   public:
     PrivateData()
-        : button( Qt::LeftButton )
-        , buttonModifiers( Qt::NoModifier )
-        , abortKey( Qt::Key_Escape )
-        , abortKeyModifiers( Qt::NoModifier )
-        , isEnabled( false )
+        : button(Qt::LeftButton)
+        , buttonModifiers(Qt::NoModifier)
+        , abortKey(Qt::Key_Escape)
+        , abortKeyModifiers(Qt::NoModifier)
+        , isEnabled(false)
         , plot(nullptr)
     {
-        for ( int axis = 0; axis < QwtAxis::AxisPositions; axis++ )
+        for (int axis = 0; axis < QwtAxis::AxisPositions; axis++)
             isAxisEnabled[axis] = true;
     }
 
@@ -53,17 +55,17 @@ class ohlc_interactor::PrivateData
 };
 
 ohlc_interactor::ohlc_interactor(ohlc_price_plot* parent, ohlc_dataset_manager *data)
-    : QObject( parent )
+    : QObject(parent)
     , ohlc_dataset_manager_(data)
 {
     m_data = new PrivateData();
 
-    setEnabled( true );
+    setEnabled(true);
 
-    connect( this, SIGNAL(panned(int,int)),
-        SLOT(panCanvas(int,int)) );
-    connect( this, SIGNAL(zoomed(int,int)),
-        SLOT(zoomCanvas(int,int)) );
+    connect(this, SIGNAL(panned(int,int)),
+        SLOT(panCanvas(int,int)));
+    connect(this, SIGNAL(zoomed(int,int)),
+        SLOT(zoomCanvas(int,int)));
 }
 
 //! Destructor
@@ -75,13 +77,13 @@ ohlc_interactor::~ohlc_interactor()
 //! \return Parent widget, where the rescaling happens
 QWidget* ohlc_interactor::parentWidget()
 {
-    return qobject_cast< QWidget* >( parent() );
+    return qobject_cast< QWidget* >(parent());
 }
 
 //! \return Parent widget, where the rescaling happens
 const QWidget* ohlc_interactor::parentWidget() const
 {
-    return qobject_cast< const QWidget* >( parent() );
+    return qobject_cast< const QWidget* >(parent());
 }
 
 
@@ -90,7 +92,7 @@ const QWidget* ohlc_interactor::parentWidget() const
 ohlc_price_plot* ohlc_interactor::plot()
 {
     QWidget* w = parentWidget();
-    return qobject_cast< ohlc_price_plot* >( w );
+    return qobject_cast< ohlc_price_plot* >(w);
 }
 
 // ----------------------------------------------------------------------------
@@ -98,7 +100,7 @@ ohlc_price_plot* ohlc_interactor::plot()
 const ohlc_price_plot* ohlc_interactor::plot() const
 {
     const QWidget* w = parentWidget();
-    return qobject_cast< const ohlc_price_plot* >( w );
+    return qobject_cast< const ohlc_price_plot* >(w);
 }
 
 /*!
@@ -112,9 +114,9 @@ const ohlc_price_plot* ohlc_interactor::plot() const
 
    \sa isAxisEnabled(), moveCanvas()
  */
-void ohlc_interactor::setAxisEnabled( QwtAxisId axisId, bool on )
+void ohlc_interactor::setAxisEnabled(QwtAxisId axisId, bool on)
 {
-    if ( QwtAxis::isValid( axisId ) )
+    if (QwtAxis::isValid(axisId))
         m_data->isAxisEnabled[axisId] = on;
 }
 
@@ -126,200 +128,121 @@ void ohlc_interactor::setAxisEnabled( QwtAxisId axisId, bool on )
 
    \sa setAxisEnabled(), moveCanvas()
  */
-bool ohlc_interactor::isAxisEnabled( QwtAxisId axisId ) const
+bool ohlc_interactor::isAxisEnabled(QwtAxisId axisId) const
 {
-    if ( QwtAxis::isValid( axisId ) )
+    if (QwtAxis::isValid(axisId))
         return m_data->isAxisEnabled[axisId];
 
     return true;
 }
 
 
-/*!
-   Adjust the enabled axes according to dx/dy
-
-   \param dx Pixel offset in x direction
-   \param dy Pixel offset in y direction
-
-   \sa ohlc_interactor::panned()
- */
-
-void ohlc_interactor::panCanvas( int dx, int dy )
+// ----------------------------------------------------------------------------
+void ohlc_interactor::panCanvas(int dx, int dy)
 {
-    if ( dx == 0 && dy == 0 )
-        return;
-
+    if (dx == 0 && dy == 0) return;
     ohlc_price_plot* plot = this->plot();
-    if ( plot == NULL )
-        return;
+    if (plot == NULL) return;
 
-    const bool doAutoReplot = plot->autoReplot();
-    plot->setAutoReplot( false );
+    // get the X axis pixel/plot coordinate transform
+    const QwtScaleMap map = plot->canvasMap(QwtAxis::XBottom);
 
-    // because we rescale the YAxis as the XAxis moves, we traverse the axes
-    // in order with X first, so that once those bounds have updated, we can
-    // use them to do Y
-    auto axes = {QwtAxis::XBottom, QwtAxis::YLeft, QwtAxis::YRight };
+    // get the X axis extent, transform it into pixels
+    const double p1 = map.transform(plot->axisScaleDiv(QwtAxis::XBottom).lowerBound());
+    const double p2 = map.transform(plot->axisScaleDiv(QwtAxis::XBottom).upperBound());
+    // slide it left or right by dx amount
+    double t1 = map.invTransform(p1 - dx);
+    double t2 = map.invTransform(p2 - dx);
 
-    double new_xmin=0, new_xmax=0;
-    for (auto axisPos : axes)
-    {
-        const QwtAxisId axisId( axisPos );
-
-        if ( !m_data->isAxisEnabled[axisId] )
-            continue;
-
-        // get the pixel/plot coordinate transform
-        const QwtScaleMap map = plot->canvasMap( axisId );
-
-        // get the current min/max
-        const double p1 = map.transform( plot->axisScaleDiv( axisId ).lowerBound() );
-        const double p2 = map.transform( plot->axisScaleDiv( axisId ).upperBound() );
-
-        double d1, d2;
-        if ( QwtAxis::isXAxis( axisPos ) )
-        {
-            new_xmin = d1 = map.invTransform( p1 - dx );
-            new_xmax = d2 = map.invTransform( p2 - dx );
-        }
-        else
-        {
-            const auto minmax = ohlc_dataset_manager_->get_min_max_window(
-                        plot->get_candle_resolution(), new_xmin, new_xmax, 0.05);
-            d1 = minmax.minValue();
-            d2 = minmax.maxValue();
-        }
-
-        plot->setAxisScale( axisId, d1, d2 );
-    }
-
-    plot->setAutoReplot( doAutoReplot );
-    plot->replot();
-}
-
-void ohlc_interactor::zoomCanvas( int dx, int dy )
-{
-    if ( dx == 0 && dy == 0 )
-        return;
-
-    ohlc_price_plot* plot = this->plot();
-    if ( plot == NULL )
-        return;
-
-    const bool doAutoReplot = plot->autoReplot();
-    plot->setAutoReplot( false );
-
-    // because we rescale the YAxis as the XAxis moves, we traverse the axes
-    // in order with X first, so that once those bounds have updated, we can
-    // use them to do Y
-    auto axes = {QwtAxis::XBottom, QwtAxis::YLeft, QwtAxis::YRight };
-
-    double new_xmin, new_xmax;
-    for (auto axisPos : axes)
-    {
-        const QwtAxisId axisId( axisPos );
-        if ( !m_data->isAxisEnabled[axisId] )
-            continue;
-
-        double d1, d2;
-        if ( QwtAxis::isXAxis( axisPos ) )
-        {
-            // get the pixel/plot coordinate transform
-            const QwtScaleMap map = plot->canvasMap( axisId );
-
-            // left right and mouse pos in world coords
-            double x1 = plot->axisScaleDiv( axisId ).lowerBound();
-            double x2 = plot->axisScaleDiv( axisId ).upperBound();
-            double xd = x2-x1;
-            // mouse pos in world coords
-            double xm = map.invTransform(m_data->initialPos.x());
-
-            // the amount we are going to zoom by depends on wheel amount
-            double p1  = map.transform(x1);
-            double xy  = map.invTransform(p1-dy)-x1;
-
-            d2 = (x2*xd + x2*xy - xm*xy)/xd;
-            d1  = d2 - xd - xy;
-            new_xmin = d1;
-            new_xmax = d2;
-        }
-        else
-        {
-            const auto minmax = ohlc_dataset_manager_->get_min_max_window(
-                        plot->get_candle_resolution(), new_xmin, new_xmax, 0.05);
-            d1 = minmax.minValue();
-            d2 = minmax.maxValue();
-        }
-
-        plot->setAxisScale( axisId, d1, d2 );
-    }
-    // if the zoom went out of bounds, just exit without changing anything
-    if (new_xmin>=new_xmax) {
-        DEBUG_ALWAYS("Error in zoom calculation")
-        return;
-    }
-    if (plot->auto_candle_resolution()) {
-        plot->adjust_candle_size(0);
-    }
-    plot->setAutoReplot( doAutoReplot );
-    plot->replot();
+    plot->update_time_axis(t1, t2, ohlc_dataset_manager_);
 }
 
 // ----------------------------------------------------------------------------
-bool ohlc_interactor::eventFilter( QObject * object, QEvent * event)
+void ohlc_interactor::zoomCanvas(int dx, int dy)
 {
-    if ( object == nullptr || plot()==nullptr || object != plot()->canvas() )
+    if (dx == 0 && dy == 0) return;
+    ohlc_price_plot* plot = this->plot();
+    if (plot == NULL) return;
+
+    // get the X axis pixel/plot coordinate transform
+    const QwtScaleMap map = plot->canvasMap(QwtAxis::XBottom);
+
+    // we zoom keeping the point under the mouse at the same position in X
+    // so we do not simply add an amount to both ends, but compute a more complex
+    // transformation
+
+    // left right and mouse pos in world coords
+    double x1 = plot->axisScaleDiv(QwtAxis::XBottom).lowerBound();
+    double x2 = plot->axisScaleDiv(QwtAxis::XBottom).upperBound();
+    double xd = x2-x1;
+    // mouse pos in world coords
+    double xm = map.invTransform(m_data->initialPos.x());
+
+    // the amount we are going to zoom by depends on wheel amount
+    double p1  = map.transform(x1);
+    double xy  = map.invTransform(p1-dy) - x1;
+
+    double t2 = (x2*xd + x2*xy - xm*xy)/xd;
+    double t1 = t2 - xd - xy;
+
+    plot->update_time_axis(t1, t2, ohlc_dataset_manager_);
+}
+
+// ----------------------------------------------------------------------------
+bool ohlc_interactor::eventFilter(QObject * object, QEvent * event)
+{
+    if (object == nullptr || plot()==nullptr || object != plot()->canvas())
             return false;
 
-    switch ( event->type() )
+    switch (event->type())
     {
         // 2 finger trackpad movements appear as scroll events
         case QEvent::Wheel:
         {
-            QMouseEvent * evr = static_cast<QMouseEvent *>( event );
+            QMouseEvent * evr = static_cast<QMouseEvent *>(event);
             m_data->initialPos = m_data->pos = evr->pos();
             //
             QWheelEvent* we = static_cast<QWheelEvent*>(event);
             auto d = we->angleDelta();
             // sideways swipe
             if (std::abs(d.x()) >= std::abs(d.y())) {
-                Q_EMIT panned( d.x()/2, d.y()/2 );
+                Q_EMIT panned(d.x()/2, d.y()/2);
             }
             // vertical swipe
             else {
-                Q_EMIT zoomed( d.x()/2, d.y()/2 );
+                Q_EMIT zoomed(d.x()/2, d.y()/2);
             }
             break;
         }
         case QEvent::MouseButtonPress:
         {
-            widgetMousePressEvent( static_cast<QMouseEvent *>( event ) );
+            widgetMousePressEvent(static_cast<QMouseEvent *>(event));
             break;
         }
         case QEvent::MouseMove:
         {
             break;
-            QMouseEvent * evr = static_cast<QMouseEvent *>( event );
-            widgetMouseMoveEvent( evr );
-            widgetMouseReleaseEvent( evr  );
+            QMouseEvent *evr = static_cast<QMouseEvent *>(event);
+            widgetMouseMoveEvent(evr);
+            widgetMouseReleaseEvent(evr );
             setMouseButton(evr->button(), evr->modifiers());
-            widgetMousePressEvent( evr);
+            widgetMousePressEvent(evr);
             break;
         }
         case QEvent::MouseButtonRelease:
         {
-            QMouseEvent * evr = static_cast<QMouseEvent *>( event );
-            widgetMouseReleaseEvent( static_cast<QMouseEvent *>( event ) );
+            QMouseEvent *evr = static_cast<QMouseEvent *>(event);
+            widgetMouseReleaseEvent(evr);
             break;
         }
         case QEvent::KeyPress:
         {
-            widgetKeyPressEvent( static_cast<QKeyEvent *>( event ) );
+            widgetKeyPressEvent(static_cast<QKeyEvent *>(event));
             break;
         }
         case QEvent::KeyRelease:
         {
-            widgetKeyReleaseEvent( static_cast<QKeyEvent *>( event ) );
+            widgetKeyReleaseEvent(static_cast<QKeyEvent *>(event));
             break;
         }
 
@@ -345,16 +268,16 @@ bool ohlc_interactor::eventFilter( QObject * object, QEvent * event)
    Change the mouse button and modifiers used for panning
    The defaults are Qt::LeftButton and Qt::NoModifier
  */
-void ohlc_interactor::setMouseButton( Qt::MouseButton button,
-    Qt::KeyboardModifiers modifiers )
+void ohlc_interactor::setMouseButton(Qt::MouseButton button,
+    Qt::KeyboardModifiers modifiers)
 {
     m_data->button = button;
     m_data->buttonModifiers = modifiers;
 }
 
 //! Get mouse button and modifiers used for panning
-void ohlc_interactor::getMouseButton( Qt::MouseButton& button,
-    Qt::KeyboardModifiers& modifiers ) const
+void ohlc_interactor::getMouseButton(Qt::MouseButton& button,
+    Qt::KeyboardModifiers& modifiers) const
 {
     button = m_data->button;
     modifiers = m_data->buttonModifiers;
@@ -364,19 +287,19 @@ void ohlc_interactor::getMouseButton( Qt::MouseButton& button,
    Change the abort key
    The defaults are Qt::Key_Escape and Qt::NoModifiers
 
-   \param key Key ( See Qt::Keycode )
+   \param key Key (See Qt::Keycode)
    \param modifiers Keyboard modifiers
  */
-void ohlc_interactor::setAbortKey( int key,
-    Qt::KeyboardModifiers modifiers )
+void ohlc_interactor::setAbortKey(int key,
+    Qt::KeyboardModifiers modifiers)
 {
     m_data->abortKey = key;
     m_data->abortKeyModifiers = modifiers;
 }
 
 //! Get the abort key and modifiers
-void ohlc_interactor::getAbortKey( int& key,
-    Qt::KeyboardModifiers& modifiers ) const
+void ohlc_interactor::getAbortKey(int& key,
+    Qt::KeyboardModifiers& modifiers) const
 {
     key = m_data->abortKey;
     modifiers = m_data->abortKeyModifiers;
@@ -392,21 +315,21 @@ void ohlc_interactor::getAbortKey( int& key,
    \param on true or false
    \sa isEnabled(), eventFilter()
  */
-void ohlc_interactor::setEnabled( bool on )
+void ohlc_interactor::setEnabled(bool on)
 {
-    if ( m_data->isEnabled != on )
+    if (m_data->isEnabled != on)
     {
         m_data->isEnabled = on;
 
         if (this->plot() && this->plot()->canvas())
         {
-            if ( m_data->isEnabled )
+            if (m_data->isEnabled)
             {
-                this->plot()->canvas()->installEventFilter( this );
+                this->plot()->canvas()->installEventFilter(this);
             }
             else
             {
-                this->plot()->canvas()->removeEventFilter( this );
+                this->plot()->canvas()->removeEventFilter(this);
             }
         }
     }
@@ -421,12 +344,6 @@ bool ohlc_interactor::isEnabled() const
     return m_data->isEnabled;
 }
 
-
-void ohlc_interactor::widgetMouseInitEvent( QMouseEvent* mouseEvent)
-{
-    m_data->initialPos = m_data->pos = mouseEvent->pos();
-}
-
 /*!
    Handle a mouse press event for the observed widget.
 
@@ -434,7 +351,7 @@ void ohlc_interactor::widgetMouseInitEvent( QMouseEvent* mouseEvent)
    \sa eventFilter(), widgetMouseReleaseEvent(),
       widgetMouseMoveEvent(),
  */
-void ohlc_interactor::widgetMousePressEvent( QMouseEvent* mouseEvent )
+void ohlc_interactor::widgetMousePressEvent(QMouseEvent* mouseEvent)
 {
     m_data->initialPos = m_data->pos = mouseEvent->pos();
 }
@@ -445,9 +362,9 @@ void ohlc_interactor::widgetMousePressEvent( QMouseEvent* mouseEvent )
    \param mouseEvent Mouse event
    \sa eventFilter(), widgetMousePressEvent(), widgetMouseReleaseEvent()
  */
-void ohlc_interactor::widgetMouseMoveEvent( QMouseEvent* mouseEvent )
+void ohlc_interactor::widgetMouseMoveEvent(QMouseEvent* mouseEvent)
 {
-    if ( !parentWidget()->isVisible() )
+    if (!parentWidget()->isVisible())
         return;
 
     QPoint pos = mouseEvent->pos();
@@ -456,8 +373,8 @@ void ohlc_interactor::widgetMouseMoveEvent( QMouseEvent* mouseEvent )
         m_data->pos = pos;
 //        parentWidget()->update();
 
-        Q_EMIT moved( m_data->pos.x() - m_data->initialPos.x(),
-            m_data->pos.y() - m_data->initialPos.y() );
+        Q_EMIT moved(m_data->pos.x() - m_data->initialPos.x(),
+            m_data->pos.y() - m_data->initialPos.y());
     }
 }
 
@@ -468,15 +385,15 @@ void ohlc_interactor::widgetMouseMoveEvent( QMouseEvent* mouseEvent )
    \sa eventFilter(), widgetMousePressEvent(),
       widgetMouseMoveEvent(),
  */
-void ohlc_interactor::widgetMouseReleaseEvent( QMouseEvent* mouseEvent )
+void ohlc_interactor::widgetMouseReleaseEvent(QMouseEvent* mouseEvent)
 {
-    if ( parentWidget()->isVisible() )
+    if (parentWidget()->isVisible())
     {
         QPoint pos = mouseEvent->pos();
 
         m_data->pos = pos;
 
-        if ( m_data->pos != m_data->initialPos )
+        if (m_data->pos != m_data->initialPos)
         {
         }
     }
@@ -488,10 +405,10 @@ void ohlc_interactor::widgetMouseReleaseEvent( QMouseEvent* mouseEvent )
    \param keyEvent Key event
    \sa eventFilter(), widgetKeyReleaseEvent()
  */
-void ohlc_interactor::widgetKeyPressEvent( QKeyEvent* keyEvent )
+void ohlc_interactor::widgetKeyPressEvent(QKeyEvent* keyEvent)
 {
-    if ( ( keyEvent->key() == m_data->abortKey )
-        && ( keyEvent->modifiers() == m_data->abortKeyModifiers ) )
+    if ((keyEvent->key() == m_data->abortKey)
+        && (keyEvent->modifiers() == m_data->abortKeyModifiers))
     {
     }
 }
@@ -502,8 +419,8 @@ void ohlc_interactor::widgetKeyPressEvent( QKeyEvent* keyEvent )
    \param keyEvent Key event
    \sa eventFilter(), widgetKeyReleaseEvent()
  */
-void ohlc_interactor::widgetKeyReleaseEvent( QKeyEvent* keyEvent )
+void ohlc_interactor::widgetKeyReleaseEvent(QKeyEvent* keyEvent)
 {
-    Q_UNUSED( keyEvent );
+    Q_UNUSED(keyEvent);
 }
 

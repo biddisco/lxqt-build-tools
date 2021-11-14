@@ -5,10 +5,6 @@
 #include <QScrollArea>
 #include <QTimer>
 //
-#include <qwt_plot_textlabel.h>
-#include <qwt_plot_marker.h>
-#include <qwt_text.h>
-//
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
 # include "extern/belle/include/belle.hh"
@@ -18,7 +14,6 @@
 #include "src/network/websocket-ssl.hpp"
 //
 #include "src/plot/ohlc_price_plot.hpp"
-#include "src/plot/CombinedPriceVolumeCharts.h"
 #include "src/plot/OrderBookPlot.h"
 //
 #include "src/data/ohlc_dataset_manager.hpp"
@@ -58,7 +53,6 @@ class GroxMainWindow : public QMainWindow
 
     ohlc_dataset_manager hdf5_ohlc_;
     //
-    CombinedPriceVolumeCharts* CombinedPriceVolumeCharts_;
     ohlc_price_plot* cryptoPricePlot_;
 
     OrderBookPlot *obp_;
@@ -68,7 +62,6 @@ class GroxMainWindow : public QMainWindow
     std::shared_ptr<xrpl_network> xrpl_network_;
     std::shared_ptr<xrpl_network> xrpl_testnet_;
 
-    bool enable_multiresolution_ = true;
 //    http::request<http::string_body> bitstamp_request_;
 
 public:
@@ -81,7 +74,6 @@ public:
     //
     void receive_ohlc_data(std::string&&);
 
-    void validate_ohlc();
     void update_candlestick_data();
 
     void update_balance(std::string_view addr, double oldb, double newb);

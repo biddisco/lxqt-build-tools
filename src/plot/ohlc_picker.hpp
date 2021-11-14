@@ -24,7 +24,7 @@ public:
     QwtTextLabel  *price_label;
 
     ohlc_picker(QWidget* canvas)
-        : QwtPlotPicker(canvas)
+        : QwtPlotPicker(QwtAxis::XBottom, QwtAxis::YRight, canvas)
         , last_coord(0,0)
         , price_label(nullptr)
     {

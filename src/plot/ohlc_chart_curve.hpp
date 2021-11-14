@@ -12,7 +12,7 @@
 class ohlc_chart_curve : public QwtPlotTradingCurve
 {
 public:
-    enum GrixSymbolStyle : int
+    enum GroxSymbolStyle : int
     {
         HeikinAshi = QwtPlotTradingCurve::SymbolStyle::UserSymbol + 1
     };
@@ -29,11 +29,22 @@ public:
         const QwtScaleMap& xMap, const QwtScaleMap& yMap,
         const QRectF& canvasRect, int from, int to ) const QWT_OVERRIDE;
 
+    void drawVolume(QPainter* painter,
+        const QwtScaleMap& xMap, const QwtScaleMap& yMap,
+        const QRectF& canvasRect, int from, int to) const;
+
+    void drawVolumeBar( QPainter* painter,
+        const QwtOHLCSample& sample, double width ) const;
+
     void setSymbolPenHA(Direction, const QPen&);
     void setSymbolBrushHA(Direction, const QBrush&);
+    void setSymbolPenVolume(Direction, const QPen&);
+    void setSymbolBrushVolume(Direction, const QBrush&);
 
     QPen    HAPen[2];
     QBrush  HABrush[2];
+    QPen    VolumePen[2];
+    QBrush  VolumeBrush[2];
     mutable bool   start_heikin;
     mutable double prev_open;
     mutable double prev_close;

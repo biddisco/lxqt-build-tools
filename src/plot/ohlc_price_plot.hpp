@@ -40,11 +40,14 @@ public:
     void set_data(ohlc_dataset_manager *ohlc_dataset_manager);
     void update_live_data(QwtOHLCSample const &new_sample);
     //
-    void   adjust_candle_size(double res);
+    bool   adjust_candle_size(double res);
     double get_candle_resolution() {return candle_resolution_; }
     bool   auto_candle_resolution() { return auto_candle_resolution_; }
     void   set_auto_candle_resolution(bool a) { auto_candle_resolution_ = a; }
 
+    // recomputes min/max for price/volue, recomputes candles sizes etc
+    void   update_time_axis(double t1, double t2, ohlc_dataset_manager *data);
+    void   adjust_data_scaling(ohlc_dataset_manager *data);
 public Q_SLOTS:
     void setMode( int );
     void exportPlot();

@@ -4,8 +4,6 @@
 #include <vector>
 // Qt
 #include <QVector>
-// Qwt
-#include <QwtOHLCSample>
 // Grox
 #include "src/plot/ohlc_chart_data.hpp"
 #include "src/plot/ohlc_chart_curve.hpp"
@@ -15,7 +13,6 @@ struct ohlc_datasets
 {
     // persistent downloaded data
     ohlc_chart_data    *ohlc_samples_;
-    std::vector<double> ohlc_volumes_;
     ohlc_chart_curve   *ohlc_curve_;
 
     // live trade data to be included
@@ -26,8 +23,7 @@ struct ohlc_datasets
     ~ohlc_datasets();
 
     // Add new downloaded data to the existing dataset
-    uint64_t merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples,
-        const std::vector<double>& new_ohlc_volumes);
+    uint64_t merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples);
 
     // Checks that all data has consecutive time stamps. Important
     // when merging new downloaded data with old to ensure no gaps
