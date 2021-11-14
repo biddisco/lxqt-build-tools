@@ -154,7 +154,7 @@ void ohlc_interactor::panCanvas(int dx, int dy)
     double t1 = map.invTransform(p1 - dx);
     double t2 = map.invTransform(p2 - dx);
 
-    plot->update_time_axis(t1, t2, ohlc_dataset_manager_);
+    plot->update_time_axis(t1, t2);
 }
 
 // ----------------------------------------------------------------------------
@@ -185,7 +185,7 @@ void ohlc_interactor::zoomCanvas(int dx, int dy)
     double t2 = (x2*xd + x2*xy - xm*xy)/xd;
     double t1 = t2 - xd - xy;
 
-    plot->update_time_axis(t1, t2, ohlc_dataset_manager_);
+    plot->update_time_axis(t1, t2);
 }
 
 // ----------------------------------------------------------------------------

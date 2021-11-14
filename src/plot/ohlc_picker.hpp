@@ -36,10 +36,10 @@ public:
         setRubberBand(
                     QwtPicker::RubberBand(int(QwtPicker::HLineRubberBand) + int(QwtPicker::VLineRubberBand)));
         setStateMachine(new QwtPickerTrackerMachine());
-        // pale blue "#8589cf"
-        setRubberBandPen(QPen(QBrush("#8589cf"), 1, Qt::DashLine));
-        setTrackerPen(QPen(Qt::darkGray));
 
+        // pale blue "#9589cf"
+        setRubberBandPen(QPen(QBrush("#9589cf"), 1, Qt::DashLine));
+        setTrackerPen(QPen(Qt::darkGray));
     }
 
     QPointF quantize_x_coord(const QPointF& pos) const
@@ -48,10 +48,21 @@ public:
         ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
         if (!plot_) return pos;
         //
+        double res = plot_->get_candle_resolution();
+        double p1 = res * static_cast<uint64_t>((pos.x()+res/2.0)/res);
+        return QPointF(p1, pos.y());
+    }
+
+    QPointF quantize_x_screencoord(const QPointF& pos) const
+    {
+        // get the pixel/plot coordinate transform
+        ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
+        if (!plot_) return pos;
+        //
         const QwtScaleMap map = plot_->canvasMap(QwtAxis::XBottom);
         double p1 = map.invTransform(pos.x());
         double res = plot_->get_candle_resolution();
-        p1 = res*static_cast<uint64_t>((p1+res/2.0)/res);
+        p1 = res * static_cast<uint64_t>((p1+res/2.0)/res);
         p1 = map.transform(p1);
         return QPointF(p1, pos.y());
     }
@@ -63,12 +74,13 @@ public:
         //
         double res = plot_->get_candle_resolution();
         double p1 = res*static_cast<uint64_t>((pos.x()+res/2.0)/res);
+        //
         const QDateTime dt = QDateTime::fromMSecsSinceEpoch(p1);
         QString s = QLocale().toString(dt, "dd-MM-yy hh:mm");
         QwtText text(s);
         text.setColor(Qt::lightGray);
         //
-        last_coord = pos;
+        last_coord = QPointF(p1, pos.y());
         return text;
     }
 
@@ -80,7 +92,7 @@ public:
         {
             // Map the x coord to the chart, snap it to a bin,
             // then invert the mapping
-            adjusted += QPoint(quantize_x_coord(points[0]).x(), points[0].y());
+            adjusted += QPoint(quantize_x_screencoord(points[0]).x(), points[0].y());
         }
         return adjusted;
     }
@@ -95,9 +107,11 @@ public:
         ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
         QwtScaleWidget* aw = plot_->axisWidget(QwtAxis::YRight);
         auto awg = aw->geometry();
+
         // scaling mapper
         const QwtScaleMap map = plot_->canvasMap(QwtAxis::YRight);
         auto y = map.transform(last_coord.y());
+
         // setup string
         QString str = QString::number(last_coord.y(), 'f', 4);
         QwtText trackerText(str);
@@ -108,6 +122,7 @@ public:
         trackerText.setBackgroundBrush(c);
         trackerText.setLayoutAttribute(QwtText::LayoutAttribute::MinimumLayout, true);
         trackerText.setRenderFlags(Qt::AlignLeft | Qt::AlignVCenter);
+
         // get size of text that will be drawn
         auto s = trackerText.textSize();
         // position the label
@@ -116,6 +131,8 @@ public:
 
         g.moveTo(awg.x() + 11, awg.y() + y - s.height() - 8/2);
         price_label->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
+
+        plot_->display_candle_status(last_coord.x());
 
     }
 

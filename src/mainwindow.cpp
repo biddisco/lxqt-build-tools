@@ -408,14 +408,14 @@ void GroxMainWindow::createMenus()
             double res = ohlc_chart_data::available_resolutions()[index-1];
             cryptoPricePlot_->set_auto_candle_resolution(false);
             if (cryptoPricePlot_->adjust_candle_size(res)) {
-                cryptoPricePlot_->adjust_data_scaling(&hdf5_ohlc_);
+                cryptoPricePlot_->adjust_data_scaling();
             }
             cryptoPricePlot_->replot();
         }
         else {
             cryptoPricePlot_->set_auto_candle_resolution(true);
             if (cryptoPricePlot_->adjust_candle_size(0)) {
-                cryptoPricePlot_->adjust_data_scaling(&hdf5_ohlc_);
+                cryptoPricePlot_->adjust_data_scaling();
             }
             cryptoPricePlot_->replot();
         }
@@ -462,7 +462,7 @@ void GroxMainWindow::graph_rescale(int range)
     else {
         t1 = hdf5_ohlc_.get_first_sample_time();
     }
-    cryptoPricePlot_->update_time_axis(t1, t2, &hdf5_ohlc_);
+    cryptoPricePlot_->update_time_axis(t1, t2);
 }
 
 // ----------------------------------------------------------------------------

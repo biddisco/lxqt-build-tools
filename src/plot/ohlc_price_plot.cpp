@@ -5,6 +5,7 @@
 // Qt
 #include <QDateTime>
 #include <QDebug>
+#include <QFontDatabase>
 #include <QMouseEvent>
 #include <QWheelEvent>
 // Qwt
@@ -28,6 +29,7 @@
 #include "src/plot/ohlc_interactor.hpp"
 #include "src/plot/ohlc_picker.hpp"
 #include "src/plot/ohlc_chart_curve.hpp"
+#include "src/print.hpp"
 //
 #include <range/v3/view.hpp>
 
@@ -54,7 +56,24 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     , ohlc_dataset_manager_(data)
     , auto_candle_resolution_(true)
 {
-    setTitle("XRP");
+    QwtText text(" ");
+    text.setColor(Qt::lightGray);
+    setTitle(text);
+
+    // Small label we use to show current candle resolution
+    candle_label_ = new QwtTextLabel(this);
+    candle_label_->setIndent(4);
+    candle_label_->setMargin(8);
+
+    candle_status_ = new QwtTextLabel(this);
+    candle_status_->setIndent(48);
+    candle_status_->setMargin(8);
+    candle_status_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    // find a fix font char size
+    QString X = "X";
+    fixed_char_size_x_ = QFontMetrics(candle_status_->font()).tightBoundingRect(X).width();
+    fixed_char_size_y_ = QFontMetrics(candle_status_->font()).tightBoundingRect(X).height();
+    candle_status_->setGeometry(48, 0, 66*fixed_char_size_x_, 4*fixed_char_size_y_);
 
     // default start up resolution
     candle_resolution_ = ohlc_chart_data::minute;
@@ -77,6 +96,8 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     setAxisLabelAlignment(QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom);
 
     // Y axis : setup price axis scaling and tick draw
+    // NB : We do not need to explicitly set a left Y axis
+    // the default axis can be used even when not visible
     pricescaleDraw_ = new ohlc_price_scaledraw(4);
     setAxisScaleDraw(QwtPlot::yRight, pricescaleDraw_);
 
@@ -89,7 +110,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     setAxisVisible(QwtAxis::YRight, true);
 
     // bring the graph slightly inside the borders to leave a small outer margin
-    setContentsMargins(4, 4, 4, 4);
+    setContentsMargins(2, 2, 2, 2);
 
     // A custom interactor for zooming/panning
     plot_interactor_ = new ohlc_interactor(this, ohlc_dataset_manager_);
@@ -126,16 +147,6 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     palette2.setColor(QPalette::WindowText, Qt::lightGray); // ticks
     palette2.setColor(QPalette::Text, Qt::lightGray);	    // tick labels
     axisWidget(Axis::yRight)->setPalette(palette2);
-
-    // yl axis colours
-    QPalette palette3 = axisWidget(Axis::yLeft)->palette();
-    palette3.setColor(QPalette::WindowText, Qt::lightGray); // ticks
-    palette3.setColor(QPalette::Text, Qt::lightGray);	    // tick labels
-    axisWidget(Axis::yLeft)->setPalette(palette3);
-
-    // Small label we use to show current candle resolution
-    candle_label_ = new QwtTextLabel(this);
-    candle_label_->setMargin(0);
 
     // Override the Qt size policy. Otherwise, the plot may not scale to
     // the desired dimensions from the grid layout.
@@ -260,7 +271,7 @@ void ohlc_price_plot::exportPlot()
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::update_time_axis(double t1, double t2, ohlc_dataset_manager *data)
+void ohlc_price_plot::update_time_axis(double t1, double t2)
 {
     const bool doAutoReplot = autoReplot();
     setAutoReplot(false);
@@ -269,7 +280,7 @@ void ohlc_price_plot::update_time_axis(double t1, double t2, ohlc_dataset_manage
     setAxisScale(QwtAxis::XBottom, t1, t2);
 
     // find the min/max price for this new range
-    auto minmax = data->get_min_max_window(
+    auto minmax = ohlc_dataset_manager_->get_min_max_window(
                 get_candle_resolution(), t1, t2, 0.05);
 
     // update the Y price axis with min max
@@ -285,7 +296,7 @@ void ohlc_price_plot::update_time_axis(double t1, double t2, ohlc_dataset_manage
         // recompute the volume min/max if the candle size changes
         updateAxes();
         if (adjust_candle_size(0)) {
-            minmax = data->get_min_max_window(
+            minmax = ohlc_dataset_manager_->get_min_max_window(
                         get_candle_resolution(), t1, t2, 0.05);
             setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
         }
@@ -296,11 +307,51 @@ void ohlc_price_plot::update_time_axis(double t1, double t2, ohlc_dataset_manage
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::adjust_data_scaling(ohlc_dataset_manager *data)
+void ohlc_price_plot::adjust_data_scaling()
 {
     const double t1 = axisScaleDiv(QwtAxis::XBottom).lowerBound();
     const double t2 = axisScaleDiv(QwtAxis::XBottom).upperBound();
-    auto minmax = data->get_min_max_window(
+    auto minmax = ohlc_dataset_manager_->get_min_max_window(
                 get_candle_resolution(), t1, t2, 0.05);
     setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
+}
+
+// ----------------------------------------------------------------------------
+void ohlc_price_plot::display_candle_status(double time)
+{
+    int64_t index = -1;
+    auto *dataset = ohlc_dataset_manager_->get_dataset(get_candle_resolution());
+    if (dataset->ohlc_samples_->size()>0) {
+        index = dataset->ohlc_samples_->sample_index(time);
+    }
+    if (index<0 || size_t(index)>=dataset->ohlc_samples_->size()) {
+        candle_status_->setText("");
+        return;
+    }
+    //
+    const QwtOHLCSample &sample = dataset->ohlc_samples_->data().at(index);
+
+    std::string c;
+    if (sample.open<=sample.close)
+        c = "green";
+    else
+        c = "red";
+
+    static const char *html1 = "<font color=\"white\">";
+    static const char *html2 = "</font> <font color=\"";
+    static const char *html3 = "\">";
+    std::stringstream temp;
+    temp << html1 << "O: " << html2 << c << html3 << hpx::debug::fp<5,9>(sample.open)
+         << html1 << "H: " << html2 << c << html3 << hpx::debug::fp<5,9>(sample.high)
+         << html1 << "L: " << html2 << c << html3 << hpx::debug::fp<5,9>(sample.low)
+         << html1 << "C: " << html2 << c << html3 << hpx::debug::fp<5,9>(sample.close)
+         << html1 << "V: " << html2 << c << html3 << hpx::debug::fp<2,14>(sample.volume);
+
+    QwtText status(temp.str().c_str());
+    status.setRenderFlags(Qt::AlignLeft | Qt::AlignTop);
+//    QColor cc( "#333333" );
+//    status.setBorderPen( QPen( cc, 2 ) );
+//    cc.setAlpha( 200 );
+//    status.setBackgroundBrush( cc );
+    candle_status_->setText(status);
 }

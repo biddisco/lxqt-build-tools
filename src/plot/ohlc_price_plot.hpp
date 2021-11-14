@@ -28,10 +28,13 @@ private:
     QwtDateScaleEngine            *timescaleEngine_;
     QwtPlotDirectPainter          *direct_painter_;
     QwtPlotPicker                 *crosshairs_;
-    QwtTextLabel                  *candle_label_;
     ohlc_dataset_manager          *ohlc_dataset_manager_;
+    QwtTextLabel                  *candle_label_;
+    QwtTextLabel                  *candle_status_;
     double                         candle_resolution_;
     bool                           auto_candle_resolution_;
+    int                            fixed_char_size_x_;
+    int                            fixed_char_size_y_;
 
 public:
     ohlc_price_plot(QWidget *, ohlc_dataset_manager *);
@@ -46,8 +49,14 @@ public:
     void   set_auto_candle_resolution(bool a) { auto_candle_resolution_ = a; }
 
     // recomputes min/max for price/volue, recomputes candles sizes etc
-    void   update_time_axis(double t1, double t2, ohlc_dataset_manager *data);
-    void   adjust_data_scaling(ohlc_dataset_manager *data);
+    void   update_time_axis(double t1, double t2);
+
+    // when candle resolution changes, the volume bar min/max must be updated
+    void   adjust_data_scaling();
+
+    // when the picker moves, we find the current candle and display info
+    void   display_candle_status(double time);
+
 public Q_SLOTS:
     void setMode( int );
     void exportPlot();

@@ -128,8 +128,6 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
     const QRectF tr = QwtScaleMap::invTransform(xMap, yMap, canvasRect);
     double tMin = tr.left();
     double tMax = tr.right();
-    double vMin = tr.top();
-    double vMax = tr.bottom();
 
     const bool doAlign = QwtPainter::roundingAlignment(painter);
 
@@ -197,6 +195,7 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
 
         QPen pen = symbolPenCopy[brushIndex];
         pen.setCapStyle(Qt::FlatCap);
+        pen.setWidthF(0.1*symbolWidth);
 
         painter->setPen(pen);
 
