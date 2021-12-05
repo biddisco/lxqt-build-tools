@@ -44,10 +44,10 @@ std::shared_ptr<ripple::STTx const> deserialize(std::string blob)
 
     auto ret{strUnHex(blob)};
 
-    if (!ret.has_value() || ret.get_ptr()->size() == 0)
+    if (!ret.has_value() || ret.value().size() == 0)
         Throw<std::runtime_error>("transaction not valid hex");
 
-    SerialIter sitTrans{makeSlice(ret.get())};
+    SerialIter sitTrans{makeSlice(ret.value())};
     // Can Throw
     return std::make_shared<STTx const>(std::ref(sitTrans));
 }
@@ -109,8 +109,8 @@ bool demonstrateSigning(
 
     auto const check1 = noopTx.checkSign(STTx::RequireFullyCanonicalSig::no);
 
-    std::cout << "Check 1: " << (check1.first ? "Good" : "Bad!") << "\n";
-    assert(check1.first);
+    std::cout << "Check 1: " << (check1 ? "Good" : "Bad!") << "\n";
+    assert(check1);
 
     // Use the function primitives, which are hidden by the `STTx`
     // interface, to check the signature again and verify that
@@ -130,7 +130,7 @@ bool demonstrateSigning(
 
     std::cout << "Check 2: " << (check2 ? "Good" : "Bad!") << "\n";
 
-    return check1.first && check2;
+    return check1 && check2;
 }
 
 bool exerciseSingleSign()
@@ -180,7 +180,7 @@ ripple::Seed getSeed(std::string const& seedText)
     // WARNING!
     // Never use ripple::parseGenericSeed() for secure code.  Call
     // ripple::randomSeed() instead, since it is cryptographically secure.
-    boost::optional<ripple::Seed> const possibleSeed{ripple::parseGenericSeed(seedText)};
+    std::optional<ripple::Seed> const possibleSeed{ripple::parseGenericSeed(seedText)};
 
     // Should not be necessary in production code, since you used
     // ripple::randomSeed().  Right?
@@ -290,7 +290,7 @@ bool multisign(ripple::STTx& tx, Credentials const& signer)
     });
 
     // Verify that the signature is valid.
-    bool const pass = tx.checkSign(STTx::RequireFullyCanonicalSig::yes).first;
+    bool const pass = tx.checkSign(STTx::RequireFullyCanonicalSig::yes).operator bool();
     assert(pass);
 
     // To submit multisigned JSON to the network use this RPC command:

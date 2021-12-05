@@ -32,10 +32,10 @@ std::shared_ptr<ripple::STTx const> deserialize(std::string blob)
 {
     using namespace ripple;
     auto ret{strUnHex(blob)};
-    if (!ret.has_value() || ret.get_ptr()->size() == 0)
+    if (!ret.has_value() || ret.value().size() == 0)
         Throw<std::runtime_error>("transaction not valid hex");
 
-    SerialIter sitTrans{makeSlice(ret.get())};
+    SerialIter sitTrans{makeSlice(ret.value())};
     // Can Throw
     return std::make_shared<STTx const>(std::ref(sitTrans));
 }
