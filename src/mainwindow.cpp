@@ -37,7 +37,7 @@
 #include "settings.hpp"
 
 #define get_live_trades 1
-#define subscribe_xrpl_events 1
+#define subscribe_xrpl_events 0
 #define enable_multiresolution 1
 
 // ----------------------------------------------------------------------------
@@ -180,7 +180,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // ----------------------------------
     // Subscribe to xrpl events
     //
-#ifdef subscribe_xrpl_events
+#if subscribe_xrpl_events
     xrpl_network_->subscribe_orderbook(io_contexts);
     xrpl_network_->subscribe_accounts(io_contexts);
     xrpl_testnet_->subscribe_accounts(io_contexts);
