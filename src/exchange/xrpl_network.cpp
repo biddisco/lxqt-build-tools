@@ -78,7 +78,11 @@ bool xrpl_network::can_send(currency &c, exchange *dest) {
         return dynamic_cast<xrpl_network*>(dest)->testnet()==testnet();
     }
     else if (!testnet() && dynamic_cast<bitstamp_network*>(dest)) {
-        if (c.type_==currency_type::xrp || c.type_==currency_type::usd_bitstamp || c.type_==currency_type::eur_bitstamp) {
+        if (c.type_==currency_type::xrp ||
+                c.type_==currency_type::usd_bitstamp ||
+                c.type_==currency_type::eur_bitstamp ||
+                c.type_==currency_type::els_trustline
+                ) {
             return true;
         }
     }
@@ -91,6 +95,8 @@ std::vector<std::pair<currency_type, currency_type>> xrpl_network::currency_pair
     std::vector<std::pair<currency_type, currency_type>> supported = {
         {usd_bitstamp,xrp},
         {xrp,usd_bitstamp},
+        {xrp,els_trustline},
+        {els_trustline,xrp},
     };
     return supported;
 }
@@ -401,6 +407,10 @@ void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
             currency c{"XRP", "", currency_type::xrp, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
         }
+        else if (b.currency == currency_type::els_trustline) {
+            currency c{"ELS", currency::ELS_trust, currency_type::els_trustline, b.value, b.value, 0, nullptr};
+            add_currency(c, w.currencies_);
+        }
     }
 
     // signal GUI to update
@@ -519,13 +529,13 @@ void xrpl_network::get_all_account_orders()
             {
               if (ctx.res.result() != OB::Belle::Status::ok)
               {
-                std::cerr << "account_offers : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
+                std::cerr << "Error: account_offers : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
                           << " " << ctx.res.reason()
                           << "\n";
                 return;
               }
               // debug : print the response headers and body
-              DEBUG_ALWAYS(line_string << "account_offers response : " << w.public_ << " : " << ctx.res.body());
+              DEBUG_ONLY(line_string << "account_offers response : " << w.public_ << " : " << ctx.res.body());
               this->handle_account_orders(w, std::move(ctx.res.body()));
             });
             new_client.connect();
@@ -539,7 +549,7 @@ void xrpl_network::get_all_account_orders()
 void xrpl_network::handle_account_orders(ledger_wallet &w, std::string&& data)
 {
     nlohmann::json jdata = json::parse(data)["result"];
-    DEBUG_ALWAYS(jdata.dump(4));
+    DEBUG_ONLY(jdata.dump(4));
     //
     if (jdata.is_null()) return;
     assert(w.public_ == jdata.at("account").get< std::string >());

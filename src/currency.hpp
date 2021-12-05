@@ -16,6 +16,7 @@ enum currency_type : int {
     usd_bitstamp,
     eur_bitstamp,
     usd_gatehub,
+    els_trustline,
     other,
 };
 
@@ -23,6 +24,7 @@ enum currency_type : int {
 struct currency {
     static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
     static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
+    static inline const std::string ELS_trust = "rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg";
     //
     std::string name_;
     std::string issuer_;

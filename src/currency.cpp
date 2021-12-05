@@ -26,6 +26,9 @@ currency_type get_currency_type(std::string_view name, std::string_view issuer)
     else if (name=="USD" && issuer==currency::gatehub_trust) {
         return currency_type::usd_gatehub;
     }
+    else if (name=="ELS" && issuer==currency::ELS_trust) {
+        return currency_type::els_trustline;
+    }
     //
     return currency_type::other;
 }
@@ -54,6 +57,8 @@ std::pair<std::string, std::string> to_string(const currency_type &t)
         return std::make_pair("EUR", currency::bitstamp_trust); break;
     case usd_gatehub:
         return std::make_pair("USD", currency::gatehub_trust); break;
+    case els_trustline:
+        return std::make_pair("ELS", currency::ELS_trust); break;
     case other:
         return std::make_pair("other", ""); break;
     default:
