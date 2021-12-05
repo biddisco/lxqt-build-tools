@@ -59,8 +59,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     // Create candlestick/volume plots
     //
-    cryptoPricePlot_ = new ohlc_price_plot(this, &hdf5_ohlc_);
-    ui.candlestick_layout->addWidget(cryptoPricePlot_, 30);
+    crypto_price_plot_ = new ohlc_price_plot(this, &hdf5_ohlc_);
+    ui.candlestick_layout->addWidget(crypto_price_plot_, 30);
 
     // ----------------------------------
     // Create orderbook plot
@@ -114,7 +114,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         }
     }
 
-    cryptoPricePlot_->set_data(&hdf5_ohlc_);
+    crypto_price_plot_->set_data(&hdf5_ohlc_);
     // start by displaying 1/4 day of data
     graph_rescale(-2);
 
@@ -224,7 +224,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 GroxMainWindow::~GroxMainWindow()
 {
     delete timer_;
-    delete cryptoPricePlot_;
+    delete crypto_price_plot_;
     delete obp_;
 }
 
@@ -351,7 +351,7 @@ void GroxMainWindow::createMenus()
     connect(bitstamp_network_.get(), &bitstamp_network::new_trade_data_ui, this, [this](live_trades t) {
         auto p = t.price;
         QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p);
-        cryptoPricePlot_->update_live_data(new_sample);
+        crypto_price_plot_->update_live_data(new_sample);
     } , Qt::QueuedConnection);
 
     connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)),
@@ -397,32 +397,32 @@ void GroxMainWindow::createMenus()
     connect(ui.candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
         if (index>0) {
             double res = ohlc_chart_data::available_resolutions()[index-1];
-            cryptoPricePlot_->set_auto_candle_resolution(false);
-            if (cryptoPricePlot_->adjust_candle_size(res)) {
-                cryptoPricePlot_->adjust_data_scaling();
+            crypto_price_plot_->set_auto_candle_resolution(false);
+            if (crypto_price_plot_->adjust_candle_size(res)) {
+                crypto_price_plot_->adjust_data_scaling();
             }
-            cryptoPricePlot_->replot();
+            crypto_price_plot_->replot();
         }
         else {
-            cryptoPricePlot_->set_auto_candle_resolution(true);
-            if (cryptoPricePlot_->adjust_candle_size(0)) {
-                cryptoPricePlot_->adjust_data_scaling();
+            crypto_price_plot_->set_auto_candle_resolution(true);
+            if (crypto_price_plot_->adjust_candle_size(0)) {
+                crypto_price_plot_->adjust_data_scaling();
             }
-            cryptoPricePlot_->replot();
+            crypto_price_plot_->replot();
         }
     } , Qt::QueuedConnection);
 
     connect(ui.heikin, QOverload<int>::of(&QCheckBox::stateChanged), this, [this](int state){
         if (state) {
-            cryptoPricePlot_->setMode(ohlc_chart_curve::HeikinAshi);
+            crypto_price_plot_->setMode(ohlc_chart_curve::HeikinAshi);
         }
         else {
-            cryptoPricePlot_->setMode(QwtPlotTradingCurve::SymbolStyle::CandleStick);
+            crypto_price_plot_->setMode(QwtPlotTradingCurve::SymbolStyle::CandleStick);
         }
     } , Qt::QueuedConnection);
 
-    connect(cryptoPricePlot_->get_interactor(), &ohlc_interactor::repair_pressed, this, [this](QPointF p){
-        double time = cryptoPricePlot_->get_crosshairs()->quantize_x_coord(p).x();
+    connect(crypto_price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this, [this](QPointF p){
+        double time = crypto_price_plot_->get_crosshairs()->quantize_x_coord(p).x();
         const QDateTime dt = QDateTime::fromMSecsSinceEpoch(time);
         QString s = QLocale().toString(dt, "dd-MM-yy hh:mm");
         std::cout << s.toStdString() << std::endl;
@@ -467,7 +467,7 @@ void GroxMainWindow::graph_rescale(int range)
     else {
         t1 = hdf5_ohlc_.get_first_sample_time();
     }
-    cryptoPricePlot_->update_time_axis(t1, t2);
+    crypto_price_plot_->update_time_axis(t1, t2);
 }
 
 // ----------------------------------------------------------------------------
@@ -493,7 +493,7 @@ void GroxMainWindow::new_ohlc_data()
     }
 
     // don't change axes, just update data series and replot
-    cryptoPricePlot_->replot();
+    crypto_price_plot_->replot();
 }
 
 // ----------------------------------------------------------------------------

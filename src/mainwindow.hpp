@@ -54,7 +54,7 @@ class GroxMainWindow : public QMainWindow
 
     ohlc_dataset_manager hdf5_ohlc_;
     //
-    ohlc_price_plot* cryptoPricePlot_;
+    ohlc_price_plot* crypto_price_plot_;
 
     OrderBookPlot *obp_;
     QTimer *timer_;
