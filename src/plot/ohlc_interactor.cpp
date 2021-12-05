@@ -103,6 +103,7 @@ const ohlc_price_plot* ohlc_interactor::plot() const
     return qobject_cast< const ohlc_price_plot* >(w);
 }
 
+// ----------------------------------------------------------------------------
 /*!
    \brief En/Disable an axis
 
@@ -120,6 +121,7 @@ void ohlc_interactor::setAxisEnabled(QwtAxisId axisId, bool on)
         m_data->isAxisEnabled[axisId] = on;
 }
 
+// ----------------------------------------------------------------------------
 /*!
    Test if an axis is enabled
 
@@ -171,7 +173,7 @@ void ohlc_interactor::zoomCanvas(int dx, int dy)
     // so we do not simply add an amount to both ends, but compute a more complex
     // transformation
 
-    // left right and mouse pos in world coords
+    // x min/max in world coords
     double x1 = plot->axisScaleDiv(QwtAxis::XBottom).lowerBound();
     double x2 = plot->axisScaleDiv(QwtAxis::XBottom).upperBound();
     double xd = x2-x1;
@@ -221,12 +223,8 @@ bool ohlc_interactor::eventFilter(QObject * object, QEvent * event)
         }
         case QEvent::MouseMove:
         {
-            break;
-            QMouseEvent *evr = static_cast<QMouseEvent *>(event);
+            QMouseEvent * evr = static_cast<QMouseEvent *>(event);
             widgetMouseMoveEvent(evr);
-            widgetMouseReleaseEvent(evr );
-            setMouseButton(evr->button(), evr->modifiers());
-            widgetMousePressEvent(evr);
             break;
         }
         case QEvent::MouseButtonRelease:
@@ -371,8 +369,6 @@ void ohlc_interactor::widgetMouseMoveEvent(QMouseEvent* mouseEvent)
     if (pos != m_data->pos)
     {
         m_data->pos = pos;
-//        parentWidget()->update();
-
         Q_EMIT moved(m_data->pos.x() - m_data->initialPos.x(),
             m_data->pos.y() - m_data->initialPos.y());
     }
@@ -410,6 +406,21 @@ void ohlc_interactor::widgetKeyPressEvent(QKeyEvent* keyEvent)
     if ((keyEvent->key() == m_data->abortKey)
         && (keyEvent->modifiers() == m_data->abortKeyModifiers))
     {
+    }
+    if (keyEvent->key() == Qt::Key_R)
+    {
+        ohlc_price_plot* plot = this->plot();
+        if (plot == NULL) return;
+
+        // get the X axis pixel/plot coordinate transform
+        const QwtScaleMap mapx = plot->canvasMap(QwtAxis::XBottom);
+        const QwtScaleMap mapy = plot->canvasMap(QwtAxis::YRight);
+
+        // mouse pos in world coords
+        double xm = mapx.invTransform(m_data->pos.x());
+        double ym = mapy.invTransform(m_data->pos.y());
+
+        Q_EMIT repair_pressed(QPointF(xm, ym));
     }
 }
 

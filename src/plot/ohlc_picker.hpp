@@ -12,6 +12,7 @@
 #include <QwtPickerMachine>
 #include <QwtScaleEngine>
 #include <QwtScaleMap>
+#include <QwtScaleWidget>
 #include <QwtText>
 #include <QwtTextLabel>
 //

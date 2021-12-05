@@ -4,16 +4,17 @@
 #include <QwtPlot>
 // Grox
 #include "src/plot/ohlc_interactor.hpp"
-
+//
 class ohlc_dataset_manager;
 class ohlc_chart_curve;
 class ohlc_price_scaledraw;
+class ohlc_picker;
+//
 class QwtDateScaleDraw;
 class QwtDateScaleEngine;
 class QwtPlotDirectPainter;
 class QwtPlotCurve;
 class QwtPlotItem;
-class QwtPlotPicker;
 class QwtPlotTextLabel;
 class QwtTextLabel;
 
@@ -27,7 +28,7 @@ private:
     QwtDateScaleDraw              *timescaleDraw_;
     QwtDateScaleEngine            *timescaleEngine_;
     QwtPlotDirectPainter          *direct_painter_;
-    QwtPlotPicker                 *crosshairs_;
+    ohlc_picker                   *crosshairs_;
     ohlc_dataset_manager          *ohlc_dataset_manager_;
     QwtTextLabel                  *candle_label_;
     QwtTextLabel                  *candle_status_;
@@ -56,6 +57,9 @@ public:
 
     // when the picker moves, we find the current candle and display info
     void   display_candle_status(double time);
+
+    ohlc_interactor *get_interactor() { return plot_interactor_; }
+    ohlc_picker     *get_crosshairs() { return crosshairs_; }
 
 public Q_SLOTS:
     void setMode( int );

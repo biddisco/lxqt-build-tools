@@ -40,13 +40,21 @@ void ohlc_dataset_manager::merge_data(
     // returns the number of samples that are 'new'
     uint64_t update = data->merge_data(new_ohlc_samples_);
     // write new samples to the main datafile
-    write_hdf5(data->ohlc_samples_->data(), update);
+    write_hdf5(data->ohlc_samples_->data(), update, false);
 }
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::read_hdf5()
 {
     read_hdf5(candles_.begin()->second->ohlc_samples_->data());
+}
+
+// ----------------------------------------------------------------------------
+void hdf5_check(const char *msg, herr_t err)
+{
+    if (err < 0) {
+        throw std::runtime_error(std::string("HDF5 Error")+msg);
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -66,20 +74,20 @@ void ohlc_dataset_manager::read_hdf5(QVector<QwtOHLCSample> &data)
             hid_t space1 = H5Dget_space(dset1);
             const int ndims1 = H5Sget_simple_extent_ndims(space1);
             hsize_t dims1[ndims1];
-            herr_t status = H5Sget_simple_extent_dims(space1, dims1, NULL);
+            hdf5_check("H5Sget_simple_extent_dims", H5Sget_simple_extent_dims(space1, dims1, NULL));
             //
             int N = dims1[0] / (sizeof(QwtOHLCSample) / sizeof(double));
             data.resize(N);
-            status = H5Dread(dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                data.data());
+            hdf5_check("H5Dread", H5Dread(dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                data.data()));
 
             // free/close datasets
-            status = H5Dclose(dset1);
+            hdf5_check("H5Dclose", H5Dclose(dset1));
             // free/close dataspaces
-            status = H5Sclose(space1);
+            hdf5_check("H5Sclose", H5Sclose(space1));
         }
         // free/close file
-        herr_t status = H5Fclose(file);
+        hdf5_check("H5Fclose", H5Fclose(file));
     }
     else
     {
@@ -88,7 +96,7 @@ void ohlc_dataset_manager::read_hdf5(QVector<QwtOHLCSample> &data)
         // Create a new file using default properties.
         hid_t file_id = H5Fcreate(
             file_name_.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-        herr_t status = H5Fclose(file_id);
+        hdf5_check("H5Fclose", H5Fclose(file_id));
     }
     //
     ohlc_datasets::validate_ohlc(data, ohlc_chart_data::minute);
@@ -96,7 +104,7 @@ void ohlc_dataset_manager::read_hdf5(QVector<QwtOHLCSample> &data)
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
-    const uint64_t update)
+    const uint64_t update, bool truncate)
 {
     ohlc_datasets::validate_ohlc(samples, ohlc_chart_data::minute);
     //
@@ -115,7 +123,6 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
     hsize_t ohlc_dims[1] = {N};
     hsize_t max_dims[1] = {H5S_UNLIMITED};
     hsize_t chunk_dim1[1] = {65536};
-    herr_t status;
 
     // open the file, use UNLIMITED for main dimension so we can extend datasets
     hid_t file = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
@@ -125,21 +132,21 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
     {
         // create a property list to set the chunking property on our OHLC dataset
         hid_t dprop1 = H5Pcreate(H5P_DATASET_CREATE);
-        status = H5Pset_chunk(dprop1, 1, chunk_dim1);
+        hdf5_check("H5Pset_chunk", H5Pset_chunk(dprop1, 1, chunk_dim1));
 
         // write OHLC data,
         hid_t space1 = H5Screate_simple(1, ohlc_dims, max_dims);
         hid_t dset1 = H5Dcreate(
             file, "ohlc", H5T_IEEE_F64LE, space1, H5P_DEFAULT, dprop1, H5P_DEFAULT);
-        status = H5Dwrite(
-            dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, samples.data());
+        hdf5_check("H5Dwrite", H5Dwrite(
+            dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, samples.data()));
 
         // free/close datasets
-        status = H5Dclose(dset1);
+        hdf5_check("H5Dclose", H5Dclose(dset1));
         // free/close properties
-        status = H5Pclose(dprop1);
+        hdf5_check("H5Pclose", H5Pclose(dprop1));
         // free/close dataspaces
-        status = H5Sclose(space1);
+        hdf5_check("H5Sclose", H5Sclose(space1));
     }
 
     // if we are extending a dataset
@@ -152,27 +159,48 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
 
         hid_t dset1 = H5Dopen(file, "ohlc", H5P_DEFAULT);
         // extend dataset to new size
-        status = H5Dextend(dset1, ohlc_dims);
+        hdf5_check("H5Dextend", H5Dextend(dset1, ohlc_dims));
         // Select a hyperslab from the file dataspace
         hid_t fspace1 = H5Dget_space(dset1);
         // select hyperslab in new dataset : start, stride(NULL), count, block(NULL)
-        status = H5Sselect_hyperslab(fspace1, H5S_SELECT_SET, offset1, NULL, ext1, NULL);
+        hdf5_check("H5Sselect_hyperslab", H5Sselect_hyperslab(fspace1, H5S_SELECT_SET, offset1, NULL, ext1, NULL));
         // Define memory space that we write our new data from
         hid_t dspace1 = H5Screate_simple(1, ext1, NULL);
         // Write new data to the hyperslab
-        status = H5Dwrite(
-            dset1, H5T_NATIVE_DOUBLE, dspace1, fspace1, H5P_DEFAULT, &samples[offset]);
+        hdf5_check("H5Dwrite", H5Dwrite(
+            dset1, H5T_NATIVE_DOUBLE, dspace1, fspace1, H5P_DEFAULT, &samples[offset]));
 
         // free/close datasets
-        status = H5Dclose(dset1);
+        hdf5_check("H5Dclose", H5Dclose(dset1));
         // free/close dataspaces
-        status = H5Sclose(fspace1);
-        status = H5Sclose(dspace1);
+        hdf5_check("H5Sclose", H5Sclose(fspace1));
+        hdf5_check("H5Sclose", H5Sclose(dspace1));
+    }
+    // truncating a dataset
+    else if (truncate)
+    {
+        DEBUG_ONLY("Truncating dataset to: " << samples.size());
+
+        hid_t dset1 = H5Dopen(file, "ohlc", H5P_DEFAULT);
+        // extend dataset to new size
+        hdf5_check("H5Dset_extent", H5Dset_extent(dset1, ohlc_dims));
+
+        // free/close datasets
+        hdf5_check("H5Dclose", H5Dclose(dset1));
     }
     // free/close file
-    status = H5Fclose(file);
+    hdf5_check("H5Fclose", H5Fclose(file));
 
     DEBUG_ONLY("Dataset size: " << data.size());
+}
+
+// ----------------------------------------------------------------------------
+void ohlc_dataset_manager::truncate_from_time(double t)
+{
+    ohlc_chart_data *samples = get_samples();
+    auto index = samples->sample_index(t);
+    samples->data().resize(index);
+    write_hdf5(samples->data(), 0, true);
 }
 
 // ----------------------------------------------------------------------------

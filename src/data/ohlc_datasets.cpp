@@ -2,6 +2,8 @@
 #include <vector>
 // Qt
 #include <QVector>
+#include <QDateTime>
+#include <QLocale>
 // Grox
 #include "src/debug.hpp"
 #include "src/plot/ohlc_chart_data.hpp"
@@ -64,7 +66,7 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
         }
         // try again with dummy data inserted into gap
         last_existing = ohlc_samples_->data().back().time;
-
+        (void)last_existing; //warning about unused value store
         DEBUG_ONLY("existing " << static_cast<uint64_t>(last_existing) << " new "
                   << static_cast<uint64_t>(first_new));
 

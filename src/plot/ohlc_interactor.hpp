@@ -76,6 +76,9 @@ Q_SIGNALS:
      */
     void moved( int dx, int dy );
 
+    // mouse position in world coords at time of keypress
+    void repair_pressed(QPointF pos);
+
 protected:
     virtual void widgetMousePressEvent( QMouseEvent* );
     virtual void widgetMouseReleaseEvent( QMouseEvent* );

@@ -14,6 +14,7 @@
 #include "src/network/websocket-ssl.hpp"
 //
 #include "src/plot/ohlc_price_plot.hpp"
+#include "src/plot/ohlc_picker.hpp"
 #include "src/plot/OrderBookPlot.h"
 //
 #include "src/data/ohlc_dataset_manager.hpp"

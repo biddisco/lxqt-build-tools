@@ -177,7 +177,7 @@ void ohlc_price_plot::set_data(ohlc_dataset_manager *ohlc_dataset_manager)
 // ----------------------------------------------------------------------------
 void ohlc_price_plot::update_live_data(QwtOHLCSample const &new_sample)
 {
-    qDebug() << "New data " << new_sample.open << "\n";
+    // qDebug() << "New data " << new_sample.open << "\n";
 
     ohlc_dataset_manager_->add_live_data(new_sample);
     // The live data is typically only a small number of samples

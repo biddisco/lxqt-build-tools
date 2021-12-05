@@ -43,11 +43,13 @@ public:
 
     // write out data to hdf5
     void write_hdf5(const QVector<QwtOHLCSample>& samples,
-        const uint64_t update = 0);
+        const uint64_t update, bool truncate);
 
     // Add new downloaded data to an existing dataset
     void merge_data(double res,
                     const QVector<QwtOHLCSample>& new_ohlc_samples_);
+
+    void truncate_from_time(double t);
 
     // Get first/last sample time, value is returned as UTC = unix time stamp * 1000
     double get_last_sample_time();

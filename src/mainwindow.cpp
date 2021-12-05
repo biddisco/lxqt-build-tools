@@ -429,6 +429,20 @@ void GroxMainWindow::createMenus()
             cryptoPricePlot_->setMode(QwtPlotTradingCurve::SymbolStyle::CandleStick);
         }
     } , Qt::QueuedConnection);
+
+    connect(cryptoPricePlot_->get_interactor(), &ohlc_interactor::repair_pressed, this, [this](QPointF p){
+        double time = cryptoPricePlot_->get_crosshairs()->quantize_x_coord(p).x();
+        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(time);
+        QString s = QLocale().toString(dt, "dd-MM-yy hh:mm");
+        std::cout << s.toStdString() << std::endl;
+        ui.repair_date->setDateTime(dt);
+    } , Qt::QueuedConnection);
+
+    connect(ui.repair_btn, QOverload<bool>::of(&QAbstractButton::clicked), this, [this](bool){
+        double msecs = ui.repair_date->dateTime().toMSecsSinceEpoch();
+        hdf5_ohlc_.truncate_from_time(msecs);
+    } , Qt::QueuedConnection);
+
 }
 
 // ----------------------------------------------------------------------------
