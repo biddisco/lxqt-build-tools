@@ -109,6 +109,14 @@ void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other)
 }
 
 // ----------------------------------------------------------------------------
+// unixtime * 1000 is msecs since 1970/1/1
+std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
+{
+    QDateTime dt = QDateTime::fromMSecsSinceEpoch(unixmsecs);
+    return QLocale().toString( dt, "yyyy-MM-dd hh:mm:ss").toStdString();
+}
+
+// ----------------------------------------------------------------------------
 uint64_t sample_index(double init, double time, double res)
 {
     uint64_t i = static_cast<uint64_t>((time-init)/res);

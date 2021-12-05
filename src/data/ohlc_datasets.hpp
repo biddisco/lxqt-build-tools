@@ -8,6 +8,9 @@
 #include "src/plot/ohlc_chart_data.hpp"
 #include "src/plot/ohlc_chart_curve.hpp"
 
+void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other);
+std::string msecs_unix_to_calendar_time(uint64_t unixmsecs);
+
 // ----------------------------------------------------------------------------
 struct ohlc_datasets
 {

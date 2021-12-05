@@ -3,6 +3,8 @@
 // to pass structs as params we must declare metatypes to Qt
 #include <QtCore>
 //
+#include <QwtOHLCSample>
+//
 #include <vector>
 #include <string>
 //
@@ -30,16 +32,12 @@ Q_DECLARE_METATYPE(std::vector<ohlc_string>*)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ohlc_string,
     timestamp, open, high, low, close, volume);
 
-struct ohlc {
-    double time;
-    double open;
-    double high;
-    double low;
-    double close;
-    //
-    double volume;
+struct ohlc : QwtOHLCSample {
     //
     ohlc() = default;
+    ohlc(const QwtOHLCSample &other)
+        : QwtOHLCSample(other.time, other.open, other.high, other.low, other.close, other.volume)
+    {}
     ohlc(const ohlc_string &s) {
         time        = std::atof(s.timestamp.c_str());
         open        = std::atof(s.open.c_str());
@@ -54,6 +52,8 @@ Q_DECLARE_METATYPE(ohlc)
 Q_DECLARE_METATYPE(std::vector<ohlc>*)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ohlc,
     time, open, high, low, close, volume);
+
+std::ostream& operator<<(std::ostream& os, const QwtOHLCSample &);
 
 
 // ----------------------------------------------------------------------------

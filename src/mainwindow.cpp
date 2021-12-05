@@ -44,15 +44,6 @@
 extern void generate_encrypted_ini_data(password_dialog& npw);
 
 // ----------------------------------------------------------------------------
-// unixtime * 1000 is msecs since 1970/1/1
-std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
-{
-    QDateTime dt = QDateTime::fromMSecsSinceEpoch(unixmsecs);
-    return QLocale().toString( dt, "yyyy-MM-dd hh:mm:ss").toStdString();
-}
-
-
-// ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)
   : QMainWindow(parent)
 {

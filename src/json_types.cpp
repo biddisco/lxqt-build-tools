@@ -8,6 +8,16 @@
 #include "nlohmann/json.hpp"
 #include "json_types.hpp"
 
+std::ostream& operator<<(std::ostream& os, const QwtOHLCSample &x) {
+    os << "Time: "   << x.time << " "
+       << "Open: "   << x.open << " "
+       << "High: "   << x.high << " "
+       << "Low: "    << x.low << " "
+       << "Close: "  << x.close << " "
+       << "Volume: " << x.volume;
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const xrp_amount &x) {
     os << "Value: " << x.value << " " << "Currency: ";
     if (x.currency==currency_type::xrp) os << "xrp";
