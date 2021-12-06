@@ -21,17 +21,18 @@
 class ohlc_picker : public QwtPlotPicker
 {
 public:
-    mutable QPointF last_coord;
-    QwtTextLabel  *price_label;
+    mutable QPointF last_coord_;
+    QwtTextLabel  *price_label_;
+    QwtTextLabel  *date_label_;
 
     ohlc_picker(QWidget* canvas)
         : QwtPlotPicker(QwtAxis::XBottom, QwtAxis::YRight, canvas)
-        , last_coord(0,0)
-        , price_label(nullptr)
+        , last_coord_(0,0)
+        , price_label_(new QwtTextLabel(canvas->parentWidget()))
+        , date_label_(new QwtTextLabel(canvas->parentWidget()))
     {
         ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas->parentWidget());
         QwtScaleWidget* aw = plot_->axisWidget(QwtAxis::YRight);
-        price_label = new QwtTextLabel(canvas->parentWidget());
 
         setTrackerMode(QwtPlotPicker::ActiveOnly);
         setRubberBand(
@@ -43,15 +44,15 @@ public:
         setTrackerPen(QPen(Qt::darkGray));
     }
 
-    QPointF quantize_x_coord(const QPointF& pos) const
+    double quantize_x_coord(const double pos) const
     {
         // get the pixel/plot coordinate transform
         ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
         if (!plot_) return pos;
         //
         double res = plot_->get_candle_resolution();
-        double p1 = res * static_cast<uint64_t>((pos.x()+res/2.0)/res);
-        return QPointF(p1, pos.y());
+        double p1 = res * static_cast<uint64_t>((pos+res/2.0)/res);
+        return p1;
     }
 
     QPointF quantize_x_screencoord(const QPointF& pos) const
@@ -70,19 +71,10 @@ public:
 
     virtual QwtText trackerTextF(const QPointF& pos) const QWT_OVERRIDE
     {
-        ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
-        if (!plot_) return QwtText();
+        double p1 = quantize_x_coord(pos.x());
+        last_coord_ = QPointF(p1, pos.y());
         //
-        double res = plot_->get_candle_resolution();
-        double p1 = res*static_cast<uint64_t>((pos.x()+res/2.0)/res);
-        //
-        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(p1);
-        QString s = QLocale().toString(dt, "dd-MM-yy hh:mm");
-        QwtText text(s);
-        text.setColor(Qt::lightGray);
-        //
-        last_coord = QPointF(p1, pos.y());
-        return text;
+        return QwtText();
     }
 
     QPolygon adjustedPoints(const QPolygon &points) const QWT_OVERRIDE
@@ -102,39 +94,78 @@ public:
     {
         QwtPlotPicker::updateDisplay();
 
-        if (!price_label) return;
+        if (!price_label_) return;
 
-        // axis widget
+        // -------------------------------------------------
+        // Right Y axis widget (price)
+        //
         ohlc_price_plot *plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
-        QwtScaleWidget* aw = plot_->axisWidget(QwtAxis::YRight);
-        auto awg = aw->geometry();
+        QwtScaleWidget* yaw = plot_->axisWidget(QwtAxis::YRight);
+        auto yawg = yaw->geometry();
 
-        // scaling mapper
-        const QwtScaleMap map = plot_->canvasMap(QwtAxis::YRight);
-        auto y = map.transform(last_coord.y());
+        // Right Y axis scaling mapper
+        const QwtScaleMap ymap = plot_->canvasMap(QwtAxis::YRight);
+        auto y = ymap.transform(last_coord_.y());
 
-        // setup string
-        QString str = QString::number(last_coord.y(), 'f', 4);
-        QwtText trackerText(str);
+        //
+        // display price inside price axis
+        //
+        QString str = QString::number(last_coord_.y(), 'f', 4);
+        QwtText price_text(str);
         QColor c("#555555");
         c.setAlpha(200);
-        trackerText.setColor(Qt::white);
-        trackerText.setBorderPen(QPen(c, 1));
-        trackerText.setBackgroundBrush(c);
-        trackerText.setLayoutAttribute(QwtText::LayoutAttribute::MinimumLayout, true);
-        trackerText.setRenderFlags(Qt::AlignLeft | Qt::AlignVCenter);
+        price_text.setColor(Qt::white);
+        price_text.setBorderPen(QPen(c, 1));
+        price_text.setBackgroundBrush(c);
+        price_text.setLayoutAttribute(QwtText::LayoutAttribute::MinimumLayout, true);
+        price_text.setRenderFlags(Qt::AlignLeft | Qt::AlignVCenter);
 
         // get size of text that will be drawn
-        auto s = trackerText.textSize();
+        auto s = price_text.textSize();
         // position the label
-        price_label->setText(trackerText);
-        auto g = price_label->geometry();
+        price_label_->setText(price_text);
+        auto g = price_label_->geometry();
 
-        g.moveTo(awg.x() + 11, awg.y() + y - s.height() - 8/2);
-        price_label->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
+        g.moveTo(yawg.x() + 11, yawg.y() + y - s.height() - 8/2);
+        price_label_->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
 
-        plot_->display_candle_status(last_coord.x());
+        // -------------------------------------------------
+        // Bottom X axis widget (date)
+        //
+        QwtScaleWidget* xaw = plot_->axisWidget(QwtAxis::XBottom);
+        auto xawg = xaw->geometry();
 
+        // Bottom X axis scaling mapper
+        const QwtScaleMap xmap = plot_->canvasMap(QwtAxis::XBottom);
+        double px = quantize_x_coord(last_coord_.x());
+        auto x = xmap.transform(px);
+
+        const QwtScaleDraw *xdraw = plot_->axisScaleDraw(QwtAxis::XBottom);
+        //
+        // display date inside date axis
+        //
+        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(px);
+        QString str2 = QLocale().toString(dt, "dd-MM-yy hh:mm");
+        QwtText date_text(str2);
+        date_text.setColor(Qt::white);
+        date_text.setBorderPen(QPen(c, 1));
+        date_text.setBackgroundBrush(c);
+        date_text.setLayoutAttribute(QwtText::LayoutAttribute::MinimumLayout, true);
+        date_text.setRenderFlags(Qt::AlignHCenter | Qt::AlignVCenter);
+
+        // get size of text that will be drawn
+        s = date_text.textSize();
+        // position the label
+        date_label_->setText(date_text);
+        g = date_label_->geometry();
+
+        g.moveTo(xawg.x() + x - s.width()/2, xawg.y() + xdraw->maxTickLength() + 3);
+        date_label_->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
+
+        //
+        // display the stats of the candle under the cursor
+        //
+        plot_->display_candle_status(last_coord_.x());
     }
 
 };

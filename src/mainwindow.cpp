@@ -422,7 +422,7 @@ void GroxMainWindow::createMenus()
     } , Qt::QueuedConnection);
 
     connect(crypto_price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this, [this](QPointF p){
-        double time = crypto_price_plot_->get_crosshairs()->quantize_x_coord(p).x();
+        double time = crypto_price_plot_->get_crosshairs()->quantize_x_coord(p.x());
         const QDateTime dt = QDateTime::fromMSecsSinceEpoch(time);
         QString s = QLocale().toString(dt, "dd-MM-yy hh:mm");
         std::cout << s.toStdString() << std::endl;
