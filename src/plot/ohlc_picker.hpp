@@ -107,6 +107,7 @@ public:
         const QwtScaleMap ymap = plot_->canvasMap(QwtAxis::YRight);
         auto y = ymap.transform(last_coord_.y());
 
+        const QwtScaleDraw *ydraw = plot_->axisScaleDraw(QwtAxis::YRight);
         //
         // display price inside price axis
         //
@@ -126,7 +127,7 @@ public:
         price_label_->setText(price_text);
         auto g = price_label_->geometry();
 
-        g.moveTo(yawg.x() + 11, yawg.y() + y - s.height() - 8/2);
+        g.moveTo(yawg.x() + ydraw->maxTickLength() + ydraw->spacing() - 1, yawg.y() + y - s.height() - 8/2);
         price_label_->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
 
         // -------------------------------------------------
@@ -159,7 +160,7 @@ public:
         date_label_->setText(date_text);
         g = date_label_->geometry();
 
-        g.moveTo(xawg.x() + x - s.width()/2, xawg.y() + xdraw->maxTickLength() + 3);
+        g.moveTo(xawg.x() + x - s.width()/2, xawg.y() + xdraw->maxTickLength() + xdraw->spacing() - 1);
         date_label_->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
 
         //
