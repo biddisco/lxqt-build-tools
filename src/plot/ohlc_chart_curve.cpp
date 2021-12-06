@@ -135,9 +135,11 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
     if (doAlign)
         symbolWidth = std::floor(0.5 * symbolWidth) * 2.0;
 
-    // find the min/max indices that we need to iterate over
+    // find the min/max indices that we need to iterate over,
+    // add +1 to min to clip 1 inside at the left of the x axis
+    // right hand side is trucated by int conversion and always clipped anyway
     ohlc_chart_data const *chartData = dynamic_cast<ohlc_chart_data const *>(data());
-    from = std::max(int64_t(0), chartData->sample_index(tMin));
+    from = std::max(int64_t(0), chartData->sample_index(tMin)+1);
     to   = std::min(int64_t(chartData->data().size()-1), chartData->sample_index(tMax));
 
     for (int i = from; i <= to; i++)
