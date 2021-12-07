@@ -30,12 +30,14 @@ bitstamp_network::~bitstamp_network()
 void bitstamp_network::connect(net::contexts &io_contexts)
 {
     using namespace std::placeholders;
+    DEBUG_ALWAYS("Subscribing to live_trades_xrpusd");
     ws_trades = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
         "\"live_trades_xrpusd\"}}",
         std::bind(bitstamp_network::new_trade_data, this, _1));
 
+    DEBUG_ALWAYS("Subscribing to order_book_xrpusd");
     ws_bidask = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "

@@ -85,6 +85,8 @@ public:
     void saveWindowSettings();
     void loadWindowSettings();
 
+    void start_io_threads(int nthreads);
+
 signals:
     void quitApplication();
     void new_ohlc_data_ui();

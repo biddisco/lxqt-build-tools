@@ -186,15 +186,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     xrpl_testnet_->subscribe_accounts(io_contexts);
 #endif
 
-    // Run the I/O service on some threads.
-    for (int i=0; i<2; ++i) {
-        websocket_thread = std::thread([&]() {
-            DEBUG_ONLY("io_contexts run : thread " << std::this_thread::get_id());
-            // The call will return when the socket is closed.
-            io_contexts.ioc.run();
-        });
-        websocket_thread.detach();
-    }
     update_account_balances();
 
     //
@@ -647,11 +638,31 @@ void GroxMainWindow::update_candlestick_data()
 }
 
 // ----------------------------------------------------------------------------
+void GroxMainWindow::start_io_threads(int nthreads)
+{
+    bool initialized = false;
+    if (!initialized) {
+        // Run the I/O service on some threads.
+        for (int i=0; i<nthreads; ++i) {
+            websocket_thread = std::thread([&]() {
+                DEBUG_ONLY("io_contexts run : thread " << std::this_thread::get_id());
+                // The call will return when the socket is closed.
+                io_contexts.ioc.run();
+            });
+            websocket_thread.detach();
+        }
+        initialized = true;
+    }
+}
+
+// ----------------------------------------------------------------------------
 void GroxMainWindow::start_websocket()
 {
-#ifdef get_live_trades
-    bitstamp_network_->connect(io_contexts);
-#endif
+    #if get_live_trades
+        bitstamp_network_->connect(io_contexts);
+        start_io_threads(2);
+    #endif
+
     update_candlestick_data();
 }
 
