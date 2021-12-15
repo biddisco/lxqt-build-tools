@@ -25,6 +25,7 @@
 #include "src/exchange/xrpl_network.hpp"
 #include "src/settings.hpp"
 #include "src/order_book.hpp"
+#include "src/stream/trade_filter.hpp"
 
 class AdjustingScrollArea : public QScrollArea {
    bool eventFilter(QObject * obj, QEvent * ev) override {
@@ -55,6 +56,7 @@ class GroxMainWindow : public QMainWindow
     ohlc_dataset_manager hdf5_ohlc_;
     //
     ohlc_price_plot* crypto_price_plot_;
+    QwtPlot *filters_plot_;
 
     OrderBookPlot *obp_;
     QTimer *timer_;
@@ -63,6 +65,7 @@ class GroxMainWindow : public QMainWindow
     std::shared_ptr<xrpl_network> xrpl_network_;
     std::shared_ptr<xrpl_network> xrpl_testnet_;
 
+    trade_filter df_;
 //    http::request<http::string_body> bitstamp_request_;
 
 public:
@@ -88,6 +91,7 @@ public:
     void saveTrustlines();
     void loadTrustlines();
 
+    void stream_process(const QwtOHLCSample &data);
     void start_io_threads(int nthreads);
 
 signals:

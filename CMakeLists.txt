@@ -217,6 +217,8 @@ set(GROX_SRC
 
     # utils
     src/util/QDateHelper.cpp
+
+    src/stream/trade_filter.cpp
 )
 
 # -----------------------------------------------------------------------------

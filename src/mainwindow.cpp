@@ -35,6 +35,8 @@
 //
 #include "json_types.hpp"
 #include "settings.hpp"
+//
+#include "src/stream/trade_filter.hpp"
 
 #define get_live_trades 1
 #define subscribe_xrpl_events 0
@@ -61,6 +63,13 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     crypto_price_plot_ = new ohlc_price_plot(this, &hdf5_ohlc_);
     ui.candlestick_layout->addWidget(crypto_price_plot_, 30);
+
+    //
+    // Create stream/filters plot
+    //
+    filters_plot_ = new QwtPlot(this);
+    ui.filters_layout->addWidget(filters_plot_, 30);
+    filters_plot_->setMinimumHeight(128);
 
     // ----------------------------------
     // Create orderbook plot
@@ -212,6 +221,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         slist << r.name_;
     }
     ui.candle_res->addItems(slist);
+
+
 }
 
 // ----------------------------------------------------------------------------
@@ -344,8 +355,10 @@ void GroxMainWindow::createMenus()
 
     connect(bitstamp_network_.get(), &bitstamp_network::new_trade_data_ui, this, [this](live_trades t) {
         auto p = t.price;
-        QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p);
+        auto v = t.amount;
+        QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p, v);
         crypto_price_plot_->update_live_data(new_sample);
+        stream_process(new_sample);
     } , Qt::QueuedConnection);
 
     connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)),
@@ -515,9 +528,9 @@ void GroxMainWindow::execute_xrp()
                                   QMessageBox::Yes|QMessageBox::No);
     if (reply == QMessageBox::Yes) {
         qDebug() << "Yes was clicked";
-        app_settings* app_ini = global_settings();
+//        app_settings* app_ini = global_settings();
 
-        std::uint32_t tag = bitstamp_network_->account().tag_;
+//        std::uint32_t tag = bitstamp_network_->account().tag_;
 //        bool test = make_xrp_payment(ripple::KeyType::secp256k1,
 //            app_ini->xrpl_wallets[app_ini->active_wallet].private_,
 //            app_ini->xrpl_wallets[app_ini->active_wallet].public_,
@@ -762,6 +775,8 @@ void GroxMainWindow::display_offers()
 }
 
 // ----------------------------------------------------------------------------
+// Load/Save of ini configuration/settings for main Qt application
+// ----------------------------------------------------------------------------
 void GroxMainWindow::closeEvent(QCloseEvent *event)
 {
     saveWindowSettings();
@@ -769,10 +784,16 @@ void GroxMainWindow::closeEvent(QCloseEvent *event)
     QMainWindow::closeEvent(event);
 }
 
+// ----------------------------------------------------------------------------
 void GroxMainWindow::showEvent(QShowEvent *event )
 {
-    loadWindowSettings();
     QMainWindow::showEvent(event);
+    // load settings on startup window display only
+    static bool only_once = true;
+    if (only_once) {
+        loadWindowSettings();
+        only_once = false;
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -824,6 +845,11 @@ void GroxMainWindow::saveWindowSettings()
     settings.setValue("geometry", saveGeometry());
     settings.setValue("windowState", saveState());
 #endif
+
+    // save splitter state
+    QByteArray state = ui.graph_splitter->saveState();
+    settings.setValue("graphSplitter", state.toBase64());
+
     settings.endGroup();
     qDebug() << "Settings saved under:" << settings.fileName();
 }
@@ -844,6 +870,18 @@ void GroxMainWindow::loadWindowSettings()
     restoreGeometry(settings.value("geometry").toByteArray());
     restoreState(settings.value("windowState").toByteArray());
 #endif
+    // load splitter state
+    ui.graph_splitter->restoreState(QByteArray::fromBase64(settings.value("graphSplitter").toByteArray()));
+
     settings.endGroup();
     qDebug() << "Settings loaded from:" << settings.fileName();
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::stream_process(const QwtOHLCSample &ohlc)
+{
+    auto s = msecs_unix_to_calendar_time(ohlc.time);
+    std::cout << "New data  = " << ohlc << std::endl;
+    std::cout << "Event time " << s << std::endl;
+    df_.process(ohlc);
 }

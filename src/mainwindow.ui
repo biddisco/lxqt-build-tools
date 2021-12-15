@@ -33,7 +33,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>3</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="chart_tab">
          <attribute name="title">
@@ -131,7 +131,7 @@
            </layout>
           </item>
           <item>
-           <widget class="QSplitter" name="splitter_2">
+           <widget class="QSplitter" name="graph_splitter">
             <property name="orientation">
              <enum>Qt::Vertical</enum>
             </property>
@@ -139,7 +139,7 @@
              <layout class="QHBoxLayout" name="candlestick_layout"/>
             </widget>
             <widget class="QWidget" name="verticalLayoutWidget">
-             <layout class="QVBoxLayout" name="volume_layout"/>
+             <layout class="QVBoxLayout" name="filters_layout"/>
             </widget>
            </widget>
           </item>
@@ -408,7 +408,7 @@
             <widget class="QDateTimeEdit" name="repair_date">
              <property name="dateTime">
               <datetime>
-               <hour>22</hour>
+               <hour>16</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2021</year>
@@ -418,7 +418,7 @@
              </property>
              <property name="minimumTime">
               <time>
-               <hour>23</hour>
+               <hour>20</hour>
                <minute>0</minute>
                <second>0</second>
               </time>
