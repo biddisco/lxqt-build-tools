@@ -396,6 +396,9 @@
           <layout class="QHBoxLayout" name="horizontalLayout_4">
            <item>
             <widget class="QPushButton" name="repair_btn">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press 'r' on chart to set repair date/time&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
               <string>Repair Data</string>
              </property>
