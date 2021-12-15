@@ -2,6 +2,7 @@
 #include <random>
 //
 #include "trade_filter.hpp"
+#include "src/demangle_helper.hpp"
 #include "src/print.hpp"
 #include "src/json_types.hpp"
 //
@@ -83,7 +84,7 @@ trade_filter::trade_filter()
     : rolling_average_(10)
     , ohlc_in_(QwtOHLCSample())
     , ema_1(1.0)
-    , ema_10(1.0)
+    , ema_10(60.0)
 {
     sample_input_ = std::ref(ohlc_in_);
 //    auto p1 = sample_input_ | ema_1.f();
@@ -107,22 +108,6 @@ trade_filter::trade_filter()
     std::random_device rd;
     std::default_random_engine eng(rd());
     std::uniform_real_distribution<double> distr(0.01, 0.01);
-
-//    ohlc_in_.set(QwtOHLCSample(distr(eng), distr(eng), distr(eng), distr(eng), distr(eng), distr(eng)));
-//    cross_detector_();
-
-//    ohlc.close = 0.50;
-//    pipeline::input<QwtOHLCSample> test1 = std::ref(ohlc_in_);
-//    pipeline::filter<double,QwtOHLCSample&> e1 = exponential_moving_average(1.0);
-//    pipeline::filter<double,QwtOHLCSample&> e2 = exponential_moving_average(10.0);
-//    pipeline::input<bool> test3 = [test1, e1, e2]() {
-//        auto t1 = test1();
-//        auto a1 = e1(t1);
-//        auto a2 = e2(t1);
-//        std::cout << a1 << " " << a2 << " " << std::endl;
-//        return a1>=a2;
-//    };
-//    pipeline::filter<std::optional<bool>,bool> u1 = unique<bool>();
 
 }
 

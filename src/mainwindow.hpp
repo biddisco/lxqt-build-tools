@@ -16,6 +16,7 @@
 #include "src/plot/ohlc_price_plot.hpp"
 #include "src/plot/ohlc_picker.hpp"
 #include "src/plot/OrderBookPlot.h"
+#include "src/plot/filter_plot.hpp"
 //
 #include "src/data/ohlc_dataset_manager.hpp"
 //
@@ -56,7 +57,7 @@ class GroxMainWindow : public QMainWindow
     ohlc_dataset_manager hdf5_ohlc_;
     //
     ohlc_price_plot* crypto_price_plot_;
-    QwtPlot *filters_plot_;
+    filter_plot *filters_plot_;
 
     OrderBookPlot *obp_;
     QTimer *timer_;

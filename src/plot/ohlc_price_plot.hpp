@@ -61,6 +61,9 @@ public:
     ohlc_interactor *get_interactor() { return plot_interactor_; }
     ohlc_picker     *get_crosshairs() { return crosshairs_; }
 
+signals:
+    void plotScaleChanged(double t1, double t2);
+
 public Q_SLOTS:
     void setMode( int );
     void exportPlot();

@@ -32,40 +32,43 @@ struct exponential_moving_average
         std::cout << "init EMA " << decay_factor << std::endl;
     }
 
-    double operator() (const QwtOHLCSample &ohlc)
+    double compute(const QwtOHLCSample &ohlc, double alpha)
     {
         double seconds = ohlc.time/1000.0;
-        double timePeriod = decay_factor_; // seconds
         if (!first_)
         {
-            auto mult = 2.0 / (timePeriod + 1.0);
-            xma_ = (ohlc.close - xma_) * mult + xma_;
+            xma_ = (alpha*xma_) + (1.0 - alpha)*ohlc.close;
+            std::cout << "EMA decay " << decay_factor_ << ", alpha " << alpha << " : " << xma_ << "\n";
         }
         else
         {
             xma_ = ohlc.close;
-            prev_time_ = seconds;
             first_ = false;
         }
+        prev_time_ = seconds;
         return xma_;
+    }
+
+    double simple_version(const QwtOHLCSample &ohlc)
+    {
+        double alpha = 2.0 / (decay_factor_ + 1.0);
+        return compute(ohlc, alpha);
     }
 
     double exponential_version(const QwtOHLCSample &ohlc)
     {
+        if (first_)
+            return compute(ohlc, 1.0);
+        //
         double seconds = ohlc.time/1000.0;
-        if (!first_)
-        {
-            double alpha = 1.0 - 1.0/exp(decay_factor_*(seconds-prev_time_));
-            xma_ += alpha*(ohlc.close - xma_);
-            prev_time_ = seconds;
-        }
-        else
-        {
-            xma_ = ohlc.close;
-            prev_time_ = seconds;
-            first_ = false;
-        }
-        return xma_;
+        double dt = (seconds-prev_time_);
+        double alpha = 1.0/exp(dt/decay_factor_);
+        return compute(ohlc, alpha);
+    }
+
+    double operator() (const QwtOHLCSample &ohlc)
+    {
+        return exponential_version(ohlc);
     }
 
     inline double getLastResult() { return this->xma_; }
@@ -154,11 +157,8 @@ struct ohlc_close
 };
 
 //----------------------------------------------------------------------------
-struct cross {
-//    cross() = default;
-//    cross(const cross &) = default;
-//    cross &operator = (const cross &) = default;
-    //
+struct cross
+{
     bool operator() (double v1, double v2) {
         std::cout << v1 << " : " << v2 << std::endl;
         return v1>=v2;
@@ -214,3 +214,24 @@ public:
     //
     pipeline::input<void> cross_detector_;
 };
+
+//----------------------------------------------------------------------------
+//
+// Moving average
+//
+//class ma_filter {
+//public:
+//    ma_filter();
+//    //
+//    void process(const QwtOHLCSample &ohlc);
+//    //
+//    moving_average rolling_average_;
+//    //
+//    ohlc_input ohlc_in_;
+//    pipeline::input<const QwtOHLCSample&> sample_input_;
+//    //
+//    exponential_moving_average ema_1;
+//    exponential_moving_average ema_10;
+//    //
+//    pipeline::input<void> cross_detector_;
+//};

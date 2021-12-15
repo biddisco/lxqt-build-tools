@@ -67,7 +67,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     // Create stream/filters plot
     //
-    filters_plot_ = new QwtPlot(this);
+    filters_plot_ = new filter_plot(this);
     ui.filters_layout->addWidget(filters_plot_, 30);
     filters_plot_->setMinimumHeight(128);
 
@@ -221,8 +221,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         slist << r.name_;
     }
     ui.candle_res->addItems(slist);
-
-
 }
 
 // ----------------------------------------------------------------------------
@@ -428,7 +426,7 @@ void GroxMainWindow::createMenus()
         }
     } , Qt::QueuedConnection);
 
-    connect(crypto_price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this, [this](QPointF p){
+    connect(crypto_price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this, [this](QPointF p) {
         double time = crypto_price_plot_->get_crosshairs()->quantize_x_coord(p.x());
         const QDateTime dt = QDateTime::fromMSecsSinceEpoch(time);
         QString s = QLocale().toString(dt, "dd-MM-yy hh:mm");
@@ -436,9 +434,17 @@ void GroxMainWindow::createMenus()
         ui.repair_date->setDateTime(dt);
     } , Qt::QueuedConnection);
 
-    connect(ui.repair_btn, QOverload<bool>::of(&QAbstractButton::clicked), this, [this](bool){
+    connect(ui.repair_btn, QOverload<bool>::of(&QAbstractButton::clicked), this, [this](bool) {
         double msecs = ui.repair_date->dateTime().toMSecsSinceEpoch();
         hdf5_ohlc_.truncate_from_time(msecs);
+    } , Qt::QueuedConnection);
+
+
+    connect(crypto_price_plot_, &ohlc_price_plot::plotScaleChanged, this, [this](double t1, double t2) {
+        filters_plot_->update_time_axis(t1, t2);
+
+//                axisScaleDraw(QwtPlot::xBottom)->, crypto_price_plot_->axisScaleDraw(QwtPlot::xBottom));
+        //    filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
     } , Qt::QueuedConnection);
 
 }

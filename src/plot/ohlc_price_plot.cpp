@@ -304,6 +304,7 @@ void ohlc_price_plot::update_time_axis(double t1, double t2)
 
     setAutoReplot(doAutoReplot);
     replot();
+    emit plotScaleChanged(t1, t2);
 }
 
 // ----------------------------------------------------------------------------
