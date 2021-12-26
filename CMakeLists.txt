@@ -205,6 +205,7 @@ set(GROX_SRC
     src/widgets/wallet_widget.cpp
     src/widgets/trade_widget.cpp
     src/widgets/check_trades_dialog.cpp
+    src/widgets/xrp_functions.cpp
 
     # plotting
     src/plot/OrderBookPlot.cpp

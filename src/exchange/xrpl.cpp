@@ -4,6 +4,7 @@
 #include <iostream>
 // Grox
 #include "src/debug.hpp"
+#include "src/currency.hpp"
 // extern
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/to_string.h>
@@ -49,23 +50,28 @@ std::string make_xrp_payment(
         int32_t from_sequence,
         const std::string &dest_address,
         int32_t dest_tag,
-        int64_t amount,
+        double amount,
         const std::string &currency,
         const std::string &issuer)
 {
     using namespace ripple;
-    //
+    // get from account keys/info
     auto const seed = parseGenericSeed(from_seed);
     assert(seed);
     auto const keypair = generateKeyPair(keyType, *seed);
     auto const id = calcAccountID(keypair.first);
     assert(toBase58(id) == from_address);
 
+    // get to account info
     auto const destination = parseBase58<AccountID>(dest_address);
     assert(destination);
+
+    // currency issuer - is this an IOU
     auto const gateway1 = parseBase58<AccountID>(issuer);
+    bool currency_xrp = true;
     if (currency!="") {
         assert(gateway1);
+        currency_xrp = false;
     }
 
     STTx payTx(ttPAYMENT, [&](auto& obj) {
@@ -78,14 +84,18 @@ std::string make_xrp_payment(
         // Payment-specific fields
         obj[sfDestination] = *destination;
         obj[sfDestinationTag] = dest_tag;
-        if (currency.size()>0) {
-            obj[sfAmount]  = STAmount(Issue(to_currency(currency), *gateway1), amount, -2);
+        if (currency_xrp) {
+            obj[sfAmount] = STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount));
+        }
+        else if (is_fiat(currency, issuer)) {
+            // amount we want to send as dollars.cents, multiply x 100, shift right 2 places
+            obj[sfAmount]  = STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount*1E2), -2);
             // we multiply by 1.002 to allow for IOU fees, and scale the float to int size,
             // but shift right by the same amount to move the decimal point back to dollars.cents
             obj[sfSendMax] = STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount*1.002*1E5), -(2+5));
         }
         else {
-            obj[sfAmount] = STAmount(XRPAmount(amount)); // drops?
+            obj[sfAmount] = STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount*1E6), -6);
         }
     });
 
@@ -180,6 +190,72 @@ std::string cancel_xrp_offer(
         obj[sfSequence] = from_sequence;
         // Offer specific fields
         obj[sfOfferSequence] = offerSeq;
+    });
+
+    DEBUG_ALWAYS("Before signing: \n"
+              << offerTx.getJson(JsonOptions::none).toStyledString() << std::endl
+              << "Serialized: " << offerTx.getJson(JsonOptions::none, true)[jss::tx]);
+
+    offerTx.sign(keypair.first, keypair.second);
+
+    auto const serialized = serialize(offerTx);
+
+#ifdef DEBUG_TX_SIGN
+    std::cout << "\nAfter signing: \n"
+        << offerTx.getJson(JsonOptions::none).toStyledString() << std::endl
+        << "Serialized: " << serialized << std::endl;
+#endif
+
+    return serialized;
+}
+
+// ----------------------------------------------------------------------------
+std::string set_trustline(
+        ripple::KeyType keyType,
+        const std::string &from_seed,
+        const std::string &from_address,
+        int32_t from_sequence,
+        int64_t limit,
+        const std::string &currency,
+        const std::string &issuer,
+        std::uint32_t flags)
+{
+    using namespace ripple;
+    //
+    auto const seed = parseGenericSeed(from_seed);
+    auto const keypair = generateKeyPair(keyType, *seed);
+    auto const id = calcAccountID(keypair.first);
+    assert(toBase58(id) == from_address);
+
+
+    auto const gateway1 = parseBase58<AccountID>(issuer);
+    if (currency!="") {
+        assert(gateway1);
+    }
+
+    std::string hexcode = currency;
+    if (currency.size()>3) {
+        hexcode = strHex(currency.begin(), currency.end());
+        while (hexcode.size()<40) hexcode += '0';
+        if (hexcode== "534F4C4F00000000000000000000000000000000") {
+            std::cout << "MAtch" << std::endl;
+        }
+    }
+
+    STTx offerTx(ttTRUST_SET, [&](auto& obj) {
+        // General transaction fields
+        obj[sfAccount] = id;
+        obj[sfFee] = STAmount{100};
+        if (flags)
+            obj[sfFlags] = tfSetNoRipple /*flags*/;
+        obj[sfSigningPubKey] = keypair.first.slice();
+        obj[sfSequence] = from_sequence;
+
+        // Trustline specific fields
+        if (currency.size()>0) {
+            STAmount LimitAmount = STAmount(Issue(to_currency(hexcode), *gateway1), limit);
+            obj[sfLimitAmount] = LimitAmount;
+        }
     });
 
     DEBUG_ALWAYS("Before signing: \n"

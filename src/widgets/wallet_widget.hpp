@@ -12,6 +12,8 @@ class wallet_widget;
 class wallet_widget : public QWidget
 {
     Q_OBJECT
+    std::shared_ptr<exchange> network_;
+    basic_account *account_;
 
 public:
     explicit wallet_widget(QWidget *parent = nullptr);

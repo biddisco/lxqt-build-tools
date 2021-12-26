@@ -6,13 +6,20 @@
 //
 #include "src/settings.hpp"
 //
+// ----------------------------------------------------------------------------
 wallet_widget::wallet_widget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::wallet_widget)
 {
     ui->setupUi(this);
+    //
+    std::cout << "Connecting " << ui->net_funcs << std::endl;
+    connect(ui->net_funcs, &QToolButton::clicked, this, [this](bool /*checked*/) {
+        network_->custom_functions(account_);
+    } , Qt::QueuedConnection);
 }
 
+// ----------------------------------------------------------------------------
 wallet_widget::~wallet_widget()
 {
     delete ui;
@@ -21,6 +28,9 @@ wallet_widget::~wallet_widget()
 // ----------------------------------------------------------------------------
 void wallet_widget::set_data(ledger_wallet &w, int decimals)
 {
+    network_ = w.network_;
+    account_ = &w;
+    //
     ui->ledger_wallet->setTitle(w.name_.c_str());
     ui->address->setText(w.public_.c_str());
     ui->address->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -35,6 +45,7 @@ void wallet_widget::set_data(ledger_wallet &w, int decimals)
         }
         c.widget_->set_data(&c, &w, w.network_);
     }
+
     update();
 }
 
@@ -43,3 +54,5 @@ void wallet_widget::set_data(bitstamp_account &w)
 {
     this->set_data(w, 2);
 }
+
+// ----------------------------------------------------------------------------

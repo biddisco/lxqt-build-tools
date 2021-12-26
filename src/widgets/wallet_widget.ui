@@ -60,6 +60,13 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QToolButton" name="net_funcs">
+          <property name="text">
+           <string>NSF</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
       <item>

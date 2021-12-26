@@ -17,6 +17,8 @@ enum currency_type : int {
     eur_bitstamp,
     usd_gatehub,
     els_trustline,
+    solo_trustline,
+    alv_trustline,
     other,
 };
 
@@ -25,6 +27,8 @@ struct currency {
     static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
     static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
     static inline const std::string ELS_trust = "rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg";
+    static inline const std::string SOLO_trust = "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz";
+    static inline const std::string ALV_trust = "raEQc5krJ2rUXyi6fgmUAf63oAXmF7p6jp";
     //
     std::string name_;
     std::string issuer_;
@@ -46,6 +50,7 @@ currency_type get_currency_type(std::string_view name, std::string_view issuer);
 // return true if the currency is a fiat currency such as USD, EUR etc etc
 bool is_fiat(currency_type c);
 bool is_fiat(std::string_view name, std::string_view issuer);
+bool is_xrp(currency_type c);
 
 // ----------------------------------------------------------------------------
 // convert a currency type enum to a string pair, {name, issuer}

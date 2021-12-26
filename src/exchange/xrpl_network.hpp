@@ -175,6 +175,10 @@ public:
     double get_fee_percent(const currency_type &c1, const currency_type &c2) override;
     double get_fee_fixed(const currency_type &c1, const currency_type &c2) override;
 
+    void trustline(basic_account *acct, std::string addr, std::string code, uint64_t limit);
+
+    void custom_functions(basic_account *acct) override;
+
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
     // procesing operations that affect Qt/GUI managed items in a thread safe way

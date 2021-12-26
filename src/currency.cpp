@@ -29,6 +29,12 @@ currency_type get_currency_type(std::string_view name, std::string_view issuer)
     else if (name=="ELS" && issuer==currency::ELS_trust) {
         return currency_type::els_trustline;
     }
+    else if (issuer==currency::SOLO_trust) {
+        return currency_type::solo_trustline;
+    }
+    else if (name=="ALV" && issuer==currency::ALV_trust) {
+        return currency_type::alv_trustline;
+    }
     //
     return currency_type::other;
 }
@@ -36,13 +42,22 @@ currency_type get_currency_type(std::string_view name, std::string_view issuer)
 // ----------------------------------------------------------------------------
 bool is_fiat(currency_type c)
 {
-    if (c==currency_type::xrp) return false;
-    return true;
+    if (c==currency_type::usd_bitstamp || c==eur_bitstamp || c==usd_gatehub)
+        return true;
+    return false;
 }
 
 bool is_fiat(std::string_view name, std::string_view issuer)
 {
     return is_fiat(get_currency_type(name, issuer));
+}
+
+// ----------------------------------------------------------------------------
+bool is_xrp(currency_type c)
+{
+    if (c==currency_type::xrp)
+        return true;
+    return false;
 }
 
 // ----------------------------------------------------------------------------
@@ -59,6 +74,10 @@ std::pair<std::string, std::string> to_string(const currency_type &t)
         return std::make_pair("USD", currency::gatehub_trust); break;
     case els_trustline:
         return std::make_pair("ELS", currency::ELS_trust); break;
+    case solo_trustline:
+        return std::make_pair("SOLO", currency::SOLO_trust); break;
+    case alv_trustline:
+        return std::make_pair("ALV", currency::ALV_trust); break;
     case other:
         return std::make_pair("other", ""); break;
     default:

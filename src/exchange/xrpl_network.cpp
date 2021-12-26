@@ -11,7 +11,10 @@
 //
 #include "src/order_book.hpp"
 #include "src/settings.hpp"
+//
 #include "src/widgets/currency_widget.hpp"
+#include "src/widgets/xrp_functions.hpp"
+//
 #include "src/exchange/xrpl_network.hpp"
 #include "src/exchange/bitstamp.hpp"
 #include "src/exchange/xrpl.hpp"
@@ -19,6 +22,10 @@
 #include <ripple/protocol/Issue.h>
 #include <ripple/protocol/Sign.h>
 #include <ripple/protocol/UintTypes.h>
+//
+#include <QDialog>
+#include <QHBoxLayout>
+
 #define line_string "# ---------------------------------\n"
 
 // ----------------------------------------------------------------------------
@@ -81,7 +88,9 @@ bool xrpl_network::can_send(currency &c, exchange *dest) {
         if (c.type_==currency_type::xrp ||
                 c.type_==currency_type::usd_bitstamp ||
                 c.type_==currency_type::eur_bitstamp ||
-                c.type_==currency_type::els_trustline
+                c.type_==currency_type::els_trustline ||
+                c.type_==currency_type::solo_trustline ||
+                c.type_==currency_type::alv_trustline
                 ) {
             return true;
         }
@@ -97,6 +106,10 @@ std::vector<std::pair<currency_type, currency_type>> xrpl_network::currency_pair
         {xrp,usd_bitstamp},
         {xrp,els_trustline},
         {els_trustline,xrp},
+        {xrp,solo_trustline},
+        {solo_trustline,xrp},
+        {xrp,alv_trustline},
+        {alv_trustline,xrp},
     };
     return supported;
 }
@@ -411,6 +424,14 @@ void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
             currency c{"ELS", currency::ELS_trust, currency_type::els_trustline, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
         }
+        else if (b.currency == currency_type::solo_trustline) {
+            currency c{"SOLO", currency::SOLO_trust, currency_type::solo_trustline, b.value, b.value, 0, nullptr};
+            add_currency(c, w.currencies_);
+        }
+        else if (b.currency == currency_type::alv_trustline) {
+            currency c{"ALV", currency::ALV_trust, currency_type::alv_trustline, b.value, b.value, 0, nullptr};
+            add_currency(c, w.currencies_);
+        }
     }
 
     // signal GUI to update
@@ -600,7 +621,7 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
     ledger_wallet *from = static_cast<ledger_wallet*>(src);
     ledger_wallet *to = static_cast<ledger_wallet*>(dest);
     std::string signed_tx;
-    // are we sending xrp or an IOU?
+    // are we sending xrp or an IOU? xrp is always sent in drops
     if (c.type_ == currency_type::xrp) {
         std::cout << "XRP payment amount " << c.balance_
                   << " from " << from->public_
@@ -614,14 +635,14 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
                 from->sequence_,
                 to->get_receive_address(c).begin(),
                 to->tag_,
-                static_cast<uint64_t>(c.balance_*1000000), "", "");
+                c.balance_*1000000, "", "");
     }
     else {
         std::cout << "XRP IOU payment amount " << c.balance_
                   << " " << c.name_
                   << " from " << from->public_
                   << " to " << to->public_
-                  << " IOU addr " << to->get_receive_address(c)
+                  << " IOU addr " << c.issuer_
                   << ((to->tag_!=0) ? "(" + std::to_string(to->tag_) + ")" : "") << std::endl;
 
         signed_tx = make_xrp_payment(
@@ -631,7 +652,7 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
                 from->sequence_,
                 to->get_receive_address(c).begin(),
                 to->tag_,
-                static_cast<uint64_t>(c.balance_*100), c.name_, c.issuer_);
+                c.balance_, c.name_, c.issuer_);
     }
     from->sequence_++;
     submit_signed_transaction(std::move(signed_tx));
@@ -706,22 +727,39 @@ void xrpl_network::place_limit_order(basic_account *acct, trade_data const &t, b
 
     // fiat currencies are multipled by 100 and shifted left by 2
     Currency curr_p = to_currency(pay_pair.first);
-    if (!isXRP(curr_p)) {
+    if (is_fiat(t.taker_payc_)) {
         auto const issuer = parseBase58<AccountID>(pay_pair.second);
         taker_pays = STAmount(Issue(curr_p, *issuer), static_cast<uint64_t>(1E2*t.taker_pay_), -2);
     }
-    else {
+    // non fiat IOUs are multiplied by 1E6 and shifted right by 6 places
+    else if (!is_xrp(t.taker_payc_)) {
+        auto const issuer = parseBase58<AccountID>(pay_pair.second);
+        taker_pays = STAmount(Issue(curr_p, *issuer), static_cast<uint64_t>(1E6*t.taker_pay_), -6);
+    }
+    // xrp is converted to drops by mutiplying by 1E6
+    else if (is_xrp(t.taker_payc_)) {
         taker_pays = STAmount(XRPAmount(1E6*t.taker_pay_)); // drops
+    }
+    else {
+        throw std::runtime_error("Unknown currency type taker_pays");
     }
 
     // fiat currencies are multipled by 100 and shifted left by 2
     Currency curr_g = to_currency(get_pair.first);
-    if (!isXRP(curr_g)) {
+    if (is_fiat(t.taker_getc_)) {
         auto const issuer = parseBase58<AccountID>(get_pair.second);
         taker_gets = STAmount(Issue(curr_g, *issuer), static_cast<uint64_t>(1E2*t.taker_get_), -2);
     }
-    else {
+    // non fiat IOUs are multiplied by 1E6 and shifted right by 6 places
+    if (!is_xrp(t.taker_getc_)) {
+        auto const issuer = parseBase58<AccountID>(get_pair.second);
+        taker_gets = STAmount(Issue(curr_g, *issuer), static_cast<uint64_t>(1E6*t.taker_get_), -6);
+    }
+    else if (is_xrp(t.taker_getc_)) {
         taker_gets = STAmount(XRPAmount(1E6*t.taker_get_)); // drops
+    }
+    else {
+        throw std::runtime_error("Unknown currency type taker_gets");
     }
 
     // sign the transaction
@@ -773,9 +811,37 @@ double xrpl_network::get_fee_percent(const currency_type &c1, const currency_typ
     return 0.0;
 }
 
+// ----------------------------------------------------------------------------
 double xrpl_network::get_fee_fixed(const currency_type &c1, const currency_type &c2)
 {
     return 0.0;
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::trustline(basic_account *acct, std::string addr, std::string code, uint64_t limit)
+{
+    ledger_wallet *from = get_wallet_by_name(acct->name_);
+    std::string signed_tx = set_trustline(
+                ripple::KeyType::secp256k1,
+                from->private_,
+                from->public_,
+                from->sequence_,
+                limit, code, addr,
+                0);
+    submit_signed_transaction(std::move(signed_tx));
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::custom_functions(basic_account *acct)
+{
+    std::cout << "Network function " << std::endl;
+    QDialog dlg;
+    xrp_functions *f = new xrp_functions(this, acct, &dlg);
+
+    QHBoxLayout *HLayout = new QHBoxLayout(&dlg);
+    HLayout->addWidget(f);
+    dlg.setLayout (HLayout);
+    dlg.exec();
 }
 
 // ----------------------------------------------------------------------------

@@ -17,7 +17,7 @@ std::string make_xrp_payment(
         int32_t from_sequence,
         const std::string &dest_address,
         int32_t dest_tag,
-        int64_t amount,
+        double amount,
         const std::string &currency,
         const std::string &issuer);
 
@@ -36,4 +36,14 @@ std::string cancel_xrp_offer(
         const std::string &from_address,
         int32_t from_sequence,
         int32_t offerSeq,
+        std::uint32_t flags);
+
+std::string set_trustline(
+        ripple::KeyType keyType,
+        const std::string &from_seed,
+        const std::string &from_address,
+        int32_t from_sequence,
+        int64_t limit,
+        const std::string &currency,
+        const std::string &issuer,
         std::uint32_t flags);

@@ -22,6 +22,8 @@ currency_widget::currency_widget(int decimals, QWidget *parent) :
     ui->controls_pay->hide();
     ui->controls_trade->hide();
     ui->amount_edit->setValidator( new QDoubleValidator(0, 1E9, 6, this) );
+    ui->min_price->setDecimals(decimals_);
+    ui->max_price->setDecimals(decimals_);
     //
     connect(ui->q1x, SIGNAL(clicked()), this, SLOT(q1x_clicked()));
     connect(ui->q2x, SIGNAL(clicked()), this, SLOT(q2x_clicked()));
