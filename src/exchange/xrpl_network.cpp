@@ -88,10 +88,8 @@ bool xrpl_network::can_send(currency &c, exchange *dest) {
         if (c.type_==currency_type::xrp ||
                 c.type_==currency_type::usd_bitstamp ||
                 c.type_==currency_type::eur_bitstamp ||
-                c.type_==currency_type::els_trustline ||
-                c.type_==currency_type::solo_trustline ||
-                c.type_==currency_type::alv_trustline
-                ) {
+                c.type_==currency_type::xrpl_trustline)
+        {
             return true;
         }
     }
@@ -104,12 +102,8 @@ std::vector<std::pair<currency_type, currency_type>> xrpl_network::currency_pair
     std::vector<std::pair<currency_type, currency_type>> supported = {
         {usd_bitstamp,xrp},
         {xrp,usd_bitstamp},
-        {xrp,els_trustline},
-        {els_trustline,xrp},
-        {xrp,solo_trustline},
-        {solo_trustline,xrp},
-        {xrp,alv_trustline},
-        {alv_trustline,xrp},
+        {xrpl_trustline,xrp},
+        {xrp,xrpl_trustline},
     };
     return supported;
 }
@@ -420,17 +414,12 @@ void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
             currency c{"XRP", "", currency_type::xrp, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
         }
-        else if (b.currency == currency_type::els_trustline) {
-            currency c{"ELS", currency::ELS_trust, currency_type::els_trustline, b.value, b.value, 0, nullptr};
+        else if (b.currency == currency_type::xrpl_trustline) {
+            currency c{b.trustline->first, b.trustline->second, currency_type::xrpl_trustline, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
         }
-        else if (b.currency == currency_type::solo_trustline) {
-            currency c{"SOLO", currency::SOLO_trust, currency_type::solo_trustline, b.value, b.value, 0, nullptr};
-            add_currency(c, w.currencies_);
-        }
-        else if (b.currency == currency_type::alv_trustline) {
-            currency c{"ALV", currency::ALV_trust, currency_type::alv_trustline, b.value, b.value, 0, nullptr};
-            add_currency(c, w.currencies_);
+        else {
+            throw std::runtime_error("Unknown currency in handle_account_balance");
         }
     }
 

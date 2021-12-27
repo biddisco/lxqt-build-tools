@@ -1,12 +1,14 @@
 // STL
 #include <algorithm>
 #include <string>
+#include <string_view>
 #include <iostream>
 // Grox
 #include "src/debug.hpp"
 #include "src/currency.hpp"
 // extern
 #include <ripple/basics/StringUtilities.h>
+#include <ripple/basics/strHex.h>
 #include <ripple/json/to_string.h>
 #include <ripple/protocol/AccountID.h>
 #include <ripple/protocol/BuildInfo.h>
@@ -20,6 +22,31 @@
 #include <ripple/protocol/jss.h>
 #include <ripple/protocol/Issue.h>
 #include <ripple/protocol/tokens.h>
+
+// ----------------------------------------------------------------------------
+std::string currency_to_hex(std::string_view currency)
+{
+    if (currency.size()>3) {
+        std::string hexcode = ripple::strHex(currency.begin(), currency.end());
+        while (hexcode.size()<40) hexcode += '0';
+        return hexcode;
+    }
+    return std::string(currency);
+}
+
+// ----------------------------------------------------------------------------
+std::string hex_to_currency(std::string_view hex)
+{
+    if (hex.size()==40) {
+        while (hex.back()=='0') hex = hex.substr(0, hex.size()-1);
+        auto code = ripple::strUnHex(hex.size(), hex.begin(), hex.end());
+        if (code.has_value()) {
+            std::string result = std::string(&code.value().data()[0], &code.value().data()[code.value().size()]);
+            return result;
+        }
+    }
+    return std::string(hex);
+}
 
 // ----------------------------------------------------------------------------
 std::string serialize(ripple::STTx const& tx)
@@ -233,14 +260,7 @@ std::string set_trustline(
         assert(gateway1);
     }
 
-    std::string hexcode = currency;
-    if (currency.size()>3) {
-        hexcode = strHex(currency.begin(), currency.end());
-        while (hexcode.size()<40) hexcode += '0';
-        if (hexcode== "534F4C4F00000000000000000000000000000000") {
-            std::cout << "MAtch" << std::endl;
-        }
-    }
+    std::string hexcode = currency_to_hex(currency);
 
     STTx offerTx(ttTRUST_SET, [&](auto& obj) {
         // General transaction fields

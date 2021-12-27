@@ -106,6 +106,7 @@ void from_json(const nlohmann::json &j, xrp_amount &p)
         }
         //
         p.currency = get_currency_type(currency, issuer);
+        p.trustline = {currency, issuer};
     }
 }
 

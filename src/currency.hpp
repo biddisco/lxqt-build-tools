@@ -11,24 +11,37 @@
 class currency_widget;
 
 // ----------------------------------------------------------------------------
+std::string currency_to_hex(std::string_view name);
+std::string hex_to_currency(std::string_view name);
+
+// ----------------------------------------------------------------------------
 enum currency_type : int {
     xrp = 0,
     usd_bitstamp,
     eur_bitstamp,
     usd_gatehub,
-    els_trustline,
-    solo_trustline,
-    alv_trustline,
+    xrpl_trustline,
     other,
+};
+
+// ----------------------------------------------------------------------------
+struct issued_currency {
+    std::string issuer_;
+    std::string code_;
 };
 
 // ----------------------------------------------------------------------------
 struct currency {
     static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
     static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
-    static inline const std::string ELS_trust = "rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg";
-    static inline const std::string SOLO_trust = "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz";
-    static inline const std::string ALV_trust = "raEQc5krJ2rUXyi6fgmUAf63oAXmF7p6jp";
+    //
+    static inline const std::vector<issued_currency> trustlines = {
+        {"rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg", "ELS"},
+        {"rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz", "SOLO"},
+        {"raEQc5krJ2rUXyi6fgmUAf63oAXmF7p6jp", "ALV"},
+        {"rM7zpZQBfz9y2jEkDrKcXiYPitJx9YTS1J", "DKP"},
+        {"rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY", "1"},
+    };
     //
     std::string name_;
     std::string issuer_;

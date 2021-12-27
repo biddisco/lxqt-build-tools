@@ -26,14 +26,9 @@ currency_type get_currency_type(std::string_view name, std::string_view issuer)
     else if (name=="USD" && issuer==currency::gatehub_trust) {
         return currency_type::usd_gatehub;
     }
-    else if (name=="ELS" && issuer==currency::ELS_trust) {
-        return currency_type::els_trustline;
-    }
-    else if (issuer==currency::SOLO_trust) {
-        return currency_type::solo_trustline;
-    }
-    else if (name=="ALV" && issuer==currency::ALV_trust) {
-        return currency_type::alv_trustline;
+    for (auto const &t : currency::trustlines) {
+        if ((t.issuer_==issuer) && ((t.code_==name) || currency_to_hex(t.code_)==name))
+            return currency_type::xrpl_trustline;
     }
     //
     return currency_type::other;
@@ -72,12 +67,6 @@ std::pair<std::string, std::string> to_string(const currency_type &t)
         return std::make_pair("EUR", currency::bitstamp_trust); break;
     case usd_gatehub:
         return std::make_pair("USD", currency::gatehub_trust); break;
-    case els_trustline:
-        return std::make_pair("ELS", currency::ELS_trust); break;
-    case solo_trustline:
-        return std::make_pair("SOLO", currency::SOLO_trust); break;
-    case alv_trustline:
-        return std::make_pair("ALV", currency::ALV_trust); break;
     case other:
         return std::make_pair("other", ""); break;
     default:
@@ -117,7 +106,9 @@ std::string to_string(double amount, currency_type c)
 void add_currency(const currency &curr, std::vector<currency> &c_list)
 {
     auto it = ranges::find_if(c_list, [&curr](const currency &c) {
-        return c.type_ == curr.type_;
+        return c.type_ == curr.type_ &&
+               c.name_ == curr.name_ &&
+               c.issuer_ == curr.issuer_;
     });
     if (it==c_list.end()) {
         c_list.reserve(5);

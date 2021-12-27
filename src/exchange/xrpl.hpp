@@ -1,11 +1,13 @@
 #include <algorithm>
 #include <string>
+#include <string_view>
 #include <iostream>
 //
 #include <ripple/protocol/KeyType.h>
 #include <ripple/protocol/STAmount.h>
 
 // Useful functions that directly make use of ripple-lib
+std::string hexcurrency(std::string_view name);
 
 // ----------------------------------------------------------------------------
 // When paying XRP, the amount is drops (1E6 x xrp)

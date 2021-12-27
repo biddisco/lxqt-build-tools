@@ -7,6 +7,7 @@
 //
 #include <vector>
 #include <string>
+#include <optional>
 //
 #include "nlohmann/json.hpp"
 #include "currency.hpp"
@@ -117,12 +118,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_order_book, bids, asks, timestamp, micro
 struct xrp_amount {
     double        value;
     currency_type currency;
-    //std::optional<std::string> issuer = std::nullopt;
+    std::optional<std::pair<std::string,std::string>> trustline = std::nullopt;
     //
-    bool operator == (const xrp_amount& other) const {
-        return (value    == other.value) &&
-               (currency == other.currency);
-    }
 };
 
 Q_DECLARE_METATYPE(xrp_amount)
@@ -141,8 +138,8 @@ public:
     xrp_amount  TakerGets;
     xrp_amount  TakerPays;
 
-    double amount(currency_type ct) const {
-        if (TakerPays.currency == ct) {
+    double amount(currency_type c) const {
+        if (TakerPays.currency == c) {
             return TakerPays.value;
         }
         else {

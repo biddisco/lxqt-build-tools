@@ -49,7 +49,12 @@ void currency_widget::set_data(currency const *c, basic_account *acct, std::shar
     currency_ = *c;
     if (acct) account_ = acct;
     if (network) network_ = network;
-    ui->currency->setText(c->name_.c_str());
+    if (c->name_.size()==40) {
+        ui->currency->setText(hex_to_currency(c->name_).c_str());
+    }
+    else {
+        ui->currency->setText(c->name_.c_str());
+    }
     ui->issuer->setText(c->issuer_.c_str());
     //
     ui->balance->setText(to_string(c->balance_, c->type_).c_str());
