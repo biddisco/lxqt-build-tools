@@ -106,7 +106,10 @@ void ohlc_dataset_manager::read_hdf5(QVector<QwtOHLCSample> &data)
 void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
     const uint64_t update, bool truncate)
 {
-    ohlc_datasets::validate_ohlc(samples, ohlc_chart_data::minute);
+    uint64_t valid = ohlc_datasets::validate_ohlc(samples, ohlc_chart_data::minute);
+    if (valid!=samples.size()) {
+        DEBUG_ALWAYS("Error: Aborting write");
+    }
     //
     DEBUG_ALWAYS("Opening: " << file_name_);
 
@@ -199,7 +202,12 @@ void ohlc_dataset_manager::truncate_from_time(double t)
 {
     ohlc_chart_data *samples = get_samples();
     auto index = samples->sample_index(t);
-    samples->data().resize(index);
+    samples->data().resize(index+1);
+    uint64_t valid = ohlc_datasets::validate_ohlc(samples->data(), ohlc_chart_data::minute);
+    if (valid!=samples->data().size()) {
+        samples->data().resize(valid);
+        DEBUG_ALWAYS("Error: Truncating at " << valid);
+    }
     write_hdf5(samples->data(), 0, true);
 }
 

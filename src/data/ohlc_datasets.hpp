@@ -31,7 +31,7 @@ struct ohlc_datasets
     // Checks that all data has consecutive time stamps. Important
     // when merging new downloaded data with old to ensure no gaps
     // have crept in
-    static void validate_ohlc(QVector<QwtOHLCSample> const &samples, double res);
+    static int64_t validate_ohlc(QVector<QwtOHLCSample> const &samples, double res);
 
     // Resample the current dataset to a new resolution, it is assumed (without checks)
     // that the new lower resolution is an exact multiople of the current one

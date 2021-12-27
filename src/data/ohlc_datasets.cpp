@@ -78,9 +78,9 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, double res)
+int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, double res)
 {
-    if (samples.empty()) return;
+    if (samples.empty()) return 0;
     //
     double init_time = samples.begin()->time;
 
@@ -93,10 +93,12 @@ void ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, double 
         {
             std::cerr << "Validation error at index " << index << " " << expected_time << " and "
                       << s1.time << "dataset truncated " << std::endl;
-            throw std::runtime_error("OHLC data integrity failure");
+            return index;
+            //throw std::runtime_error("OHLC data integrity failure");
         }
     }
     DEBUG_ALWAYS("OHLC Data samples validated " << samples.size());
+    return samples.size();
 }
 
 // ----------------------------------------------------------------------------
