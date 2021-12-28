@@ -807,7 +807,7 @@ double xrpl_network::get_fee_fixed(const currency_type &c1, const currency_type 
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::trustline(basic_account *acct, std::string addr, std::string code, uint64_t limit)
+void xrpl_network::trustline(basic_account *acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags)
 {
     ledger_wallet *from = get_wallet_by_name(acct->name_);
     std::string signed_tx = set_trustline(
@@ -815,8 +815,7 @@ void xrpl_network::trustline(basic_account *acct, std::string addr, std::string 
                 from->private_,
                 from->public_,
                 from->sequence_,
-                limit, code, addr,
-                0);
+                limit, code, addr, flags);
     submit_signed_transaction(std::move(signed_tx));
 }
 

@@ -1,5 +1,4 @@
-#ifndef XRP_FUNCTIONS_H
-#define XRP_FUNCTIONS_H
+#pragma once
 
 #include <QWidget>
 //
@@ -26,8 +25,5 @@ public:
     ~xrp_functions();
 
 public slots:
-    void exec_trustline();
     // ----------------------------------
 };
-
-#endif // XRP_FUNCTIONS_H

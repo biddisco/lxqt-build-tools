@@ -31,6 +31,9 @@ std::string currency_to_hex(std::string_view currency)
         while (hexcode.size()<40) hexcode += '0';
         return hexcode;
     }
+    else if (currency.size()<3) {
+        return std::string(currency);
+    }
     return std::string(currency);
 }
 
@@ -267,7 +270,7 @@ std::string set_trustline(
         obj[sfAccount] = id;
         obj[sfFee] = STAmount{100};
         if (flags)
-            obj[sfFlags] = tfSetNoRipple /*flags*/;
+            obj[sfFlags] = flags;
         obj[sfSigningPubKey] = keypair.first.slice();
         obj[sfSequence] = from_sequence;
 

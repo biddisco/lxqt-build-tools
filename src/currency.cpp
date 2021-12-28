@@ -14,21 +14,26 @@ currency_type get_currency_type(std::string_view name, std::string_view issuer)
     if (name=="XRP") {
         return currency_type::xrp;
     }
-    else if (name=="USD" && issuer=="") {
+    if (name=="USD" && issuer=="") {
         return currency_type::usd_bitstamp;
     }
-    else if (name=="USD" && issuer==currency::bitstamp_trust) {
+    if (name=="USD" && issuer==currency::bitstamp_trust) {
         return currency_type::usd_bitstamp;
     }
-    else if (name=="EUR" && issuer==currency::bitstamp_trust) {
+    if (name=="EUR" && issuer==currency::bitstamp_trust) {
         return currency_type::eur_bitstamp;
     }
-    else if (name=="USD" && issuer==currency::gatehub_trust) {
+    if (name=="USD" && issuer==currency::gatehub_trust) {
         return currency_type::usd_gatehub;
     }
     for (auto const &t : currency::trustlines) {
         if ((t.issuer_==issuer) && ((t.code_==name) || currency_to_hex(t.code_)==name))
             return currency_type::xrpl_trustline;
+    }
+    if (issuer!="") {
+        issued_currency new_c{std::string(issuer), std::string(name)};
+        currency::trustlines.push_back(new_c);
+        return currency_type::xrpl_trustline;
     }
     //
     return currency_type::other;

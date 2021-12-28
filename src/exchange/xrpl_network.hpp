@@ -175,7 +175,7 @@ public:
     double get_fee_percent(const currency_type &c1, const currency_type &c2) override;
     double get_fee_fixed(const currency_type &c1, const currency_type &c2) override;
 
-    void trustline(basic_account *acct, std::string addr, std::string code, uint64_t limit);
+    void trustline(basic_account *acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags);
 
     void custom_functions(basic_account *acct) override;
 

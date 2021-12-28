@@ -35,12 +35,13 @@ struct currency {
     static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
     static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
     //
-    static inline const std::vector<issued_currency> trustlines = {
-        {"rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg", "ELS"},
-        {"rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz", "SOLO"},
-        {"raEQc5krJ2rUXyi6fgmUAf63oAXmF7p6jp", "ALV"},
-        {"rM7zpZQBfz9y2jEkDrKcXiYPitJx9YTS1J", "DKP"},
-        {"rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY", "1"},
+    static inline std::vector<issued_currency> trustlines = {
+//        {"rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg", "ELS"},
+//        {"rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz", "SOLO"},
+//        {"raEQc5krJ2rUXyi6fgmUAf63oAXmF7p6jp", "ALV"},
+//        {"rM7zpZQBfz9y2jEkDrKcXiYPitJx9YTS1J", "DKP"},
+//        {"rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY", "1"},
+//        {"rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY", "PASA"},
     };
     //
     std::string name_;
