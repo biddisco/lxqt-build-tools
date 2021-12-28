@@ -13,7 +13,6 @@ wallet_widget::wallet_widget(QWidget *parent) :
 {
     ui->setupUi(this);
     //
-    std::cout << "Connecting " << ui->net_funcs << std::endl;
     connect(ui->net_funcs, &QToolButton::clicked, this, [this](bool /*checked*/) {
         network_->custom_functions(account_);
     } , Qt::QueuedConnection);

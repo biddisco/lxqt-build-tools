@@ -118,8 +118,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_order_book, bids, asks, timestamp, micro
 struct xrp_amount {
     double        value;
     currency_type currency;
-    std::optional<std::pair<std::string,std::string>> trustline = std::nullopt;
-    //
+    std::optional<issued_currency> trustline = std::nullopt;
 };
 
 Q_DECLARE_METATYPE(xrp_amount)

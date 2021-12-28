@@ -177,6 +177,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     }
     accounts_frame->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred));
 
+    // load in the list of trustlines that we know about
+    loadTrustlines();
+
     // ----------------------------------
     // Subscribe to xrpl events
     //
@@ -762,6 +765,7 @@ void GroxMainWindow::display_offers()
 void GroxMainWindow::closeEvent(QCloseEvent *event)
 {
     saveWindowSettings();
+    saveTrustlines();
     QMainWindow::closeEvent(event);
 }
 
@@ -772,11 +776,46 @@ void GroxMainWindow::showEvent(QShowEvent *event )
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::saveWindowSettings()
+void GroxMainWindow::saveTrustlines()
 {
     app_settings* app_ini = global_settings();
     QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
     // Start GroxMainWindow section
+    settings.beginGroup("Trustlines");
+    int index = 0;
+    for (auto const &t : currency::trustlines) {
+        std::string key = std::to_string(index++) + '_' + hex_to_currency(t.code_);
+        settings.setValue(key.c_str(), t.issuer_.c_str());
+    }
+    settings.endGroup();
+    qDebug() << "Trustlines saved under:" << settings.fileName();
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::loadTrustlines()
+{
+    app_settings* app_ini = global_settings();
+    QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+    // Start section
+    settings.beginGroup("Trustlines");
+    QStringList childKeys = settings.childKeys();
+    for (auto const &k : childKeys) {
+        std::string key = k.toStdString();
+        auto delim = key.find('_');
+        std::string code = key.substr(delim+1, key.back());
+        std::string issuer = settings.value(k).toString().toStdString();
+        currency::trustlines.push_back({issuer, currency_to_hex(code)});
+    }
+    settings.endGroup();
+    qDebug() << "Trustlines loaded from:" << settings.fileName();
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::saveWindowSettings()
+{
+    app_settings* app_ini = global_settings();
+    QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+    // Start section
     settings.beginGroup(objectName());
 #ifdef workaround
     settings.setValue("geometry", QVariant(geometry()));

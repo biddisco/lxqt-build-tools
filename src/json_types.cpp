@@ -105,8 +105,8 @@ void from_json(const nlohmann::json &j, xrp_amount &p)
             issuer = j.at("issuer").get< std::string >();
         }
         //
-        p.currency = get_currency_type(currency, issuer);
-        p.trustline = {currency, issuer};
+        p.trustline = {issuer, currency};
+        p.currency = get_currency_type({issuer, currency});
     }
 }
 

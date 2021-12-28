@@ -191,7 +191,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
 
     if (jdata.contains("usd_balance")) {
         currency usd_bitstamp{
-            "USD", currency::bitstamp_trust, currency_type::usd_bitstamp,
+            {currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp,
             std::stod(jdata["usd_balance"].get<std::string>()),
             std::stod(jdata["usd_available"].get<std::string>()),
             std::stod(jdata["usd_reserved"].get<std::string>()),
@@ -202,7 +202,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
 
     if (jdata.contains("eur_balance")) {
         currency eur_bitstamp{
-            "EUR", currency::bitstamp_trust, currency_type::eur_bitstamp,
+            {currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp,
             std::stod(jdata["eur_balance"].get<std::string>()),
             std::stod(jdata["eur_available"].get<std::string>()),
             std::stod(jdata["eur_reserved"].get<std::string>()),
@@ -262,8 +262,8 @@ void bitstamp_network::handle_open_orders(std::string&& data)
             trade_data t{
                 this->get_instance(),
                 account().name_,
-                get_currency_type(c2,""),
-                get_currency_type(c1,""),
+                get_currency_type({"", c2}),
+                get_currency_type({"", c1}),
                 amount*price,
                 amount,
                 price,
@@ -278,8 +278,8 @@ void bitstamp_network::handle_open_orders(std::string&& data)
             trade_data t{
                 this->get_instance(),
                 account().name_,
-                get_currency_type(c1,""),
-                get_currency_type(c2,""),
+                get_currency_type({"", c1}),
+                get_currency_type({"", c2}),
                 amount,
                 amount*price,
                 price,

@@ -49,13 +49,13 @@ void currency_widget::set_data(currency const *c, basic_account *acct, std::shar
     currency_ = *c;
     if (acct) account_ = acct;
     if (network) network_ = network;
-    if (c->name_.size()==40) {
-        ui->currency->setText(hex_to_currency(c->name_).c_str());
+    if (c->curr_.code_.size()==40) {
+        ui->currency->setText(hex_to_currency(c->curr_.code_).c_str());
     }
     else {
-        ui->currency->setText(c->name_.c_str());
+        ui->currency->setText(c->curr_.code_.c_str());
     }
-    ui->issuer->setText(c->issuer_.c_str());
+    ui->issuer->setText(c->curr_.issuer_.c_str());
     //
     ui->balance->setText(to_string(c->balance_, c->type_).c_str());
     ui->avail->setText(to_string(c->avail_, c->type_).c_str());
@@ -163,9 +163,9 @@ void currency_widget::execute_payment()
 void currency_widget::execute_trade()
 {
     int N = ui->num_orders->value();
-    currency_type taker_payc = get_currency_type(
-                ui->buy_sell_combo->currentText().toStdString(),
-                ui->buy_sell_combo->currentData().toString().toStdString());
+    currency_type taker_payc = get_currency_type({
+                ui->buy_sell_combo->currentData().toString().toStdString(),
+                ui->buy_sell_combo->currentText().toStdString()});
     //
     if (ui->amount_edit->text().isEmpty())
         return;
@@ -226,13 +226,13 @@ void currency_widget::buy_sell_status()
         palette.setColor(QPalette::WindowText, QRgb(0x00CF00));
         ui->buy_sell->setPalette(palette);
         ui->buy_sell->setText("Buy " + ui->buy_sell_combo->currentText()
-            + " <- " + currency_.name_.c_str());
+            + " <- " + currency_.curr_.code_.c_str());
     }
     else {
         QPalette palette = ui->buy_sell->palette();
         palette.setColor(QPalette::WindowText, QRgb(0xFF4040));
         ui->buy_sell->setPalette(palette);
-        ui->buy_sell->setText(QString("Sell ") + currency_.name_.c_str()
+        ui->buy_sell->setText(QString("Sell ") + currency_.curr_.code_.c_str()
             + " -> " + ui->buy_sell_combo->currentText());
 
     }

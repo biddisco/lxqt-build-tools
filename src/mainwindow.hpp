@@ -85,6 +85,9 @@ public:
     void saveWindowSettings();
     void loadWindowSettings();
 
+    void saveTrustlines();
+    void loadTrustlines();
+
     void start_io_threads(int nthreads);
 
 signals:

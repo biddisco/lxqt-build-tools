@@ -9,30 +9,29 @@
 #include "currency.hpp"
 
 // ----------------------------------------------------------------------------
-currency_type get_currency_type(std::string_view name, std::string_view issuer)
+currency_type get_currency_type(issued_currency const &c)
 {
-    if (name=="XRP") {
+    if (c.code_=="XRP") {
         return currency_type::xrp;
     }
-    if (name=="USD" && issuer=="") {
+    if (c.code_=="USD" && c.issuer_=="") {
         return currency_type::usd_bitstamp;
     }
-    if (name=="USD" && issuer==currency::bitstamp_trust) {
+    if (c.code_=="USD" && c.issuer_==currency::bitstamp_trust) {
         return currency_type::usd_bitstamp;
     }
-    if (name=="EUR" && issuer==currency::bitstamp_trust) {
+    if (c.code_=="EUR" && c.issuer_==currency::bitstamp_trust) {
         return currency_type::eur_bitstamp;
     }
-    if (name=="USD" && issuer==currency::gatehub_trust) {
+    if (c.code_=="USD" && c.issuer_==currency::gatehub_trust) {
         return currency_type::usd_gatehub;
     }
     for (auto const &t : currency::trustlines) {
-        if ((t.issuer_==issuer) && ((t.code_==name) || currency_to_hex(t.code_)==name))
+        if ((t.issuer_==c.issuer_) && ((t.code_==c.code_) || currency_to_hex(t.code_)==c.code_))
             return currency_type::xrpl_trustline;
     }
-    if (issuer!="") {
-        issued_currency new_c{std::string(issuer), std::string(name)};
-        currency::trustlines.push_back(new_c);
+    if (c.issuer_!="") {
+        currency::trustlines.push_back(c);
         return currency_type::xrpl_trustline;
     }
     //
@@ -47,9 +46,9 @@ bool is_fiat(currency_type c)
     return false;
 }
 
-bool is_fiat(std::string_view name, std::string_view issuer)
+bool is_fiat(issued_currency const &c)
 {
-    return is_fiat(get_currency_type(name, issuer));
+    return is_fiat(get_currency_type(c));
 }
 
 // ----------------------------------------------------------------------------
@@ -72,6 +71,8 @@ std::pair<std::string, std::string> to_string(const currency_type &t)
         return std::make_pair("EUR", currency::bitstamp_trust); break;
     case usd_gatehub:
         return std::make_pair("USD", currency::gatehub_trust); break;
+    case xrpl_trustline:
+        throw std::runtime_error("Insert search of trustlines here");
     case other:
         return std::make_pair("other", ""); break;
     default:
@@ -90,7 +91,7 @@ std::ostream& operator<<(std::ostream& os, const currency_type &t)
 // ----------------------------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, const currency &c)
 {
-    os << c.name_ << " " << c.issuer_ << " " << c.balance_;
+    os << c.curr_.code_ << " " << c.curr_.issuer_ << " " << c.balance_;
     return os;
 }
 
@@ -112,8 +113,8 @@ void add_currency(const currency &curr, std::vector<currency> &c_list)
 {
     auto it = ranges::find_if(c_list, [&curr](const currency &c) {
         return c.type_ == curr.type_ &&
-               c.name_ == curr.name_ &&
-               c.issuer_ == curr.issuer_;
+               c.curr_.code_ == curr.curr_.code_ &&
+               c.curr_.issuer_ == curr.curr_.issuer_;
     });
     if (it==c_list.end()) {
         c_list.reserve(5);

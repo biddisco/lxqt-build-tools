@@ -117,7 +117,7 @@ std::string make_xrp_payment(
         if (currency_xrp) {
             obj[sfAmount] = STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount));
         }
-        else if (is_fiat(currency, issuer)) {
+        else if (is_fiat(issued_currency{issuer, currency})) {
             // amount we want to send as dollars.cents, multiply x 100, shift right 2 places
             obj[sfAmount]  = STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount*1E2), -2);
             // we multiply by 1.002 to allow for IOU fees, and scale the float to int size,

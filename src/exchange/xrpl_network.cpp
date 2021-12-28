@@ -244,10 +244,10 @@ void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
                         auto t              = jdata["transaction"];
                         std::string fm_acct = t["Account"];
                         std::string to_acct = t["Destination"];
-                        curr.name_          = b["currency"].get<std::string>();
-                        curr.issuer_        = t["SendMax"]["issuer"].get<std::string>();
+                        curr.curr_.code_    = b["currency"].get<std::string>();
+                        curr.curr_.issuer_  = t["SendMax"]["issuer"].get<std::string>();
                         curr.balance_       = std::stod(b["value"].get<std::string>());
-                        curr.type_          = get_currency_type(curr.name_, curr.issuer_);
+                        curr.type_          = get_currency_type(curr.curr_);
                         if (to_acct == f["LowLimit"]["issuer"].get<std::string>()) {
                             std::cout << "Acct " << to_acct
                                       << " IOU balance change " << curr.balance_ << std::endl;
@@ -403,19 +403,19 @@ void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
     for (const auto &b : balances) {
         // @TODO, do not hardcode USD
         if (b.currency == currency_type::usd_bitstamp) {
-            currency c{"USD", currency::bitstamp_trust, currency_type::usd_bitstamp, b.value, b.value, 0, nullptr};
+            currency c{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
         }
         else if (b.currency == currency_type::eur_bitstamp) {
-            currency c{"EUR", currency::bitstamp_trust, currency_type::eur_bitstamp, b.value, b.value, 0, nullptr};
+            currency c{{currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
         }
         else if (b.currency == currency_type::xrp) {
-            currency c{"XRP", "", currency_type::xrp, b.value, b.value, 0, nullptr};
+            currency c{{"", "XRP"}, currency_type::xrp, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
         }
         else if (b.currency == currency_type::xrpl_trustline) {
-            currency c{b.trustline->first, b.trustline->second, currency_type::xrpl_trustline, b.value, b.value, 0, nullptr};
+            currency c{b.trustline.value(), currency_type::xrpl_trustline, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
         }
         else {
@@ -628,10 +628,10 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
     }
     else {
         std::cout << "XRP IOU payment amount " << c.balance_
-                  << " " << c.name_
+                  << " " << c.curr_.code_
                   << " from " << from->public_
                   << " to " << to->public_
-                  << " IOU addr " << c.issuer_
+                  << " IOU addr " << c.curr_.issuer_
                   << ((to->tag_!=0) ? "(" + std::to_string(to->tag_) + ")" : "") << std::endl;
 
         signed_tx = make_xrp_payment(
@@ -641,7 +641,7 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
                 from->sequence_,
                 to->get_receive_address(c).begin(),
                 to->tag_,
-                c.balance_, c.name_, c.issuer_);
+                c.balance_, c.curr_.code_, c.curr_.issuer_);
     }
     from->sequence_++;
     submit_signed_transaction(std::move(signed_tx));
