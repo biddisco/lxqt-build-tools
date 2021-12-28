@@ -643,7 +643,7 @@ void GroxMainWindow::update_candlestick_data()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::start_io_threads(int nthreads)
 {
-    bool initialized = false;
+    static bool initialized = false;
     if (!initialized) {
         // Run the I/O service on some threads.
         for (int i=0; i<nthreads; ++i) {
