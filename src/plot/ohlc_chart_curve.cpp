@@ -10,6 +10,7 @@
 #include <QwtPlot>
 // Grox
 #include "src/plot/ohlc_chart_curve.hpp"
+#include "src/data/ohlc_heikin_ashi.hpp"
 
 constexpr double volume_reduction = 0.25;
 
@@ -142,6 +143,10 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
     from = std::max(int64_t(0), chartData->sample_index(tMin)+1);
     to   = std::min(int64_t(chartData->data().size()-1), chartData->sample_index(tMax));
 
+    // initialize heikin ashi functor
+    const QwtOHLCSample &init_ha = sample(from>0 ? (from-1) : from);
+    ohlc_heikin_ashi heikin_ashi(init_ha);
+
     for (int i = from; i <= to; i++)
     {
         const QwtOHLCSample &s = sample(i);
@@ -149,40 +154,18 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
         int brushIndex;
 
         if (symbolStyleCopy == ohlc_chart_curve::HeikinAshi) {
-            // first point in plot needs a prev open/close
-            if (start_heikin) {
-                // for first iteration, we need previous open/close
-                if (i==from && i>0) {
-                    const QwtOHLCSample &prev = sample(i-1);
-                    prev_open  = prev.open;
-                    prev_close = prev.close;
-                }
-                else if (i==from) {
-                    prev_open  = s.open;
-                    prev_close = s.close;
-                }
-                start_heikin = false;
-            }
 
-            double close = 0.25 * (s.open + s.high + s.low + s.close);
-            double open  = 0.50 * (prev_open + prev_close);
-            double high  = std::max(std::max(s.open, s.close), s.high);
-            double low   = std::min(std::min(s.open, s.close), s.low);
+            const QwtOHLCSample ha = heikin_ashi(s);
 
-            // next candle will use this open/close
-            prev_open  = open;
-            prev_close = close;
-
-            brushIndex = (open < close)
+            brushIndex = (ha.open < ha.close)
                     ? QwtPlotTradingCurve::Increasing
                     : QwtPlotTradingCurve::Decreasing;
 
             translatedSample.time = xMap.transform(s.time);
-            translatedSample.open = yMap.transform(open);
-            translatedSample.high = yMap.transform(high);
-            translatedSample.low = yMap.transform(low);
-            translatedSample.close = yMap.transform(close);
-
+            translatedSample.open = yMap.transform(ha.open);
+            translatedSample.high = yMap.transform(ha.high);
+            translatedSample.low = yMap.transform(ha.low);
+            translatedSample.close = yMap.transform(ha.close);
         }
         else {
             brushIndex = (s.open < s.close)
