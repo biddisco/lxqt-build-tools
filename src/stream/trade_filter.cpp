@@ -78,55 +78,7 @@ struct cross_alert
 };
 
 //----------------------------------------------------------------------------
-
-//----------------------------------------------------------------------------
-trade_filter::trade_filter()
-    : rolling_average_(10)
-    , ohlc_in_(QwtOHLCSample())
-    , ema_1(1.0)
-    , ema_10(60.0)
-{
-    sample_input_ = std::ref(ohlc_in_);
-//    auto p1 = sample_input_ | ema_1.f();
-//    auto p2 = sample_input_ | ema_10.f();
-
-    pipeline::output<std::optional<bool>> alert_ = pipeline::output<std::optional<bool>>(
-    [](std::optional<bool> b) {
-        if (b.has_value()) {
-            std::cout << "Cross detected" << std::endl;
-        }
-    });
-
-    cross_detector_ = ((sample_input_ | ema_1.f()) + (sample_input_ | ema_10.f())) | cross().f() | unique<bool>().f() | alert_;
-
-//    auto pp1 = (std::move(p1) + std::move(p2)) | cross().f();
-//    pp1();
-
-//    cross_detector_ = (std::move(p1) + std::move(p2)) | cross().f() | unique<bool>().f() | alert_;
-
-
-    std::random_device rd;
-    std::default_random_engine eng(rd());
-    std::uniform_real_distribution<double> distr(0.01, 0.01);
-
-}
-
-//----------------------------------------------------------------------------
-void trade_filter::process(const QwtOHLCSample &ohlc)
-{
-    // update the rolling mean filter
-    std::cout << "Volume MAV = " << hpx::debug::fp<5,7>(rolling_average_(ohlc.volume)) << std::endl << std::endl;
-
-    ohlc_in_.set(ohlc);
-    cross_detector_();
-
-    // update the latest ohlc value input and execute connected pipelines
-//    ohlcinput_.target().set(ohlc);
-//    std::cout << "ema 1  " << pipeline_1_() << std::endl;
-//    std::cout << "ema 10 " << pipeline_2_() << std::endl;
-//    std::optional<bool> alert = cross_alerter_();
-//    if (alert.has_value()) {
-//        std::cout << "Alert" << std::endl;
-//    }
-}
+//std::random_device rd;
+//std::default_random_engine eng(rd());
+//std::uniform_real_distribution<double> distr(0.01, 0.01);
 

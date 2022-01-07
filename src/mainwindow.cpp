@@ -35,8 +35,10 @@
 //
 #include "json_types.hpp"
 #include "settings.hpp"
+#include "print.hpp"
 //
 #include "src/stream/trade_filter.hpp"
+#include "src/data/ohlc_heikin_ashi.hpp"
 
 #define get_live_trades 1
 #define subscribe_xrpl_events 0
@@ -44,6 +46,9 @@
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
+
+using print_on = hpx::debug::enable_print<true>;
+static constexpr print_on mainwin_debug("Mainwin");
 
 // ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)
@@ -221,6 +226,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         slist << r.name_;
     }
     ui.candle_res->addItems(slist);
+    ui.candle_res_2->addItems(slist);
 }
 
 // ----------------------------------------------------------------------------
@@ -432,6 +438,7 @@ void GroxMainWindow::createMenus()
         QString s = QLocale().toString(dt, "dd-MM-yy hh:mm");
         std::cout << s.toStdString() << std::endl;
         ui.repair_date->setDateTime(dt);
+        ui.date_init->setDateTime(dt);
     } , Qt::QueuedConnection);
 
     connect(ui.repair_btn, QOverload<bool>::of(&QAbstractButton::clicked), this, [this](bool) {
@@ -447,6 +454,9 @@ void GroxMainWindow::createMenus()
         //    filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
     } , Qt::QueuedConnection);
 
+    connect(ui.run_filter, &QPushButton::clicked, this, [this]() {
+        generate_filter_data();
+    } , Qt::QueuedConnection);
 }
 
 // ----------------------------------------------------------------------------
@@ -889,5 +899,220 @@ void GroxMainWindow::stream_process(const QwtOHLCSample &ohlc)
     auto s = msecs_unix_to_calendar_time(ohlc.time);
     std::cout << "New data  = " << ohlc << std::endl;
     std::cout << "Event time " << s << std::endl;
-    df_.process(ohlc);
+//    df_.process(ohlc);
+}
+
+// ----------------------------------------------------------------------------
+QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"),
+                      QColor("darkRed"), QColor("darkCyan"), QColor("darkMagenta"),
+                      QColor("green"), QColor("darkGreen"), QColor("yellow"),
+                      QColor("blue")};
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::generate_filter_data()
+{
+    auto dataset = hdf5_ohlc_.get_dataset(ohlc_chart_data::minute);
+    auto data = dataset->ohlc_samples_;
+
+    // NB. Inputs need to be used by reference, with the original object
+    // kept alive so that they can be updated continuously.
+    // Other filter objects are copied during pipeline construction
+
+    // initialize an ohlc input object with the first dataset value
+    input_value<QwtOHLCSample> ohlc_in(data->data().front());
+    pipeline::input<const QwtOHLCSample&> ohlc_input = std::ref(ohlc_in);
+
+    // initialize a time input object
+    input_value<double> time_in(data->data().front().time);
+    pipeline::input<double> time_input = std::ref(time_in);
+
+    auto price_pipeline = ((ohlc_input | volume_weighted_moving_average(1).f()));
+
+    auto event_pipeline =
+                    ((ohlc_input | ohlc_candlemaker(ohlc_chart_data::minute10, ohlc_chart_data::minute).f() | ohlc_heikin_ashi().f() | heikin_ashi_transition().f())
+                     +
+                    (time_input | dummy<double>().f()))
+                    | add_time_filter().f();
+
+    static int col = 0;
+    struct funds {
+        double xrp;
+        double usd;
+    };
+
+    int algorithm = 2;
+
+    std::vector<candle_res> resolutions;
+    candle_res res2;
+    if (ui.candle_res_2->currentIndex()>0) {
+        res2 = ohlc_chart_data::available_resolutions()[ui.candle_res_2->currentIndex()-1];
+    }
+    else {
+        algorithm = 1;
+    }
+    if (ui.heikin->isChecked())
+        algorithm = 0;
+
+
+    if (ui.candle_res->currentIndex()>0) {
+        candle_res res = ohlc_chart_data::available_resolutions()[ui.candle_res->currentIndex()-1];
+        resolutions.push_back(res);
+    }
+    else {
+        crypto_price_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
+        filters_plot_->detachItems(QwtPlotItem::Rtti_PlotItem, true);
+        filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
+        col = 0;
+        return;
+    }
+
+    std::vector<decltype(price_pipeline)> price_pipelines;
+    std::vector<decltype(event_pipeline)> event_pipelines;
+    std::vector<funds> funding;
+
+
+    for (const candle_res &res : resolutions) {
+        int N = res.res_ / ohlc_chart_data::minute;
+        if (algorithm==0) {
+            auto pipeline = ((ohlc_input | ohlc_candlemaker(res, ohlc_chart_data::minute).f() | ohlc_heikin_ashi().f() | heikin_ashi_transition().f())
+                             +
+                            (time_input | dummy<double>().f()))
+                            | add_time_filter().f();
+            event_pipelines.push_back(pipeline);
+        }
+        else if (algorithm==1) {
+            auto pipeline = ((ohlc_input | volume_weighted_moving_average(N).f() | gradient_change().f())
+                            +
+                             (time_input | dummy<double>().f()))
+                                | add_time_filter().f();
+            event_pipelines.push_back(pipeline);
+        }
+        else if (algorithm==2) {
+            int N2 = res2.res_ / ohlc_chart_data::minute;
+            auto pipeline = ((((ohlc_input | volume_weighted_moving_average(N).f())
+                                +
+                               (ohlc_input | volume_weighted_moving_average(N2).f()))
+                              | cross().f())
+                             + (time_input | dummy<double>().f()))
+                                | add_time_filter().f();
+            event_pipelines.push_back(pipeline);
+        }
+
+        if (ui.heikin->isChecked()) {
+            auto pipeline = ((ohlc_input | volume_weighted_moving_average(N).f()));
+            price_pipelines.push_back(pipeline);
+        }
+        else {
+            int N = res.res_ / ohlc_chart_data::minute;
+            auto pipeline = ohlc_input | volume_weighted_moving_average(N).f();
+            price_pipelines.push_back(pipeline);
+
+        }
+        funding.push_back({50000,0});
+    }
+
+    QVector<QPointF> buys, sells;
+    QVector<QPointF> assets, filter;
+    buys.reserve(5000);
+    sells.reserve(5000);
+    assets.reserve(5000);
+    filter.reserve(5000);
+
+    uint64_t size = data->data().size();
+    uint64_t i = 0;
+
+    auto start = QDateTime( QDate(2020, 10, 1), QTime(0,0,0), QTimeZone::utc());
+    start = ui.repair_date->dateTime();
+    //
+    double msecs = start.toMSecsSinceEpoch();
+    uint64_t start_index = data->sample_index(msecs);
+    double fee_estimate = 0.998;
+
+    for (auto const &ohlc : data->data()) {
+        if (i++<start_index)
+            continue;
+
+        ohlc_in.set(ohlc);
+        time_in.set(ohlc.time + ohlc_chart_data::minute);
+
+        int res_i = 0;
+        for (const candle_res &res : resolutions)
+        {
+            double p = price_pipelines[res_i].operator()();
+            QPointF trade2(ohlc.time, p);
+            filter.push_back(trade2);
+
+            trade_event e = event_pipelines[res_i].operator()();
+            if (e.type_ == buy_sell_type::buy_event) {
+                if (funding[res_i].usd>0) {
+                    double p = hdf5_ohlc_.get_estimated_buy_price(funding[res_i].usd, e.time_, 2.0);
+                    // plot buy price
+                    QPointF trade(e.time_, p);
+                    buys.push_back(trade);
+
+                    funding[res_i].xrp = fee_estimate*funding[res_i].usd/p;
+                    funding[res_i].usd = 0;
+                    std::cout << "Buy  : " << msecs_unix_to_calendar_time(e.time_) << " "
+                              << "Res " << hpx::debug::str<6>(res.name_)
+                              << "xrp (" << hpx::debug::fp<2,11>(funding[res_i].xrp) << ") "
+                              << "usd (" << hpx::debug::fp<2,11>(funding[res_i].usd) << ") "
+                              << "\n";
+                    // plot current assets
+                    QPointF trade2(e.time_, funding[res_i].xrp);
+                    assets.push_back(trade2);
+                }
+            }
+            else if (e.type_ == buy_sell_type::sell_event) {
+                if (funding[res_i].xrp>0) {
+                    double p = hdf5_ohlc_.get_estimated_sell_price(funding[res_i].xrp, e.time_, 2.0);
+                    // plot sell price
+                    QPointF trade2(e.time_, p);
+                    sells.push_back(trade2);
+
+                    funding[res_i].usd = fee_estimate*funding[res_i].xrp*p;
+                    funding[res_i].xrp = 0;
+                    std::cout << "Sell : " << msecs_unix_to_calendar_time(e.time_) << " "
+                              << "Res " << hpx::debug::str<6>(res.name_)
+                              << "xrp (" << hpx::debug::fp<2,11>(funding[res_i].xrp) << ") "
+                              << "usd (" << hpx::debug::fp<2,11>(funding[res_i].usd) << ") "
+                              << "\n";
+                }
+            }
+//            static auto algo_deb =
+//                mainwin_debug.make_timer(60, hpx::debug::str<>("Algorithm"));
+
+//            mainwin_debug.timed(algo_deb, "time",
+//                hpx::debug::str<20>(msecs_unix_to_calendar_time(e.time_).c_str())
+//                , hpx::debug::lambda(
+//                    [&](){
+//                        int res_i = 0;
+//                        std::stringstream temp;
+//                        temp << "\n";
+//                        for (const candle_res &res : resolutions) {
+//                            temp << "res "  << hpx::debug::str<5>(res.name_) << " "
+//                                 << "xrp (" << hpx::debug::fp<2,9>(funding[res_i].xrp) << ") "
+//                                 << "usd (" << hpx::debug::fp<2,9>(funding[res_i].usd) << ") "
+//                                 << "\n";
+//                            res_i++;
+//                        }
+//                        return temp.str();
+//                    })
+//            );
+            res_i++;
+        }
+    }
+
+    crypto_price_plot_->add_price_curve("MA", filter, colours[col++]);
+    crypto_price_plot_->add_buy_sell_curve("Buy",  buys,  Qt::green);
+    crypto_price_plot_->add_buy_sell_curve("Sell", sells, Qt::red);
+    filters_plot_->add_asset_curve("Value", assets, Qt::red);
+
+    int res_i = 0;
+    for (const candle_res &res : resolutions) {
+        std::cout << "res : " << res.name_ << " "
+                  << "xrp (" << hpx::debug::fp<2,9>(funding[res_i].xrp) << ") "
+                  << "usd (" << hpx::debug::fp<2,9>(funding[res_i].usd) << ") "
+                  << "\n";
+        res_i++;
+    }
 }

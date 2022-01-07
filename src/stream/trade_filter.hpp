@@ -1,7 +1,9 @@
 #pragma once
 //
 #include <iostream>
+#include <optional>
 //
+#include "src/data/ohlc_heikin_ashi.hpp"
 #include "src/data/ohlc_datasets.hpp"
 #include "pipeline.hpp"
 //
@@ -14,7 +16,79 @@
 #include <boost/accumulators/statistics/median.hpp>
 #include <boost/accumulators/statistics/weighted_median.hpp>
 //
-class trade_filter;
+
+//----------------------------------------------------------------------------
+struct volume_weighted_moving_average
+{
+    // mode : 0=open, 1=close, 2=mid(open,close), 3=high, 4=low, 5=mid(high,low)
+    volume_weighted_moving_average(int N, int mode=2)
+        : decay_acc_(boost::accumulators::tag::rolling_window::window_size = N)
+        , ra_(0)
+        , mode_(mode)
+    {
+    }
+
+    double operator()(const QwtOHLCSample &val)
+    {
+        double price;
+        if (mode_==2) {
+            price = 0.5*(val.open + val.close);
+        }
+        // insert data into boost accumulator
+        decay_acc_(price, boost::accumulators::weight = val.volume);
+        ra_ = boost::accumulators::rolling_mean(decay_acc_);
+        return ra_;
+    }
+
+    inline double getLastResult() { return ra_; }
+
+    pipeline::filter<double, const QwtOHLCSample &> f() { return *this; }
+
+private:
+    boost::accumulators::accumulator_set<
+        double, // price
+        boost::accumulators::stats<boost::accumulators::tag::rolling_mean>,
+        double  // weight (volume)
+    > decay_acc_;
+    //
+    double ra_;
+    int mode_;
+};
+
+//----------------------------------------------------------------------------
+struct gradient_change
+{
+    gradient_change()
+        : last_(0.0)
+        , first_(true)
+    {}
+
+    buy_sell_type operator()(double val)
+    {
+        const double epsilon = 0.002;
+        buy_sell_type e = buy_sell_type::no_event;
+        if (first_) {
+            first_ = false;
+            last_ = val;
+        }
+        else if (val > (last_+epsilon)) {
+            e = buy_sell_type::buy_event;
+            last_ = val;
+        }
+        else if (val < (last_-epsilon)) {
+            e = buy_sell_type::sell_event;
+            last_ = val;
+        }
+        return e;
+    }
+
+    pipeline::filter<buy_sell_type, double > f() { return *this; }
+
+private:
+    //
+    double last_;
+    bool   first_;
+};
 
 //----------------------------------------------------------------------------
 // Exponentially decaying moving average
@@ -83,44 +157,11 @@ private:
 };
 
 //----------------------------------------------------------------------------
-class moving_average
-{
-public:
-    moving_average(int N)
-        : decay_acc_(boost::accumulators::tag::rolling_window::window_size = N)
-        , ra_(0)
-    {
-        std::cout << "init moving_average" << std::endl;
-    }
-
-    double operator()(const double data)
-    {
-        decay_acc_(data);
-        ra_ = boost::accumulators::rolling_mean(decay_acc_);
-        return ra_;
-    }
-
-    inline double getLastResult() { return ra_; }
-
-    pipeline::filter<double, const double> f() { return *this; }
-
-private:
-    boost::accumulators::accumulator_set<
-        double,
-        boost::accumulators::stats<boost::accumulators::tag::rolling_mean>
-    > decay_acc_;
-    //
-    double ra_;
-};
-
-//----------------------------------------------------------------------------
-// An input type that takes an OHLC value and provides a value function
-// that returns the current value
+// An input type that takes an OHLC value and updates/accumulates its internal
+// candle provides to provide a current candle value
+// this is intended to be used with incoming trades to build live candles
 struct ohlc_input
 {
-//    ohlc_input(const ohlc_input &) = default;
-//    ohlc_input &operator = (const ohlc_input &) = default;
-    //
     ohlc_input(const QwtOHLCSample &ohlc) : val_(ohlc) {};
     //
     void set(const QwtOHLCSample &newv) {
@@ -148,6 +189,42 @@ private:
 };
 
 //----------------------------------------------------------------------------
+// an input object that just provides the latest value
+template <typename T>
+struct input_value
+{
+    input_value(const T &val) : val_(val) {};
+    //
+    void set(const T &newv) {
+        val_ = newv;
+    }
+    // returns the current OHLC candle being processed
+    const T& operator()() {
+        return val_;
+    };
+
+    pipeline::input<const T&> f() { return *this; }
+
+private:
+    T val_;
+};
+
+//----------------------------------------------------------------------------
+// an input object that just provides the latest value
+template <typename T>
+struct dummy
+{
+    dummy() {};
+    //
+    // returns the current OHLC candle being processed
+    T operator()(T val) {
+        return val;
+    };
+
+    pipeline::filter<T, T> f() { return *this; }
+};
+
+//----------------------------------------------------------------------------
 struct ohlc_close
 {
     // returns the close price of OHLC candle
@@ -159,11 +236,33 @@ struct ohlc_close
 //----------------------------------------------------------------------------
 struct cross
 {
-    bool operator() (double v1, double v2) {
-        std::cout << v1 << " : " << v2 << std::endl;
-        return v1>=v2;
+    cross()
+        : last_(false)
+        , first_(true)
+    {}
+
+    buy_sell_type operator() (double v1, double v2)
+    {
+        buy_sell_type e = buy_sell_type::no_event;
+        if (first_) {
+            first_ = false;
+        }
+        else if ((v1>v2) != last_) {
+            if (v1>v2)
+                e = buy_sell_type::buy_event;
+            if (v1<v2)
+                e = buy_sell_type::sell_event;
+        }
+        last_ = (v1>v2);
+        return e;
     }
-    pipeline::filter<bool, double, double> f() { return *this; }
+
+    pipeline::filter<buy_sell_type, double, double> f() { return *this; }
+
+private:
+    //
+    bool last_;
+    bool first_;
 };
 
 //----------------------------------------------------------------------------
@@ -197,35 +296,14 @@ private:
 //
 // class to hold our stream based data
 //
-class trade_filter {
-public:
-    trade_filter();
-    virtual ~trade_filter() {}
-    //
-    void process(const QwtOHLCSample &ohlc);
-    //
-    moving_average rolling_average_;
-    //
-    ohlc_input ohlc_in_;
-    pipeline::input<const QwtOHLCSample&> sample_input_;
-    //
-    exponential_moving_average ema_1;
-    exponential_moving_average ema_10;
-    //
-    pipeline::input<void> cross_detector_;
-};
-
-//----------------------------------------------------------------------------
-//
-// Moving average
-//
-//class ma_filter {
+//class trade_filter {
 //public:
-//    ma_filter();
+//    trade_filter();
+//    virtual ~trade_filter() {}
 //    //
 //    void process(const QwtOHLCSample &ohlc);
 //    //
-//    moving_average rolling_average_;
+//    volume_weighted_moving_average rolling_average_;
 //    //
 //    ohlc_input ohlc_in_;
 //    pipeline::input<const QwtOHLCSample&> sample_input_;
@@ -235,3 +313,4 @@ public:
 //    //
 //    pipeline::input<void> cross_detector_;
 //};
+

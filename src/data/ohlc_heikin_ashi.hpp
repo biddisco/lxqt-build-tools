@@ -2,14 +2,36 @@
 
 // STL
 #include <iostream>
+#include <optional>
 // Qwt
 #include <QwtOHLCSample>
+//
+#include "src/stream/pipeline.hpp"
+
+// ----------------------------------------------------------------------------
+enum buy_sell_type {
+    no_event   = 0,
+    buy_event  = 1,
+    sell_event = 2,
+};
+
+// ----------------------------------------------------------------------------
+struct trade_event
+{
+    double        time_;
+    buy_sell_type type_;
+};
 
 // ----------------------------------------------------------------------------
 struct ohlc_heikin_ashi
 {
     bool first_;
     QwtOHLCSample prev_;
+
+    ohlc_heikin_ashi()
+        : first_(true)
+        , prev_()
+    {}
 
     ohlc_heikin_ashi(const QwtOHLCSample &ohlc)
         : first_(false)
@@ -21,8 +43,13 @@ struct ohlc_heikin_ashi
         }
     }
 
-    QwtOHLCSample operator() (const QwtOHLCSample &ohlc)
+    std::optional<QwtOHLCSample> operator() (std::optional<QwtOHLCSample> ohlc_o)
     {
+        // exit or get the value
+        if (!ohlc_o.has_value())
+            return std::nullopt;
+        const QwtOHLCSample &ohlc = ohlc_o.value();
+
         // first point in plot needs a prev open/close
         if (first_) {
             prev_  = ohlc;
@@ -38,4 +65,57 @@ struct ohlc_heikin_ashi
         return result;
     }
 
+    pipeline::filter<std::optional<QwtOHLCSample>, std::optional<QwtOHLCSample>> f() { return *this; }
+
+};
+
+// ----------------------------------------------------------------------------
+struct heikin_ashi_transition
+{
+    bool          first_;
+    bool          prev_;
+
+    heikin_ashi_transition()
+        : first_(true)
+        , prev_(false)
+    {
+    }
+
+    buy_sell_type operator() (std::optional<QwtOHLCSample> ha_o)
+    {
+        // exit or get the value
+        if (!ha_o.has_value())
+            return buy_sell_type::no_event;
+        const QwtOHLCSample &ha = ha_o.value();
+
+        // first point in plot needs a prev open/close
+        if (first_) {
+            prev_  = (ha.open<ha.close);
+            first_ = false;
+        }
+        else
+        {
+            bool green = (ha.open<ha.close);
+            if (green!=prev_) {
+                prev_ = green;
+                return (green ? buy_sell_type::buy_event : buy_sell_type::sell_event);
+            }
+        }
+        return buy_sell_type::no_event;
+    }
+
+    pipeline::filter<buy_sell_type, std::optional<QwtOHLCSample>> f() { return *this; }
+};
+
+// ----------------------------------------------------------------------------
+struct add_time_filter
+{
+    add_time_filter() {}
+
+    trade_event operator() (buy_sell_type bs, double time)
+    {
+        return {time, bs};
+    }
+
+    pipeline::filter<trade_event, buy_sell_type, double> f() { return *this; }
 };

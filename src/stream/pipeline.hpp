@@ -6,8 +6,6 @@
 #include <tuple>
 #include <vector>
 //
-#include "src/data/ohlc_datasets.hpp"
-//
 // Boost Accumulators
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
@@ -226,8 +224,14 @@ namespace pipeline {
     };
 
     // --------------------------------------------------------------
-    template <typename Out1, typename Out2>
-    decltype(auto) operator + (pipeline::input<Out1> &&f1, pipeline::input<Out2> &&f2) {
-        return filter_joiner<Out1, Out2, pipeline::input<Out1>, pipeline::input<Out2>>(std::move(f1), std::move(f2));
+//    template <typename Out1, typename Out2>
+//    decltype(auto) operator + (pipeline::input<Out1> &&f1, pipeline::input<Out2> &&f2) {
+//        return filter_joiner<Out1, Out2, pipeline::input<Out1>, pipeline::input<Out2>>(std::move(f1), std::move(f2));
+//    }
+
+    template <typename Out1, typename Out2, typename ... Args>
+    decltype(auto) operator + (pipeline::pfunc<Out1, Args...> &&f1, pipeline::pfunc<Out2, Args...> &&f2) {
+        return filter_joiner<Out1, Out2, pipeline::pfunc<Out1>, pipeline::pfunc<Out2>>(std::move(f1), std::move(f2));
     }
+
 }

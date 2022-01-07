@@ -22,6 +22,8 @@
 #include <QwtScaleMap>
 #include <QwtScaleWidget>
 #include <QwtSeriesData>
+#include <QwtPlotCurve>
+#include <QwtSymbol>
 // Grox
 #include "src/plot/ohlc_chart_data.hpp"
 #include "src/plot/ohlc_price_plot.hpp"
@@ -350,9 +352,49 @@ void ohlc_price_plot::display_candle_status(double time)
 
     QwtText status(temp.str().c_str());
     status.setRenderFlags(Qt::AlignLeft | Qt::AlignTop);
-//    QColor cc( "#333333" );
-//    status.setBorderPen( QPen( cc, 2 ) );
-//    cc.setAlpha( 200 );
-//    status.setBackgroundBrush( cc );
+//    QColor cc("#333333");
+//    status.setBorderPen(QPen(cc, 2));
+//    cc.setAlpha(200);
+//    status.setBackgroundBrush(cc);
     candle_status_->setText(status);
+}
+
+// ----------------------------------------------------------------------------
+void ohlc_price_plot::add_buy_sell_curve(const QString& title,
+    const QVector<QPointF>& samples, const QColor& color)
+{
+    auto m_curve = new QwtPlotCurve(title);
+    m_curve->setYAxis(QwtPlot::yRight);
+    m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
+    m_curve->setStyle(QwtPlotCurve::NoCurve);
+    m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
+
+
+    QwtSymbol* symbol = new QwtSymbol(QwtSymbol::XCross);
+    symbol->setSize(16);
+    symbol->setPen(color, 4);
+    m_curve->setSymbol(symbol);
+
+    m_curve->setSamples(samples);
+    m_curve->attach(this);
+}
+
+// ----------------------------------------------------------------------------
+void ohlc_price_plot::add_price_curve(const QString& title,
+    const QVector<QPointF>& samples, const QColor& color)
+{
+    auto m_curve = new QwtPlotCurve(title);
+    m_curve->setYAxis(QwtPlot::yRight);
+    m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
+    m_curve->setStyle(QwtPlotCurve::Lines);
+    m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
+    m_curve->setPen(color, 2);
+
+//    QwtSymbol* symbol = new QwtSymbol(QwtSymbol::XCross);
+//    symbol->setSize(16);
+//    symbol->setPen(color, 4);
+//    m_curve->setSymbol(symbol);
+
+    m_curve->setSamples(samples);
+    m_curve->attach(this);
 }

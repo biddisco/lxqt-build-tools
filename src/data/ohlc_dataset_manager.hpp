@@ -87,4 +87,10 @@ public:
 
     // access the underlying data vector for live samples
     ohlc_chart_data *get_live_data();
+
+    // compute the average price for a buy at/after time T
+    QwtOHLCSample get_trade_data_by_volume(double volume, double time, double safety=10);
+    QwtOHLCSample get_trade_data_by_value(double dollars, double time, double safety=10);
+    double get_estimated_sell_price(double volume, double time, double safety=10);
+    double get_estimated_buy_price(double volume, double time, double safety=10);
 };

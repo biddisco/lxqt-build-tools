@@ -364,3 +364,59 @@ std::vector<double> ohlc_dataset_manager::get_dataset_resolutions()
     }
     return result;
 }
+
+// ----------------------------------------------------------------------------
+QwtOHLCSample ohlc_dataset_manager::get_trade_data_by_volume(double volume, double time, double safety)
+{
+    ohlc_chart_data *samples = get_samples();
+    auto index = samples->sample_index(time);
+    const auto data = samples->data();
+    // we use a factor of 10 to play safe, this can be adjusted
+    double vol_traded = 0;
+    QwtOHLCSample ohlc(-1,-1);
+    while (ohlc.volume<volume*safety && index<data.size()) {
+        // and accumulate data on prices
+        update_QwtOHLCSample(ohlc, data[index++]);
+    }
+    return ohlc;
+}
+
+// ----------------------------------------------------------------------------
+QwtOHLCSample ohlc_dataset_manager::get_trade_data_by_value(double dollars, double time, double safety)
+{
+    ohlc_chart_data *samples = get_samples();
+    auto index = samples->sample_index(time);
+    auto data = samples->data();
+    // we use a factor of 10 to play safe, this can be adjusted
+    double val_traded = 0;
+    QwtOHLCSample ohlc(-1,-1);
+    while (val_traded<dollars*safety && index<data.size()) {
+        // current candle
+        const QwtOHLCSample &sample = data[index++];
+        // get the volume for current candle
+        val_traded += sample.volume * (sample.open + sample.close)/2.0;
+        // and accumulate data on prices
+        update_QwtOHLCSample(ohlc, sample);
+    }
+    return ohlc;
+}
+
+// ----------------------------------------------------------------------------
+double ohlc_dataset_manager::get_estimated_sell_price(double volume, double time, double safety)
+{
+    QwtOHLCSample ohlc = get_trade_data_by_volume(volume, time, safety);
+    // we have created a candle with enough data to sell the volume requested (+safety factor)
+    // return a price based on the traded data we accumulated
+    double price = (25.0*ohlc.high + 75.0*ohlc.low)/100.0;
+    return price;
+}
+
+// ----------------------------------------------------------------------------
+double ohlc_dataset_manager::get_estimated_buy_price(double dollars, double time, double safety)
+{
+    QwtOHLCSample ohlc = get_trade_data_by_value(dollars, time, safety);
+    // we have created a candle with enough data to sell the volume requested (+safety factor)
+    // return a price based on the traded data we accumulated
+    double price = (25.0*ohlc.high + 75.0*ohlc.low)/100.0;
+    return price;
+}

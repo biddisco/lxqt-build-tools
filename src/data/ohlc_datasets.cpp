@@ -10,6 +10,21 @@
 #include "src/data/ohlc_datasets.hpp"
 
 // ----------------------------------------------------------------------------
+void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other)
+{
+    if (ohlc.isValid()) {
+        ohlc.low    = std::min(ohlc.low, other.low);
+        ohlc.high   = std::max(ohlc.high, other.high);
+        ohlc.close  = other.close;
+        ohlc.volume = ohlc.volume + other.volume;
+    }
+    else {
+        ohlc = other;
+    }
+}
+
+
+// ----------------------------------------------------------------------------
 ohlc_datasets::ohlc_datasets(double res)
 {
     // we do not destroy these in the destructor because they are given to the
@@ -99,15 +114,6 @@ int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, doub
     }
     DEBUG_ALWAYS("OHLC Data samples validated " << samples.size());
     return samples.size();
-}
-
-// ----------------------------------------------------------------------------
-void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other)
-{
-    ohlc.low    = std::min(ohlc.low, other.low);
-    ohlc.high   = std::max(ohlc.high, other.high);
-    ohlc.close  = other.close;
-    ohlc.volume = ohlc.volume + other.volume;
 }
 
 // ----------------------------------------------------------------------------

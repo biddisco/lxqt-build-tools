@@ -1,15 +1,66 @@
 #pragma once
 
 // STL
+#include <optional>
 #include <vector>
 // Qt
 #include <QVector>
 // Grox
+#include "src/stream/pipeline.hpp"
 #include "src/plot/ohlc_chart_data.hpp"
 #include "src/plot/ohlc_chart_curve.hpp"
 
-void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other);
 std::string msecs_unix_to_calendar_time(uint64_t unixmsecs);
+void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other);
+
+struct ohlc_resample
+{
+    QwtOHLCSample ohlc_;
+    //
+    ohlc_resample(const QwtOHLCSample &ohlc) : ohlc_(ohlc) {}
+    //
+    QwtOHLCSample operator()(QwtOHLCSample const &other) {
+        update_QwtOHLCSample(ohlc_, other);
+        return ohlc_;
+    }
+};
+
+// ----------------------------------------------------------------------------
+struct ohlc_candlemaker
+{
+    double to_resolution_;
+    double from_resolution_;
+    QwtOHLCSample ohlc_;
+    //
+    ohlc_candlemaker(double to_resolution, double from_resolution)
+        : to_resolution_(to_resolution)
+        , from_resolution_(from_resolution)
+        , ohlc_()
+    {};
+    //
+    std::optional<QwtOHLCSample> operator()(const QwtOHLCSample &ohlc) {
+        uint64_t candle_old = static_cast<uint64_t>(ohlc_.time / to_resolution_);
+        uint64_t candle_cur = static_cast<uint64_t>(ohlc.time / to_resolution_);
+        if (candle_old == candle_cur) {
+            update_QwtOHLCSample(ohlc_, ohlc);
+        }
+        else {
+            ohlc_ = ohlc;
+            ohlc_.time = candle_cur * to_resolution_;
+        }
+        // is this the last candle before we start a new one
+        uint64_t candle_next = static_cast<uint64_t>((ohlc.time + from_resolution_) / to_resolution_);
+        if (candle_next > candle_cur) {
+            return ohlc_;
+        }
+        return std::nullopt;
+    }
+
+    pipeline::filter<std::optional<QwtOHLCSample>, const QwtOHLCSample&> f() { return *this; }
+
+private:
+    QwtOHLCSample val_;
+};
 
 // ----------------------------------------------------------------------------
 struct ohlc_datasets

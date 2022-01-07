@@ -61,6 +61,12 @@ public:
     ohlc_interactor *get_interactor() { return plot_interactor_; }
     ohlc_picker     *get_crosshairs() { return crosshairs_; }
 
+    void add_price_curve(const QString& title,
+        const QVector<QPointF>& samples, const QColor& color);
+
+    void add_buy_sell_curve(const QString& title,
+        const QVector<QPointF>& samples, const QColor& color);
+
 signals:
     void plotScaleChanged(double t1, double t2);
 

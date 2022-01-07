@@ -66,7 +66,6 @@ class GroxMainWindow : public QMainWindow
     std::shared_ptr<xrpl_network> xrpl_network_;
     std::shared_ptr<xrpl_network> xrpl_testnet_;
 
-    trade_filter df_;
 //    http::request<http::string_body> bitstamp_request_;
 
 public:
@@ -94,6 +93,8 @@ public:
 
     void stream_process(const QwtOHLCSample &data);
     void start_io_threads(int nthreads);
+
+    void generate_filter_data();
 
 signals:
     void quitApplication();

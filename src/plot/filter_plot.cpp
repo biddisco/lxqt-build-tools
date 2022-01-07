@@ -22,6 +22,8 @@
 #include <QwtScaleMap>
 #include <QwtScaleWidget>
 #include <QwtSeriesData>
+#include <QwtPlotCurve>
+#include <QwtSymbol>
 // Grox
 #include "src/plot/ohlc_chart_data.hpp"
 #include "src/plot/filter_plot.hpp"
@@ -131,5 +133,32 @@ void filter_plot::update_time_axis(double t1, double t2)
 */
     setAutoReplot(doAutoReplot);
     replot();
+}
+
+// ----------------------------------------------------------------------------
+void filter_plot::add_asset_curve(const QString& title,
+    const QVector<QPointF>& samples, const QColor& color)
+{
+    auto m_curve = new QwtPlotCurve(title);
+    m_curve->setYAxis(QwtPlot::yRight);
+    m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
+    m_curve->setStyle(QwtPlotCurve::NoCurve);
+    m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
+
+    QwtSymbol* symbol = new QwtSymbol(QwtSymbol::XCross);
+    symbol->setSize(4);
+    symbol->setPen(color, 1);
+    m_curve->setSymbol(symbol);
+
+    m_curve->setSamples(samples);
+    m_curve->attach(this);
+
+    static double ymax = m_curve->maxYValue();
+    ymax = std::max(ymax, m_curve->maxYValue());
+
+    static double ymin = m_curve->minYValue();
+    ymin = std::min(ymin, m_curve->minYValue());
+
+    setAxisScale(QwtAxis::YRight, ymin, ymax);
 }
 
