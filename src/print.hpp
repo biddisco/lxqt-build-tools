@@ -140,7 +140,7 @@ namespace hpx { namespace debug {
             friend std::ostream& operator<<(
                 std::ostream& os, fp<P, W, T> const& d)
             {
-                os << std::left << std::setfill(' ') << std::fixed << std::setw(W) << std::setprecision(P)
+                os << std::right << std::setfill(' ') << std::fixed << std::setw(W) << std::setprecision(P)
                    << d.data_;
                 return os;
             }
@@ -337,6 +337,29 @@ namespace hpx { namespace debug {
                 os << hpx::debug::hex<16>(*uintBuf++) << " ";
             }
             os << " : " << p.txt_;
+            return os;
+        }
+    };
+
+    // ------------------------------------------------------------------
+    // helper fuction for printing the return of a lambda function
+    // this can be added to any print, or timed print to dump out some
+    // useful info : the lambda is only executed if the debug is enabled
+    // so expensive debug info may be wrapped in a lambda
+    // ------------------------------------------------------------------
+    struct lambda
+    {
+        std::function<std::string()> fun_;
+
+        lambda(std::function<std::string()> f)
+          : fun_(f)
+        {
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, lambda const& p)
+        {
+            std::string temp = p.fun_();
+            os << temp << "\n";
             return os;
         }
     };
