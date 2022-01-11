@@ -99,6 +99,13 @@
              </widget>
             </item>
             <item>
+             <widget class="QPushButton" name="exec_algo">
+              <property name="text">
+               <string>Algorithm</string>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QComboBox" name="candle_res"/>
             </item>
             <item>
@@ -119,7 +126,7 @@
              <widget class="QDateTimeEdit" name="date_init">
               <property name="dateTime">
                <datetime>
-                <hour>8</hour>
+                <hour>6</hour>
                 <minute>0</minute>
                 <second>0</second>
                 <year>2021</year>
@@ -129,7 +136,7 @@
               </property>
               <property name="minimumTime">
                <time>
-                <hour>16</hour>
+                <hour>15</hour>
                 <minute>0</minute>
                 <second>0</second>
                </time>
@@ -444,7 +451,7 @@
             <widget class="QDateTimeEdit" name="repair_date">
              <property name="dateTime">
               <datetime>
-               <hour>10</hour>
+               <hour>8</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2021</year>
@@ -454,7 +461,7 @@
              </property>
              <property name="minimumTime">
               <time>
-               <hour>17</hour>
+               <hour>16</hour>
                <minute>0</minute>
                <second>0</second>
               </time>

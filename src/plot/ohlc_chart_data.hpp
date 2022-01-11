@@ -16,10 +16,13 @@ struct candle_res {
     // this is used when resampling to know which (higher) res to use
     double base_;
     // A simple name that will appear in menus
-    char *name_;
+    char const *name_;
     // operators to make access easy
     constexpr operator double() const { return res_; }
     constexpr operator const char*() const { return name_; }
+    bool operator <  (const candle_res &other) { return res_ <  other.res_; }
+    bool operator >  (const candle_res &other) { return res_ >  other.res_; }
+    bool operator == (const candle_res &other) { return res_ == other.res_; }
 };
 
 // ----------------------------------------------------------------------------
@@ -72,7 +75,7 @@ class ohlc_chart_data : public QwtTradingChartData
     static constexpr candle_res day2     = {day*2,     day,      "2d"  };
     static constexpr candle_res day3     = {day*3,     day,      "3d"  };
     static constexpr candle_res day7     = {day*7,     day,      "7d"  };
-    static constexpr candle_res day15    = {day*15,    day,      "15d" };
+    static constexpr candle_res day15    = {day*15,    day3,     "15d" };
 
     // for easy access to array of all available resolutions
     static const std::vector<candle_res> &available_resolutions()
@@ -82,6 +85,32 @@ class ohlc_chart_data : public QwtTradingChartData
             hour, hour2, hour4, hour6, hour12, day, day2, day3, day7, day15
         };
         return resolutions;
+    }
+
+    static candle_res get_resolution(double res)
+    {
+        for (const auto &r : available_resolutions()) {
+            if (r.res_ == res)
+                return r;
+        }
+        throw std::runtime_error("Resolution not found");
+    }
+
+    // return best resolution -
+    // gcd(min3, min5)  = min1
+    // gcd(min5, min15) = min5
+    // gcd(hour4, hour6) = hour2
+    static candle_res gcd(candle_res a, candle_res b)
+    {
+        if (a>b) std::swap(a,b);
+        while (a.res_ > ohlc_chart_data::minute) {
+            while (b.res_ >= a.res_) {
+                if (b.res_ == a.res_) return b;
+                b = get_resolution(b.base_);
+            }
+            a = get_resolution(a.base_);
+        }
+        return ohlc_chart_data::minute;
     }
 
   protected:

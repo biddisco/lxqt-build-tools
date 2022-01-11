@@ -94,7 +94,7 @@ public:
     void stream_process(const QwtOHLCSample &data);
     void start_io_threads(int nthreads);
 
-    void generate_filter_data();
+    void execute_filter();
 
 signals:
     void quitApplication();

@@ -15,7 +15,22 @@
 #include <boost/accumulators/statistics/moment.hpp>
 #include <boost/accumulators/statistics/median.hpp>
 #include <boost/accumulators/statistics/weighted_median.hpp>
-//
+
+// ----------------------------------------------------------------------------
+struct trade_algo_data {
+    const std::string name;
+    const int num_datasets;
+    const int num_params;
+    const std::vector<double> defaults;
+};
+
+const std::vector<trade_algo_data> available_algorithms = {
+    {"Heikin Ashi", 1, 0, {}},
+    {"MA gradient", 1, 0, {}},
+    {"MA cross",    2, 0, {}},
+    {"MACD",        2, 1, {9.0}},
+};
+
 
 //----------------------------------------------------------------------------
 struct volume_weighted_moving_average
@@ -49,6 +64,43 @@ private:
         double, // price
         boost::accumulators::stats<boost::accumulators::tag::rolling_mean>,
         double  // weight (volume)
+    > decay_acc_;
+    //
+    double ra_;
+    int mode_;
+};
+
+//----------------------------------------------------------------------------
+struct moving_average
+{
+    // mode : 0=open, 1=close, 2=mid(open,close), 3=high, 4=low, 5=mid(high,low)
+    moving_average(int N, int mode=2)
+        : decay_acc_(boost::accumulators::tag::rolling_window::window_size = N)
+        , ra_(0)
+        , mode_(mode)
+    {
+    }
+
+    double operator()(const QwtOHLCSample &val)
+    {
+        double price;
+        if (mode_==2) {
+            price = 0.5*(val.open + val.close);
+        }
+        // insert data into boost accumulator
+        decay_acc_(price);
+        ra_ = boost::accumulators::rolling_mean(decay_acc_);
+        return ra_;
+    }
+
+    inline double getLastResult() { return ra_; }
+
+    pipeline::filter<double, const QwtOHLCSample &> f() { return *this; }
+
+private:
+    boost::accumulators::accumulator_set<
+        double, // price
+        boost::accumulators::stats<boost::accumulators::tag::rolling_mean>
     > decay_acc_;
     //
     double ra_;
@@ -266,6 +318,20 @@ private:
 };
 
 //----------------------------------------------------------------------------
+struct difference
+{
+    difference()
+    {}
+
+    double operator() (double v1, double v2)
+    {
+        return (v1 - v2);
+    }
+
+    pipeline::filter<double, double, double> f() { return *this; }
+};
+
+//----------------------------------------------------------------------------
 // Remove consecutive repetitions from a stream.
 // used by cross detector to filter out change from true->false etc
 template <typename T>
@@ -314,3 +380,29 @@ private:
 //    pipeline::input<void> cross_detector_;
 //};
 
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+using price_type = pipeline::pfunc<double>;
+using event_type = pipeline::pfunc<trade_event>;
+using ohlc_input_type = pipeline::input<const QwtOHLCSample&>;
+using time_input_type = pipeline::input<double>;
+
+//----------------------------------------------------------------------------
+void make_heikin_ashi_pipeline(ohlc_input_type &ohlc_input,
+                                     time_input_type &time_input,
+                                     const candle_res &res,
+                                     std::vector<event_type> &event_pipelines,
+                                     std::vector<price_type> &price_pipelines);
+//----------------------------------------------------------------------------
+void make_moving_average_gradient(ohlc_input_type &ohlc_input,
+                                        time_input_type &time_input,
+                                        int N,
+                                        std::vector<event_type> &event_pipelines,
+                                        std::vector<price_type> &price_pipelines);
+//----------------------------------------------------------------------------
+void make_moving_average_cross(ohlc_input_type &ohlc_input,
+                                     time_input_type &time_input,
+                                     int N,
+                                     int M,
+                                     std::vector<event_type> &event_pipelines,
+                                     std::vector<price_type> &price_pipelines);
