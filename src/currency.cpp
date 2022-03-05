@@ -82,6 +82,28 @@ std::pair<std::string, std::string> to_string(const currency_type &t)
 }
 
 // ----------------------------------------------------------------------------
+std::pair<std::string, std::string> to_string(const currency &t)
+{
+    switch (t.type_) {
+    case xrp:
+        return std::make_pair("XRP", ""); break;
+    case usd_bitstamp:
+        return std::make_pair("USD", currency::bitstamp_trust); break;
+    case eur_bitstamp:
+        return std::make_pair("EUR", currency::bitstamp_trust); break;
+    case usd_gatehub:
+        return std::make_pair("USD", currency::gatehub_trust); break;
+    case xrpl_trustline:
+        return std::make_pair(t.curr_.code_, t.curr_.issuer_); break;
+    case other:
+        return std::make_pair("other", ""); break;
+    default:
+        return std::make_pair("Unknown", ""); break;
+    }
+    return std::make_pair("error", "");
+}
+
+// ----------------------------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, const currency_type &t)
 {
     os << to_string(t).first;

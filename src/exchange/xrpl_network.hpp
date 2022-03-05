@@ -34,6 +34,8 @@ private:
     xrpl_order_book *orderbook_;
     std::vector<ledger_wallet> subscribed_wallets_;
 
+    std::map<std::string, double> currency_fees_;
+
     // ---------------------------------------
     // MainNet : rippled server
     // ---------------------------------------
@@ -152,6 +154,10 @@ public:
     void get_all_account_balances();
     void handle_account_balance(ledger_wallet &w, std::string&& data);
 
+    // Send query to Data API and get info for address
+    using fn_on_http = std::function<void(OB::Belle::Client::Http_Ctx&)>;
+    void get_account_info(std::string addr, fn_on_http on_http);
+
     // Send query to Data API and get info for all tracked wallets
     void get_all_account_infos();
     void handle_account_info(ledger_wallet &w, std::string&& data);
@@ -164,7 +170,7 @@ public:
     void cancel_order(trade_data const &t) override;
 
 
-    std::vector<std::pair<currency_type, currency_type>> currency_pairs() override;
+    currency_pairlist currency_pairs() override;
 
     // place a buy/sell order
     void place_limit_order(basic_account *acct, trade_data const &t, bool update_after);
@@ -174,10 +180,13 @@ public:
 
     double get_fee_percent(const currency_type &c1, const currency_type &c2) override;
     double get_fee_fixed(const currency_type &c1, const currency_type &c2) override;
+    double get_transfer_fee(const currency &c1) override;
 
     void trustline(basic_account *acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags);
 
     void custom_functions(basic_account *acct) override;
+
+    void query_iou_fee(const issued_currency &c1);
 
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform

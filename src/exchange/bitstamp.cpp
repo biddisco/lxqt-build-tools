@@ -61,14 +61,12 @@ void bitstamp_network::disconnect()
 }
 
 // ----------------------------------------------------------------------------
-std::vector<std::pair<currency_type, currency_type>> bitstamp_network::currency_pairs()
+exchange::currency_pairlist bitstamp_network::currency_pairs()
 {
-    std::vector<std::pair<currency_type, currency_type>> supported = {
-        {usd_bitstamp,xrp},
-        {xrp,usd_bitstamp},
-        {eur_bitstamp,xrp},
-        {xrp,eur_bitstamp},
-    };
+    currency c1 = currency{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp, 0, 0, 0, nullptr};
+    currency c2 = currency{{"", "XRP"}, currency_type::xrp, 0, 0, 0, nullptr};
+    currency c3 = currency{{currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp, 0, 0, 0, nullptr};
+    currency_pairlist supported = {{c1,c2}, {c2,c1}, {c3,c2}, {c2,c3}};
     return supported;
 }
 

@@ -21,7 +21,8 @@ std::string make_xrp_payment(
         int32_t dest_tag,
         double amount,
         const std::string &currency,
-        const std::string &issuer);
+        const std::string &issuer,
+        double transferrate);
 
 std::string make_xrp_offer(
         ripple::KeyType keyType,

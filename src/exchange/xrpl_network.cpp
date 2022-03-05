@@ -97,14 +97,12 @@ bool xrpl_network::can_send(currency &c, exchange *dest) {
 }
 
 // ----------------------------------------------------------------------------
-std::vector<std::pair<currency_type, currency_type>> xrpl_network::currency_pairs()
+exchange::currency_pairlist xrpl_network::currency_pairs()
 {
-    std::vector<std::pair<currency_type, currency_type>> supported = {
-        {usd_bitstamp,xrp},
-        {xrp,usd_bitstamp},
-        {xrpl_trustline,xrp},
-        {xrp,xrpl_trustline},
-    };
+    currency c1 = currency{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp, 0, 0, 0, nullptr};
+    currency c2 = currency{{"", "XRP"}, currency_type::xrp, 0, 0, 0, nullptr};
+    currency c3 = currency{{currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp, 0, 0, 0, nullptr};
+    currency_pairlist supported = {{c1,c2}, {c2,c1}, {c3,c2}, {c2,c3}};
     return supported;
 }
 
@@ -417,6 +415,7 @@ void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
         else if (b.currency == currency_type::xrpl_trustline) {
             currency c{b.trustline.value(), currency_type::xrpl_trustline, b.value, b.value, 0, nullptr};
             add_currency(c, w.currencies_);
+            query_iou_fee(b.trustline.value());
         }
         else {
             throw std::runtime_error("Unknown currency in handle_account_balance");
@@ -428,61 +427,69 @@ void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
 }
 
 // ----------------------------------------------------------------------------
+void xrpl_network::get_account_info(std::string addr, fn_on_http on_http)
+{
+    auto thread_function = [=]() {
+        OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
+        // set the http 'on error' callback
+        new_client.on_http_error([](auto& ctx) {
+          std::cerr << "get_account_info : Protocol Error: " << ctx.ec.message() << "\n\n";
+        });
+
+        nlohmann::json params;
+        params["account"] = addr;
+        params["ledger_index"] = "current";
+        params["strict"] = true;
+        params["queue"] = true;
+
+        nlohmann::json content;
+        content["method"] = "account_info";
+        content["params"] = nlohmann::json::array({params});
+
+        using namespace OB;
+        // init an http request object
+        Belle::Request req;
+
+        // set the method
+        req.method(Belle::Method::post);
+        req.set(Belle::Header::host, network_address());
+        req.set(Belle::Header::user_agent, "mystery");
+        req.set(Belle::Header::content_type, "application/json");
+        req.set(Belle::Header::accept, "application/json");
+        req.set(Belle::Header::connection, "close");
+        // set the target path
+        req.target("/");
+        req.body() = content.dump();
+        req.prepare_payload();
+        DEBUG_ONLY(line_string << req);
+
+        new_client.on_http(req, on_http);
+        new_client.connect();
+    };
+    auto https_thread = std::thread(std::move(thread_function));
+    https_thread.detach();
+}
+
+
+// ----------------------------------------------------------------------------
 void xrpl_network::get_all_account_infos()
 {
     for (auto &w : subscribed_wallets_) {
-        auto thread_function = [&]() {
-            OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
-            // set the http 'on error' callback
-            new_client.on_http_error([](auto& ctx) {
-              std::cerr << "get_all_account_infos : Protocol Error: " << ctx.ec.message() << "\n\n";
-            });
-
-            nlohmann::json params;
-            params["account"] = w.public_;
-            params["ledger_index"] = "current";
-            params["strict"] = true;
-            params["queue"] = true;
-
-            nlohmann::json content;
-            content["method"] = "account_info";
-            content["params"] = nlohmann::json::array({params});
-
-            using namespace OB;
-            // init an http request object
-            Belle::Request req;
-
-            // set the method
-            req.method(Belle::Method::post);
-            req.set(Belle::Header::host, network_address());
-            req.set(Belle::Header::user_agent, "mystery");
-            req.set(Belle::Header::content_type, "application/json");
-            req.set(Belle::Header::accept, "application/json");
-            req.set(Belle::Header::connection, "close");
-            // set the target path
-            req.target("/");
-            req.body() = content.dump();
-            req.prepare_payload();
-            DEBUG_ONLY(line_string << req);
-
-            new_client.on_http(req, [this, &w](auto& ctx)
+        fn_on_http func = [this, &w](auto& ctx) {
+            if (ctx.res.result() != OB::Belle::Status::ok)
             {
-              if (ctx.res.result() != OB::Belle::Status::ok)
-              {
                 std::cerr << "account_info : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
                           << " " << ctx.res.reason()
                           << "\n";
                 return;
-              }
-              // debug : print the response headers and body
-              DEBUG_ONLY(line_string << "account_info response : " << w.public_ << " : " << ctx.res.body());
-              this->handle_account_info(w, std::move(ctx.res.body()));
-            });
-            new_client.connect();
+            }
+            // debug : print the response headers and body
+            DEBUG_ONLY(line_string << "account_info response : " << w.public_ << " : " << ctx.res.body());
+            this->handle_account_info(w, std::move(ctx.res.body()));
         };
-        auto https_thread = std::thread(std::move(thread_function));
-        https_thread.detach();
-    };
+
+        get_account_info(w.public_, func);
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -624,11 +631,13 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
                 from->sequence_,
                 to->get_receive_address(c).begin(),
                 to->tag_,
-                c.balance_*1000000, "", "");
+                c.balance_*1000000, "", "", 0.0);
     }
     else {
+        double fee = get_transfer_fee(c);
         std::cout << "XRP IOU payment amount " << c.balance_
                   << " " << c.curr_.code_
+                  << " TransferRate " << fee
                   << " from " << from->public_
                   << " to " << to->public_
                   << " IOU addr " << c.curr_.issuer_
@@ -641,7 +650,7 @@ bool xrpl_network::make_payment(currency &c, basic_account *src, basic_account *
                 from->sequence_,
                 to->get_receive_address(c).begin(),
                 to->tag_,
-                c.balance_, c.curr_.code_, c.curr_.issuer_);
+                c.balance_, c.curr_.code_, c.curr_.issuer_, fee);
     }
     from->sequence_++;
     submit_signed_transaction(std::move(signed_tx));
@@ -795,8 +804,49 @@ void xrpl_network::cancel_order(trade_data const &t)
 }
 
 // ----------------------------------------------------------------------------
+void xrpl_network::query_iou_fee(const issued_currency &c1)
+{
+    if (currency_fees_.find(c1.issuer_)!=currency_fees_.end()) {
+        // no need to fetch it twice
+        return;
+    }
+
+    fn_on_http func = [this,c1](auto& ctx) {
+        if (ctx.res.result() != OB::Belle::Status::ok)
+        {
+            std::cerr << "account_info : " << c1.issuer_ << " : HTTPS Error: " << ctx.res.result_int()
+                      << " " << ctx.res.reason()
+                      << "\n";
+            return;
+        }
+        // debug : print the response headers and body
+        DEBUG_ONLY(line_string << "account_info response : " << c1.issuer_ << " : " << ctx.res.body());
+        nlohmann::json jdata = json::parse(ctx.res.body())["result"]["account_data"];
+        if (jdata.contains("TransferRate")) {
+            int sfee = jdata["TransferRate"].get<int>();
+            // In the XRP Ledger protocol, the transfer fee is specified in the TransferRate
+            // field, as an integer which represents the amount you must send for the
+            // recipient to get 1 billion units of the same currency.
+            // A TransferRate of 1005000000 is equivalent to a transfer fee of 0.5%
+            double feepercent = 100.0*(1E-9*sfee - 1.0);
+            DEBUG_ALWAYS("fee % : " << c1.issuer_ << " : " << feepercent);
+            currency_fees_[c1.issuer_] = feepercent;
+        }
+    };
+
+    get_account_info(c1.issuer_, func);
+}
+
+// ----------------------------------------------------------------------------
+double xrpl_network::get_transfer_fee(const currency &c1)
+{
+    return currency_fees_[c1.curr_.issuer_];
+}
+
+// ----------------------------------------------------------------------------
 double xrpl_network::get_fee_percent(const currency_type &c1, const currency_type &c2)
 {
+
     return 0.0;
 }
 

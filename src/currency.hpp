@@ -68,6 +68,7 @@ bool is_xrp(currency_type c);
 // ----------------------------------------------------------------------------
 // convert a currency type enum to a string pair, {name, issuer}
 std::pair<std::string, std::string> to_string(const currency_type &t);
+std::pair<std::string, std::string> to_string(const currency &t);
 
 // ----------------------------------------------------------------------------
 // displays an amount such as 1.34 as a string, but uses different numbers

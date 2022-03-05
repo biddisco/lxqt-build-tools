@@ -95,6 +95,11 @@ void currency_widget::show_hide()
                 }
             }
         }
+
+        QVariant v;
+        v.setValue(nullptr);
+        ui->dest_combo->addItem(QString("other XRP address"), v);
+
 /*
         // Add bitstamp exchange to transfer list
         if (network_->can_send(currency_, app_ini->bitstamp.network_.get())) {
@@ -117,7 +122,7 @@ void currency_widget::show_hide()
         for (auto &p : pairs) {
             auto c1 = p.first;
             auto c2 = p.second;
-            if (c1 == currency_.type_) {
+            if (c1.type_ == currency_.type_) {
                 auto cstr = to_string(c2);
                 ui->buy_sell_combo->addItem(QString(cstr.first.c_str()),
                                             QString(cstr.second.c_str()));
@@ -157,7 +162,16 @@ void currency_widget::execute_payment()
     payment.balance_ = amount_;
     QVariant v = ui->dest_combo->currentData();
     basic_account *to_wallet = v.value<basic_account*>();
-    network_->make_payment(payment, account_, to_wallet);
+    if (to_wallet!=nullptr) {
+        network_->make_payment(payment, account_, to_wallet);
+    }
+    else {
+        ledger_wallet w;
+        w.public_ = ui->address->text().toStdString();
+        w.tag_ = (int64_t)(ui->tag->text().toInt());
+        w.testnet_ = false;
+        network_->make_payment(payment, account_, &w);
+    }
 }
 
 void currency_widget::execute_trade()

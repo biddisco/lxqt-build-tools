@@ -88,7 +88,7 @@ public:
     std::string_view name() override { return "Bitstamp"; }
 
     // supported currency pairs
-    virtual std::vector<std::pair<currency_type, currency_type>> currency_pairs() override;
+    virtual currency_pairlist currency_pairs() override;
 
     // Is sending this currency to the destination exchange supported
     bool can_send(currency &c, exchange *dest) override;
@@ -144,6 +144,7 @@ public:
 
     double get_fee_percent(const currency_type &c1, const currency_type &c2) override;
     double get_fee_fixed(const currency_type &c1, const currency_type &c2) override;
+    double get_transfer_fee(const currency &c1)  override { return 0; }
 
     void custom_functions(basic_account *acct) override {};
 

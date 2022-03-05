@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>559</width>
-    <height>291</height>
+    <width>604</width>
+    <height>323</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -35,6 +35,83 @@
    <property name="bottomMargin">
     <number>2</number>
    </property>
+   <item row="8" column="3" colspan="2">
+    <widget class="QFrame" name="controls_pay">
+     <property name="frameShape">
+      <enum>QFrame::Box</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <property name="lineWidth">
+      <number>3</number>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_7">
+      <item row="0" column="1">
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Send</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="exec_pay">
+            <property name="text">
+             <string>x</string>
+            </property>
+            <property name="toolButtonStyle">
+             <enum>Qt::ToolButtonTextOnly</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QComboBox" name="dest_combo">
+          <property name="editable">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="1">
+       <layout class="QHBoxLayout" name="horizontalLayout_5">
+        <item>
+         <widget class="QLineEdit" name="address">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>other_address</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="tag">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>1</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>0</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
    <item row="3" column="2">
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
@@ -59,26 +136,6 @@
      </item>
     </layout>
    </item>
-   <item row="0" column="3" colspan="2">
-    <widget class="QLabel" name="issuer">
-     <property name="text">
-      <string>Issuer</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="4">
-    <widget class="QLabel" name="reserved">
-     <property name="text">
-      <string>reserved</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
    <item row="3" column="4">
     <widget class="QLabel" name="label_7">
      <property name="text">
@@ -89,7 +146,37 @@
      </property>
     </widget>
    </item>
-   <item row="6" column="2" colspan="2">
+   <item row="6" column="2">
+    <widget class="QLabel" name="balance">
+     <property name="text">
+      <string>balance</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="3" colspan="2">
+    <widget class="QLabel" name="issuer">
+     <property name="text">
+      <string>Issuer</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="3">
+    <widget class="QLabel" name="avail">
+     <property name="text">
+      <string>avail</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="2">
     <widget class="QFrame" name="controls_amount">
      <property name="frameShape">
       <enum>QFrame::Box</enum>
@@ -221,17 +308,7 @@
      </layout>
     </widget>
    </item>
-   <item row="4" column="2">
-    <widget class="QLabel" name="balance">
-     <property name="text">
-      <string>balance</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="8" column="2" colspan="3">
+   <item row="10" column="2" colspan="3">
     <widget class="QFrame" name="controls_trade">
      <property name="frameShape">
       <enum>QFrame::Box</enum>
@@ -326,16 +403,6 @@
      </layout>
     </widget>
    </item>
-   <item row="4" column="3">
-    <widget class="QLabel" name="avail">
-     <property name="text">
-      <string>avail</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
    <item row="3" column="3">
     <widget class="QLabel" name="label_6">
      <property name="text">
@@ -357,46 +424,13 @@
     </widget>
    </item>
    <item row="6" column="4">
-    <widget class="QFrame" name="controls_pay">
-     <property name="frameShape">
-      <enum>QFrame::Box</enum>
+    <widget class="QLabel" name="reserved">
+     <property name="text">
+      <string>reserved</string>
      </property>
-     <property name="frameShadow">
-      <enum>QFrame::Raised</enum>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
-     <property name="lineWidth">
-      <number>3</number>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_7">
-      <item row="0" column="0">
-       <layout class="QVBoxLayout" name="verticalLayout">
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
-          <item>
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>Send</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QToolButton" name="exec_pay">
-            <property name="text">
-             <string>x</string>
-            </property>
-            <property name="toolButtonStyle">
-             <enum>Qt::ToolButtonTextOnly</enum>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <widget class="QComboBox" name="dest_combo"/>
-        </item>
-       </layout>
-      </item>
-     </layout>
     </widget>
    </item>
   </layout>

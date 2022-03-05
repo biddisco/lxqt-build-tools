@@ -16,6 +16,7 @@ class exchange : public QObject
     Q_OBJECT
 
 public:
+    using currency_pairlist = std::vector<std::pair<currency, currency>>;
     virtual ~exchange() {}
     virtual void connect(net::contexts &io_contexts) = 0;
     virtual void disconnect() = 0;
@@ -23,11 +24,12 @@ public:
     virtual bool make_payment(currency &c, basic_account *src, basic_account *dest) = 0;
     virtual std::string_view name() = 0;
     virtual void cancel_order(trade_data const &t) = 0;
-    virtual std::vector<std::pair<currency_type, currency_type>> currency_pairs() = 0;
+    virtual currency_pairlist currency_pairs() = 0;
     virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const &) = 0;
     virtual std::vector<basic_account*> wallets() = 0;
     virtual double get_fee_percent(const currency_type &c1, const currency_type &c2) = 0;
     virtual double get_fee_fixed(const currency_type &c1, const currency_type &c2) = 0;
+    virtual double get_transfer_fee(const currency &c1)  = 0;
     virtual void custom_functions(basic_account *acct) = 0;
 
 signals:

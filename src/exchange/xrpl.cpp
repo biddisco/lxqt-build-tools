@@ -72,7 +72,8 @@ std::shared_ptr<ripple::STTx const> deserialize(std::string blob)
 }
 
 // ----------------------------------------------------------------------------
-#define DEBUG_TX_SIGN
+#define DEBUG_TX_SIGN 1
+
 std::string make_xrp_payment(
         ripple::KeyType keyType,
         const std::string &from_seed,
@@ -82,7 +83,8 @@ std::string make_xrp_payment(
         int32_t dest_tag,
         double amount,
         const std::string &currency,
-        const std::string &issuer)
+        const std::string &issuer,
+        double transferrate)
 {
     using namespace ripple;
     // get from account keys/info
@@ -120,16 +122,29 @@ std::string make_xrp_payment(
         else if (is_fiat(issued_currency{issuer, currency})) {
             // amount we want to send as dollars.cents, multiply x 100, shift right 2 places
             obj[sfAmount]  = STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount*1E2), -2);
-            // we multiply by 1.002 to allow for IOU fees, and scale the float to int size,
+            // we multiply by 1 + transferrate (eg. 1.002) to allow for IOU fees, and scale the float to int size,
             // but shift right by the same amount to move the decimal point back to dollars.cents
-            obj[sfSendMax] = STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount*1.002*1E5), -(2+5));
+            obj[sfSendMax] = STAmount(Issue(to_currency(currency), *gateway1),
+                                      static_cast<uint64_t>(amount*(1.0 + 0.01*transferrate)*1E5), -(2+5));
         }
         else {
-            obj[sfAmount] = STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount*1E6), -6);
+            // on IOUs a transfer rate (say 1.0001 = 0.01%) might apply,
+            // the receiver will only get R = (X - fee)
+            // no fee when returning a token to its issuer
+            double recv_amount = amount;
+            if (transferrate>0 && dest_address != issuer) {
+                recv_amount = amount/(1.0 + amount*0.01*transferrate);
+            }
+
+            obj[sfAmount] = STAmount(Issue(to_currency(currency), *gateway1),
+                                     static_cast<uint64_t>(1E6*recv_amount), -6);
+
+            obj[sfSendMax] = STAmount(Issue(to_currency(currency), *gateway1),
+                                      static_cast<uint64_t>(1E6*amount), -6);
         }
     });
 
-    DEBUG_ONLY("Before signing: \n"
+    DEBUG_ALWAYS("Before signing: \n"
               << payTx.getJson(JsonOptions::none).toStyledString() << std::endl
               << "Serialized: " << payTx.getJson(JsonOptions::none, true)[jss::tx]);
 
