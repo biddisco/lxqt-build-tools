@@ -182,7 +182,7 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
     // truncating a dataset
     else if (truncate)
     {
-        DEBUG_ONLY("Truncating dataset to: " << samples.size());
+        DEBUG_ALWAYS("Truncating dataset to: " << samples.size());
 
         hid_t dset1 = H5Dopen(file, "ohlc", H5P_DEFAULT);
         // extend dataset to new size
@@ -194,7 +194,7 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
     // free/close file
     hdf5_check("H5Fclose", H5Fclose(file));
 
-    DEBUG_ONLY("Dataset size: " << data.size());
+    DEBUG_ALWAYS("Dataset size: " << samples.size());
 }
 
 // ----------------------------------------------------------------------------
