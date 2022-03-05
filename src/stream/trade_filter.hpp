@@ -28,7 +28,7 @@ const std::vector<trade_algo_data> available_algorithms = {
     {"Heikin Ashi", 1, 0, {}},
     {"MA gradient", 1, 0, {}},
     {"MA cross",    2, 0, {}},
-    {"MACD",        2, 1, {9.0}},
+    {"MACD",        1, 3, {12, 26, 9}},
 };
 
 
@@ -77,25 +77,20 @@ struct moving_average
     moving_average(int N, int mode=2)
         : decay_acc_(boost::accumulators::tag::rolling_window::window_size = N)
         , ra_(0)
-        , mode_(mode)
     {
     }
 
-    double operator()(const QwtOHLCSample &val)
+    double operator()(double val)
     {
-        double price;
-        if (mode_==2) {
-            price = 0.5*(val.open + val.close);
-        }
         // insert data into boost accumulator
-        decay_acc_(price);
+        decay_acc_(val);
         ra_ = boost::accumulators::rolling_mean(decay_acc_);
         return ra_;
     }
 
     inline double getLastResult() { return ra_; }
 
-    pipeline::filter<double, const QwtOHLCSample &> f() { return *this; }
+    pipeline::filter<double, double> f() { return *this; }
 
 private:
     boost::accumulators::accumulator_set<
@@ -104,7 +99,6 @@ private:
     > decay_acc_;
     //
     double ra_;
-    int mode_;
 };
 
 //----------------------------------------------------------------------------
@@ -318,6 +312,38 @@ private:
 };
 
 //----------------------------------------------------------------------------
+struct zero_cross
+{
+    zero_cross()
+        : last_(false)
+        , first_(true)
+    {}
+
+    buy_sell_type operator() (double v1)
+    {
+        buy_sell_type e = buy_sell_type::no_event;
+        if (first_) {
+            first_ = false;
+        }
+        else if ((0>v1) != last_) {
+            if (0>v1)
+                e = buy_sell_type::buy_event;
+            if (0<v1)
+                e = buy_sell_type::sell_event;
+        }
+        last_ = (0>v1);
+        return e;
+    }
+
+    pipeline::filter<buy_sell_type, double> f() { return *this; }
+
+private:
+    //
+    bool last_;
+    bool first_;
+};
+
+//----------------------------------------------------------------------------
 struct difference
 {
     difference()
@@ -406,3 +432,10 @@ void make_moving_average_cross(ohlc_input_type &ohlc_input,
                                      int M,
                                      std::vector<event_type> &event_pipelines,
                                      std::vector<price_type> &price_pipelines);
+//----------------------------------------------------------------------------
+void make_MACD(ohlc_input_type &ohlc_input,
+               time_input_type &time_input,
+               int N, int M, int O,
+               std::vector<event_type> &event_pipelines,
+               std::vector<price_type> &price_pipelines,
+               std::vector<price_type> &filter_pipelines);

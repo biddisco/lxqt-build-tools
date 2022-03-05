@@ -122,6 +122,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
 
     // Attach a dotted-line grid to the plot
     QwtPlotGrid *grid = new QwtPlotGrid();
+    grid->setYAxis(QwtPlot::yRight);
     grid->setItemAttribute(grid->Legend, false);
     grid->setPen(QColor(Qt::darkGray), 0.0, Qt::PenStyle::DotLine);
     grid->attach(this);

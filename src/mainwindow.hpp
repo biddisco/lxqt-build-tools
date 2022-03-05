@@ -58,6 +58,7 @@ class GroxMainWindow : public QMainWindow
     //
     ohlc_price_plot* crypto_price_plot_;
     filter_plot *filters_plot_;
+    filter_plot *assets_plot_;
 
     OrderBookPlot *obp_;
     QTimer *timer_;

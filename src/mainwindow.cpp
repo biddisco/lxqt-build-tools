@@ -43,7 +43,7 @@
 #include "src/data/ohlc_heikin_ashi.hpp"
 
 #define get_live_trades 1
-#define subscribe_xrpl_events 0
+//#define subscribe_xrpl_events 1
 #define enable_multiresolution 1
 
 // ----------------------------------------------------------------------------
@@ -74,9 +74,16 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     // Create stream/filters plot
     //
+    assets_plot_ = new filter_plot(this);
+    ui.filters_layout->addWidget(assets_plot_, 30);
+    assets_plot_->setMinimumHeight(128);
+    assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
+
     filters_plot_ = new filter_plot(this);
     ui.filters_layout->addWidget(filters_plot_, 30);
     filters_plot_->setMinimumHeight(128);
+    filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
+
 
     // ----------------------------------
     // Create orderbook plot
@@ -455,6 +462,7 @@ void GroxMainWindow::createMenus()
 
     connect(crypto_price_plot_, &ohlc_price_plot::plotScaleChanged, this, [this](double t1, double t2) {
         filters_plot_->update_time_axis(t1, t2);
+        assets_plot_->update_time_axis(t1, t2);
 
 //                axisScaleDraw(QwtPlot::xBottom)->, crypto_price_plot_->axisScaleDraw(QwtPlot::xBottom));
         //    filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
@@ -926,8 +934,12 @@ void GroxMainWindow::execute_filter()
     if (result != QDialog::Accepted) {
         col = 0;
         crypto_price_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
-        filters_plot_->detachItems(QwtPlotItem::Rtti_PlotItem, true);
+
+        filters_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
         filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
+
+        assets_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
+        assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
         return;
     }
 
@@ -971,6 +983,7 @@ void GroxMainWindow::execute_filter()
     };
 
     std::vector<price_type> price_pipelines;
+    std::vector<price_type> filter_pipelines;
     std::vector<event_type> event_pipelines;
     std::vector<funds> funding;
 
@@ -985,8 +998,8 @@ void GroxMainWindow::execute_filter()
             int M = res2.res_ / base_resolution;
             make_moving_average_cross(ohlc_input, time_input, N, M, event_pipelines, price_pipelines);
         }
-        else if (algorithm==2) {
-            //make_MACD(ohlc_input, time_input, res, 12, 26, 9, event_pipelines, price_pipelines);
+        else if (algorithm==3) {
+            make_MACD(ohlc_input, time_input, 12, 26, 12*9, event_pipelines, price_pipelines, filter_pipelines);
         }
         funding.push_back({50000,0});
     }
@@ -994,11 +1007,16 @@ void GroxMainWindow::execute_filter()
     using plot_array = QVector<QPointF>;
     plot_array buys, sells, assets;
     std::vector<plot_array> priceplots;
+    std::vector<plot_array> filterplots;
     buys.reserve(5000);
     sells.reserve(5000);
     assets.reserve(5000);
     for (const auto &p : price_pipelines) {
         plot_array &temp = priceplots.emplace_back();
+        temp.reserve(5000);
+    }
+    for (const auto &p : filter_pipelines) {
+        plot_array &temp = filterplots.emplace_back();
         temp.reserve(5000);
     }
 
@@ -1023,6 +1041,14 @@ void GroxMainWindow::execute_filter()
             auto &data = priceplots[i];
             double p = pipe.operator()();
             QPointF trade2(ohlc.time, p);
+            data.push_back(trade2);
+        }
+
+        for (uint i=0; i<filter_pipelines.size(); ++i) {
+            auto &pipe = filter_pipelines[i];
+            auto &data = filterplots[i];
+            double p = pipe.operator()();
+            QPointF trade2(ohlc.time, p*10);
             data.push_back(trade2);
         }
 
@@ -1099,7 +1125,12 @@ void GroxMainWindow::execute_filter()
     }
     crypto_price_plot_->add_buy_sell_curve("Buy",  buys,  Qt::green);
     crypto_price_plot_->add_buy_sell_curve("Sell", sells, Qt::red);
-    filters_plot_->add_asset_curve("Value", assets, Qt::red);
+    //
+    assets_plot_->add_asset_curve("Value", assets, Qt::red);
+    for (uint i=0; i<filter_pipelines.size(); ++i) {
+        auto &data = filterplots[i];
+        filters_plot_->add_asset_curve("MA", data, colours[col++]);
+    }
 
     int res_i = 0;
     for (const candle_res &res : resolutions) {

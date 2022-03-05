@@ -142,23 +142,98 @@ void make_moving_average_cross(ohlc_input_type &ohlc_input,
 }
 
 //----------------------------------------------------------------------------
+struct macd_internal {
+    ohlc_input_type &ohlc_input;
+    time_input_type &time_input;
+    volume_weighted_moving_average ma_fast;
+    volume_weighted_moving_average ma_slow;
+    moving_average av3;
+    pipeline::pfunc<double> p_fast;
+    pipeline::pfunc<double> p_slow;
+    zero_cross cross;
+    add_time_filter tfilter;
+    //
+    macd_internal(ohlc_input_type &input1, time_input_type &input2, int M, int N, int O)
+        : ohlc_input(input1)
+        , time_input(input2)
+        , ma_fast(M)
+        , ma_slow(N)
+        , av3(0)
+        , tfilter()
+    {
+        p_fast = ohlc_input | ma_fast.f();
+        p_slow = ohlc_input | ma_slow.f();
+    }
+
+    trade_event operator()() {
+        double v1 = p_fast();
+        double v2 = p_slow();
+        double macd = difference()(v1,v2);
+        double signal = av3(macd);
+        double trigger = difference()(signal, macd);
+        buy_sell_type bs = cross(trigger);
+        trade_event e = tfilter(bs, time_input());
+        return e;
+    }
+
+    pipeline::filter<trade_event> f() { return *this; }
+};
+
+//----------------------------------------------------------------------------
+struct macd_signal {
+    ohlc_input_type &ohlc_input;
+    time_input_type &time_input;
+    volume_weighted_moving_average ma_fast;
+    volume_weighted_moving_average ma_slow;
+    moving_average av3;
+    pipeline::pfunc<double> p_fast;
+    pipeline::pfunc<double> p_slow;
+    zero_cross cross;
+    add_time_filter tfilter;
+    //
+    macd_signal(ohlc_input_type &input1, time_input_type &input2, int fast, int slow, int O)
+        : ohlc_input(input1)
+        , time_input(input2)
+        , ma_fast(fast)
+        , ma_slow(slow)
+        , av3(0)
+        , tfilter()
+    {
+        p_fast = ohlc_input | ma_fast.f();
+        p_slow = ohlc_input | ma_slow.f();
+    }
+
+    trade_event operator()() {
+        double f = p_fast();
+        double s = p_slow();
+        double macd = difference()(s,f);
+        double signal = av3(macd);
+        double trigger = difference()(signal, macd);
+        buy_sell_type bs = cross(trigger);
+        trade_event e = tfilter(bs, time_input());
+        return e;
+    }
+
+    pipeline::filter<trade_event> f() { return *this; }
+};
+
 void make_MACD(ohlc_input_type &ohlc_input,
                time_input_type &time_input,
-               const candle_res &res,
-               int N, int M, int O,
+               int fast, int slow, int O,
                std::vector<event_type> &event_pipelines,
-               std::vector<price_type> &price_pipelines)
+               std::vector<price_type> &price_pipelines,
+               std::vector<price_type> &filter_pipelines)
 {
-//    auto p1 = ohlc_input | ohlc_candlemaker(res, ohlc_chart_data::minute).f();
-//    auto p2 = p1 | volume_weighted_moving_average(N).f();
-//    auto p3 = p1 | volume_weighted_moving_average(M).f();
-//    auto p4 = (p1 + p2) | difference().f() | volume_weighted_moving_average(O).f();
-//    auto p5 =
-//                     + (time_input | dummy<double>().f()))
-//                        | add_time_filter().f();
-//    event_pipelines.push_back(pipeline);
-//    //
-//    auto pipeline2 = ((ohlc_input | volume_weighted_moving_average(N).f()));
+    auto f = macd_internal(ohlc_input, time_input, fast, slow, O);
+    event_pipelines.push_back(f);
+    //
+    auto pipeline2 = ((ohlc_input | VWMA(fast).f()));
+    price_pipelines.push_back(pipeline2);
+    auto pipeline3 = ((ohlc_input | VWMA(slow).f()));
+    price_pipelines.push_back(pipeline3);
+    auto pipeline4 = ((ohlc_input | VWMA(slow).f()) + (ohlc_input | VWMA(fast).f())) | difference().f() | moving_average(O).f();
+    filter_pipelines.push_back(pipeline4);
+
 //    price_pipelines.push_back(pipeline2);
 //    auto pipeline3 = ((ohlc_input | volume_weighted_moving_average(M).f()));
 //    price_pipelines.push_back(pipeline3);

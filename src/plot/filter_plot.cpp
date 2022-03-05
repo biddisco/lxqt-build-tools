@@ -94,6 +94,13 @@ filter_plot::filter_plot(QWidget *parent)
     palette2.setColor(QPalette::Text, Qt::lightGray);	    // tick labels
     axisWidget(Axis::yRight)->setPalette(palette2);
 
+    // Attach a dotted-line grid to the plot
+    QwtPlotGrid *grid = new QwtPlotGrid();
+    grid->setYAxis(QwtPlot::yRight);
+    grid->setItemAttribute(grid->Legend, false);
+    grid->setPen(QColor(Qt::darkGray), 0.0, Qt::PenStyle::DotLine);
+    grid->attach(this);
+
     // Override the Qt size policy. Otherwise, the plot may not scale to
     // the desired dimensions from the grid layout.
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
@@ -153,10 +160,9 @@ void filter_plot::add_asset_curve(const QString& title,
     m_curve->setSamples(samples);
     m_curve->attach(this);
 
-    static double ymax = m_curve->maxYValue();
+    double ymin = axisScaleDiv(QwtAxis::YRight).lowerBound();
+    double ymax = axisScaleDiv(QwtAxis::YRight).upperBound();
     ymax = std::max(ymax, m_curve->maxYValue());
-
-    static double ymin = m_curve->minYValue();
     ymin = std::min(ymin, m_curve->minYValue());
 
     setAxisScale(QwtAxis::YRight, ymin, ymax);
