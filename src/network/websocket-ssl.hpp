@@ -48,6 +48,9 @@ namespace net {
         asio::io_context ioc;
         // The SSL context is required, and holds certificates
         ssl::context ctx;
+        // IO threads will terminate if there is no work, so we add a work_guard
+        // to keep them alive until we want to exit.
+        asio::executor_work_guard<asio::io_context::executor_type> *work_guard_;
 
         // create the objects we need
         contexts()
@@ -63,7 +66,15 @@ namespace net {
                 boost::asio::ssl::context::no_sslv3 |
                 boost::asio::ssl::context::no_tlsv1 |
                 boost::asio::ssl::context::no_tlsv1_1);
+
+            work_guard_ = new asio::executor_work_guard<asio::io_context::executor_type>
+                    {boost::asio::make_work_guard(ioc)};
         }
+
+        ~contexts() {
+            delete work_guard_;
+        }
+
     };
 
     namespace ws {

@@ -264,8 +264,14 @@ void GroxMainWindow::appExitCleanupHandler()
     xrpl_testnet_.reset();
     qDebug() << "websockets: shutdown complete";
 
+    // remove work guard so IO threads can exit
+    io_contexts.work_guard_->reset();
+
     // stop boost::asio io_service
     io_contexts.ioc.stop();
+    for (auto &t : ioc_threads_) {
+        if (t.joinable()) t.join();
+    }
     qDebug() << "boost::asio: shutdown complete";
 }
 
@@ -275,6 +281,9 @@ void GroxMainWindow::createActions()
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q), this, SLOT(close()));
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_C), this, SLOT(start_websocket()));
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_D), this, SLOT(restore_dockwindows()));
+
+    start_io_threads(2);
+
 //    //
 //    actionQuit = ui.menubar->addAction(tr("Quit"));
 //    actionQuit->setMenuRole(QAction::QuitRole);
@@ -688,14 +697,14 @@ void GroxMainWindow::start_io_threads(int nthreads)
 {
     static bool initialized = false;
     if (!initialized) {
+        ioc_threads_.reserve(nthreads);
         // Run the I/O service on some threads.
         for (int i=0; i<nthreads; ++i) {
-            websocket_thread = std::thread([&]() {
+            ioc_threads_.emplace_back([&]() {
                 DEBUG_ONLY("io_contexts run : thread " << std::this_thread::get_id());
                 // The call will return when the socket is closed.
                 io_contexts.ioc.run();
             });
-            websocket_thread.detach();
         }
         initialized = true;
     }
@@ -706,7 +715,6 @@ void GroxMainWindow::start_websocket()
 {
     #if get_live_trades
         bitstamp_network_->connect(io_contexts);
-        start_io_threads(2);
     #endif
 
     update_candlestick_data();

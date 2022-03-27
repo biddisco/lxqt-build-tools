@@ -26,7 +26,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="chart_tab">
          <attribute name="title">
@@ -126,7 +126,7 @@
              <widget class="QDateTimeEdit" name="date_init">
               <property name="dateTime">
                <datetime>
-                <hour>6</hour>
+                <hour>4</hour>
                 <minute>0</minute>
                 <second>0</second>
                 <year>2021</year>
@@ -136,7 +136,7 @@
               </property>
               <property name="minimumTime">
                <time>
-                <hour>15</hour>
+                <hour>14</hour>
                 <minute>0</minute>
                 <second>0</second>
                </time>
@@ -213,34 +213,7 @@
                <enum>QFrame::Raised</enum>
               </property>
               <layout class="QGridLayout" name="gridLayout">
-               <item row="1" column="0">
-                <widget class="QCheckBox" name="arbitrage_test_mode">
-                 <property name="text">
-                  <string>Arbitrage Test Mode</string>
-                 </property>
-                 <property name="checked">
-                  <bool>false</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="QLineEdit" name="arbitrage_test_offset">
-                 <property name="text">
-                  <string>0.015</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0" colspan="2">
-                <widget class="QCheckBox" name="enable_arbitrage">
-                 <property name="text">
-                  <string>Enable arbitrage</string>
-                 </property>
-                 <property name="checked">
-                  <bool>false</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0">
+               <item row="7" column="0">
                 <spacer name="verticalSpacer">
                  <property name="orientation">
                   <enum>Qt::Vertical</enum>
@@ -252,6 +225,61 @@
                   </size>
                  </property>
                 </spacer>
+               </item>
+               <item row="4" column="0">
+                <widget class="QCheckBox" name="enable_arbitrage">
+                 <property name="text">
+                  <string>Enable arbitrage</string>
+                 </property>
+                 <property name="checked">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QCheckBox" name="connect_orderbook">
+                 <property name="text">
+                  <string>Connect Orderbook</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="1">
+                <widget class="QLineEdit" name="arbitrage_test_offset">
+                 <property name="text">
+                  <string>0.015</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0">
+                <widget class="QCheckBox" name="arbitrage_test_mode">
+                 <property name="text">
+                  <string>Arbitrage Test Mode</string>
+                 </property>
+                 <property name="checked">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QCheckBox" name="checkBox">
+                 <property name="text">
+                  <string>Connect Trades</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0" colspan="2">
+                <widget class="Line" name="line_3">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="0" colspan="2">
+                <widget class="Line" name="line_4">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
                </item>
               </layout>
              </widget>
@@ -451,7 +479,7 @@
             <widget class="QDateTimeEdit" name="repair_date">
              <property name="dateTime">
               <datetime>
-               <hour>8</hour>
+               <hour>6</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2021</year>
@@ -461,7 +489,7 @@
              </property>
              <property name="minimumTime">
               <time>
-               <hour>16</hour>
+               <hour>15</hour>
                <minute>0</minute>
                <second>0</second>
               </time>

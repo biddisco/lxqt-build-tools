@@ -54,17 +54,23 @@ int main(int argc, char** argv)
     // The io_context is required for all I/O
     net::contexts contexts;
 
-    std::shared_ptr<net::ws::session> session = net::ws::create_session(
-        contexts.ioc, contexts.ctx, host, port, channel, new_trade_data);
+    // IO threads will terminate if there is no work, so we add a work_guard
+    // to keep them alive until we want to exit.
+    asio::executor_work_guard<asio::io_context::executor_type>
+            work_guard_{boost::asio::make_work_guard(contexts.ioc)};
 
+    std::vector<std::thread> threads_;
     // Run the I/O service on a thread.
-    std::thread websocket_thread([&]() {
+    threads_.emplace_back([&]() {
         // The call will return when the socket is closed.
         contexts.ioc.run();
     });
 
+    std::shared_ptr<net::ws::session> session = net::ws::create_session(
+        contexts.ioc, contexts.ctx, host, port, channel, &new_trade_data);
+
     const int sec = 25;
-    // wait 5 seconds and collect some data
+    // wait N seconds and collect some data
     for (int i = 0; i < sec; i++)
     {
         std::cout << "Closing in " << sec - i << " seconds " << std::endl;
@@ -73,7 +79,9 @@ int main(int argc, char** argv)
     }
 
     session->shutdown_blocking();
-    websocket_thread.join();
-
+    work_guard_.reset();
+    for (auto &t : threads_) {
+        if (t.joinable()) t.join();
+    }
     return EXIT_SUCCESS;
 }

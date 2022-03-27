@@ -49,25 +49,36 @@ public:
 class GroxMainWindow : public QMainWindow
 {
     Q_OBJECT
+
+    // main form ui
+    Ui::GroxMainWindow ui;
+
+    // widgets
+    QAction* actionQuit;
     std::shared_ptr<QDockWidget> accounts_dock;
     std::shared_ptr<QDockWidget> orders_dock;
     QScrollArea *accounts_scrollwidget;
     QScrollArea *orders_scrollwidget;
 
+    // data
     ohlc_dataset_manager hdf5_ohlc_;
-    //
+
+    // plots
     ohlc_price_plot* crypto_price_plot_;
     filter_plot *filters_plot_;
     filter_plot *assets_plot_;
-
     OrderBookPlot *obp_;
     QTimer *timer_;
-    //
+
+    // network/exchanges
     std::shared_ptr<bitstamp_network> bitstamp_network_;
     std::shared_ptr<xrpl_network> xrpl_network_;
     std::shared_ptr<xrpl_network> xrpl_testnet_;
 
-//    http::request<http::string_body> bitstamp_request_;
+
+    // io context for websocket/https requests
+    net::contexts io_contexts;
+    std::vector<std::thread> ioc_threads_;
 
 public:
     explicit GroxMainWindow(QWidget* parent = nullptr);
@@ -127,18 +138,6 @@ public slots:
     void capture_image();
 
     void graph_rescale(int range);
-
-private:
-    Ui::GroxMainWindow ui;
-    QAction* actionQuit;
-
-    // instances we need for websocket connnections
-    net::contexts io_contexts;
-
-//    // https session ffor rest API calls
-//    std::shared_ptr<net::https::session> https_rest;
-    //
-    std::thread websocket_thread;
 };
 
 static GroxMainWindow* mainwindow;
