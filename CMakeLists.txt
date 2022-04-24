@@ -193,19 +193,20 @@ set(GROX_SRC
     src/data/ohlc_dataset_manager.cpp
     src/data/ohlc_datasets.cpp
 
-    # exchange Apis
+    # exchange APIs
     src/exchange/xrpl.cpp
     src/exchange/exchange.cpp
     src/exchange/xrpl_network.cpp
     src/exchange/bitstamp.cpp
 
     # widgets and dialogs
-    src/widgets/password_dialog.cpp
+    src/widgets/check_trades_dialog.cpp
+    src/widgets/connection_widget.cpp
     src/widgets/currency_widget.cpp
-    src/widgets/wallet_widget.cpp
+    src/widgets/password_dialog.cpp
     src/widgets/trade_algorithm.cpp
     src/widgets/trade_widget.cpp
-    src/widgets/check_trades_dialog.cpp
+    src/widgets/wallet_widget.cpp
     src/widgets/xrp_functions.cpp
 
     # plotting
@@ -390,9 +391,9 @@ target_compile_definitions(test-belle-https-client
     PRIVATE BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
 )
 
-add_executable(test-belle-https-server ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/server/https/src/main.cc)
-target_include_directories(test-belle-https-server PUBLIC extern/belle/include ${TEST_INC_DIRS})
-target_link_libraries(test-belle-https-server PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
-target_compile_definitions(test-belle-https-server
-    PRIVATE BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
-)
+#add_executable(test-belle-https-server ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/server/https/src/main.cc)
+#target_include_directories(test-belle-https-server PUBLIC extern/belle/include ${TEST_INC_DIRS})
+#target_link_libraries(test-belle-https-server PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
+#target_compile_definitions(test-belle-https-server
+#    PRIVATE BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
+#)

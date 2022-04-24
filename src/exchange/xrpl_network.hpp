@@ -118,13 +118,23 @@ public:
     //
     const xrpl_order_book &get_orderbook() const;
     //
-    void connect(net::contexts &io_contexts) override;
+    streams_vector websocket_streams() override {
+        return {
+            network::streams::order_book,
+            network::streams::accounts
+        };
+    }
+
+    // connect to (multiple) streams
+    bool connect(net::contexts &io_contexts, streams_vector const &streams) override;
+    bool disconnect(net::contexts &io_contexts, streams_vector const &streams) override;
+
+    // shut down sockets/connections
+    void shut_down() override;
     //
-    void disconnect() override;
+    bool subscribe_orderbook(net::contexts &io_contexts);
     //
-    void subscribe_orderbook(net::contexts &io_contexts);
-    //
-    void subscribe_accounts(net::contexts &io_contexts);
+    bool subscribe_accounts(net::contexts &io_contexts);
     //
     void add_wallet(const ledger_wallet &w);
     void clear_wallets() { subscribed_wallets_.clear(); }

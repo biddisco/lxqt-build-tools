@@ -113,16 +113,30 @@ const xrpl_order_book &xrpl_network::get_orderbook() const
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::connect(net::contexts &/*io_contexts*/)
+bool xrpl_network::connect(net::contexts &io_contexts, streams_vector const &streams)
 {
-    // @TODO - implement something useful here
+    bool ok = true;
+    for (const auto &s : streams) {
+        if (s == network::streams::order_book) ok &= subscribe_orderbook(io_contexts);
+        if (s == network::streams::accounts) ok &= subscribe_accounts(io_contexts);
+    }
+    return ok;
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::disconnect()
+bool xrpl_network::disconnect(net::contexts &/*io_contexts*/, streams_vector const &streams)
 {
-    qDebug() << "xrpl_network: websockets: shutdown start" << " testnet " << testnet();
+    bool ok = true;
+    for (const auto &s : streams) {
+        if (s == network::streams::order_book) ws_orderbook->shutdown_blocking();
+        if (s == network::streams::accounts) ws_accounts->shutdown_blocking();
+    }
+    return ok;
+}
 
+// ----------------------------------------------------------------------------
+void xrpl_network::shut_down()
+{
     if (ws_orderbook) {
         ws_orderbook->shutdown_blocking();
         ws_orderbook.reset();
@@ -140,7 +154,7 @@ void xrpl_network::add_wallet(const ledger_wallet &w)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::subscribe_orderbook(net::contexts &io_contexts)
+bool xrpl_network::subscribe_orderbook(net::contexts &io_contexts)
 {
     using namespace std::placeholders;
     //
@@ -167,10 +181,12 @@ void xrpl_network::subscribe_orderbook(net::contexts &io_contexts)
     ws_orderbook = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
       network_address(), std::to_string(network_port()), subscription,
       std::bind(xrpl_network::new_orderbook_data, this, _1));
+
+    return true;
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::subscribe_accounts(net::contexts &io_contexts)
+bool xrpl_network::subscribe_accounts(net::contexts &io_contexts)
 {
     using namespace std::placeholders;
     std::string addresses;
@@ -185,6 +201,8 @@ void xrpl_network::subscribe_accounts(net::contexts &io_contexts)
     ws_accounts = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
       network_address(), std::to_string(network_port()), subscription,
       std::bind(xrpl_network::new_account_data, this, _1));
+
+    return true;
 }
 
 // ----------------------------------------------------------------------------

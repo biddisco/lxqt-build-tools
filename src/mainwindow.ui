@@ -18,7 +18,7 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QTabWidget" name="debug_tab">
+       <widget class="QTabWidget" name="main_tabbook">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
           <horstretch>1</horstretch>
@@ -26,7 +26,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <widget class="QWidget" name="chart_tab">
          <attribute name="title">
@@ -126,17 +126,17 @@
              <widget class="QDateTimeEdit" name="date_init">
               <property name="dateTime">
                <datetime>
-                <hour>4</hour>
+                <hour>16</hour>
                 <minute>0</minute>
                 <second>0</second>
                 <year>2021</year>
                 <month>5</month>
-                <day>12</day>
+                <day>11</day>
                </datetime>
               </property>
               <property name="minimumTime">
                <time>
-                <hour>14</hour>
+                <hour>8</hour>
                 <minute>0</minute>
                 <second>0</second>
                </time>
@@ -213,7 +213,55 @@
                <enum>QFrame::Raised</enum>
               </property>
               <layout class="QGridLayout" name="gridLayout">
-               <item row="7" column="0">
+               <item row="6" column="1">
+                <widget class="QLineEdit" name="arbitrage_test_offset">
+                 <property name="text">
+                  <string>0.015</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="0">
+                <widget class="QCheckBox" name="arbitrage_test_mode">
+                 <property name="text">
+                  <string>Arbitrage Test Mode</string>
+                 </property>
+                 <property name="checked">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0" colspan="2">
+                <widget class="Line" name="line_3">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QCheckBox" name="connect_orderbook">
+                 <property name="text">
+                  <string>Orderbook</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0">
+                <widget class="QCheckBox" name="enable_arbitrage">
+                 <property name="text">
+                  <string>Enable arbitrage</string>
+                 </property>
+                 <property name="checked">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="0" colspan="2">
+                <widget class="Line" name="line_4">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="0">
                 <spacer name="verticalSpacer">
                  <property name="orientation">
                   <enum>Qt::Vertical</enum>
@@ -226,58 +274,17 @@
                  </property>
                 </spacer>
                </item>
-               <item row="4" column="0">
-                <widget class="QCheckBox" name="enable_arbitrage">
-                 <property name="text">
-                  <string>Enable arbitrage</string>
-                 </property>
-                 <property name="checked">
-                  <bool>false</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0">
-                <widget class="QCheckBox" name="connect_orderbook">
-                 <property name="text">
-                  <string>Connect Orderbook</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="1">
-                <widget class="QLineEdit" name="arbitrage_test_offset">
-                 <property name="text">
-                  <string>0.015</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="0">
-                <widget class="QCheckBox" name="arbitrage_test_mode">
-                 <property name="text">
-                  <string>Arbitrage Test Mode</string>
-                 </property>
-                 <property name="checked">
-                  <bool>false</bool>
-                 </property>
-                </widget>
-               </item>
                <item row="1" column="0">
-                <widget class="QCheckBox" name="checkBox">
+                <widget class="QCheckBox" name="connect_trade">
                  <property name="text">
-                  <string>Connect Trades</string>
+                  <string>Trades</string>
                  </property>
                 </widget>
                </item>
-               <item row="3" column="0" colspan="2">
-                <widget class="Line" name="line_3">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                </widget>
-               </item>
-               <item row="6" column="0" colspan="2">
-                <widget class="Line" name="line_4">
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
+               <item row="3" column="0">
+                <widget class="QCheckBox" name="connect_accounts">
+                 <property name="text">
+                  <string>Accounts</string>
                  </property>
                 </widget>
                </item>
@@ -367,6 +374,16 @@
           </item>
          </layout>
         </widget>
+        <widget class="QWidget" name="connections_tab">
+         <attribute name="title">
+          <string>Network</string>
+         </attribute>
+         <layout class="QGridLayout" name="gridLayout_2">
+          <item row="0" column="0">
+           <widget class="QComboBox" name="connections_combo"/>
+          </item>
+         </layout>
+        </widget>
         <widget class="QWidget" name="tab_2">
          <attribute name="title">
           <string>Transfer</string>
@@ -451,7 +468,7 @@
           </layout>
          </widget>
         </widget>
-        <widget class="QWidget" name="tab">
+        <widget class="QWidget" name="debug_tab">
          <attribute name="title">
           <string>Debug</string>
          </attribute>
@@ -479,17 +496,17 @@
             <widget class="QDateTimeEdit" name="repair_date">
              <property name="dateTime">
               <datetime>
-               <hour>6</hour>
+               <hour>18</hour>
                <minute>0</minute>
                <second>0</second>
                <year>2021</year>
                <month>5</month>
-               <day>12</day>
+               <day>11</day>
               </datetime>
              </property>
              <property name="minimumTime">
               <time>
-               <hour>15</hour>
+               <hour>9</hour>
                <minute>0</minute>
                <second>0</second>
               </time>

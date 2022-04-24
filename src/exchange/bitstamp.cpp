@@ -27,7 +27,7 @@ bitstamp_network::~bitstamp_network()
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::connect(net::contexts &io_contexts)
+bool bitstamp_network::subscribe_live_trades(net::contexts &io_contexts)
 {
     using namespace std::placeholders;
     DEBUG_ALWAYS("Subscribing to live_trades_xrpusd");
@@ -37,16 +37,57 @@ void bitstamp_network::connect(net::contexts &io_contexts)
         "\"live_trades_xrpusd\"}}",
         std::bind(bitstamp_network::new_trade_data, this, _1));
 
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+bool bitstamp_network::subscribe_order_book(net::contexts &io_contexts)
+{
+    using namespace std::placeholders;
     DEBUG_ALWAYS("Subscribing to order_book_xrpusd");
     ws_bidask = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
         "\"order_book_xrpusd\"}}",
         std::bind(&bitstamp_network::new_orderbook_data, this, _1));
+
+    return true;
+}
+/*
+// ----------------------------------------------------------------------------
+bool bitstamp_network::unsubscribe_channel(net::contexts &io_contexts, network::streams stream)
+{
+    "event": "bts:unsubscribe",
+    "data": {
+        "channel": "[channel_name]"
+    }
+}
+*/
+// ----------------------------------------------------------------------------
+// connect to (multiple) streams
+bool bitstamp_network::connect(net::contexts &io_contexts, streams_vector const &streams)
+{
+    bool ok = true;
+    for (const auto &s : streams) {
+        if (s == network::streams::trades) ok &= subscribe_live_trades(io_contexts);
+        if (s == network::streams::order_book) ok &= subscribe_order_book(io_contexts);
+    }
+    return ok;
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::disconnect()
+bool bitstamp_network::disconnect(net::contexts &/*io_contexts*/, streams_vector const &streams)
+{
+    bool ok = true;
+    for (const auto &s : streams) {
+        if (s == network::streams::trades) ws_trades->shutdown_blocking();
+        if (s == network::streams::order_book) ws_bidask->shutdown_blocking();
+    }
+    return ok;
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::shut_down()
 {
     qDebug() << "bitstamp_network: websockets: shutdown start";
 

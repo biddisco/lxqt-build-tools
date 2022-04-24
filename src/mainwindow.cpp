@@ -108,6 +108,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     xrpl_testnet_ = xrpl_network::get_xrpl_instance(true);
     xrpl_network_->set_plot(obp_);
 
+    exchange_list_.push_back(bitstamp_network_);
+    exchange_list_.push_back(xrpl_network_);
+
     // timer will fire once each time it is reset
     timer_ = new QTimer(this);
     timer_->setSingleShot(true);
@@ -207,9 +210,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // Subscribe to xrpl events
     //
 #if subscribe_xrpl_events
-    xrpl_network_->subscribe_orderbook(io_contexts);
-    xrpl_network_->subscribe_accounts(io_contexts);
-    xrpl_testnet_->subscribe_accounts(io_contexts);
+    xrpl_network_->subscribe_orderbook(io_contexts_);
+    xrpl_network_->subscribe_accounts(io_contexts_);
+    xrpl_testnet_->subscribe_accounts(io_contexts_);
 #endif
 
     update_account_balances();
@@ -236,6 +239,14 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     }
     ui.candle_res->addItems(slist);
     ui.candle_res_2->addItems(slist);
+
+    // ----------------------------------
+    // setup connections tab
+    loadConnectionSetups();
+    QVBoxLayout* layout = new QVBoxLayout();
+    connection_widget_ = new connection_widget(io_contexts_, exchange_list_, ui.connections_tab);
+    layout->addWidget(connection_widget_);
+    ui.connections_tab->setLayout(layout);
 }
 
 // ----------------------------------------------------------------------------
@@ -254,21 +265,21 @@ void GroxMainWindow::appExitCleanupHandler()
     // block here to prevent access of temp buffers that are deleted
     // by the program/qt/etc
     //
-    bitstamp_network_->disconnect();
+    bitstamp_network_->shut_down();
     bitstamp_network_.reset();
     //
-    xrpl_network_->disconnect();
+    xrpl_network_->shut_down();
     xrpl_network_.reset();
     //
-    xrpl_testnet_->disconnect();
+    xrpl_testnet_->shut_down();
     xrpl_testnet_.reset();
     qDebug() << "websockets: shutdown complete";
 
     // remove work guard so IO threads can exit
-    io_contexts.work_guard_->reset();
+    io_contexts_.work_guard_->reset();
 
     // stop boost::asio io_service
-    io_contexts.ioc.stop();
+    io_contexts_.ioc.stop();
     for (auto &t : ioc_threads_) {
         if (t.joinable()) t.join();
     }
@@ -301,11 +312,13 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
             //do what you need
             DEBUG_ONLY("Shift click pressed");
             std::array<std::string, 5> strings{
-                bitstamp_network_->account().API_user, bitstamp_network_->account().API_key,
-                bitstamp_network_->account().API_secret, std::to_string(bitstamp_network_->account().tag_),
+                bitstamp_network_->account().API_user,
+                bitstamp_network_->account().API_key,
+                bitstamp_network_->account().API_secret,
+                std::to_string(bitstamp_network_->account().tag_),
                 bitstamp_network_->account().public_};
 
-            // iterate over wallets to commvert type from basic pointers
+            // iterate over wallets to convert type from basic pointers
             // @TODO - improve this
             std::vector<ledger_wallet> wallets;
             auto x1 = xrpl_network::get_xrpl_instance(false)->wallets();
@@ -703,7 +716,7 @@ void GroxMainWindow::start_io_threads(int nthreads)
             ioc_threads_.emplace_back([&]() {
                 DEBUG_ONLY("io_contexts run : thread " << std::this_thread::get_id());
                 // The call will return when the socket is closed.
-                io_contexts.ioc.run();
+                io_contexts_.ioc.run();
             });
         }
         initialized = true;
@@ -713,10 +726,24 @@ void GroxMainWindow::start_io_threads(int nthreads)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::start_websocket()
 {
-    #if get_live_trades
-        bitstamp_network_->connect(io_contexts);
-    #endif
-
+    streams_vector streams1 = bitstamp_network_->websocket_streams();
+    streams_vector streams2 = xrpl_network_->websocket_streams();
+    if (!ui.connect_trade->isChecked()) {
+        streams1.erase(std::remove(streams1.begin(), streams1.end(), network::streams::trades), streams1.end());
+        streams2.erase(std::remove(streams2.begin(), streams2.end(), network::streams::trades), streams2.end());
+    }
+    if (!ui.connect_orderbook->isChecked()) {
+        streams1.erase(std::remove(streams1.begin(), streams1.end(), network::streams::order_book), streams1.end());
+        streams2.erase(std::remove(streams2.begin(), streams2.end(), network::streams::order_book), streams2.end());
+    }
+    if (!ui.connect_accounts->isChecked()) {
+        streams1.erase(std::remove(streams1.begin(), streams1.end(), network::streams::accounts), streams1.end());
+        streams2.erase(std::remove(streams2.begin(), streams2.end(), network::streams::accounts), streams2.end());
+    }
+    //
+    bitstamp_network_->connect(io_contexts_, streams1);
+    xrpl_network_->connect(io_contexts_, streams2);
+    //
     update_candlestick_data();
 }
 
@@ -819,6 +846,7 @@ void GroxMainWindow::closeEvent(QCloseEvent *event)
 {
     saveWindowSettings();
     saveTrustlines();
+    saveConnectionSetups();
     QMainWindow::closeEvent(event);
 }
 
@@ -867,6 +895,49 @@ void GroxMainWindow::loadTrustlines()
     }
     settings.endGroup();
     qDebug() << "Trustlines loaded from:" << settings.fileName();
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::saveConnectionSetups()
+{
+    // connection_widget_;
+    app_settings* app_ini = global_settings();
+    QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+    // Start section
+    settings.beginGroup("Streams");
+    for (const auto &e : exchange_list_) {
+        std::string prefix(e->name());
+        auto streams = e->websocket_streams();
+        for (const auto &s : streams) {
+            std::string key = prefix + "_" + stream_text(s);
+            settings.setValue(key.c_str(), e->websocket_enabled(s));
+        }
+    }
+
+    settings.endGroup();
+    qDebug() << "Connections saved under:" << settings.fileName();
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::loadConnectionSetups()
+{
+    // connection_widget_;
+    app_settings* app_ini = global_settings();
+    QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+    // Start section
+    settings.beginGroup("Streams");
+    for (const auto &e : exchange_list_) {
+        std::string prefix(e->name());
+        auto streams = e->websocket_streams();
+        for (const auto &s : streams) {
+            std::string key = prefix + "_" + stream_text(s);
+            bool enabled = settings.value(key.c_str()).toBool();
+            e->websocket_enable(s, io_contexts_, enabled);
+        }
+    }
+
+    settings.endGroup();
+    qDebug() << "Connections loaded from:" << settings.fileName();
 }
 
 // ----------------------------------------------------------------------------

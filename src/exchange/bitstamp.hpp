@@ -102,9 +102,21 @@ public:
 
     // ---------------------------------------
     // init connections/websockets etc
-    void connect(net::contexts &io_contexts) override;
+    bool subscribe_live_trades(net::contexts &io_contexts);
+    bool subscribe_order_book(net::contexts &io_contexts);
+
+    streams_vector websocket_streams() override {
+        return {
+            network::streams::trades,
+            network::streams::order_book
+        };
+    }
+    // connect to (multiple) streams
+    bool connect(net::contexts &io_contexts, streams_vector const &streams) override;
+    bool disconnect(net::contexts &io_contexts, streams_vector const &streams) override;
+
     // shut down sockets/connections
-    void disconnect() override;
+    void shut_down() override;
 
     // ---------------------------------------
     // http: fetch account info/data

@@ -27,6 +27,7 @@
 #include "src/settings.hpp"
 #include "src/order_book.hpp"
 #include "src/stream/trade_filter.hpp"
+#include "src/widgets/connection_widget.hpp"
 
 class AdjustingScrollArea : public QScrollArea {
    bool eventFilter(QObject * obj, QEvent * ev) override {
@@ -71,18 +72,19 @@ class GroxMainWindow : public QMainWindow
     QTimer *timer_;
 
     // network/exchanges
+    exchange::exchange_vector exchange_list_;
     std::shared_ptr<bitstamp_network> bitstamp_network_;
     std::shared_ptr<xrpl_network> xrpl_network_;
     std::shared_ptr<xrpl_network> xrpl_testnet_;
-
+    connection_widget *connection_widget_;
 
     // io context for websocket/https requests
-    net::contexts io_contexts;
+    net::contexts io_contexts_;
     std::vector<std::thread> ioc_threads_;
 
 public:
     explicit GroxMainWindow(QWidget* parent = nullptr);
-    ~GroxMainWindow();
+    ~GroxMainWindow() override;
     void createActions();
     void createMenus();
     bool eventFilter(QObject* obj, QEvent* event) override;
@@ -102,6 +104,9 @@ public:
 
     void saveTrustlines();
     void loadTrustlines();
+
+    void saveConnectionSetups();
+    void loadConnectionSetups();
 
     void stream_process(const QwtOHLCSample &data);
     void start_io_threads(int nthreads);
