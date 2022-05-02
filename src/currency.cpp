@@ -139,7 +139,6 @@ void add_currency(const currency &curr, std::vector<currency> &c_list)
                c.curr_.issuer_ == curr.curr_.issuer_;
     });
     if (it==c_list.end()) {
-        c_list.reserve(5);
         c_list.push_back(curr);
     }
     else {

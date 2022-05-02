@@ -206,15 +206,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // load in the list of trustlines that we know about
     loadTrustlines();
 
-    // ----------------------------------
-    // Subscribe to xrpl events
-    //
-#if subscribe_xrpl_events
-    xrpl_network_->subscribe_orderbook(io_contexts_);
-    xrpl_network_->subscribe_accounts(io_contexts_);
-    xrpl_testnet_->subscribe_accounts(io_contexts_);
-#endif
-
     update_account_balances();
 
     //
@@ -663,13 +654,13 @@ void GroxMainWindow::update_account_balances()
     bitstamp_network_->get_account_info();
     bitstamp_network_->get_open_orders();
     //
-    xrpl_network_->get_all_account_balances();
     xrpl_network_->get_all_account_infos();
+    xrpl_network_->get_all_account_lines();
     xrpl_network_->get_all_account_orders();
     //
-    if (1) {
-        xrpl_testnet_->get_all_account_balances();
+    if (true) {
         xrpl_testnet_->get_all_account_infos();
+        xrpl_testnet_->get_all_account_lines();
     }
 }
 

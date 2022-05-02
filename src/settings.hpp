@@ -49,9 +49,23 @@ struct ledger_wallet : public basic_account
     int64_t        tag_;
     int32_t        sequence_;
     bool           testnet_;
+    static inline std::mutex update_mtx_;
     //
     virtual ~ledger_wallet() {}
-    virtual std::string_view get_receive_address(const currency &c) { return public_; }
+    virtual std::string_view get_receive_address(const currency &) { return public_; }
+    void compute_ledger_reserve() {
+        std::scoped_lock l(update_mtx_);
+        int reserve = 0;
+        currency *xrp = nullptr;
+        for (auto &c : currencies_) {
+            if (c.type_ == currency_type::xrp) xrp = &c;
+            else reserve += 2;
+        }
+        if (xrp) {
+            xrp->reserved_ = reserve;
+            xrp->avail_ = xrp->balance_ - xrp->reserved_;
+        }
+    }
 };
 
 // For compatibility with Qt Variant and Signals/Slots

@@ -32,6 +32,7 @@ struct issued_currency {
 
 // ----------------------------------------------------------------------------
 struct currency {
+    static inline const std::string xrp = "XRP";
     static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
     static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
     //

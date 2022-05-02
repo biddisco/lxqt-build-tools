@@ -54,29 +54,22 @@ bool xrpl_network::testnet() const
 
 // ----------------------------------------------------------------------------
 std::string xrpl_network::websocket_address() const {
-    if (testnet_) return ripple_testnet_address;
+    if (testnet_) return testnet_websocket_address;
     return ripple_websocket_address;
 }
-std::string xrpl_network::jsonrpc_address() const {
-    if (testnet_) return ripple_jsonrpc_testaddr;
-    return ripple_jsonrpc_address;
-}
 int xrpl_network::websocket_port() const {
-    if (testnet_) return ripple_testnet_port;
+    if (testnet_) return testnet_websocket_port;
     return ripple_websocket_port;
 }
+
+std::string xrpl_network::jsonrpc_address() const {
+    if (testnet_) return testnet_json_rpc_address;
+    return ripple_jsonrpc_address;
+}
 int xrpl_network::jsonrpc_port() const {
-    if (testnet_) return ripple_jsonrpc_testport;
+    if (testnet_) return testnet_json_rpc_port;
     return ripple_jsonrpc_port;
 }
-//std::string xrpl_network::dataapi_address() const {
-//    if (testnet_) return ripple_testapi_address;
-//    return ripple_dataapi_address;
-//}
-//int xrpl_network::dataapi_port() const {
-//    if (testnet_) return ripple_testapi_port;
-//    return ripple_jsonrpc_port;
-//}
 
 // ----------------------------------------------------------------------------
 bool xrpl_network::can_send(currency &c, exchange *dest) {
@@ -377,7 +370,7 @@ void xrpl_network::update_IOU_balance(std::string_view addr, const currency &cur
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::get_account_balances(std::string addr, fn_on_http on_http)
+void xrpl_network::get_account_lines(std::string addr, fn_on_http on_http)
 {
     auto thread_function = [=]() {
         OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
@@ -420,10 +413,10 @@ void xrpl_network::get_account_balances(std::string addr, fn_on_http on_http)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::get_all_account_balances()
+void xrpl_network::get_all_account_lines()
 {
     for (auto &w : subscribed_wallets_) {
-        get_account_balances(w.public_, [this, &w](auto& ctx)
+        get_account_lines(w.public_, [this, &w](auto& ctx)
             {
               if (ctx.res.result() != OB::Belle::Status::ok)
               {
@@ -434,14 +427,14 @@ void xrpl_network::get_all_account_balances()
               }
               // debug : print the response headers and body
               DEBUG_ONLY("Ledger response " << ctx.res.body() << "\n");
-              this->handle_account_balance(w, std::move(ctx.res.body()));
+              this->handle_account_lines(w, std::move(ctx.res.body()));
             }
         );
     };
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
+void xrpl_network::handle_account_lines(ledger_wallet &w, std::string&& data)
 {
     nlohmann::json jdata = json::parse(data)["result"]["lines"];
     if (jdata.size()==0) {
@@ -474,6 +467,7 @@ void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
             throw std::runtime_error("Unknown currency in handle_account_balance");
         }
     }
+    w.compute_ledger_reserve();
 
     // signal GUI to update
     emit update_wallet_widget(&w);
@@ -556,6 +550,23 @@ void xrpl_network::handle_account_info(ledger_wallet &w, std::string&& data)
     //
     assert(w.public_ == jdata.at("Account").get< std::string >());
     w.sequence_ = jdata.at("Sequence").get< int32_t >();
+    //
+    std::string bal = jdata.at("Balance").get< std::string >();
+    double balance = std::stod(bal)/ 1E6;
+    double avail = balance;
+    double reserved = 0;
+    //
+    currency c{
+        {"","XRP"},
+        currency_type::xrp,
+        balance,
+        avail,
+        reserved,
+        nullptr
+    };
+    add_currency(c, w.currencies_);
+    w.compute_ledger_reserve();
+    //
     DEBUG_ONLY(w.public_ << " Sequence " << w.sequence_);
     // signal GUI to update
     emit update_wallet_widget(&w);

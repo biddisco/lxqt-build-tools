@@ -50,7 +50,6 @@ private:
     static inline const int ripple_jsonrpc_port = 51234;
 
 #elif defined(GROX_USE_RIPPLE_MAINNET_SERVER)
-    // MainNet : JSON RPC server
     static inline const std::string ripple_websocket_address = "s1.ripple.com";
     static inline const int ripple_websocket_port = 443;
 
@@ -66,23 +65,16 @@ private:
     static inline const int ripple_jsonrpc_port = 51234;
 #endif
 
-    // MainNet : data api
-//    static inline const std::string ripple_dataapi_address = "data.ripple.com";
-//    static inline const int ripple_dataapi_port = 443;
-
     // ---------------------------------------
     // TestNet rippled server
     // ---------------------------------------
-    static inline const std::string ripple_testnet_address = "s.altnet.rippletest.net";
-    static inline const int ripple_testnet_port = 51233;
+    // TestNet websocket
+    static inline const std::string testnet_websocket_address = "s.altnet.rippletest.net";
+    static inline const int testnet_websocket_port = 51233;
 
     // TestNet JSON RPC server
-    static inline const std::string ripple_jsonrpc_testaddr = "s.altnet.rippletest.net";
-    static inline const int ripple_jsonrpc_testport = 51234;
-
-    // TestNet data api
-    static inline const std::string ripple_testapi_address = "testnet.data.api.ripple.com";
-    static inline const int ripple_testapi_port = 443;
+    static inline const std::string testnet_json_rpc_address = "s.altnet.rippletest.net";
+    static inline const int testnet_json_rpc_port = 51234;
 
 private:
     // ---------------------------------------
@@ -124,11 +116,10 @@ public:
     bool testnet() const;
     //
     std::string websocket_address() const;
-    std::string jsonrpc_address() const;
-    std::string dataapi_address() const;
     int websocket_port() const;
+    //
+    std::string jsonrpc_address() const;
     int jsonrpc_port() const;
-    int dataapi_port() const;
     //
     bool can_send(currency &/*c*/, exchange *dest) override;
     //
@@ -179,17 +170,15 @@ public:
     void update_XRP_balance(std::string_view addr, double oldb, double newb);
     void update_IOU_balance(std::string_view addr, const currency &curr);
 
-    // Send query to Data API and get balances for all tracked wallets
-    void get_account_balances(std::string addr, fn_on_http on_http);
-    void get_all_account_balances();
-    void handle_account_balance(ledger_wallet &w, std::string&& data);
-
-    // Send query to Data API and get info for address
+    // query account balance and info
     void get_account_info(std::string addr, fn_on_http on_http);
-
-    // Send query to Data API and get info for all tracked wallets
     void get_all_account_infos();
     void handle_account_info(ledger_wallet &w, std::string&& data);
+
+    // query account trustlines
+    void get_account_lines(std::string addr, fn_on_http on_http);
+    void get_all_account_lines();
+    void handle_account_lines(ledger_wallet &w, std::string&& data);
 
     // Send query to Data API and get all open orders for tracked wallets
     void get_all_account_orders();
