@@ -345,11 +345,11 @@ void ohlc_price_plot::display_candle_status(double time)
     static const char *html2 = "</font> <font color=\"";
     static const char *html3 = "\">";
     std::stringstream temp;
-    temp << html1 << "O: " << html2 << c << html3 << hpx::debug::fp<5,9>(sample.open)
-         << html1 << "H: " << html2 << c << html3 << hpx::debug::fp<5,9>(sample.high)
-         << html1 << "L: " << html2 << c << html3 << hpx::debug::fp<5,9>(sample.low)
-         << html1 << "C: " << html2 << c << html3 << hpx::debug::fp<5,9>(sample.close)
-         << html1 << "V: " << html2 << c << html3 << hpx::debug::fp<2,14>(sample.volume);
+    temp << html1 << " O:" << html2 << c << html3 << hpx::debug::fp<5,9>(sample.open)
+         << html1 << " H:" << html2 << c << html3 << hpx::debug::fp<5,9>(sample.high)
+         << html1 << " L:" << html2 << c << html3 << hpx::debug::fp<5,9>(sample.low)
+         << html1 << " C:" << html2 << c << html3 << hpx::debug::fp<5,9>(sample.close)
+         << html1 << " V:" << html2 << c << html3 << hpx::debug::fp<2,14>(sample.volume);
 
     QwtText status(temp.str().c_str());
     status.setRenderFlags(Qt::AlignLeft | Qt::AlignTop);
