@@ -90,19 +90,19 @@ namespace net {
 
             // used by websocket connection
             websocket::stream<ssl_stream> ws_;
+            std::function<void(std::string&&)> read_callback_;
+
             boost::beast::flat_buffer buffer_;
             std::string host_;
             std::string text_;
 
-        public:
-            //
-            std::function<void(std::string&&)> read_callback;
 
         public:
             // Resolver and socket require an io_context
-            explicit session(asio::io_context& ioc, ssl::context& ctx)
+            explicit session(asio::io_context& ioc, ssl::context& ctx, std::function<void(std::string&&)> &&cb)
               : resolver_(asio::make_strand(ioc))
               , ws_(asio::make_strand(ioc), ctx)
+              , read_callback_(std::move(cb))
             {
             }
 
@@ -231,9 +231,9 @@ namespace net {
                 ws_.async_read(buffer_,
                     boost::beast::bind_front_handler(&session::on_read, shared_from_this()));
 
-                if (read_callback)
+                if (read_callback_)
                 {
-                    read_callback(std::move(str_buffer));
+                    read_callback_(std::move(str_buffer));
                 }
             }
 

@@ -53,30 +53,30 @@ bool xrpl_network::testnet() const
 }
 
 // ----------------------------------------------------------------------------
-std::string xrpl_network::network_address() const {
+std::string xrpl_network::websocket_address() const {
     if (testnet_) return ripple_testnet_address;
-    return ripple_mainnet_address;
+    return ripple_websocket_address;
 }
 std::string xrpl_network::jsonrpc_address() const {
     if (testnet_) return ripple_jsonrpc_testaddr;
     return ripple_jsonrpc_address;
 }
-int xrpl_network::network_port() const {
+int xrpl_network::websocket_port() const {
     if (testnet_) return ripple_testnet_port;
-    return ripple_mainnet_port;
+    return ripple_websocket_port;
 }
 int xrpl_network::jsonrpc_port() const {
-    if (testnet_) return ripple_jsonrpc_port;
-    return ripple_jsonrpc_testport;
+    if (testnet_) return ripple_jsonrpc_testport;
+    return ripple_jsonrpc_port;
 }
-std::string xrpl_network::dataapi_address() const {
-    if (testnet_) return ripple_testapi_address;
-    return ripple_dataapi_address;
-}
-int xrpl_network::dataapi_port() const {
-    if (testnet_) return ripple_testapi_port;
-    return ripple_dataapi_port;
-}
+//std::string xrpl_network::dataapi_address() const {
+//    if (testnet_) return ripple_testapi_address;
+//    return ripple_dataapi_address;
+//}
+//int xrpl_network::dataapi_port() const {
+//    if (testnet_) return ripple_testapi_port;
+//    return ripple_jsonrpc_port;
+//}
 
 // ----------------------------------------------------------------------------
 bool xrpl_network::can_send(currency &c, exchange *dest) {
@@ -179,7 +179,7 @@ bool xrpl_network::subscribe_orderbook(net::contexts &io_contexts)
     DEBUG_ALWAYS("Subscribing to xrpl:XRP/USD orderbook");
 
     ws_orderbook = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
-      network_address(), std::to_string(network_port()), subscription,
+      websocket_address(), std::to_string(websocket_port()), subscription,
       std::bind(xrpl_network::new_orderbook_data, this, _1));
 
     return true;
@@ -199,7 +199,7 @@ bool xrpl_network::subscribe_accounts(net::contexts &io_contexts)
     DEBUG_ALWAYS("Subscribing to account changes for \n" << addresses);
 
     ws_accounts = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
-      network_address(), std::to_string(network_port()), subscription,
+      websocket_address(), std::to_string(websocket_port()), subscription,
       std::bind(xrpl_network::new_account_data, this, _1));
 
     return true;
@@ -225,7 +225,7 @@ void xrpl_network::new_orderbook_data(xrpl_network* nw, std::string_view data)
 void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
 {
     DEBUG_ONLY("xrpl account_data : thread " << std::this_thread::get_id());
-    DEBUG_ONLY("Account changes : " << data);
+    DEBUG_ALWAYS("Account changes : " << data);
     if (startswith(data, "{\"result\":")) {
         // ignore this, just a subscription ok
         DEBUG_ONLY("Account subscription : " << data);
@@ -377,19 +377,53 @@ void xrpl_network::update_IOU_balance(std::string_view addr, const currency &cur
 }
 
 // ----------------------------------------------------------------------------
+void xrpl_network::get_account_balances(std::string addr, fn_on_http on_http)
+{
+    auto thread_function = [=]() {
+        OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
+        // set the http 'on error' callback
+        new_client.on_http_error([](auto& ctx) {
+          std::cerr << "get_account_balances : Protocol Error: " << ctx.ec.message() << "\n\n";
+        });
+
+        nlohmann::json params;
+        params["account"] = addr;
+        params["validated"] = true;
+
+        nlohmann::json content;
+        content["method"] = "account_lines";
+        content["params"] = nlohmann::json::array({params});
+
+        using namespace OB;
+        // init an http request object
+        Belle::Request req;
+
+        // set the method
+        req.method(Belle::Method::post);
+        req.set(Belle::Header::host, jsonrpc_address());
+        req.set(Belle::Header::user_agent, "mystery");
+        req.set(Belle::Header::content_type, "application/json");
+        req.set(Belle::Header::accept, "application/json");
+        req.set(Belle::Header::connection, "close");
+        // set the target path
+        req.target("/");
+        req.body() = content.dump();
+        req.prepare_payload();
+        DEBUG_ONLY(line_string << req);
+
+        new_client.on_http(req, on_http);
+        new_client.connect();
+    };
+    DEBUG_ALWAYS(addr + " Creating thread get_account_balances")
+    auto https_thread = std::thread(std::move(thread_function));
+    https_thread.detach();
+}
+
+// ----------------------------------------------------------------------------
 void xrpl_network::get_all_account_balances()
 {
     for (auto &w : subscribed_wallets_) {
-        auto thread_function = [&]() {
-            OB::Belle::Client new_client(dataapi_address(), dataapi_port(), true);
-            // set the http 'on error' callback
-            new_client.on_http_error([](auto& ctx) {
-              std::cerr << "get_all_account_balances : Error: " << ctx.ec.message() << "\n\n";
-            });
-
-            std::string target = "/v2/accounts/" + w.public_ + "/balances";
-
-            new_client.on_http(target, [this, &w](auto& ctx)
+        get_account_balances(w.public_, [this, &w](auto& ctx)
             {
               if (ctx.res.result() != OB::Belle::Status::ok)
               {
@@ -401,18 +435,19 @@ void xrpl_network::get_all_account_balances()
               // debug : print the response headers and body
               DEBUG_ONLY("Ledger response " << ctx.res.body() << "\n");
               this->handle_account_balance(w, std::move(ctx.res.body()));
-            });
-            new_client.connect();
-        };
-        auto https_thread = std::thread(std::move(thread_function));
-        https_thread.detach();
+            }
+        );
     };
 }
 
 // ----------------------------------------------------------------------------
 void xrpl_network::handle_account_balance(ledger_wallet &w, std::string&& data)
 {
-    nlohmann::json jdata = json::parse(data)["balances"];
+    nlohmann::json jdata = json::parse(data)["result"]["lines"];
+    if (jdata.size()==0) {
+        // no balances. Might be an inactive account
+        return;
+    }
     DEBUG_ONLY(jdata.dump(4));
     std::vector<xrp_amount> balances = jdata.get<std::vector<xrp_amount>>();
     //
@@ -470,7 +505,7 @@ void xrpl_network::get_account_info(std::string addr, fn_on_http on_http)
 
         // set the method
         req.method(Belle::Method::post);
-        req.set(Belle::Header::host, network_address());
+        req.set(Belle::Header::host, jsonrpc_address());
         req.set(Belle::Header::user_agent, "mystery");
         req.set(Belle::Header::content_type, "application/json");
         req.set(Belle::Header::accept, "application/json");
@@ -484,6 +519,7 @@ void xrpl_network::get_account_info(std::string addr, fn_on_http on_http)
         new_client.on_http(req, on_http);
         new_client.connect();
     };
+    DEBUG_ALWAYS(addr + " Creating thread get_account_info")
     auto https_thread = std::thread(std::move(thread_function));
     https_thread.detach();
 }
@@ -520,7 +556,7 @@ void xrpl_network::handle_account_info(ledger_wallet &w, std::string&& data)
     //
     assert(w.public_ == jdata.at("Account").get< std::string >());
     w.sequence_ = jdata.at("Sequence").get< int32_t >();
-    DEBUG_ALWAYS(w.public_ << " Sequence " << w.sequence_);
+    DEBUG_ONLY(w.public_ << " Sequence " << w.sequence_);
     // signal GUI to update
     emit update_wallet_widget(&w);
 }
@@ -549,7 +585,7 @@ void xrpl_network::get_all_account_orders()
 
             // set the method
             req.method(Belle::Method::post);
-            req.set(Belle::Header::host, network_address());
+            req.set(Belle::Header::host, jsonrpc_address());
             req.set(Belle::Header::user_agent, "mystery");
             req.set(Belle::Header::content_type, "application/json");
             req.set(Belle::Header::accept, "application/json");
@@ -575,6 +611,7 @@ void xrpl_network::get_all_account_orders()
             });
             new_client.connect();
         };
+        DEBUG_ALWAYS(w.public_ + " Creating thread get_all_account_orders")
         auto https_thread = std::thread(std::move(thread_function));
         https_thread.detach();
     };
@@ -691,7 +728,7 @@ void xrpl_network::submit_signed_transaction(std::string &&signed_tx)
 
     // set the method
     req.method(Belle::Method::post);
-    req.set(Belle::Header::host, network_address());
+    req.set(Belle::Header::host, jsonrpc_address());
     req.set(Belle::Header::user_agent, "grox");
     req.set(Belle::Header::content_type, "application/json");
     req.set(Belle::Header::accept, "application/json");

@@ -26,7 +26,7 @@ static std::string stream_text(network::streams stype) {
     switch (stype) {
     case network::streams::trades:     return "Trades";
     case network::streams::order_book: return "Order Book";
-    case network::streams::accounts:   return "Accounts";
+    case network::streams::accounts:   return "Account Changes";
     }
     return "Unknown";
 }

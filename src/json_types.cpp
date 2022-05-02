@@ -84,6 +84,24 @@ using nlohmann::json;
 //    }
 //}
 
+
+/* New style using RPC json API
+    "account": "rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY",
+    "balance": "63.8354397",
+    "currency": "5041534100000000000000000000000000000000",
+    "limit": "100000000",
+    "limit_peer": "0",
+    "no_ripple": true,
+    "no_ripple_peer": false,
+    "quality_in": 0,
+    "quality_out": 0
+*/
+/* Old style using v2 data API
+    "currency": "5041534100000000000000000000000000000000",
+    "counterparty": "rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY",
+    "value": "63.8354397"
+*/
+
 void from_json(const nlohmann::json &j, xrp_amount &p)
 {
     // if this is a simple value (just plain XRP amount)
@@ -92,11 +110,26 @@ void from_json(const nlohmann::json &j, xrp_amount &p)
         p.currency = currency_type::xrp;
     }
     else {
-        p.value    = std::stod(j.at("value").get< std::string >());
+        // allow balance OR value string id
+        if (j.count("balance") != 0)
+        {
+            p.value = std::stod(j.at("balance").get< std::string >());
+        }
+        else if (j.count("value") != 0)
+        {
+            p.value = std::stod(j.at("value").get< std::string >());
+        }
+        else throw std::runtime_error("No value in currency amount");
+        //
         std::string currency = j.at("currency").get< std::string >();
+        //
         std::string issuer;
-        // allow issuer OR counterparty string id
-        if (j.count("counterparty") != 0)
+        // allow account/issuer/counterparty string id
+        if (j.count("account") != 0)
+        {
+            issuer = j.at("account").get< std::string >();
+        }
+        else if (j.count("counterparty") != 0)
         {
             issuer = j.at("counterparty").get< std::string >();
         }

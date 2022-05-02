@@ -243,10 +243,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // ----------------------------------
     // setup connections tab
     loadConnectionSetups();
-    QVBoxLayout* layout = new QVBoxLayout();
     connection_widget_ = new connection_widget(io_contexts_, exchange_list_, ui.connections_tab);
-    layout->addWidget(connection_widget_);
-    ui.connections_tab->setLayout(layout);
+    ui.connections_tab->layout()->addWidget(connection_widget_);
 }
 
 // ----------------------------------------------------------------------------

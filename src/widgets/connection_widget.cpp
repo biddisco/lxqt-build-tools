@@ -19,7 +19,7 @@ connection_widget::connection_widget(net::contexts &io_contexts, const exchange:
     //
     for (const auto &ex : exchanges) {
         QGroupBox *gb = new QGroupBox(QString::fromStdString(ex->name().data()), this);
-        QVBoxLayout* bl = new QVBoxLayout(this);
+        QVBoxLayout* bl = new QVBoxLayout(gb);
         const auto streams = ex->websocket_streams();
         for (const auto &s : streams) {
             QString name = QString(stream_text(s).c_str());

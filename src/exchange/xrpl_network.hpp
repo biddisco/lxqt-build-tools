@@ -19,6 +19,9 @@
 #include "src/settings.hpp"
 #include "src/widgets/currency_widget.hpp"
 
+#define GROX_USE_LOCAL_SERVER
+//#define GROX_USE_RIPPLE_MAINNET_SERVER
+
 // ----------------------------------------------------------------------------
 class xrpl_network : public exchange
 {
@@ -39,20 +42,33 @@ private:
     // ---------------------------------------
     // MainNet : rippled server
     // ---------------------------------------
-#if 1 || GROX_USE_RIPPLE_MAINNET_SERVER
-    static inline const std::string ripple_mainnet_address = "s1.ripple.com";
-#else
-    static inline const std::string ripple_mainnet_address = "xrplcluster.com";
-#endif
-    static inline const int ripple_mainnet_port = 443;
+#if defined(GROX_USE_LOCAL_SERVER)
+    static inline const std::string ripple_websocket_address = "192.168.1.147";
+    static inline const int ripple_websocket_port = 6005;
 
+    static inline const std::string ripple_jsonrpc_address = "192.168.1.147";
+    static inline const int ripple_jsonrpc_port = 51234;
+
+#elif defined(GROX_USE_RIPPLE_MAINNET_SERVER)
     // MainNet : JSON RPC server
+    static inline const std::string ripple_websocket_address = "s1.ripple.com";
+    static inline const int ripple_websocket_port = 443;
+
     static inline const std::string ripple_jsonrpc_address = "s1.ripple.com";
     static inline const int ripple_jsonrpc_port = 51234;
 
+#else
+    // MainNet : JSON RPC server
+    static inline const std::string ripple_websocket_address = "xrplcluster.com";
+    static inline const int ripple_websocket_port = 443;
+
+    static inline const std::string ripple_jsonrpc_address = "s1.ripple.com";
+    static inline const int ripple_jsonrpc_port = 51234;
+#endif
+
     // MainNet : data api
-    static inline const std::string ripple_dataapi_address = "data.ripple.com";
-    static inline const int ripple_dataapi_port = 443;
+//    static inline const std::string ripple_dataapi_address = "data.ripple.com";
+//    static inline const int ripple_dataapi_port = 443;
 
     // ---------------------------------------
     // TestNet rippled server
@@ -107,10 +123,10 @@ public:
     //
     bool testnet() const;
     //
-    std::string network_address() const;
+    std::string websocket_address() const;
     std::string jsonrpc_address() const;
     std::string dataapi_address() const;
-    int network_port() const;
+    int websocket_port() const;
     int jsonrpc_port() const;
     int dataapi_port() const;
     //
@@ -156,16 +172,19 @@ public:
     static void new_account_data(xrpl_network* nw, std::string_view);
 
     // ----------------------------------------------------------------------------
+    using fn_on_http = std::function<void(OB::Belle::Client::Http_Ctx&)>;
+
+    // ----------------------------------------------------------------------------
     std::vector<currency>::iterator get_currency(std::string_view addr, currency_type t);
     void update_XRP_balance(std::string_view addr, double oldb, double newb);
     void update_IOU_balance(std::string_view addr, const currency &curr);
 
     // Send query to Data API and get balances for all tracked wallets
+    void get_account_balances(std::string addr, fn_on_http on_http);
     void get_all_account_balances();
     void handle_account_balance(ledger_wallet &w, std::string&& data);
 
     // Send query to Data API and get info for address
-    using fn_on_http = std::function<void(OB::Belle::Client::Http_Ctx&)>;
     void get_account_info(std::string addr, fn_on_http on_http);
 
     // Send query to Data API and get info for all tracked wallets
