@@ -110,6 +110,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
     exchange_list_.push_back(bitstamp_network_);
     exchange_list_.push_back(xrpl_network_);
+    exchange_list_.push_back(xrpl_testnet_);
 
     // timer will fire once each time it is reset
     timer_ = new QTimer(this);
