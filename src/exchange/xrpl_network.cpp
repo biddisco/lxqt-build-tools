@@ -448,19 +448,19 @@ void xrpl_network::handle_account_lines(ledger_wallet &w, std::string&& data)
         // @TODO, do not hardcode USD
         if (b.currency == currency_type::usd_bitstamp) {
             currency c{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp, b.value, b.value, 0, nullptr};
-            add_currency(c, w.currencies_);
+            w.add_currency(c);
         }
         else if (b.currency == currency_type::eur_bitstamp) {
             currency c{{currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp, b.value, b.value, 0, nullptr};
-            add_currency(c, w.currencies_);
+            w.add_currency(c);
         }
         else if (b.currency == currency_type::xrp) {
             currency c{{"", "XRP"}, currency_type::xrp, b.value, b.value, 0, nullptr};
-            add_currency(c, w.currencies_);
+            w.add_currency(c);
         }
         else if (b.currency == currency_type::xrpl_trustline) {
             currency c{b.trustline.value(), currency_type::xrpl_trustline, b.value, b.value, 0, nullptr};
-            add_currency(c, w.currencies_);
+            w.add_currency(c);
             query_iou_fee(b.trustline.value());
         }
         else {
@@ -564,7 +564,7 @@ void xrpl_network::handle_account_info(ledger_wallet &w, std::string&& data)
         reserved,
         nullptr
     };
-    add_currency(c, w.currencies_);
+    w.add_currency(c);
     w.compute_ledger_reserve();
     //
     DEBUG_ONLY(w.public_ << " Sequence " << w.sequence_);

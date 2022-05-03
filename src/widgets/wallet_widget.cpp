@@ -36,6 +36,7 @@ void wallet_widget::set_data(ledger_wallet &w, int decimals)
     ui->tag->setText(QString(std::to_string(w.tag_).c_str()));
     ui->tag->setTextInteractionFlags(Qt::TextSelectableByMouse);
     //
+    auto l = w.lock_currencies();
     for (auto &c : w.currencies_) {
         if (c.widget_ == nullptr) {
             c.widget_ = new currency_widget(decimals, this);
@@ -44,7 +45,8 @@ void wallet_widget::set_data(ledger_wallet &w, int decimals)
         }
         c.widget_->set_data(&c, &w, w.network_);
     }
-
+    w.unlock_currencies(std::move(l));
+    //
     update();
 }
 

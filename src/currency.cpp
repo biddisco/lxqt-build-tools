@@ -130,23 +130,3 @@ std::string to_string(double amount, currency_type c)
     return stream.str();
 }
 
-// ----------------------------------------------------------------------------
-void add_currency(const currency &curr, std::vector<currency> &c_list)
-{
-    auto it = ranges::find_if(c_list, [&curr](const currency &c) {
-        return c.type_ == curr.type_ &&
-               c.curr_.code_ == curr.curr_.code_ &&
-               c.curr_.issuer_ == curr.curr_.issuer_;
-    });
-    if (it==c_list.end()) {
-        c_list.push_back(curr);
-    }
-    else {
-        // copy the new currency info, but keep the old widget if it exists
-        auto temp = it->widget_;
-        *it = curr;
-        if (temp!=nullptr) {
-            it->widget_ = temp;
-        }
-    }
-}

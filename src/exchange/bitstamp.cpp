@@ -226,7 +226,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
         std::stod(jdata["xrp_reserved"].get<std::string>()),
         nullptr
     };
-    add_currency(xrp_bitstamp, acct.currencies_);
+    acct.add_currency(xrp_bitstamp);
 
     if (jdata.contains("usd_balance")) {
         currency usd_bitstamp{
@@ -236,7 +236,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
             std::stod(jdata["usd_reserved"].get<std::string>()),
             nullptr
         };
-        add_currency(usd_bitstamp, acct.currencies_);
+        acct.add_currency(usd_bitstamp);
     }
 
     if (jdata.contains("eur_balance")) {
@@ -247,7 +247,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
             std::stod(jdata["eur_reserved"].get<std::string>()),
             nullptr
         };
-        add_currency(eur_bitstamp, acct.currencies_);
+        acct.add_currency(eur_bitstamp);
     }
 
     if (jdata.contains("xrpusd_fee")) {

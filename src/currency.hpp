@@ -89,7 +89,3 @@ std::string to_string_with_precision(const T a_value, const int n = 6)
 // stream operators
 std::ostream& operator<<(std::ostream& os, const currency_type &);
 std::ostream& operator<<(std::ostream& os, const currency &);
-
-// ----------------------------------------------------------------------------
-// convenience function to add a currency to a list
-void add_currency(const currency &curr, std::vector<currency> &c_list);
