@@ -50,27 +50,8 @@ public:
     // ---------------------------------------
     virtual streams_vector websocket_streams() = 0;
 
-    virtual bool websocket_enabled(network::streams s)
-    {
-        if (enabled_streams_.find(s)!=enabled_streams_.end()) {
-            return enabled_streams_[s];
-        }
-        return false;
-    }
-
-    virtual void websocket_enable(network::streams s, net::contexts &io_contexts, bool enable)
-    {
-        if (enable) {
-            if (!websocket_enabled(s)) {
-                enabled_streams_[s] = connect(io_contexts, {s});
-            }
-        }
-        else {
-            if (websocket_enabled(s)) {
-                enabled_streams_[s] = !disconnect(io_contexts, {s});
-            }
-        }
-    }
+    virtual bool websocket_enabled(network::streams s);
+    virtual void websocket_enable(network::streams s, net::contexts &io_contexts, bool enable);
 
     virtual bool connect(net::contexts &io_contexts, streams_vector const &streams) = 0;
     virtual bool disconnect(net::contexts &io_contexts, streams_vector const &streams) = 0;

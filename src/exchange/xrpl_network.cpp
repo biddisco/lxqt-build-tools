@@ -201,12 +201,14 @@ bool xrpl_network::subscribe_accounts(net::contexts &io_contexts)
 // ----------------------------------------------------------------------------
 void xrpl_network::new_orderbook_data(xrpl_network* nw, std::string_view data)
 {
-    DEBUG_ONLY("xrpl new_orderbook_data : thread " << std::this_thread::get_id());
+    DEBUG_ALWAYS("xrpl new_orderbook_data : thread " << std::this_thread::get_id());
 
     if (startswith(data, "{\"result\":")) {
+        DEBUG_ALWAYS("accept_json_ledger_snapshot");
         nw->orderbook_->accept_json_ledger_snapshot(data);
     }
     else if (startswith(data, "{\"engine_result\":")) {
+        DEBUG_ALWAYS("accept_json_ledger_transaction");
         nw->orderbook_->accept_json_ledger_transaction(data);
     }
 
@@ -370,6 +372,30 @@ void xrpl_network::update_IOU_balance(std::string_view addr, const currency &cur
 }
 
 // ----------------------------------------------------------------------------
+OB::Belle::Request setup_request(const std::string &host, nlohmann::json &content)
+{
+    using namespace OB;
+    Belle::Request req;
+    // method
+    req.method(Belle::Method::post);
+    // headers
+    req.set(Belle::Header::host, host);
+    req.set(Belle::Header::user_agent, "mystery");
+    req.set(Belle::Header::content_type, "application/json");
+    req.set(Belle::Header::accept, "application/json");
+    req.set(Belle::Header::connection, "close");
+    // target path
+    req.target("/");
+    // contents
+    req.body() = content.dump();
+    // finalize
+    req.prepare_payload();
+    DEBUG_ONLY(line_string << req);
+    //
+    return req;
+}
+
+// ----------------------------------------------------------------------------
 void xrpl_network::get_account_lines(std::string addr, fn_on_http on_http)
 {
     auto thread_function = [=]() {
@@ -387,27 +413,12 @@ void xrpl_network::get_account_lines(std::string addr, fn_on_http on_http)
         content["method"] = "account_lines";
         content["params"] = nlohmann::json::array({params});
 
-        using namespace OB;
         // init an http request object
-        Belle::Request req;
-
-        // set the method
-        req.method(Belle::Method::post);
-        req.set(Belle::Header::host, jsonrpc_address());
-        req.set(Belle::Header::user_agent, "mystery");
-        req.set(Belle::Header::content_type, "application/json");
-        req.set(Belle::Header::accept, "application/json");
-        req.set(Belle::Header::connection, "close");
-        // set the target path
-        req.target("/");
-        req.body() = content.dump();
-        req.prepare_payload();
-        DEBUG_ONLY(line_string << req);
-
+        OB::Belle::Request req = setup_request(jsonrpc_address(), content);
         new_client.on_http(req, on_http);
         new_client.connect();
     };
-    DEBUG_ALWAYS(addr + " Creating thread get_account_balances")
+    DEBUG_ONLY(addr + " Creating thread get_account_balances")
     auto https_thread = std::thread(std::move(thread_function));
     https_thread.detach();
 }
@@ -493,27 +504,12 @@ void xrpl_network::get_account_info(std::string addr, fn_on_http on_http)
         content["method"] = "account_info";
         content["params"] = nlohmann::json::array({params});
 
-        using namespace OB;
         // init an http request object
-        Belle::Request req;
-
-        // set the method
-        req.method(Belle::Method::post);
-        req.set(Belle::Header::host, jsonrpc_address());
-        req.set(Belle::Header::user_agent, "mystery");
-        req.set(Belle::Header::content_type, "application/json");
-        req.set(Belle::Header::accept, "application/json");
-        req.set(Belle::Header::connection, "close");
-        // set the target path
-        req.target("/");
-        req.body() = content.dump();
-        req.prepare_payload();
-        DEBUG_ONLY(line_string << req);
-
+        OB::Belle::Request req = setup_request(jsonrpc_address(), content);
         new_client.on_http(req, on_http);
         new_client.connect();
     };
-    DEBUG_ALWAYS(addr + " Creating thread get_account_info")
+    DEBUG_ONLY(addr + " Creating thread get_account_info")
     auto https_thread = std::thread(std::move(thread_function));
     https_thread.detach();
 }
@@ -573,63 +569,55 @@ void xrpl_network::handle_account_info(ledger_wallet &w, std::string&& data)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::get_all_account_orders()
+void xrpl_network::get_account_offers(std::string addr, fn_on_http on_http)
+{
+    auto thread_function = [=]() {
+        OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
+        // set the http 'on error' callback
+        new_client.on_http_error([](auto& ctx) {
+          std::cerr << "get_account_offers : Protocol Error: " << ctx.ec.message() << "\n\n";
+        });
+
+        nlohmann::json params;
+        params["account"] = addr;
+
+        nlohmann::json content;
+        content["method"] = "account_offers";
+        content["params"] = nlohmann::json::array({params});
+
+        // init an http request object
+        OB::Belle::Request req = setup_request(jsonrpc_address(), content);
+        new_client.on_http(req, on_http);
+        new_client.connect();
+    };
+    DEBUG_ONLY(addr + " Creating thread get_account_offers")
+    auto https_thread = std::thread(std::move(thread_function));
+    https_thread.detach();
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::get_all_account_offers()
 {
     for (auto &w : subscribed_wallets_) {
-        auto thread_function = [&]() {
-            OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
-            // set the http 'on error' callback
-            new_client.on_http_error([](auto& ctx) {
-              std::cerr << "get_all_account_orders : Protocol Error: " << ctx.ec.message() << "\n\n";
-            });
-
-            nlohmann::json params;
-            params["account"] = w.public_;
-
-            nlohmann::json content;
-            content["method"] = "account_offers";
-            content["params"] = nlohmann::json::array({params});
-
-            using namespace OB;
-            // init an http request object
-            Belle::Request req;
-
-            // set the method
-            req.method(Belle::Method::post);
-            req.set(Belle::Header::host, jsonrpc_address());
-            req.set(Belle::Header::user_agent, "mystery");
-            req.set(Belle::Header::content_type, "application/json");
-            req.set(Belle::Header::accept, "application/json");
-            req.set(Belle::Header::connection, "close");
-            // set the target path
-            req.target("/");
-            req.body() = content.dump();
-            req.prepare_payload();
-            DEBUG_ONLY(line_string << req);
-
-            new_client.on_http(req, [this, &w](auto& ctx)
+        fn_on_http func = [this, &w](auto& ctx) {
+            if (ctx.res.result() != OB::Belle::Status::ok)
             {
-              if (ctx.res.result() != OB::Belle::Status::ok)
-              {
-                std::cerr << "Error: account_offers : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
+                std::cerr << "account_offers : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
                           << " " << ctx.res.reason()
                           << "\n";
                 return;
-              }
-              // debug : print the response headers and body
-              DEBUG_ONLY(line_string << "account_offers response : " << w.public_ << " : " << ctx.res.body());
-              this->handle_account_orders(w, std::move(ctx.res.body()));
-            });
-            new_client.connect();
+            }
+            // debug : print the response headers and body
+            DEBUG_ONLY(line_string << "account_offers response : " << w.public_ << " : " << ctx.res.body());
+            this->handle_account_offers(w, std::move(ctx.res.body()));
         };
-        DEBUG_ALWAYS(w.public_ + " Creating thread get_all_account_orders")
-        auto https_thread = std::thread(std::move(thread_function));
-        https_thread.detach();
+
+        get_account_offers(w.public_, func);
     };
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::handle_account_orders(ledger_wallet &w, std::string&& data)
+void xrpl_network::handle_account_offers(ledger_wallet &w, std::string&& data)
 {
     nlohmann::json jdata = json::parse(data)["result"];
     DEBUG_ONLY(jdata.dump(4));
@@ -733,22 +721,8 @@ void xrpl_network::submit_signed_transaction(std::string &&signed_tx)
     content["method"] = "submit";
     content["params"] = nlohmann::json::array({tx});
 
-    using namespace OB;
     // init an http request object
-    Belle::Request req;
-
-    // set the method
-    req.method(Belle::Method::post);
-    req.set(Belle::Header::host, jsonrpc_address());
-    req.set(Belle::Header::user_agent, "grox");
-    req.set(Belle::Header::content_type, "application/json");
-    req.set(Belle::Header::accept, "application/json");
-    req.set(Belle::Header::connection, "close");
-    // set the target path
-    req.target("/");
-    req.body() = content.dump();
-    req.prepare_payload();
-    DEBUG_ONLY(line_string << req);
+    OB::Belle::Request req = setup_request(jsonrpc_address(), content);
 
     auto thread_function = [&, req=std::move(req)]() {
         OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);

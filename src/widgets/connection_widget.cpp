@@ -17,7 +17,7 @@ connection_widget::connection_widget(net::contexts &io_contexts, const exchange:
     ui->setupUi(this);
     QVBoxLayout* layout = new QVBoxLayout();
     //
-    for (const auto &ex : exchanges) {
+    for (auto ex : exchanges) {
         QGroupBox *gb = new QGroupBox(QString::fromStdString(ex->name().data()), this);
         QVBoxLayout* bl = new QVBoxLayout(gb);
         const auto streams = ex->websocket_streams();
@@ -25,7 +25,7 @@ connection_widget::connection_widget(net::contexts &io_contexts, const exchange:
             QString name = QString(stream_text(s).c_str());
             QCheckBox *bx = new QCheckBox(name, this);
             bx->setChecked(ex->websocket_enabled(s));
-            connect(bx, &QCheckBox::stateChanged, this, [s, &io_contexts, &ex](bool checked) {
+            connect(bx, &QCheckBox::stateChanged, this, [s, &io_contexts, ex](bool checked) {
                 ex->websocket_enable(s, io_contexts, checked);
             } , Qt::QueuedConnection);
 

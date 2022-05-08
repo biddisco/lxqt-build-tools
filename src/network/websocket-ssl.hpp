@@ -65,7 +65,15 @@ namespace net {
                 boost::asio::ssl::context::no_sslv2 |
                 boost::asio::ssl::context::no_sslv3 |
                 boost::asio::ssl::context::no_tlsv1 |
-                boost::asio::ssl::context::no_tlsv1_1);
+                boost::asio::ssl::context::no_tlsv1_1 |
+                boost::asio::ssl::context::no_tlsv1_3);
+//                boost::asio::ssl::context::no_sslv2 |
+//                boost::asio::ssl::context::no_sslv3 |
+//                boost::asio::ssl::context::no_tlsv1 |
+//                boost::asio::ssl::context::no_tlsv1_1 |
+//                boost::asio::ssl::context::no_tlsv1_2 |
+//                boost::asio::ssl::context::no_tlsv1_3 |
+//                boost::asio::ssl::context::no_compression
 
             work_guard_ = new asio::executor_work_guard<asio::io_context::executor_type>
                     {boost::asio::make_work_guard(ioc)};

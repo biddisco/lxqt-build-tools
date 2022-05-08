@@ -657,7 +657,7 @@ void GroxMainWindow::update_account_balances()
     //
     xrpl_network_->get_all_account_infos();
     xrpl_network_->get_all_account_lines();
-    xrpl_network_->get_all_account_orders();
+    xrpl_network_->get_all_account_offers();
     //
     if (true) {
         xrpl_testnet_->get_all_account_infos();
@@ -716,24 +716,6 @@ void GroxMainWindow::start_io_threads(int nthreads)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::start_websocket()
 {
-    streams_vector streams1 = bitstamp_network_->websocket_streams();
-    streams_vector streams2 = xrpl_network_->websocket_streams();
-    if (!ui.connect_trade->isChecked()) {
-        streams1.erase(std::remove(streams1.begin(), streams1.end(), network::streams::trades), streams1.end());
-        streams2.erase(std::remove(streams2.begin(), streams2.end(), network::streams::trades), streams2.end());
-    }
-    if (!ui.connect_orderbook->isChecked()) {
-        streams1.erase(std::remove(streams1.begin(), streams1.end(), network::streams::order_book), streams1.end());
-        streams2.erase(std::remove(streams2.begin(), streams2.end(), network::streams::order_book), streams2.end());
-    }
-    if (!ui.connect_accounts->isChecked()) {
-        streams1.erase(std::remove(streams1.begin(), streams1.end(), network::streams::accounts), streams1.end());
-        streams2.erase(std::remove(streams2.begin(), streams2.end(), network::streams::accounts), streams2.end());
-    }
-    //
-    bitstamp_network_->connect(io_contexts_, streams1);
-    xrpl_network_->connect(io_contexts_, streams2);
-    //
     update_candlestick_data();
 }
 
