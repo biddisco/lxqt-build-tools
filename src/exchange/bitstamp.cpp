@@ -220,7 +220,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
     bitstamp_account &acct = get_bitstamp_instance()->account();
 
     currency xrp_bitstamp{
-        {currency::xrp, ""}, currency_type::xrp,
+        {"", "XRP"}, currency_type::xrp,
         std::stod(jdata["xrp_balance"].get<std::string>()),
         std::stod(jdata["xrp_available"].get<std::string>()),
         std::stod(jdata["xrp_reserved"].get<std::string>()),
