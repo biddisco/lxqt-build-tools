@@ -201,14 +201,14 @@ bool xrpl_network::subscribe_accounts(net::contexts &io_contexts)
 // ----------------------------------------------------------------------------
 void xrpl_network::new_orderbook_data(xrpl_network* nw, std::string_view data)
 {
-    DEBUG_ALWAYS("xrpl new_orderbook_data : thread " << std::this_thread::get_id());
+    DEBUG_ONLY("xrpl new_orderbook_data : thread " << std::this_thread::get_id());
 
     if (startswith(data, "{\"result\":")) {
-        DEBUG_ALWAYS("accept_json_ledger_snapshot");
+        DEBUG_ONLY("accept_json_ledger_snapshot");
         nw->orderbook_->accept_json_ledger_snapshot(data);
     }
     else if (startswith(data, "{\"engine_result\":")) {
-        DEBUG_ALWAYS("accept_json_ledger_transaction");
+        DEBUG_ONLY("accept_json_ledger_transaction");
         nw->orderbook_->accept_json_ledger_transaction(data);
     }
 
