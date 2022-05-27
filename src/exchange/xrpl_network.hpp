@@ -19,8 +19,8 @@
 #include "src/settings.hpp"
 #include "src/widgets/currency_widget.hpp"
 
-#define GROX_USE_LOCAL_SERVER
-//#define GROX_USE_RIPPLE_MAINNET_SERVER
+//#define GROX_USE_LOCAL_SERVER
+#define GROX_USE_RIPPLE_MAINNET_SERVER
 
 // ----------------------------------------------------------------------------
 class xrpl_network : public exchange

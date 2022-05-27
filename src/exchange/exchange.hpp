@@ -14,16 +14,20 @@
 class basic_account;
 
 namespace network {
-    enum streams {
-        trades = 0,
-        order_book = 1,
-        accounts = 2,
+    enum streams : int {
+        my_trades,
+        my_orders,
+        trades,
+        order_book,
+        accounts,
     };
 }
 using streams_vector = std::vector<network::streams>;
 
 static std::string stream_text(network::streams stype) {
     switch (stype) {
+    case network::streams::my_trades:  return "My Trades";
+    case network::streams::my_orders:  return "My Orders";
     case network::streams::trades:     return "Trades";
     case network::streams::order_book: return "Order Book";
     case network::streams::accounts:   return "Account Changes";

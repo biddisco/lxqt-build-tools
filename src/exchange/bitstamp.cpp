@@ -53,22 +53,81 @@ bool bitstamp_network::subscribe_order_book(net::contexts &io_contexts)
 
     return true;
 }
-/*
+
 // ----------------------------------------------------------------------------
-bool bitstamp_network::unsubscribe_channel(net::contexts &io_contexts, network::streams stream)
+bool bitstamp_network::subscribe_my_trades(net::contexts &io_contexts)
 {
-    "event": "bts:unsubscribe",
-    "data": {
-        "channel": "[channel_name]"
-    }
+    nlohmann::json command;
+    command["event"] = "bts:subscribe";
+    command["data"]["channel"] = "my_trades_xrpusd-" + get_bitstamp_instance()->account().API_user;
+    command["data"]["auth"] = get_bitstamp_instance()->account().API_key;
+    DEBUG_ALWAYS(command.dump(4));
+
+    using namespace std::placeholders;
+    DEBUG_ALWAYS("Subscribing to my_trades_xrpusd");
+    ws_mytrades = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
+        bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
+        command.dump(4),
+        [](std::string_view data) {
+            DEBUG_ALWAYS("My Trades data:");
+            DEBUG_ALWAYS(data);
+        });
+    return true;
 }
-*/
+
+// ----------------------------------------------------------------------------
+bool bitstamp_network::unsubscribe_my_trades()
+{
+    nlohmann::json command;
+    command["event"] = "bts:unsubscribe";
+    command["data"]["channel"] = "my_trades_xrpusd-" + get_bitstamp_instance()->account().API_user;
+    command["data"]["auth"] = get_bitstamp_instance()->account().API_key;
+    DEBUG_ALWAYS(command.dump(4));
+    ws_mytrades->write(command.dump(4));
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+bool bitstamp_network::subscribe_my_orders(net::contexts &io_contexts)
+{
+    nlohmann::json command;
+    command["event"] = "bts:subscribe";
+    command["data"]["channel"] = "my_orders_xrpusd-" + get_bitstamp_instance()->account().API_user;
+    command["data"]["auth"] = get_bitstamp_instance()->account().API_key;
+    DEBUG_ALWAYS(command.dump(4));
+
+    using namespace std::placeholders;
+    DEBUG_ALWAYS("Subscribing to my_orders_xrpusd");
+    ws_myorders = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
+        bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
+        command.dump(4),
+        [](std::string_view data) {
+            DEBUG_ALWAYS("My Orders data:");
+            DEBUG_ALWAYS(data);
+        });
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+bool bitstamp_network::unsubscribe_my_orders()
+{
+    nlohmann::json command;
+    command["event"] = "bts:unsubscribe";
+    command["data"]["channel"] = "my_orders_xrpusd-" + get_bitstamp_instance()->account().API_user;
+    command["data"]["auth"] = get_bitstamp_instance()->account().API_key;
+    DEBUG_ALWAYS(command.dump(4));
+    ws_myorders->write(command.dump(4));
+    return true;
+}
+
 // ----------------------------------------------------------------------------
 // connect to (multiple) streams
 bool bitstamp_network::connect(net::contexts &io_contexts, streams_vector const &streams)
 {
     bool ok = true;
     for (const auto &s : streams) {
+        if (s == network::streams::my_trades) ok &= subscribe_my_trades(io_contexts);
+        if (s == network::streams::my_orders) ok &= subscribe_my_orders(io_contexts);
         if (s == network::streams::trades) ok &= subscribe_live_trades(io_contexts);
         if (s == network::streams::order_book) ok &= subscribe_order_book(io_contexts);
     }
@@ -80,6 +139,8 @@ bool bitstamp_network::disconnect(net::contexts &/*io_contexts*/, streams_vector
 {
     bool ok = true;
     for (const auto &s : streams) {
+        if (s == network::streams::my_trades) ws_mytrades->shutdown_blocking(); // unsubscribe_my_trades();
+        if (s == network::streams::my_orders) ws_myorders->shutdown_blocking(); //unsubscribe_my_orders();
         if (s == network::streams::trades) ws_trades->shutdown_blocking();
         if (s == network::streams::order_book) ws_bidask->shutdown_blocking();
     }
@@ -212,7 +273,7 @@ void bitstamp_network::get_account_info()
 void bitstamp_network::handle_account_info(std::string&& data)
 {
     DEBUG_ONLY("bitstamp account_info : thread " << std::this_thread::get_id());
-    DEBUG_ONLY("Response : " << data);
+    DEBUG_ALWAYS("Response : " << data);
     //
     nlohmann::json jdata = json::parse(data);
     DEBUG_ONLY(jdata.dump(4));

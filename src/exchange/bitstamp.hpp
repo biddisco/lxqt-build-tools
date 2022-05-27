@@ -23,9 +23,13 @@ class bitstamp_network : public exchange
     Q_OBJECT
 
 private:
-    // websocket for bitstamp trade feed
+    // websocket for private trades
+    std::shared_ptr<net::ws::session> ws_mytrades;
+    // websocket for private orders
+    std::shared_ptr<net::ws::session> ws_myorders;
+    // websocket for trade feed
     std::shared_ptr<net::ws::session> ws_trades;
-    // websocket for bitstamp bid/ask order book
+    // websocket for bid/ask order book
     std::shared_ptr<net::ws::session> ws_bidask;
 
     // orderbook from bitstamp
@@ -104,9 +108,15 @@ public:
     // init connections/websockets etc
     bool subscribe_live_trades(net::contexts &io_contexts);
     bool subscribe_order_book(net::contexts &io_contexts);
+    bool subscribe_my_trades(net::contexts &io_contexts);
+    bool subscribe_my_orders(net::contexts &io_contexts);
+    bool unsubscribe_my_trades();
+    bool unsubscribe_my_orders();
 
     streams_vector websocket_streams() override {
         return {
+            network::streams::my_orders,
+            network::streams::my_trades,
             network::streams::trades,
             network::streams::order_book
         };
