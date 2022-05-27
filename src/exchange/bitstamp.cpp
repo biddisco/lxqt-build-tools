@@ -263,6 +263,18 @@ void bitstamp_network::handle_account_info(std::string&& data)
         }
     }
 
+    if (jdata.contains("xrpeur_fee")) {
+        double xrpeur_fee = std::stod(jdata["xrpeur_fee"].get<std::string>());
+        std::pair<std::string, std::string> cpair = std::make_pair("xrp", "eur");
+        const auto [it, success] = fee_map_.insert({cpair, xrpeur_fee});
+        if (success) {
+            std::cout << "Inserted bitstamp fee xrp/eur " << xrpeur_fee << std::endl;
+        }
+        else {
+            std::cout << "Overwriting bitstamp fee xrp/eur " << xrpeur_fee << std::endl;
+            fee_map_[cpair] = xrpeur_fee;
+        }
+    }
     emit update_wallet_widget(&acct);
 }
 
