@@ -65,6 +65,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
 # ------------------------------------------------------------------------------
 # Find packages
 # ------------------------------------------------------------------------------
+include(FindPkgConfig)
 find_package(
   Qt5 REQUIRED QUIET
   COMPONENTS Core
@@ -81,6 +82,7 @@ find_package(OpenSSL REQUIRED)
 find_package(MPI     REQUIRED COMPONENTS CXX) # needed by hdf5 if compiled with defaults
 find_package(HDF5    REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
 find_package(ZLIB)
+find_package(pika)
 
 # ------------------------------------------------------------------------------
 # Build/Download qwt
@@ -133,7 +135,7 @@ if(NOT range-v3_POPULATED)
 endif()
 
 # ------------------------------------------------------------------------------
-# Find/Build/Download rippled library
+# Find/Build/Download rippled
 # ------------------------------------------------------------------------------
 # try to find a system version
 find_package(Ripple QUIET)
@@ -167,6 +169,41 @@ if(NOT Ripple_FOUND)
   endif()
 endif()
 
+# -------------------------------------------------------------
+# Find/Build/Download pika
+# -------------------------------------------------------------
+find_package(pika QUIET)
+
+if(NOT pika_FOUND)
+  # look in the current source tree
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/pika/.git)
+    message(STATUS "Using pika in source tree (${CMAKE_CURRENT_SOURCE_DIR}/extern/pika)")
+    # use the source in this directory
+    set(FETCHCONTENT_SOURCE_DIR_PIKA ${CMAKE_CURRENT_SOURCE_DIR}/extern/pika)
+    # don't change branches, or pull
+    set(FETCHCONTENT_UPDATES_DISCONNECTED_PIKA ON)
+  endif()
+
+  fetchcontent_declare(
+    pika
+    GIT_REPOSITORY https://github.com/STEllAR-GROUP/pika
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+  )
+  fetchcontent_getproperties(pika)
+  if(NOT pika_POPULATED)
+    fetchcontent_populate(pika)
+    if(pika_WITH_APEX)
+      # I think something like this should be done in APEX' CMakeLists.pika
+      include_directories(
+        ${pika_SOURCE_DIR}/libs/preprocessor/include
+        ${pika_SOURCE_DIR}/apex/src/apex ${pika_SOURCE_DIR}/apex/src/contrib
+      )
+    endif()
+    add_subdirectory(${pika_SOURCE_DIR} ${pika_BINARY_DIR})
+  endif()
+endif()
+
 # ------------------------------------------------------------------------------
 # grox build
 # ------------------------------------------------------------------------------
@@ -182,7 +219,7 @@ set(GROX_SRC
     src/json_types.cpp
     src/order_book.cpp
 
-    # cryptograohy
+    # cryptography
     src/network/evp-encrypt.cpp
 
     # networking asio etc
@@ -285,6 +322,21 @@ set(TEST_INC_DIRS
     ${Boost_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/extern # nlohmann/json
 )
+
+# ---------------------------------------------------
+# Vanity address generator
+# ---------------------------------------------------
+add_executable(vanity_gen vanity/vanity.cpp)
+target_link_libraries(vanity_gen         
+    range-v3
+    Ripple::xrpl_core
+    pika::pika
+)
+
+# ---------------------------------------------------
+# OLD : vanity address generator
+# ---------------------------------------------------
+add_subdirectory(extern/vanity)
 
 # ---------------------------------------------------
 # test websocket code
