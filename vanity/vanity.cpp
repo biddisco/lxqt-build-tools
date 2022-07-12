@@ -15,6 +15,17 @@
 #include <fstream>
 #include <vector>
 #include <string>
+//
+// Boost Accumulators
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/mean.hpp>
+#include <boost/accumulators/statistics/rolling_mean.hpp>
+//
+namespace ba = boost::accumulators;
+namespace bt = ba::tag;
+using rolling_mean = ba::accumulator_set<double, ba::stats<bt::rolling_mean>>;
+rolling_mean computation_rate_(ba::tag::rolling_window::window_size = 10);
 
 typedef pika::lcos::local::spinlock  mutex_type;
 typedef std::lock_guard<mutex_type> scoped_lock;
@@ -24,7 +35,8 @@ using namespace std::chrono;
 //
 mutex_type                 output_mutex;
 std::atomic<std::size_t>   keys_tested;
-high_resolution_clock::time_point start_time;
+std::size_t                reference_keys;
+high_resolution_clock::time_point start_time, reference_time;
 std::atomic<bool> abort_job{false};
 //
 std::vector<std::string> searches;
@@ -103,30 +115,28 @@ std::size_t findkey(std::size_t iterations)
 
         // words not starting with 'R' are searched one letter offset from the string
         for (auto& search : searches) {
-            bool found = starts_with(begin(pub_str)+1, end(pub_str), begin(search), end(search));
-            if (found) {
+            if (starts_with(begin(pub_str)+1, end(pub_str), begin(search), end(search))) {
                 filewrite_func(newSeed, pub_str);
+                break;
             }
         }
         // words starting with 'R' can be searched from the start of the string
         for (auto& search : r_searches) {
-            bool found = starts_with(begin(pub_str), end(pub_str), begin(search), end(search));
-            if (found) {
+            if (starts_with(begin(pub_str), end(pub_str), begin(search), end(search))) {
                 filewrite_func(newSeed, pub_str);
+                break;
             }
         }
     }
     return iterations;
 }
 
-void vg_output_timing_console(double rate, unsigned long long total) {
-    double targ;
-    char const *unit;
+//-----------------------------------------------------------------------------
+void vg_output_timing_console(double rate, unsigned long long total, double elapsed)
+{
     char linebuf[80];
-    size_t rem, p;
-
-    targ = rate;
-    unit = "key/s";
+    double targ = rate;
+    char const *unit = "key/s";
     if (targ > 1000) {
         unit = "Kkey/s";
         targ /= 1000.0;
@@ -136,9 +146,8 @@ void vg_output_timing_console(double rate, unsigned long long total) {
         }
     }
 
-    rem = sizeof(linebuf);
-    p = snprintf(linebuf, rem, "  [%.2f %s][total %lld]",
-        targ, unit, total);
+    size_t rem = sizeof(linebuf);
+    size_t p = snprintf(linebuf, rem, "[%.2f %s] [keys %'14lld / secs %8.1f]", targ, unit, total, elapsed);
 
     rem -= p;
     if (rem < 0)
@@ -149,22 +158,35 @@ void vg_output_timing_console(double rate, unsigned long long total) {
         linebuf[sizeof(linebuf) - 1] = '\0';
     }
 
-    scoped_lock lock(output_mutex);
     std::cout << linebuf << "\r" << std::flush;
 }
 
 
 //-----------------------------------------------------------------------------
-void update_count(high_resolution_clock::time_point start_time, std::size_t n)
+void update_count(std::size_t n)
 {
-    if (abort_job) return;
+    keys_tested += n;
     //
-    keys_tested     += n;
-    //
-    double secs = std::chrono::duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count();
-    double rate = keys_tested/secs;
-    //
-    vg_output_timing_console(rate, keys_tested);
+    std::unique_lock lock(output_mutex, std::try_to_lock_t{});
+
+    // don't print anything out if we are exiting of didn't get the lock
+    if (abort_job || !lock.owns_lock()) return;
+
+    auto now = high_resolution_clock::now();
+    double secs = std::chrono::duration_cast<duration<double>>(now - reference_time).count();
+    if (secs>1) {
+        double keys = keys_tested - reference_keys;
+        double rate = keys/secs;
+        reference_time = now;
+        reference_keys = keys_tested;
+
+        // insert data into boost accumulator
+        computation_rate_(rate);
+        auto rt = boost::accumulators::rolling_mean(computation_rate_);
+        //
+        double elapsed = std::chrono::duration_cast<duration<double>>(now - start_time).count();
+        vg_output_timing_console(rt, keys_tested, elapsed);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -173,7 +195,7 @@ pika::future<std::size_t> calculate(std::size_t iterations)
     return pika::async(findkey, iterations).then(
         [&](pika::future<std::size_t> &&f) {
             std::size_t n = f.get();
-            update_count(start_time, n);
+            update_count(n);
             return n;
     }).then([=](pika::future<std::size_t> &&f){
         if (!abort_job) {
@@ -236,7 +258,7 @@ int pika_main(pika::program_options::variables_map& vm)
     std::vector<pika::future<void>> workers;
     workers.reserve(nthreads);
 
-    start_time = high_resolution_clock::now();
+    start_time = reference_time = high_resolution_clock::now();
     keys_tested = 0;
     for (size_t i = 0; i < nthreads; i++) {
         auto fut = calculate(iterations);
@@ -250,10 +272,21 @@ int pika_main(pika::program_options::variables_map& vm)
 }
 
 //-----------------------------------------------------------------------------
+void turn_off_cursor() {
+    printf("\e[?25l");
+}
+
+//-----------------------------------------------------------------------------
+void turn_on_cursor() {
+    printf("\e[?25h");
+}
+
+//-----------------------------------------------------------------------------
 // signal handling function for ctrl-\ and ctrl-c
 void sig_handler(int signo)
 {
     if (signo == SIGINT || signo == SIGQUIT) {
+        turn_on_cursor();
         std::cout << "Aborting job" << std::endl;
         abort_job = true;
     }
@@ -270,6 +303,13 @@ int main(int argc, char* argv[])
         std::cout << "SIGINT handler not installed" << std::endl;
     if (signal(SIGQUIT, sig_handler) == SIG_ERR)
         std::cout << "SIGQUIT handler not installed" << std::endl;
+
+    // to print numbers with commas for thousands etc, create a locale
+    setlocale(LC_NUMERIC, "");
+    struct lconv *ptrLocale = localeconv();
+    ptrLocale->thousands_sep = (char*)"'";
+    // hide cursor
+    turn_off_cursor();
 
     std::cout << "example command line :\n"
               << "./vanity --prefixes johnb jbjnr johnnyb biddi biddisco olga olgy olgypops olgab sasha mila milena grox -f 100000 --pika:threads=cores \n"
