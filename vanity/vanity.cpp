@@ -56,10 +56,9 @@ bool is_bad_char(const char c) {
 std::vector<std::string> all_copies_using_ripple_alphabet(const std::vector<std::string> &words)
 {
     std::vector<std::string> result;
-    result.reserve(1000);
     //
     for (auto const &word :words) {
-        std::cout << "Word: " << word << std::endl;
+        std::vector<std::string> intermediate;
         std::string word_l = word;
         std::string word_u = word;
         std::string word_f = word;
@@ -82,10 +81,18 @@ std::vector<std::string> all_copies_using_ripple_alphabet(const std::vector<std:
             }
             bool ok = (std::find_if(word_f.begin(), word_f.end(), is_bad_char) == word_f.end());
             if (ok) {
+                intermediate.push_back(word_f);
                 result.push_back(word_f);
             }
         }
+        std::stringstream tempstr;
+        tempstr << "Word: " << std::setw(12) << word << " " << std::setw(5) << intermediate.size() << " : ";
+        std::copy(intermediate.begin(), intermediate.end(), std::ostream_iterator<std::string>(tempstr, ", "));
+        std::cout << tempstr.str().substr(0,150);
+        if (tempstr.str().size()>150) std::cout << "...";
+        std::cout << std::endl;
     }
+    std::cout << std::endl;
     return result;
 }
 
@@ -225,13 +232,8 @@ int pika_main(pika::program_options::variables_map& vm)
     }
 
     // Get Parameters
-    std::uint64_t  nranks = pika::get_num_localities().get();
     std::size_t  nthreads = pika::get_num_worker_threads();
-
-    // Some messages
-    std::cout << "xrp-vanity\n";
-    std::cout << "Search Threads per locality    : " << nthreads << "\n";
-    std::cout << "Total number of search threads : " << nthreads*nranks << "\n\n";
+    std::cout << "Threads  : " << nthreads << "\n" << std::endl;
 
     searches = all_copies_using_ripple_alphabet(prefixes);
 
@@ -249,10 +251,6 @@ int pika_main(pika::program_options::variables_map& vm)
             || ranges::starts_with(begin(s), end(s), begin(R_string), end(R_string)));
         }
     ), end(searches));
-    std::cout << "Search list: ";
-    std::copy(searches.begin(), searches.end(), std::ostream_iterator<std::string>(std::cout, ", "));
-    std::copy(r_searches.begin(), r_searches.end(), std::ostream_iterator<std::string>(std::cout, ", "));
-    std::cout << std::endl;
 
     // Launch Tasks
     std::vector<pika::future<void>> workers;
@@ -283,13 +281,11 @@ void turn_on_cursor() {
 
 //-----------------------------------------------------------------------------
 // signal handling function for ctrl-\ and ctrl-c
-void sig_handler(int signo)
+void sig_handler(int /*signo*/)
 {
-    if (signo == SIGINT || signo == SIGQUIT) {
-        turn_on_cursor();
-        std::cout << "Aborting job" << std::endl;
-        abort_job = true;
-    }
+    turn_on_cursor();
+    std::cout << "Aborting job" << std::endl;
+    abort_job = true;
 }
 
 //-----------------------------------------------------------------------------
@@ -308,13 +304,7 @@ int main(int argc, char* argv[])
     setlocale(LC_NUMERIC, "");
     struct lconv *ptrLocale = localeconv();
     ptrLocale->thousands_sep = (char*)"'";
-    // hide cursor
     turn_off_cursor();
-
-    std::cout << "example command line :\n"
-              << "./vanity --prefixes johnb jbjnr johnnyb biddi biddisco olga olgy olgypops olgab sasha mila milena grox -f 100000 --pika:threads=cores \n"
-              << "Alphabet : " << RippleAlphabet << "\n"
-              << std::endl;
 
     pika::program_options::options_description cmdline("Options");
     cmdline.add_options()
@@ -333,7 +323,13 @@ int main(int argc, char* argv[])
     filename << std::filesystem::path(getenv("HOME")).c_str() << "/.ssh/.wallets-" << std::put_time(&tm, "%Y-%m-%d-%H-%M-%S");
     std::filesystem::path p = filename.str();
     out_filename = std::filesystem::absolute(p);
-    std::cout <<"Output " << out_filename << std::endl;
+
+    std::cout << "example command line :\n"
+              << "./vanity --prefixes johnb jbjnr johnnyb biddi biddisco olga olgy olgypops olgab sasha mila milena grox -f 100000 --pika:threads=cores \n\n"
+              << "example cleanup line :\n"
+              << "wc -l ~/.ssh/.wallets.txt && cat ~/.ssh/.wallets* | sortci | uniq >> temp.wallets && mv temp.wallets ~/.ssh/.wallets.txt && wc -l ~/.ssh/.wallets.txt \n\n"
+              << "Alphabet : " << RippleAlphabet << "\n"
+              << "Output   : " << out_filename << std::endl;
 
     // We force this test to use several threads by default.
     std::vector<std::string> const cfg = {"pika.os_threads=cores"};
@@ -343,6 +339,8 @@ int main(int argc, char* argv[])
     init_args.desc_cmdline = cmdline;
     init_args.cfg = cfg;
 
-    return pika::init(pika_main, argc, argv, init_args);
+    auto result = pika::init(pika_main, argc, argv, init_args);
+    turn_on_cursor();
+    return result;
 }
 
