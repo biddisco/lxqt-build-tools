@@ -67,6 +67,8 @@ public:
     void add_buy_sell_curve(const QString& title,
         const QVector<QPointF>& samples, const QColor& color);
 
+    void updateLayout() override;
+
 signals:
     void plotScaleChanged(double t1, double t2);
 

@@ -32,6 +32,7 @@
 #include "src/plot/ohlc_picker.hpp"
 #include "src/plot/ohlc_chart_curve.hpp"
 #include "src/print.hpp"
+#include "src/debug.hpp"
 //
 #include <range/v3/view.hpp>
 
@@ -399,3 +400,24 @@ void ohlc_price_plot::add_price_curve(const QString& title,
     m_curve->setSamples(samples);
     m_curve->attach(this);
 }
+
+// ----------------------------------------------------------------------------
+void ohlc_price_plot::updateLayout()
+{
+    QwtPlot::updateLayout();
+    //
+    static bool was_visible = isVisible();
+    //
+    if (isVisible() && was_visible != isVisible()) {
+        DEBUG_ONLY("updateLayout : adjust_candle_size");
+        if (auto_candle_resolution()) {
+            adjust_candle_size(0);
+        }
+        else {
+            adjust_candle_size(get_candle_resolution());
+        }
+        was_visible=isVisible();
+    }
+}
+
+// ----------------------------------------------------------------------------

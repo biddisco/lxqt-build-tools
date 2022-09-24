@@ -142,8 +142,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     }
 
     crypto_price_plot_->set_data(&hdf5_ohlc_);
-    // start by displaying 1/4 day of data
-    graph_rescale(-2);
+    // start by displaying 1 day of data
+    graph_rescale(0);
 
     // ----------------------------------
     // just an experiment to display an image
