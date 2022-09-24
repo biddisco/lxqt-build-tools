@@ -154,7 +154,7 @@ void vg_output_timing_console(double rate, unsigned long long total, double elap
     }
 
     size_t rem = sizeof(linebuf);
-    size_t p = snprintf(linebuf, rem, "[%.2f %s] [keys %'14lld / secs %8.1f]", targ, unit, total, elapsed);
+    size_t p = snprintf(linebuf, rem, "     [%.2f %s] [keys %'14lld / secs %8.1f]", targ, unit, total, elapsed);
 
     rem -= p;
     if (rem < 0)
@@ -210,7 +210,7 @@ pika::future<std::size_t> calculate(std::size_t iterations)
             return calculate(iterations);
         }
         scoped_lock lock(output_mutex);
-        std::cout << "Worker thread aborting " << pika::get_worker_thread_num() << std::endl;
+        //std::cout << "Worker thread aborting " << pika::get_worker_thread_num() << std::endl;
         return pika::make_ready_future<std::size_t>(0);
     });
 }
@@ -284,7 +284,7 @@ void turn_on_cursor() {
 void sig_handler(int /*signo*/)
 {
     turn_on_cursor();
-    std::cout << "Aborting job" << std::endl;
+    std::cout << "\nAborting job" << std::endl;
     abort_job = true;
 }
 
