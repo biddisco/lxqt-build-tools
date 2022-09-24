@@ -17,6 +17,8 @@ bitstamp_network::bitstamp_network()
     bitstamp_account default_acct;
     default_acct.name_ = "Bitstamp Main";
     accounts_.push_back(default_acct);
+    using namespace std::literals;
+    token_expiry_ = std::chrono::steady_clock::now() - 60*1s;
 }
 
 // ----------------------------------------------------------------------------
@@ -59,8 +61,8 @@ bool bitstamp_network::subscribe_my_trades(net::contexts &io_contexts)
 {
     nlohmann::json command;
     command["event"] = "bts:subscribe";
-    command["data"]["channel"] = "my_trades_xrpusd-" + get_bitstamp_instance()->account().API_user;
-    command["data"]["auth"] = get_bitstamp_instance()->account().API_key;
+    command["data"]["channel"] = "private-my_trades_xrpusd-" + websocket_user_id_;
+    command["data"]["auth"] = websocket_user_id_;
     DEBUG_ALWAYS(command.dump(4));
 
     using namespace std::placeholders;
@@ -92,8 +94,8 @@ bool bitstamp_network::subscribe_my_orders(net::contexts &io_contexts)
 {
     nlohmann::json command;
     command["event"] = "bts:subscribe";
-    command["data"]["channel"] = "my_orders_xrpusd-" + get_bitstamp_instance()->account().API_user;
-    command["data"]["auth"] = get_bitstamp_instance()->account().API_key;
+    command["data"]["channel"] = "private-my_orders_xrpusd-" + websocket_user_id_;
+    command["data"]["auth"] = websocket_token_;
     DEBUG_ALWAYS(command.dump(4));
 
     using namespace std::placeholders;
@@ -124,6 +126,12 @@ bool bitstamp_network::unsubscribe_my_orders()
 // connect to (multiple) streams
 bool bitstamp_network::connect(net::contexts &io_contexts, streams_vector const &streams)
 {
+    using namespace std::literals;
+    auto now = std::chrono::steady_clock::now();
+    while ((token_expiry_ - now)/1s < 5) {
+        get_websocket_token();
+        sleep(1);
+    }
     bool ok = true;
     for (const auto &s : streams) {
         if (s == network::streams::my_trades) ok &= subscribe_my_trades(io_contexts);
@@ -270,6 +278,14 @@ void bitstamp_network::get_account_info()
 }
 
 // ----------------------------------------------------------------------------
+void bitstamp_network::get_websocket_token()
+{
+    account_request("/api/v2/websockets_token/", "", [this](std::string &&data) {
+        handle_websockets_token(std::move(data));
+    });
+}
+
+// ----------------------------------------------------------------------------
 void bitstamp_network::handle_account_info(std::string&& data)
 {
     DEBUG_ONLY("bitstamp account_info : thread " << std::this_thread::get_id());
@@ -337,6 +353,24 @@ void bitstamp_network::handle_account_info(std::string&& data)
         }
     }
     emit update_wallet_widget(&acct);
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::handle_websockets_token(std::string&& data)
+{
+    DEBUG_ONLY("bitstamp websocket token : thread " << std::this_thread::get_id());
+    DEBUG_ALWAYS("Response : " << data);
+    //
+    nlohmann::json jdata = json::parse(data);
+    DEBUG_ONLY(jdata.dump(4));
+    //
+    bitstamp_account &acct = get_bitstamp_instance()->account();
+    //
+    using namespace std::literals;
+    auto valid_sec     = jdata["valid_sec"].get<int>();
+    websocket_token_   = jdata["token"].get<std::string>();
+    websocket_user_id_ = std::to_string(jdata["user_id"].get<int>());
+    token_expiry_ = std::chrono::steady_clock::now() + valid_sec*1s;
 }
 
 // ----------------------------------------------------------------------------

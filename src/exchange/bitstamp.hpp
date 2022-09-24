@@ -2,6 +2,7 @@
 
 #include <QString>
 //
+#include <chrono>
 #include <string>
 //
 #ifndef Q_MOC_RUN
@@ -31,6 +32,13 @@ private:
     std::shared_ptr<net::ws::session> ws_trades;
     // websocket for bid/ask order book
     std::shared_ptr<net::ws::session> ws_bidask;
+
+    // websocket token / user id valid for N seconds
+    std::string websocket_token_;
+    // websocket token userid
+    std::string websocket_user_id_;
+    // token expiry time
+    std::chrono::time_point<std::chrono::steady_clock> token_expiry_;
 
     // orderbook from bitstamp
     bitstamp_order_book *orderbook_;
@@ -131,8 +139,11 @@ public:
     // ---------------------------------------
     // http: fetch account info/data
     void get_account_info();
+    void get_websocket_token();
+
     // process account info response
     void handle_account_info(std::string&&);
+    void handle_websockets_token(std::string&&);
 
     // ---------------------------------------
     // http: fetch open order data
