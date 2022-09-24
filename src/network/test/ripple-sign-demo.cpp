@@ -107,7 +107,8 @@ bool demonstrateSigning(
     std::cout << "Deserialized: "
               << deserialized->getJson(JsonOptions::none).toStyledString() << "\n";
 
-    auto const check1 = noopTx.checkSign(STTx::RequireFullyCanonicalSig::no);
+    Rules defaultRules{{}};
+    auto const check1 = noopTx.checkSign(STTx::RequireFullyCanonicalSig::no, defaultRules);
 
     std::cout << "Check 1: " << (check1 ? "Good" : "Bad!") << "\n";
     assert(check1);
@@ -290,7 +291,8 @@ bool multisign(ripple::STTx& tx, Credentials const& signer)
     });
 
     // Verify that the signature is valid.
-    bool const pass = tx.checkSign(STTx::RequireFullyCanonicalSig::yes).operator bool();
+    Rules defaultRules{{}};
+    bool const pass = tx.checkSign(STTx::RequireFullyCanonicalSig::yes, defaultRules).operator bool();
     assert(pass);
 
     // To submit multisigned JSON to the network use this RPC command:
