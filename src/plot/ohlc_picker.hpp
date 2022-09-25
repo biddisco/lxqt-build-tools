@@ -44,6 +44,10 @@ public:
         setTrackerPen(QPen(Qt::darkGray));
     }
 
+    QPointF last_coord() {
+        return last_coord_;
+    }
+
     double quantize_x_coord(const double pos) const
     {
         // get the pixel/plot coordinate transform

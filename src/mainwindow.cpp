@@ -280,8 +280,24 @@ void GroxMainWindow::appExitCleanupHandler()
 void GroxMainWindow::createActions()
 {
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q), this, SLOT(close()));
-    new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_C), this, SLOT(start_websocket()));
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_D), this, SLOT(restore_dockwindows()));
+
+    // Ctrl+R deletes data from the cursor onwards ...
+    QObject::connect(new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_R),  this), &QShortcut::activated, [=](){
+        auto crosshairs = crypto_price_plot_->get_crosshairs();
+        double msecs = crosshairs->quantize_x_coord(crosshairs->last_coord().x());
+        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msecs);
+        QString s = QLocale::system().toString(dt, "dd-MM-yy hh:mm");
+
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question(this, "Confirm", "Delete from " + s,
+                                      QMessageBox::Yes|QMessageBox::No);
+        if (reply == QMessageBox::Yes) {
+            hdf5_ohlc_.truncate_from_time(msecs);
+        } else {
+            qDebug() << "Yes was *not* clicked";
+        }
+    });
 
     start_io_threads(2);
 
@@ -341,9 +357,6 @@ void GroxMainWindow::createMenus()
     // action for quit (@TODO)
     // connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
 
-    // button-click : main connect networks start button
-    connect(ui.connect_button, SIGNAL(clicked()), this, SLOT(start_websocket()));
-
     // button-click : fetch latest account balance data
     connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
@@ -382,6 +395,13 @@ void GroxMainWindow::createMenus()
         auto p = t.price;
         auto v = t.amount;
         QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p, v);
+        //
+        if (hdf5_ohlc_.add_live_data(new_sample))
+        {
+            // we have started a new candle, update the main datasets
+            update_candlestick_data();
+        }
+        //
         crypto_price_plot_->update_live_data(new_sample);
         stream_process(new_sample);
     } , Qt::QueuedConnection);
@@ -489,7 +509,7 @@ void GroxMainWindow::createMenus()
 // slot to ensure widget updates on GUI thread
 void GroxMainWindow::graph_rescale(int range)
 {
-    auto last_time = hdf5_ohlc_.get_last_sample_time();
+    auto last_time = hdf5_ohlc_.get_last_sample_time(true);
     double t1=0, t2 = last_time;
     if (range==-2) {
         t1 = last_time - 0.25*ohlc_chart_data::day;
@@ -626,8 +646,9 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
         emit new_ohlc_data_ui();
 
         // what is the last sample we currently have
-        auto last_time = hdf5_ohlc_.get_last_sample_time();
+        auto last_time = hdf5_ohlc_.get_last_sample_time(false);
         std::cout << "Data merged up to " << msecs_unix_to_calendar_time(last_time) << std::endl;
+        hdf5_ohlc_.delete_live_data_before(last_time);
     }
     catch (std::exception& e)
     {
@@ -670,8 +691,9 @@ void GroxMainWindow::update_candlestick_data()
 {
     uint64_t req_t = 0, start_t = 0;
     // what is the most recent sample we currently have
-    start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time());
+    start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time(false));
     if (start_t == 0) {
+        // linux time 1496275200 = Thu Jun 01 2017 00:00:00 GMT+0000
         start_t = 1496275200*1000.0;
         std::string s = msecs_unix_to_calendar_time(start_t);
         DEBUG_ALWAYS("No Data present : requesting from " << s);
@@ -711,12 +733,6 @@ void GroxMainWindow::start_io_threads(int nthreads)
         }
         initialized = true;
     }
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::start_websocket()
-{
-    update_candlestick_data();
 }
 
 // ----------------------------------------------------------------------------

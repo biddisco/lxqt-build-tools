@@ -79,6 +79,9 @@ struct ohlc_datasets
     // Add new downloaded data to the existing dataset
     uint64_t merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples);
 
+    // Clean live data when new validated data appears
+    void delete_live_data_before(double msecs);
+
     // Checks that all data has consecutive time stamps. Important
     // when merging new downloaded data with old to ensure no gaps
     // have crept in

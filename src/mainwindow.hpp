@@ -120,7 +120,6 @@ signals:
 
 public slots:
     void appExitCleanupHandler();
-    void start_websocket();
     void restore_dockwindows();
     void new_ohlc_data();
     void update_account_balances();

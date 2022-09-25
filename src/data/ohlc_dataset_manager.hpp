@@ -49,10 +49,11 @@ public:
     void merge_data(double res,
                     const QVector<QwtOHLCSample>& new_ohlc_samples_);
 
+    // can be used to repair data by deleting items after date, (then redownloading them)
     void truncate_from_time(double t);
 
     // Get first/last sample time, value is returned as UTC = unix time stamp * 1000
-    double get_last_sample_time();
+    double get_last_sample_time(bool include_live);
     double get_first_sample_time();
 
     // Get the min/max OHLC values for a given time range
@@ -80,8 +81,11 @@ public:
 
     ohlc_chart_data *get_samples() { return candles_.begin()->second->ohlc_samples_; }
 
-    // add a new trade sample to build live OHLC candles
-    void add_live_data(QwtOHLCSample new_sample);
+    // add a new trade sample to build live OHLC candles, returns true when
+    // a new candle is started, false when one is (only) updated
+    bool add_live_data(QwtOHLCSample new_sample);
+
+    void delete_live_data_before(double msecs);
 
     ohlc_chart_curve *get_live_curve();
 
