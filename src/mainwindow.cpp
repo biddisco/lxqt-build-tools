@@ -947,6 +947,10 @@ void GroxMainWindow::saveWindowSettings()
     QByteArray state = ui.graph_splitter->saveState();
     settings.setValue("graphSplitter", state.toBase64());
 
+    // save active tab
+    // QString currentTabName = ui.main_tabbook->currentWidget()->objectName();
+    settings.setValue("mainwindowTabIndex", ui.main_tabbook->currentIndex());
+
     settings.endGroup();
     qDebug() << "Settings saved under:" << settings.fileName();
 }
@@ -969,6 +973,10 @@ void GroxMainWindow::loadWindowSettings()
 #endif
     // load splitter state
     ui.graph_splitter->restoreState(QByteArray::fromBase64(settings.value("graphSplitter").toByteArray()));
+
+    // load active tab
+    int mainwindowTabIndex = settings.value("mainwindowTabIndex").toInt();
+    ui.main_tabbook->setCurrentIndex(mainwindowTabIndex);
 
     settings.endGroup();
     qDebug() << "Settings loaded from:" << settings.fileName();
