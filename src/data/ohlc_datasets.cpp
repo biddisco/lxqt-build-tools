@@ -33,6 +33,10 @@ ohlc_datasets::ohlc_datasets(double res)
     ohlc_curve_   = new ohlc_chart_curve(ohlc_samples_);
     live_samples_ = new ohlc_chart_data(res);
     live_curve_   = new ohlc_chart_curve(live_samples_);
+    live_curve_->setSymbolPen(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));
+    live_curve_->setSymbolPen(QwtPlotTradingCurve::Decreasing, QColor("#FFBF00"));
+    live_curve_->setSymbolBrush(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));
+    live_curve_->setSymbolBrush(QwtPlotTradingCurve::Decreasing, QColor("#FFBF00"));
 }
 
 // ----------------------------------------------------------------------------

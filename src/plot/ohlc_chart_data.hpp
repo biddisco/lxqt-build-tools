@@ -152,6 +152,7 @@ class ohlc_chart_data : public QwtTradingChartData
 
     inline double get_resolution() const { return resolution_; }
 
+    // return the index of the sample at time t
     inline int64_t sample_index(double time) const
     {
         int64_t i = static_cast<int64_t>((time-m_samples[0].time)/resolution_);

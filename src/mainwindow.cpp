@@ -705,7 +705,8 @@ void GroxMainWindow::update_candlestick_data()
     // convert to unix timestamp : next sample is 60s after last
     req_t = start_t/1000 + 60;
 
-    std::cout << "Requesting candlestick data from " << msecs_unix_to_calendar_time(req_t*1000) << std::endl;
+    std::cout << "Requesting candlestick data from "
+              << msecs_unix_to_calendar_time(req_t*1000) << std::endl;
 
     // @TODO add futures here to make dependency chain simpler?
     bitstamp_network_->request_new_candlestick_data(req_t, [this, req_t](auto& ctx, bool more) {

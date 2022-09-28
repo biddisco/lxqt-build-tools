@@ -223,7 +223,7 @@ void ohlc_dataset_manager::delete_live_data_before(double msecs)
     QVector<QwtOHLCSample> &live_data = live_samples->data();
     if (live_data.size()>0) {
         auto index = live_samples->sample_index(msecs);
-        live_data.erase(live_data.begin(), live_data.begin() + index + 1);
+        live_data.erase(live_data.begin(), live_data.begin() + index);
     }
 }
 
