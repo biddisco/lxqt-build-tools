@@ -18,15 +18,16 @@ trade_widget::trade_widget(std::string_view data, QWidget *parent) :
     ui->setupUi(this);
     connect_events();
     //
-    nlohmann::json jdata = nlohmann::json::parse(data);
+    using namespace nlohmann;
+    nlohmann::json jdata = json::parse(data);
     //
     // [{"price": "1.29000", "currency_pair": "XRP/USD", "datetime": "2021-05-30 20:55:34", "amount": "50000.00000000", "type": "1", "id": "1366315662319616"}]
     ui->network->setText("Bitstamp");
-    ui->taker_getc->setText(jdata["currency_pair"].get<std::string>().c_str());
-    ui->taker_payc->setText(jdata["currency_pair"].get<std::string>().c_str());
-    ui->taker_get->setText(jdata["amount"].get<std::string>().c_str());
-    ui->taker_pay->setText(jdata["price"].get<std::string>().c_str());
-    ui->date_time->setText(jdata["datetime"].get<std::string>().c_str());
+    ui->taker_getc->setText(jdata["currency_pair"].get_ptr<json::string_t*>()->c_str());
+    ui->taker_payc->setText(jdata["currency_pair"].get_ptr<json::string_t*>()->c_str());
+    ui->taker_get->setText(jdata["amount"].get_ptr<json::string_t*>()->c_str());
+    ui->taker_pay->setText(jdata["price"].get_ptr<json::string_t*>()->c_str());
+    ui->date_time->setText(jdata["datetime"].get_ptr<json::string_t*>()->c_str());
 }
 
 void trade_widget::set_data(trade_data const &t)

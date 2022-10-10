@@ -242,8 +242,8 @@ void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
                     //
                     if (f.contains("Account")) {
                         std::string acct = f["Account"].get<std::string>();
-                        oldb = 1E-6*std::stod(p["Balance"].get<std::string>());
-                        newb = 1E-6*std::stod(b.get<std::string>());
+                        oldb = 1E-6*std::stod(p["Balance"].get_ptr<json::string_t*>()->c_str());
+                        newb = 1E-6*std::stod(b.get_ptr<json::string_t*>()->c_str());
                         std::cout << "Acct " << acct
                                   << " old balance " << oldb
                                   << " new balance " << newb << std::endl;
@@ -257,7 +257,7 @@ void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
                         std::string to_acct = t["Destination"];
                         curr.curr_.code_    = b["currency"].get<std::string>();
                         curr.curr_.issuer_  = t["SendMax"]["issuer"].get<std::string>();
-                        curr.balance_       = std::stod(b["value"].get<std::string>());
+                        curr.balance_       = std::stod(b["value"].get_ptr<json::string_t*>()->c_str());
                         curr.type_          = get_currency_type(curr.curr_);
                         if (to_acct == f["LowLimit"]["issuer"].get<std::string>()) {
                             std::cout << "Acct " << to_acct

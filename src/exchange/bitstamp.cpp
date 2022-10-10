@@ -298,9 +298,9 @@ void bitstamp_network::handle_account_info(std::string&& data)
 
     currency xrp_bitstamp{
         {"", "XRP"}, currency_type::xrp,
-        std::stod(jdata["xrp_balance"].get<std::string>()),
-        std::stod(jdata["xrp_available"].get<std::string>()),
-        std::stod(jdata["xrp_reserved"].get<std::string>()),
+        std::stod(jdata["xrp_balance"].get_ptr<json::string_t*>()->c_str()),
+        std::stod(jdata["xrp_available"].get_ptr<json::string_t*>()->c_str()),
+        std::stod(jdata["xrp_reserved"].get_ptr<json::string_t*>()->c_str()),
         nullptr
     };
     acct.add_currency(xrp_bitstamp);
@@ -308,9 +308,9 @@ void bitstamp_network::handle_account_info(std::string&& data)
     if (jdata.contains("usd_balance")) {
         currency usd_bitstamp{
             {currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp,
-            std::stod(jdata["usd_balance"].get<std::string>()),
-            std::stod(jdata["usd_available"].get<std::string>()),
-            std::stod(jdata["usd_reserved"].get<std::string>()),
+            std::stod(jdata["usd_balance"].get_ptr<json::string_t*>()->c_str()),
+            std::stod(jdata["usd_available"].get_ptr<json::string_t*>()->c_str()),
+            std::stod(jdata["usd_reserved"].get_ptr<json::string_t*>()->c_str()),
             nullptr
         };
         acct.add_currency(usd_bitstamp);
@@ -319,16 +319,16 @@ void bitstamp_network::handle_account_info(std::string&& data)
     if (jdata.contains("eur_balance")) {
         currency eur_bitstamp{
             {currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp,
-            std::stod(jdata["eur_balance"].get<std::string>()),
-            std::stod(jdata["eur_available"].get<std::string>()),
-            std::stod(jdata["eur_reserved"].get<std::string>()),
+            std::stod(jdata["eur_balance"].get_ptr<json::string_t*>()->c_str()),
+            std::stod(jdata["eur_available"].get_ptr<json::string_t*>()->c_str()),
+            std::stod(jdata["eur_reserved"].get_ptr<json::string_t*>()->c_str()),
             nullptr
         };
         acct.add_currency(eur_bitstamp);
     }
 
     if (jdata.contains("xrpusd_fee")) {
-        double xrpusd_fee = std::stod(jdata["xrpusd_fee"].get<std::string>());
+        double xrpusd_fee = std::stod(jdata["xrpusd_fee"].get_ptr<json::string_t*>()->c_str());
         std::pair<std::string, std::string> cpair = std::make_pair("xrp", "usd");
         const auto [it, success] = fee_map_.insert({cpair, xrpusd_fee});
         if (success) {
@@ -341,7 +341,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
     }
 
     if (jdata.contains("xrpeur_fee")) {
-        double xrpeur_fee = std::stod(jdata["xrpeur_fee"].get<std::string>());
+        double xrpeur_fee = std::stod(jdata["xrpeur_fee"].get_ptr<json::string_t*>()->c_str());
         std::pair<std::string, std::string> cpair = std::make_pair("xrp", "eur");
         const auto [it, success] = fee_map_.insert({cpair, xrpeur_fee});
         if (success) {
