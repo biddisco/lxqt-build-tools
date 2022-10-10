@@ -625,23 +625,21 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
     {
         // convert json data into vectors of actual data
         nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
-        std::vector<ohlc_string> ohlc_strings = jdata.get<std::vector<ohlc_string>>();
-        //
+        DEBUG_ALWAYS("Received " << jdata.size() << " json OHLC samples");
         QVector<QwtOHLCSample> new_ohlc_samples;
-        //
-        const auto N = ohlc_strings.size();
-        new_ohlc_samples.reserve(N);
-        //
-        for (auto o : ohlc_strings)
-        {
-            ohlc temp(o);
-            // convert 1 minute candle OHLC data to msecs
-            temp.time *= 1000;
-            new_ohlc_samples.push_back(QwtOHLCSample(
-                temp.time, temp.open, temp.high, temp.low, temp.close, temp.volume));
+        new_ohlc_samples.reserve(jdata.size());
+        QwtOHLCSample sample;
+        for (auto item : jdata) {
+            sample.close  = atof(item["close"].get_ptr<json::string_t*>()->c_str());
+            sample.high   = atof(item["high"].get_ptr<json::string_t*>()->c_str());
+            sample.low    = atof(item["low"].get_ptr<json::string_t*>()->c_str());
+            sample.open   = atof(item["open"].get_ptr<json::string_t*>()->c_str());
+            sample.time   = atof(item["timestamp"].get_ptr<json::string_t*>()->c_str())*1000;
+            sample.volume = atof(item["volume"].get_ptr<json::string_t*>()->c_str());
+            new_ohlc_samples.push_back(sample);
         }
-        DEBUG_ALWAYS("Received " << ohlc_strings.size()
-                  << " new OHLC samples");
+        //
+        DEBUG_ALWAYS("Converted " << new_ohlc_samples.size() << " new OHLC samples");
         hdf5_ohlc_.merge_data(ohlc_chart_data::minute, new_ohlc_samples);
         emit new_ohlc_data_ui();
 

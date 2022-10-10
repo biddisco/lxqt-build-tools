@@ -17,36 +17,12 @@
 // ----------------------------------------------------------------------------
 using nlohmann::json;
 
-struct ohlc_string {
-    std::string  timestamp;
-    std::string  open;
-    std::string  high;
-    std::string  low;
-    std::string  close;
-    std::string  volume;
-    //
-    ohlc_string() = default;
-};
-
-Q_DECLARE_METATYPE(ohlc_string)
-Q_DECLARE_METATYPE(std::vector<ohlc_string>*)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ohlc_string,
-    timestamp, open, high, low, close, volume);
-
 struct ohlc : QwtOHLCSample {
     //
     ohlc() = default;
     ohlc(const QwtOHLCSample &other)
         : QwtOHLCSample(other.time, other.open, other.high, other.low, other.close, other.volume)
     {}
-    ohlc(const ohlc_string &s) {
-        time        = std::atof(s.timestamp.c_str());
-        open        = std::atof(s.open.c_str());
-        high        = std::atof(s.high.c_str());
-        low         = std::atof(s.low.c_str());
-        close       = std::atof(s.close.c_str());
-        volume      = std::atof(s.volume.c_str());
-    }
 };
 
 Q_DECLARE_METATYPE(ohlc)
@@ -55,7 +31,6 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ohlc,
     time, open, high, low, close, volume);
 
 std::ostream& operator<<(std::ostream& os, const QwtOHLCSample &);
-
 
 // ----------------------------------------------------------------------------
 // bitstamp websocket ticker data
