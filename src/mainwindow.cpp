@@ -115,6 +115,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // timer will fire once each time it is reset
     timer_ = new QTimer(this);
     timer_->setSingleShot(true);
+    candlestick_update_active_ = false;
 
     // ----------------------------------
     // setup Qt actions/connections
@@ -294,6 +295,7 @@ void GroxMainWindow::createActions()
                                       QMessageBox::Yes|QMessageBox::No);
         if (reply == QMessageBox::Yes) {
             hdf5_ohlc_.truncate_from_time(msecs);
+            update_candlestick_data();
         } else {
             qDebug() << "Yes was *not* clicked";
         }
@@ -369,7 +371,10 @@ void GroxMainWindow::createMenus()
     // ---------------------------------------------------------------------
 
     // used to fetch account balances after N seconds
-    connect(timer_, SIGNAL(timeout()), this, SLOT(on_timer()));
+    connect(timer_, SIGNAL(timeout()), this, SLOT(on_candlestick_timer()));
+
+    // Timers must be started from the qt thread that created them
+    connect(this, SIGNAL(restart_timer()), this, SLOT(restart_candlestick_timer()));
 
     // orderbook updates from bitstamp network connection
     // 1 Priority, arbitrage, 2 plot update, 3 text update
@@ -395,12 +400,7 @@ void GroxMainWindow::createMenus()
         auto p = t.price;
         auto v = t.amount;
         QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p, v);
-        //
-        if (hdf5_ohlc_.add_live_data(new_sample))
-        {
-            // we have started a new candle, update the main datasets
-            update_candlestick_data();
-        }
+        hdf5_ohlc_.add_live_data(new_sample);
         //
         crypto_price_plot_->update_live_data(new_sample);
         stream_process(new_sample);
@@ -687,6 +687,7 @@ void GroxMainWindow::update_account_balances()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::update_candlestick_data()
 {
+    candlestick_update_active_ = true;
     uint64_t req_t = 0, start_t = 0;
     // what is the most recent sample we currently have
     start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time(false));
@@ -711,7 +712,11 @@ void GroxMainWindow::update_candlestick_data()
         std::cout << "Received candlestick data from " << msecs_unix_to_calendar_time(req_t*1000) << std::endl;
         this->receive_ohlc_data(std::move(ctx.res.body()));
         if (more) {
-            this->update_candlestick_data();
+            update_candlestick_data();
+        }
+        else {
+            candlestick_update_active_ = false;
+            emit restart_timer();
         }
     });
 }
@@ -780,16 +785,41 @@ void GroxMainWindow::transaction_event()
 {
     DEBUG_ALWAYS("transaction_event : check balances");
     update_account_balances();
-    // set timer for 5 seconds to check again after next ledger close
-    timer_->start(5000);
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::on_timer()
+void GroxMainWindow::restart_candlestick_timer()
 {
-    DEBUG_ALWAYS("on_timer : check balances");
-    update_account_balances();
-//    timer_->start(5000);
+    using namespace std::chrono;
+    // how long until the minute candle closes
+    // UTC! for local use # tm local_tm = *localtime(&tt);
+    system_clock::time_point now = system_clock::now();
+    time_t tt = system_clock::to_time_t(now);
+    tm utc_tm = *gmtime(&tt);
+    // we need to give bitstamp time to update its data,
+    // so only check a few seconds after each new minute begins
+    const int safety = 10;
+    int delay_seconds = 60 + safety - utc_tm.tm_sec;
+
+    if (timer_->isActive()) {
+        // timer is already running
+        DEBUG_ALWAYS("Overriding: candlestick timer " << delay_seconds << " seconds");
+        timer_->start(delay_seconds*1000);
+    }
+    else {
+        DEBUG_ALWAYS("restarting candlestick timer " << delay_seconds << " seconds");
+        timer_->start(delay_seconds*1000);
+    }
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::on_candlestick_timer()
+{
+    QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
+    DEBUG_ALWAYS("on_candlestick_timer : " + now.toStdString());
+    if (!candlestick_update_active_) {
+        update_candlestick_data();
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -847,6 +877,8 @@ void GroxMainWindow::showEvent(QShowEvent *event )
         loadWindowSettings();
         only_once = false;
     }
+    // start timer that will fetch latest candlestick data
+    timer_->start(2000);
 }
 
 // ----------------------------------------------------------------------------

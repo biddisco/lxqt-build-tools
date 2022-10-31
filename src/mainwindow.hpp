@@ -69,7 +69,10 @@ class GroxMainWindow : public QMainWindow
     filter_plot *filters_plot_;
     filter_plot *assets_plot_;
     OrderBookPlot *obp_;
+
+    // timer for candlestick updates
     QTimer *timer_;
+    bool candlestick_update_active_;
 
     // network/exchanges
     exchange::exchange_vector exchange_list_;
@@ -117,6 +120,7 @@ signals:
     void quitApplication();
     void new_ohlc_data_ui();
     void new_ledger_data();
+    void restart_timer();
 
 public slots:
     void appExitCleanupHandler();
@@ -127,7 +131,8 @@ public slots:
     void execute_usd();
     void perform_arbitrage();
     void transaction_event();
-    void on_timer();
+    void restart_candlestick_timer();
+    void on_candlestick_timer();
     void orderbook_text_update();
 
     // to connect to xrpl ledger signals
