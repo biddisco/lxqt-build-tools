@@ -59,24 +59,30 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     , ohlc_dataset_manager_(data)
     , auto_candle_resolution_(true)
 {
-    QwtText text(" ");
-    text.setColor(Qt::lightGray);
-    setTitle(text);
-
+    // find a fix font char size for candle status/data
+    QString X = "X";
+    QFont label_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    fixed_char_size_x_ = QFontMetrics(label_font).tightBoundingRect(X).width();
+    fixed_char_size_y_ = QFontMetrics(label_font).tightBoundingRect(X).height();
+    const int margin = 0.5*fixed_char_size_y_; // margin space in x and y
+    const int indent = 4; // text offset in x direction
+    const int label_xtext = 3*fixed_char_size_x_; // "15d", "30m" etc
+    const int label_xsize = 2*indent + 2*margin + label_xtext;
     // Small label we use to show current candle resolution
     candle_label_ = new QwtTextLabel(this);
-    candle_label_->setIndent(4);
-    candle_label_->setMargin(8);
+    candle_label_->setIndent(indent);
+    candle_label_->setMargin(margin);
+    candle_label_->setFont(label_font);
+    candle_label_->setGeometry(0, 0, label_xsize, 2*margin + 2*fixed_char_size_y_);
+    // candle_label_->setFrameStyle(QFrame::Panel | QFrame::Raised);
 
     candle_status_ = new QwtTextLabel(this);
-    candle_status_->setIndent(48);
-    candle_status_->setMargin(8);
-    candle_status_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-    // find a fix font char size
-    QString X = "X";
-    fixed_char_size_x_ = QFontMetrics(candle_status_->font()).tightBoundingRect(X).width();
-    fixed_char_size_y_ = QFontMetrics(candle_status_->font()).tightBoundingRect(X).height();
-    candle_status_->setGeometry(48, 0, 66*fixed_char_size_x_, 4*fixed_char_size_y_);
+    candle_status_->setIndent(indent);
+    candle_status_->setMargin(margin);
+    candle_status_->setFont(label_font);
+    // OHLCV format string : "O:<num>" = 5(OHLCV)*2 + 4(OHLC)*9 + 1(V)*14 = 61
+    candle_status_->setGeometry(label_xsize, 0, 61*fixed_char_size_x_, 2*margin + 2*fixed_char_size_y_);
+    // candle_status_->setFrameStyle(QFrame::Panel | QFrame::Raised);
 
     // default start up resolution
     candle_resolution_ = ohlc_chart_data::minute;
@@ -233,6 +239,10 @@ bool ohlc_price_plot::adjust_candle_size(double res)
                 candle_label.setColor(Qt::magenta);
             else
                 candle_label.setColor(Qt::red);
+            //QColor cc("#333333");
+            //candle_label.setBorderPen(QPen(cc, 2));
+            //cc.setAlpha(200);
+            //candle_label.setBackgroundBrush(cc);
             candle_label_->setText(candle_label);
         }
     }
@@ -351,10 +361,10 @@ void ohlc_price_plot::display_candle_status(double time)
 
     QwtText status(temp.str().c_str());
     status.setRenderFlags(Qt::AlignLeft | Qt::AlignTop);
-//    QColor cc("#333333");
-//    status.setBorderPen(QPen(cc, 2));
-//    cc.setAlpha(200);
-//    status.setBackgroundBrush(cc);
+    //QColor cc("#333333");
+    //status.setBorderPen(QPen(cc, 2));
+    //cc.setAlpha(200);
+    //status.setBackgroundBrush(cc);
     candle_status_->setText(status);
 }
 
