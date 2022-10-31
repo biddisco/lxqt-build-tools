@@ -80,9 +80,24 @@ void ohlc_chart_curve::drawSeries(QPainter*painter,
     const QwtScaleMap& xMap, const QwtScaleMap& yMap,
     const QRectF& canvasRect, int from, int to) const
 {
-    if (to < 0) to = dataSize() - 1;
-    if (from < 0) from = 0;
-    if (from > to) return;
+    // find the min/max indices that we need to iterate over,
+    // add +1 to min to clip 1 inside at the left of the x axis
+    // right hand side is trucated by int conversion and always clipped anyway
+    ohlc_chart_data const *chartData = dynamic_cast<ohlc_chart_data const *>(data());
+    if (chartData->size()==0) {
+        return;
+    }
+    const QRectF tr = QwtScaleMap::invTransform(xMap, yMap, canvasRect);
+    double tMin = tr.left();
+    double tMax = tr.right();
+    from = std::max(int64_t(0), chartData->sample_index(tMin)+1);
+    to   = std::min(int64_t(chartData->data().size()-1), chartData->sample_index(tMax));
+    from = std::min(from, to);
+    to   = std::max(from, to);
+
+//    if (to < 0) to = dataSize() - 1;
+//    if (from < 0) from = 0;
+//    if (from > to) return;
 
     painter->save();
 
@@ -126,22 +141,11 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter,
         symbolBrushCopy[Direction::Decreasing] = symbolBrush(Direction::Decreasing);
     }
 
-    const QRectF tr = QwtScaleMap::invTransform(xMap, yMap, canvasRect);
-    double tMin = tr.left();
-    double tMax = tr.right();
-
     const bool doAlign = QwtPainter::roundingAlignment(painter);
 
     double symbolWidth = scaledSymbolWidth(xMap, yMap, canvasRect);
     if (doAlign)
         symbolWidth = std::floor(0.5 * symbolWidth) * 2.0;
-
-    // find the min/max indices that we need to iterate over,
-    // add +1 to min to clip 1 inside at the left of the x axis
-    // right hand side is trucated by int conversion and always clipped anyway
-    ohlc_chart_data const *chartData = dynamic_cast<ohlc_chart_data const *>(data());
-    from = std::max(int64_t(0), chartData->sample_index(tMin)+1);
-    to   = std::min(int64_t(chartData->data().size()-1), chartData->sample_index(tMax));
 
     // initialize heikin ashi functor
     const QwtOHLCSample &init_ha = sample(from>0 ? (from-1) : from);
@@ -208,20 +212,11 @@ void ohlc_chart_curve::drawVolume(QPainter* painter,
                                   const QwtScaleMap& xMap, const QwtScaleMap& yMap,
                                   const QRectF& canvasRect, int from, int to) const
 {
-    const QRectF tr = QwtScaleMap::invTransform(xMap, yMap, canvasRect);
-    double tMin = tr.left();
-    double tMax = tr.right();
-
     const bool doAlign = QwtPainter::roundingAlignment(painter);
 
     double symbolWidth = scaledSymbolWidth(xMap, yMap, canvasRect);
     if (doAlign)
         symbolWidth = std::floor(0.5 * symbolWidth) * 2.0;
-
-    // find the min/max indices that we need to iterate over
-    ohlc_chart_data const *chartData = dynamic_cast<ohlc_chart_data const *>(data());
-    from = std::max(int64_t(0), chartData->sample_index(tMin));
-    to   = std::min(int64_t(chartData->data().size()-1), chartData->sample_index(tMax));
 
     for (int i = from; i <= to; i++)
     {
