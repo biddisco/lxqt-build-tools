@@ -26,6 +26,7 @@
 #include "src/widgets/trade_widget.hpp"
 #include "src/widgets/check_trades_dialog.hpp"
 #include "src/widgets/trade_algorithm.hpp"
+#include "src/widgets/digital_clock.hpp"
 //
 #include "src/demangle_helper.hpp"
 #include "src/debug.hpp"
@@ -238,6 +239,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     loadConnectionSetups();
     connection_widget_ = new connection_widget(io_contexts_, exchange_list_, ui.connections_tab);
     ui.connections_tab->layout()->addWidget(connection_widget_);
+
+    DigitalClock *clock = new DigitalClock(this);
+    ui.controls_layout->addWidget(clock);
 }
 
 // ----------------------------------------------------------------------------

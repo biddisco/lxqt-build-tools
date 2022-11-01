@@ -26,7 +26,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="chart_tab">
          <attribute name="title">
@@ -34,7 +34,7 @@
          </attribute>
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <layout class="QHBoxLayout" name="controls_layout">
             <item>
              <widget class="QToolButton" name="gt_6">
               <property name="text">
@@ -126,7 +126,7 @@
              <widget class="QDateTimeEdit" name="date_init">
               <property name="dateTime">
                <datetime>
-                <hour>14</hour>
+                <hour>12</hour>
                 <minute>0</minute>
                 <second>0</second>
                 <year>2021</year>
@@ -136,7 +136,7 @@
               </property>
               <property name="minimumTime">
                <time>
-                <hour>7</hour>
+                <hour>6</hour>
                 <minute>0</minute>
                 <second>0</second>
                </time>
@@ -447,61 +447,6 @@
          <attribute name="title">
           <string>Debug</string>
          </attribute>
-         <widget class="QWidget" name="horizontalLayoutWidget_3">
-          <property name="geometry">
-           <rect>
-            <x>10</x>
-            <y>10</y>
-            <width>401</width>
-            <height>51</height>
-           </rect>
-          </property>
-          <layout class="QHBoxLayout" name="horizontalLayout_4">
-           <item>
-            <widget class="QPushButton" name="repair_btn">
-             <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press 'r' on chart to set repair date/time&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-             </property>
-             <property name="text">
-              <string>Repair Data</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QDateTimeEdit" name="repair_date">
-             <property name="dateTime">
-              <datetime>
-               <hour>16</hour>
-               <minute>0</minute>
-               <second>0</second>
-               <year>2021</year>
-               <month>5</month>
-               <day>11</day>
-              </datetime>
-             </property>
-             <property name="minimumTime">
-              <time>
-               <hour>8</hour>
-               <minute>0</minute>
-               <second>0</second>
-              </time>
-             </property>
-             <property name="currentSection">
-              <enum>QDateTimeEdit::DaySection</enum>
-             </property>
-             <property name="displayFormat">
-              <string>dd/MM/yyyy HH:mm</string>
-             </property>
-             <property name="calendarPopup">
-              <bool>false</bool>
-             </property>
-             <property name="timeSpec">
-              <enum>Qt::OffsetFromUTC</enum>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
         </widget>
         <widget class="QWidget" name="tab_3">
          <attribute name="title">

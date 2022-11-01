@@ -240,6 +240,7 @@ set(GROX_SRC
     src/widgets/check_trades_dialog.cpp
     src/widgets/connection_widget.cpp
     src/widgets/currency_widget.cpp
+    src/widgets/digital_clock.cpp
     src/widgets/password_dialog.cpp
     src/widgets/trade_algorithm.cpp
     src/widgets/trade_widget.cpp
