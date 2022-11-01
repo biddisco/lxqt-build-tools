@@ -45,7 +45,6 @@
 
 #define get_live_trades 1
 //#define subscribe_xrpl_events 1
-#define enable_multiresolution 1
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
@@ -137,7 +136,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     const auto &resolutions = ohlc_chart_data::available_resolutions();
     for (size_t i=1; i<resolutions.size(); ++i) {
         auto const &res = resolutions[i];
-        auto new_data = hdf5_ohlc_.get_dataset(res.base_)->resample(res, res.base_);
+        auto new_data = hdf5_ohlc_.get_dataset(res.base_)->resample(res, ohlc_chart_data::get_resolution(res.base_));
         if (new_data) {
             hdf5_ohlc_.add_dataset(res, new_data);
         }
@@ -287,22 +286,8 @@ void GroxMainWindow::createActions()
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q), this, SLOT(close()));
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_D), this, SLOT(restore_dockwindows()));
 
-    // Ctrl+R deletes data from the cursor onwards ...
+    // Ctrl+R
     QObject::connect(new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_R),  this), &QShortcut::activated, [=](){
-        auto crosshairs = crypto_price_plot_->get_crosshairs();
-        double msecs = crosshairs->quantize_x_coord(crosshairs->last_coord().x());
-        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msecs);
-        QString s = QLocale::system().toString(dt, "dd-MM-yy hh:mm");
-
-        QMessageBox::StandardButton reply;
-        reply = QMessageBox::question(this, "Confirm", "Delete from " + s,
-                                      QMessageBox::Yes|QMessageBox::No);
-        if (reply == QMessageBox::Yes) {
-            hdf5_ohlc_.truncate_from_time(msecs);
-            update_candlestick_data();
-        } else {
-            qDebug() << "Yes was *not* clicked";
-        }
     });
 
     start_io_threads(2);
@@ -367,7 +352,7 @@ void GroxMainWindow::createMenus()
     connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
     // when new candlestick data is ready, redo main graph
-    connect(this, SIGNAL(new_ohlc_data_ui()), this, SLOT(new_ohlc_data()));
+    connect(this, SIGNAL(new_ohlc_data_ui(double)), this, SLOT(new_ohlc_data(double)));
 
     // ---------------------------------------------------------------------
     // signals emitted from networking thread completion handlers should use
@@ -482,19 +467,21 @@ void GroxMainWindow::createMenus()
     } , Qt::QueuedConnection);
 
     connect(crypto_price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this, [this](QPointF p) {
-        double time = crypto_price_plot_->get_crosshairs()->quantize_x_coord(p.x());
-        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(time);
-        QString s = QLocale().toString(dt, "dd-MM-yy hh:mm");
-        std::cout << s.toStdString() << std::endl;
-        ui.repair_date->setDateTime(dt);
-        ui.date_init->setDateTime(dt);
-    } , Qt::QueuedConnection);
+        auto crosshairs = crypto_price_plot_->get_crosshairs();
+        double msecs = crosshairs->quantize_x_coord(p.x());
+        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msecs);
+        QString s = QLocale::system().toString(dt, "dd-MM-yy hh:mm");
 
-    connect(ui.repair_btn, QOverload<bool>::of(&QAbstractButton::clicked), this, [this](bool) {
-        double msecs = ui.repair_date->dateTime().toMSecsSinceEpoch();
-        hdf5_ohlc_.truncate_from_time(msecs);
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question(this, "Confirm", "Delete from " + s,
+                                      QMessageBox::Yes|QMessageBox::No);
+        if (reply == QMessageBox::Yes) {
+            hdf5_ohlc_.truncate_from_time(msecs);
+            update_candlestick_data();
+        } else {
+            qDebug() << "Yes was *not* clicked";
+        }
     } , Qt::QueuedConnection);
-
 
     connect(crypto_price_plot_, &ohlc_price_plot::plotScaleChanged, this, [this](double t1, double t2) {
         filters_plot_->update_time_axis(t1, t2);
@@ -544,11 +531,10 @@ void GroxMainWindow::graph_rescale(int range)
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::new_ohlc_data()
+void GroxMainWindow::new_ohlc_data(double old_res)
 {
-#ifndef enable_multiresolution
-    return;
-#endif
+    (void)(old_res);
+    DEBUG_ONLY("Got new data for resolution " << old_res);
     //
     // get all available candle resolutions, except highest res
     // since we we use that one to generate all the others
@@ -557,10 +543,10 @@ void GroxMainWindow::new_ohlc_data()
         auto const &res = resolutions[i];
         auto data = hdf5_ohlc_.get_dataset(res);
         if (data) {
-            data->resample_update(res.res_, hdf5_ohlc_.get_dataset(res.base_), res.base_);
+            data->resample_update(res, hdf5_ohlc_.get_dataset(res.base_), ohlc_chart_data::get_resolution(res.base_));
         }
         else {
-            data = hdf5_ohlc_.get_dataset(res.base_)->resample(res, res.base_);
+            data = hdf5_ohlc_.get_dataset(res.base_)->resample(res, ohlc_chart_data::get_resolution(res.base_));
             hdf5_ohlc_.add_dataset(res, data);
         }
     }
@@ -645,12 +631,13 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
         //
         DEBUG_ALWAYS("Converted " << new_ohlc_samples.size() << " new OHLC samples");
         hdf5_ohlc_.merge_data(ohlc_chart_data::minute, new_ohlc_samples);
-        emit new_ohlc_data_ui();
-
         // what is the last sample we currently have
         auto last_time = hdf5_ohlc_.get_last_sample_time(false);
         std::cout << "Data merged up to " << msecs_unix_to_calendar_time(last_time) << std::endl;
-        hdf5_ohlc_.delete_live_data_before(last_time);
+        hdf5_ohlc_.delete_live_data_up_to(last_time);
+        //
+        emit new_ohlc_data_ui(ohlc_chart_data::minute);
+
     }
     catch (std::exception& e)
     {
@@ -1131,7 +1118,7 @@ void GroxMainWindow::execute_filter()
     }
 
     auto start = QDateTime( QDate(2020, 10, 1), QTime(0,0,0), QTimeZone::utc());
-    start = ui.repair_date->dateTime();
+    //start = ui.repair_date->dateTime();
     //
     double msecs = start.toMSecsSinceEpoch();
     uint64_t start_index = data->sample_index(msecs);

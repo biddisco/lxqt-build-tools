@@ -85,7 +85,7 @@ public:
     // a new candle is started, false when one is (only) updated
     bool add_live_data(QwtOHLCSample new_sample);
 
-    void delete_live_data_before(double msecs);
+    void delete_live_data_up_to(double msecs);
 
     ohlc_chart_curve *get_live_curve();
 

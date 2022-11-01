@@ -118,14 +118,14 @@ public:
 
 signals:
     void quitApplication();
-    void new_ohlc_data_ui();
+    void new_ohlc_data_ui(double);
     void new_ledger_data();
     void restart_timer();
 
 public slots:
     void appExitCleanupHandler();
     void restore_dockwindows();
-    void new_ohlc_data();
+    void new_ohlc_data(double res);
     void update_account_balances();
     void execute_xrp();
     void execute_usd();

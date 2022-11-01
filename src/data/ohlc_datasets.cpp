@@ -97,30 +97,6 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
 }
 
 // ----------------------------------------------------------------------------
-int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, double res)
-{
-    if (samples.empty()) return 0;
-    //
-    double init_time = samples.begin()->time;
-
-    for (int64_t index=0; index<samples.size(); ++ index)
-    {
-        const QwtOHLCSample &s1 = samples.at(index);
-        //
-        double expected_time = init_time + (res*index);
-        if (expected_time != s1.time)
-        {
-            std::cerr << "Validation error at index " << index << " " << expected_time << " and "
-                      << s1.time << "dataset truncated " << std::endl;
-            return index;
-            //throw std::runtime_error("OHLC data integrity failure");
-        }
-    }
-    DEBUG_ALWAYS("OHLC Data samples validated " << samples.size());
-    return samples.size();
-}
-
-// ----------------------------------------------------------------------------
 // unixtime * 1000 is msecs since 1970/1/1
 std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
 {
@@ -136,8 +112,45 @@ uint64_t sample_index(double init, double time, double res)
 }
 
 // ----------------------------------------------------------------------------
+int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, candle_res res, double time)
+{
+    if (samples.empty()) return 0;
+    //
+    double init_time = time;
+    double origin_time = samples.begin()->time;
+    uint64_t init_index = 0;
+    if (time==0) {
+        init_time = origin_time;
+    }
+    else {
+        init_index = sample_index(origin_time, time, res);
+        init_time = samples.at(init_index).time;
+    }
+    DEBUG_ONLY("Validating " << res.name_
+                 << " from " << msecs_unix_to_calendar_time(init_time)
+                 << " index " << init_index);
+
+    for (int64_t index=init_index; index<samples.size(); ++index)
+    {
+        const QwtOHLCSample &s1 = samples.at(index);
+        //
+        double expected_time = origin_time + (res*index);
+        if (expected_time != s1.time)
+        {
+            std::cerr << "Validation error : resolution " << res.name_
+                      << " at index " << index << " "
+                      << msecs_unix_to_calendar_time(expected_time) << " and "
+                      << msecs_unix_to_calendar_time(s1.time) << " dataset truncated " << std::endl;
+            throw std::runtime_error("OHLC data integrity failure");
+        }
+    }
+    DEBUG_ONLY("OHLC Data samples validated " << samples.size());
+    return samples.size();
+}
+
+// ----------------------------------------------------------------------------
 // resample from res2 to res1
-ohlc_datasets *ohlc_datasets::resample(double res1, double res2)
+ohlc_datasets *ohlc_datasets::resample(candle_res res1, candle_res res2)
 {
     ohlc_datasets *result = new ohlc_datasets(res1);
     result->resample_update(res1, this, res2);
@@ -145,48 +158,72 @@ ohlc_datasets *ohlc_datasets::resample(double res1, double res2)
 }
 
 // ----------------------------------------------------------------------------
-// res1 is reolution of this dataset, res2 is (higher) resolution of other
-ohlc_datasets *ohlc_datasets::resample_update(double res1, ohlc_datasets *other, double res2)
+// res1 is resolution of this dataset, res2 is (higher) resolution of other
+ohlc_datasets *ohlc_datasets::resample_update(candle_res res1, ohlc_datasets *other, candle_res res2)
 {
     if (other->ohlc_samples_->data().empty()) return this;
 
-    // Get the final point of this dataset if present
-    double T;
+    // how many of the hi-res candles in the new lower-res candle?
+    int subsamples = static_cast<int>(res1/res2);
+    DEBUG_ONLY(res2.name_ << " subsamples " << res1.name_ << " " << subsamples);
+
+    // Get the final time-point of this dataset if present -
+    // and increment it by 1 hi-res sample to get next start time
+    double start_T, orig_T=0;
+    std::uint64_t orig_size = 0;
     if (!ohlc_samples_->data().empty()) {
-        T = ohlc_samples_->data().back().time;
+        orig_size = ohlc_samples_->size();
+        orig_T = ohlc_samples_->data().back().time;
+        start_T = orig_T + res2;
     }
-    // otherwise, just use the first point of the other dataset
+    // empty, resample from the first point of the hi-res dataset
     else {
-        T = other->ohlc_samples_->data().front().time;
-        // insert a dummy sample we will overwrite
-        ohlc_samples_->data().append(QwtOHLCSample());
+        start_T = other->ohlc_samples_->data().front().time;
+    }
+    // the start time must start an integral candle at the new resolution
+    while (static_cast<int>(0.5 + start_T/res2) % subsamples !=0) {
+        DEBUG_ONLY("incrementing candle start : modulus "
+                     << static_cast<int>(0.5 + start_T/res2) % subsamples
+                     << " of " << subsamples);
+        start_T += res2;
     }
 
-    // What index in the high res data maps to our time T
-    auto init2 = other->ohlc_samples_->data().front().time;
-    uint64_t that_sample = sample_index(init2, T, res2);
+    // What index in the high res data maps to selected time start_T
+    uint64_t init_sample = other->ohlc_samples_->sample_index(start_T);
 
-    // we will start a fresh candle from this time T
-    QwtOHLCSample current_ohlc = other->ohlc_samples_->data()[that_sample];
-    current_ohlc.time = res1*static_cast<uint64_t>(init2/res1);
+    // just exit if there isn't enough hi-res data for a full new resampled candle
+    if ((init_sample+subsamples)>other->ohlc_samples_->size())
+        return this;
+
+    // we will start a fresh candle from this start_T
+    QwtOHLCSample current_ohlc = other->ohlc_samples_->data()[init_sample];
+    current_ohlc.time = res1*static_cast<uint64_t>(current_ohlc.time/res1);
 
     // iterate over all higher res samples for T onwards
+    DEBUG_ALWAYS("resampling " << res1.name_ << " from"
+                 << " time " << msecs_unix_to_calendar_time(current_ohlc.time)
+                 << " index " << orig_size);
     for (QVector<QwtOHLCSample>::const_iterator
-         it=other->ohlc_samples_->data().begin() + that_sample;
+         it=other->ohlc_samples_->data().begin() + init_sample;
          it<other->ohlc_samples_->data().end(); ++it)
     {
         double quantized_time = res1*static_cast<uint64_t>(it->time/res1);
-        // if the time is not the same as our current candle, start a new one
-        if (quantized_time != current_ohlc.time) {
+        int subsample = static_cast<int>(0.5 + it->time/res2) % subsamples;
+        // if we are starting a new candle
+        if (subsample==0) {
             current_ohlc = *it;
             current_ohlc.time = quantized_time;
-            ohlc_samples_->append(current_ohlc);
         }
         // overwrite the current candle with updated numbers
         else {
             update_QwtOHLCSample(current_ohlc, *it);
-            ohlc_samples_->data().back() = current_ohlc;
+        }
+        // finalizing a new candle
+        if (subsample==(subsamples-1)) {
+            ohlc_samples_->append(current_ohlc);
         }
     }
+    validate_ohlc(ohlc_samples_->data(), res1, orig_T);
+
     return this;
 }
