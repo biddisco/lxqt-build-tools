@@ -360,10 +360,10 @@ void GroxMainWindow::createMenus()
     // ---------------------------------------------------------------------
 
     // used to fetch account balances after N seconds
-    connect(timer_, SIGNAL(timeout()), this, SLOT(on_candlestick_timer()));
+    connect(timer_, SIGNAL(timeout()), this, SLOT(candlestick_timer_event()));
 
     // Timers must be started from the qt thread that created them
-    connect(this, SIGNAL(restart_timer()), this, SLOT(restart_candlestick_timer()));
+    connect(this, SIGNAL(restart_candlestick_timer()), this, SLOT(restart_candlestick_timer_event()));
 
     // orderbook updates from bitstamp network connection
     // 1 Priority, arbitrage, 2 plot update, 3 text update
@@ -707,7 +707,7 @@ void GroxMainWindow::update_candlestick_data()
         }
         else {
             candlestick_update_active_ = false;
-            emit restart_timer();
+            emit restart_candlestick_timer();
         }
     });
 }
@@ -779,7 +779,7 @@ void GroxMainWindow::transaction_event()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::restart_candlestick_timer()
+void GroxMainWindow::restart_candlestick_timer_event()
 {
     using namespace std::chrono;
     // how long until the minute candle closes
@@ -804,10 +804,10 @@ void GroxMainWindow::restart_candlestick_timer()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::on_candlestick_timer()
+void GroxMainWindow::candlestick_timer_event()
 {
     QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
-    DEBUG_ALWAYS("on_candlestick_timer : " + now.toStdString());
+    DEBUG_ALWAYS("candlestick_timer_event : " + now.toStdString());
     if (!candlestick_update_active_) {
         update_candlestick_data();
     }

@@ -120,7 +120,7 @@ signals:
     void quitApplication();
     void new_ohlc_data_ui(double);
     void new_ledger_data();
-    void restart_timer();
+    void restart_candlestick_timer();
 
 public slots:
     void appExitCleanupHandler();
@@ -131,8 +131,8 @@ public slots:
     void execute_usd();
     void perform_arbitrage();
     void transaction_event();
-    void restart_candlestick_timer();
-    void on_candlestick_timer();
+    void restart_candlestick_timer_event();
+    void candlestick_timer_event();
     void orderbook_text_update();
 
     // to connect to xrpl ledger signals
