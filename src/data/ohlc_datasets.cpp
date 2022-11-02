@@ -116,7 +116,7 @@ int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, cand
 {
     if (samples.empty()) return 0;
     //
-    double init_time = time;
+    double init_time;
     double origin_time = samples.begin()->time;
     uint64_t init_index = 0;
     if (time==0) {

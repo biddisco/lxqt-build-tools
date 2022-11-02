@@ -789,7 +789,7 @@ void GroxMainWindow::restart_candlestick_timer()
     tm utc_tm = *gmtime(&tt);
     // we need to give bitstamp time to update its data,
     // so only check a few seconds after each new minute begins
-    const int safety = 10;
+    const int safety = 8;
     int delay_seconds = 60 + safety - utc_tm.tm_sec;
 
     if (timer_->isActive()) {
@@ -798,7 +798,7 @@ void GroxMainWindow::restart_candlestick_timer()
         timer_->start(delay_seconds*1000);
     }
     else {
-        DEBUG_ALWAYS("restarting candlestick timer " << delay_seconds << " seconds");
+        DEBUG_ONLY("restarting candlestick timer " << delay_seconds << " seconds");
         timer_->start(delay_seconds*1000);
     }
 }
