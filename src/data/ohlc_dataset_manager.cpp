@@ -2,8 +2,17 @@
 #include <iostream>
 #include <cmath>
 //
-#include "src/debug.hpp"
+#include "src/print.hpp"
 #include "src/data/ohlc_dataset_manager.hpp"
+
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+// a debug level of zero disables messages with a priority>0
+// a debug level of N shows messages with priority<N
+constexpr int debug_level = 0;
+//
+template <int Level>
+static print_threshold<Level, debug_level> man_dbg("Manager");
 
 // ----------------------------------------------------------------------------
 ohlc_dataset_manager::ohlc_dataset_manager()
@@ -62,7 +71,7 @@ void ohlc_dataset_manager::read_hdf5(QVector<QwtOHLCSample> &data)
 {
     if (std::filesystem::exists(file_name_))
     {
-        DEBUG_ALWAYS("Opening: " << file_name_);
+        man_dbg<0>.debug(str<>("Opening"), file_name_);
         data.clear();
         //
         hid_t file = H5Fopen(file_name_.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -91,7 +100,7 @@ void ohlc_dataset_manager::read_hdf5(QVector<QwtOHLCSample> &data)
     }
     else
     {
-        DEBUG_ONLY("Creating empty: " << file_name_);
+        man_dbg<5>.debug(str<>("Creating empty"), file_name_);
 
         // Create a new file using default properties.
         hid_t file_id = H5Fcreate(
@@ -108,10 +117,10 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
 {
     int valid = ohlc_datasets::validate_ohlc(samples, ohlc_chart_data::minute);
     if (valid!=samples.size()) {
-        DEBUG_ALWAYS("Error: Aborting write");
+        man_dbg<0>.error(str<>("Error"), "Aborting write");
     }
     //
-    DEBUG_ALWAYS("Opening: " << file_name_);
+    man_dbg<0>.debug(str<>("Opening"), file_name_);
 
     // In the OHLC dataset:
     // There are 24*60=1440 60s candles per day, each candle has 6 {t,o,h,l,c,v} entries,
@@ -155,7 +164,7 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
     // if we are extending a dataset
     else if (update > 0)
     {
-        DEBUG_ONLY("Extending datasets by: " << update);
+        man_dbg<5>.debug(str<>("Extending"), dec<8>(update));
         uint64_t offset = samples.size() - update;
         hsize_t offset1[1] = {offset * ohlc_size};
         hsize_t ext1[1] = {update * ohlc_size};
@@ -182,7 +191,7 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
     // truncating a dataset
     else if (truncate)
     {
-        DEBUG_ALWAYS("Truncating dataset to: " << samples.size());
+        man_dbg<0>.debug(str<>("Truncating"), dec<8>(samples.size()));
 
         hid_t dset1 = H5Dopen(file, "ohlc", H5P_DEFAULT);
         // extend dataset to new size
@@ -194,7 +203,7 @@ void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
     // free/close file
     hdf5_check("H5Fclose", H5Fclose(file));
 
-    DEBUG_ALWAYS("Dataset size: " << samples.size());
+    man_dbg<0>.debug(str<>("Closed"), dec<8>(samples.size()));
 }
 
 // ----------------------------------------------------------------------------
@@ -205,9 +214,9 @@ void ohlc_dataset_manager::truncate_from_time(double t)
         auto samples = k.second->ohlc_samples_;
         auto index = samples->sample_index(t);
         samples->data().resize(index);
-        DEBUG_ALWAYS("Truncating "
-                     << ohlc_chart_data::get_resolution(res).name_
-                     << " at index " << index);
+        man_dbg<0>.debug(str<>("Truncating"),
+                     str<3>(ohlc_chart_data::get_resolution(res).name_)
+                     , "at index", index);
         if (res==ohlc_chart_data::minute) {
             write_hdf5(samples->data(), 0, true);
         }

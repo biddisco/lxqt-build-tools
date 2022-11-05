@@ -56,7 +56,7 @@ extern char** environ;
 // When the template parameter is false, the optimizer will
 // not produce code and so the impact is nil.
 //
-// static hpx::debug::enable_print<true> spq_deb("SUBJECT");
+// static enable_print<true> spq_deb("SUBJECT");
 //
 // Later in code you may print information using
 //
@@ -80,22 +80,28 @@ extern char** environ;
 
 // Used to wrap function call parameters to prevent evaluation
 // when debugging is disabled
-#define OOMPH_DP_LAZY(printer, Expr) printer.eval([&] { return Expr; })
+#define GROX_DP_LAZY(printer, Expr) printer.eval([&] { return Expr; })
 #if (__cplusplus >= 201703L)
-#define OOMPH_DP_ONLY(printer, Expr) if constexpr (printer.is_enabled()) { printer.Expr; };
+#define GROX_DP_ONLY(printer, Expr) if constexpr (printer.is_enabled()) { printer.Expr; };
 #else
-#define OOMPH_DP_ONLY(printer, Expr) if (printer.is_enabled()) { printer.Expr; };
+#define GROX_DP_ONLY(printer, Expr) if (printer.is_enabled()) { printer.Expr; };
 #endif
 
 // ------------------------------------------------------------
 /// \cond NODETAIL
-namespace hpx { namespace debug {
-
-    // ------------------------------------------------------------------
-    // format as zero padded int
-    // ------------------------------------------------------------------
+namespace grox::debug {
     namespace detail {
+        // ------------------------------------------------------------------
+        // helper for N>M true/false
+        // ------------------------------------------------------------------
+        template <int Level, int Threshold>
+        struct check_level : std::integral_constant<bool, Level <= Threshold>
+        {
+        };
 
+        // ------------------------------------------------------------------
+        // format as zero padded int
+        // ------------------------------------------------------------------
         template <int N, typename T>
         struct dec
         {
@@ -114,7 +120,7 @@ namespace hpx { namespace debug {
                 return os;
             }
         };
-    }    // namespace detail
+    }
 
     template <int N = 2, typename T>
     detail::dec<N, T> dec(T const& v)
@@ -326,15 +332,15 @@ namespace hpx { namespace debug {
         {
             const uint64_t* uintBuf = static_cast<const uint64_t*>(p.addr_);
             os << "Memory:";
-            os << " address " << hpx::debug::ptr(p.addr_) << " length "
-               << hpx::debug::hex<6>(p.len_)
-               << " CRC32:" << hpx::debug::hex<8>(crc32(p.addr_, p.len_))
+            os << " address " << ptr(p.addr_) << " length "
+               << hex<6>(p.len_)
+               << " CRC32:" << hex<8>(crc32(p.addr_, p.len_))
                << "\n";
             for (size_t i = 0;
                  i < (std::min)(size_t(std::ceil(p.len_ / 8.0)), size_t(128));
                  i++)
             {
-                os << hpx::debug::hex<16>(*uintBuf++) << " ";
+                os << hex<16>(*uintBuf++) << " ";
             }
             os << " : " << p.txt_;
             return os;
@@ -823,5 +829,12 @@ namespace hpx { namespace debug {
         }
     };
 
-}}    // namespace hpx::debug
+    template <int Level, int Threshold>
+    struct print_threshold : enable_print<detail::check_level<Level, Threshold>::value>
+    {
+        using base_type = enable_print<detail::check_level<Level, Threshold>::value>;
+        // inherit constructor
+        using base_type::base_type;
+    };
+}    // namespace grox::debug::detail
 /// \endcond

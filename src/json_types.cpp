@@ -9,12 +9,21 @@
 #include "json_types.hpp"
 
 std::ostream& operator<<(std::ostream& os, const QwtOHLCSample &x) {
+#if 0
     os << "Time: "   << x.time << " "
        << "Open: "   << x.open << " "
        << "High: "   << x.high << " "
        << "Low: "    << x.low << " "
        << "Close: "  << x.close << " "
        << "Volume: " << x.volume;
+#else
+    os << "T: " << x.time  << " "
+       << "O: " << x.open  << " "
+       << "H: " << x.high  << " "
+       << "L: " << x.low   << " "
+       << "C: " << x.close << " "
+       << "V: " << x.volume;
+#endif
     return os;
 }
 

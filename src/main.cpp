@@ -10,6 +10,16 @@
 #include "mainwindow.hpp"
 #include "src/widgets/password_dialog.hpp"
 #include "src/settings.hpp"
+#include "src/print.hpp"
+
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+// a debug level of zero disables messages with a priority>0
+// a debug level of N shows messages with priority<N
+constexpr int debug_level = 5;
+//
+template <int Level>
+static print_threshold<Level, debug_level> app_dbg("AppMain");
 
 // ----------------------------------------------------------------------------
 app_settings* global_settings()
@@ -42,7 +52,7 @@ void init_settings(app_settings* settings)
     settings->logFileName = QLatin1String("grox.log").data();
     settings->iniFileName =
         (settings->configLocation + QLatin1String("/grox.ini")).toLatin1().data();
-    std::cout << "Ini: " << settings->iniFileName.toLatin1().data() << std::endl;
+    app_dbg<5>.debug(str<>("Ini"), settings->iniFileName.toLatin1().data());
 }
 
 QByteArray base64_encode(const QByteArray& ba)
@@ -157,7 +167,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        std::cout << "Please set GROX_PASSWORD base64 encoded environment var" << std::endl;
+        app_dbg<5>.debug(str<>("GROX_PASSWORD"), "base64 encoded var");
         return EXIT_FAILURE;
     }
 
@@ -203,7 +213,7 @@ int main(int argc, char* argv[])
             encryptor.decrypt(secure_string(API_key.data(), API_key.size()));
         if (std::getenv("Rand2")) {
             bitstamp.API_key = std::getenv("Rand2");
-            std::cout << "Using key from ENV" << std::endl;
+            app_dbg<5>.debug(str<>("Using ENV key"));
         }
         //
         QByteArray API_secret =
@@ -212,7 +222,7 @@ int main(int argc, char* argv[])
             encryptor.decrypt(secure_string(API_secret.data(), API_secret.size()));
         if (std::getenv("Rand3")) {
             bitstamp.API_secret = std::getenv("Rand3");
-            std::cout << "Using sec from ENV" << std::endl;
+            app_dbg<5>.debug(str<>("Using ENV sec"));
         }
         //
         QByteArray API_tag_ =
@@ -276,28 +286,28 @@ int main(int argc, char* argv[])
     if (argc > 1 && std::string(argv[1]) == std::string("decode"))
     {
         auto &bitstamp = bitstamp_network::get_bitstamp_instance()->account();
-        std::cout << "\nDecrypted information\n" << std::endl;
-        std::cout << "API_user       : " << bitstamp.API_user << std::endl;
-        std::cout << "API_key        : " << bitstamp.API_key << std::endl;
-        std::cout << "API_secret     : " << bitstamp.API_secret << std::endl;
-        std::cout << "xrp.tag        : " << bitstamp.tag_ << std::endl;
-        std::cout << "xrp.public     : " << bitstamp.public_ << std::endl;
+        app_dbg<5>.debug("\nDecrypted information\n");
+        app_dbg<5>.debug("API_user       : ", bitstamp.API_user);
+        app_dbg<5>.debug("API_key        : ", bitstamp.API_key);
+        app_dbg<5>.debug("API_secret     : ", bitstamp.API_secret);
+        app_dbg<5>.debug("xrp.tag        : ", bitstamp.tag_);
+        app_dbg<5>.debug("xrp.public     : ", bitstamp.public_);
         //
         auto const & x1 = xrpl_network::get_xrpl_instance(false)->wallets();
         auto const & x2 = xrpl_network::get_xrpl_instance(true)->wallets();
         for (const auto lw : x1) {
             auto w = static_cast<ledger_wallet*>(lw);
-            std::cout << "XRP_name       : " << w->name_ << std::endl;
-            std::cout << "XRP_public     : " << w->public_ << std::endl;
-            std::cout << "XRP_secret     : " << w->private_ << std::endl;
-            std::cout << "XRP_testnet    : " << w->testnet_ << std::endl;
+            app_dbg<5>.debug("XRP_name       : ", w->name_);
+            app_dbg<5>.debug("XRP_public     : ", w->public_);
+            app_dbg<5>.debug("XRP_secret     : ", w->private_);
+            app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
         }
         for (const auto lw : x2) {
             auto w = static_cast<ledger_wallet*>(lw);
-            std::cout << "XRP_name       : " << w->name_ << std::endl;
-            std::cout << "XRP_public     : " << w->public_ << std::endl;
-            std::cout << "XRP_secret     : " << w->private_ << std::endl;
-            std::cout << "XRP_testnet    : " << w->testnet_ << std::endl;
+            app_dbg<5>.debug("XRP_name       : ", w->name_);
+            app_dbg<5>.debug("XRP_public     : ", w->public_);
+            app_dbg<5>.debug("XRP_secret     : ", w->private_);
+            app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
         }
         return EXIT_SUCCESS;
     }

@@ -29,7 +29,7 @@
 #include "src/widgets/digital_clock.hpp"
 //
 #include "src/demangle_helper.hpp"
-#include "src/debug.hpp"
+#include "src/print.hpp"
 #include "src/network/evp-encrypt.hpp"
 #include "src/network/https-async.hpp"
 //
@@ -49,8 +49,14 @@
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
 
-using print_on = hpx::debug::enable_print<true>;
-static constexpr print_on mainwin_debug("Mainwin");
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+// a debug level of zero disables messages with a priority>0
+// a debug level of N shows messages with priority<N
+constexpr int debug_level = 0;
+//
+template <int Level>
+static print_threshold<Level, debug_level> main_dbg("Mainwin");
 
 // ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)
@@ -216,7 +222,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     QString txt = "X";
     int char_size = QFontMetrics(ui.order_book_xrpl->font()).horizontalAdvance(txt);
     int calcWidth = char_size*85 + 8;
-    //std::cout << "width " << ui.order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
+    //std::cout << "width", ui.order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
     ui.order_book_xrpl->setMinimumWidth(calcWidth);
     //ui.order_book_xrpl->setMaximumWidth(calcWidth);
     ui.order_book_bitstamp->setMinimumWidth(calcWidth);
@@ -254,7 +260,7 @@ GroxMainWindow::~GroxMainWindow()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::appExitCleanupHandler()
 {
-    qDebug() << "Main Window: appExitCleanupHandler()";
+    main_dbg<0>.debug(str<>("appExitCleanupHandler"));
     // call clean up handlers of any components/widgets
     // block here to prevent access of temp buffers that are deleted
     // by the program/qt/etc
@@ -267,7 +273,7 @@ void GroxMainWindow::appExitCleanupHandler()
     //
     xrpl_testnet_->shut_down();
     xrpl_testnet_.reset();
-    qDebug() << "websockets: shutdown complete";
+    main_dbg<0>.debug(str<>("websockets"), "shutdown complete");
 
     // remove work guard so IO threads can exit
     io_contexts_.work_guard_->reset();
@@ -277,7 +283,7 @@ void GroxMainWindow::appExitCleanupHandler()
     for (auto &t : ioc_threads_) {
         if (t.joinable()) t.join();
     }
-    qDebug() << "boost::asio: shutdown complete";
+    main_dbg<0>.debug(str<>("boost::asio"), "shutdown complete");
 }
 
 // ----------------------------------------------------------------------------
@@ -286,7 +292,7 @@ void GroxMainWindow::createActions()
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q), this, SLOT(close()));
     new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_D), this, SLOT(restore_dockwindows()));
 
-    // Ctrl+R
+    // Ctrl+R : shows how to connect a lambda to a shortcut
     QObject::connect(new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_R),  this), &QShortcut::activated, [=](){
     });
 
@@ -307,7 +313,7 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
         if (mouseEvent->modifiers() == Qt::ShiftModifier)
         {
             //do what you need
-            DEBUG_ONLY("Shift click pressed");
+            main_dbg<6>.debug("Shift click pressed");
             std::array<std::string, 5> strings{
                 bitstamp_network_->account().API_user,
                 bitstamp_network_->account().API_key,
@@ -479,7 +485,7 @@ void GroxMainWindow::createMenus()
             hdf5_ohlc_.truncate_from_time(msecs);
             update_candlestick_data();
         } else {
-            qDebug() << "Yes was *not* clicked";
+            main_dbg<0>.debug(str<>("Yes *not* clicked"));
         }
     } , Qt::QueuedConnection);
 
@@ -534,7 +540,7 @@ void GroxMainWindow::graph_rescale(int range)
 void GroxMainWindow::new_ohlc_data(double old_res)
 {
     (void)(old_res);
-    DEBUG_ONLY("Got new data for resolution " << old_res);
+    main_dbg<5>.debug(str<>("new ohlc data"), "resolution", old_res);
     //
     // get all available candle resolutions, except highest res
     // since we we use that one to generate all the others
@@ -579,7 +585,7 @@ void GroxMainWindow::execute_xrp()
     reply = QMessageBox::question(this, "Confirm", "Execute transaction?",
                                   QMessageBox::Yes|QMessageBox::No);
     if (reply == QMessageBox::Yes) {
-        qDebug() << "Yes was clicked";
+        main_dbg<0>.debug(str<>("Yes clicked"));
 //        app_settings* app_ini = global_settings();
 
 //        std::uint32_t tag = bitstamp_network_->account().tag_;
@@ -590,7 +596,7 @@ void GroxMainWindow::execute_xrp()
 
         QApplication::quit();
     } else {
-        qDebug() << "Yes was *not* clicked";
+        main_dbg<0>.debug(str<>("Yes *not* clicked"));
     }
 }
 
@@ -601,10 +607,10 @@ void GroxMainWindow::execute_usd()
     reply = QMessageBox::question(this, "Confirm", "Execute transaction?",
                                   QMessageBox::Yes|QMessageBox::No);
     if (reply == QMessageBox::Yes) {
-        qDebug() << "Yes was clicked";
+        main_dbg<0>.debug(str<>("Yes clicked"));
         QApplication::quit();
     } else {
-        qDebug() << "Yes was *not* clicked";
+        main_dbg<0>.debug(str<>("Yes *not* clicked"));
     }
 }
 
@@ -615,7 +621,7 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
     {
         // convert json data into vectors of actual data
         nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
-        DEBUG_ALWAYS("Received " << jdata.size() << " json OHLC samples");
+        main_dbg<0>.debug(str<>("Received"), jdata.size(), "json OHLC samples");
         QVector<QwtOHLCSample> new_ohlc_samples;
         new_ohlc_samples.reserve(jdata.size());
         QwtOHLCSample sample;
@@ -629,11 +635,11 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
             new_ohlc_samples.push_back(sample);
         }
         //
-        DEBUG_ALWAYS("Converted " << new_ohlc_samples.size() << " new OHLC samples");
+        main_dbg<5>.debug("Converted", new_ohlc_samples.size(), "new OHLC samples");
         hdf5_ohlc_.merge_data(ohlc_chart_data::minute, new_ohlc_samples);
         // what is the last sample we currently have
         auto last_time = hdf5_ohlc_.get_last_sample_time(false);
-        std::cout << "Data merged up to " << msecs_unix_to_calendar_time(last_time) << std::endl;
+        main_dbg<0>.debug(str<>("Data merged up to"), msecs_unix_to_calendar_time(last_time));
         hdf5_ohlc_.delete_live_data_up_to(last_time);
         //
         emit new_ohlc_data_ui(ohlc_chart_data::minute);
@@ -641,8 +647,7 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
     }
     catch (std::exception& e)
     {
-        std::cerr << "JSON error decoding OHLC data: " << e.what() << "\n"
-                  << data << std::endl << std::endl;
+        main_dbg<0>.error(str<>("JSON error"), "decoding OHLC data:", e.what(), "\n", data, "\n\n");
     }
 }
 
@@ -660,7 +665,7 @@ void GroxMainWindow::capture_image()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::update_account_balances()
 {
-    DEBUG_ALWAYS("Updating accounts");
+    main_dbg<5>.debug("Updating accounts");
     //
     bitstamp_network_->get_account_info();
     bitstamp_network_->get_open_orders();
@@ -686,21 +691,20 @@ void GroxMainWindow::update_candlestick_data()
         // linux time 1496275200 = Thu Jun 01 2017 00:00:00 GMT+0000
         start_t = 1496275200*1000.0;
         std::string s = msecs_unix_to_calendar_time(start_t);
-        DEBUG_ALWAYS("No Data present : requesting from " << s);
+        main_dbg<5>.debug(str<>("No Data"),  "requesting from", s);
     }
     else {
         std::string s = msecs_unix_to_calendar_time(start_t);
-        DEBUG_ALWAYS("Data present up until " << s);
+        main_dbg<5>.debug(str<>("Data present until"), s);
     }
     // convert to unix timestamp : next sample is 60s after last
     req_t = start_t/1000 + 60;
 
-    std::cout << "Requesting candlestick data from "
-              << msecs_unix_to_calendar_time(req_t*1000) << std::endl;
+    main_dbg<5>.debug(str<>("Requesting candlesticks"), msecs_unix_to_calendar_time(req_t*1000));
 
     // @TODO add futures here to make dependency chain simpler?
     bitstamp_network_->request_new_candlestick_data(req_t, [this, req_t](auto& ctx, bool more) {
-        std::cout << "Received candlestick data from " << msecs_unix_to_calendar_time(req_t*1000) << std::endl;
+        main_dbg<0>.debug(str<>("Received"), msecs_unix_to_calendar_time(req_t*1000));
         this->receive_ohlc_data(std::move(ctx.res.body()));
         if (more) {
             update_candlestick_data();
@@ -721,7 +725,7 @@ void GroxMainWindow::start_io_threads(int nthreads)
         // Run the I/O service on some threads.
         for (int i=0; i<nthreads; ++i) {
             ioc_threads_.emplace_back([&]() {
-                DEBUG_ONLY("io_contexts run : thread " << std::this_thread::get_id());
+                main_dbg<5>.debug(str<>("io_contexts"), "run : thread", std::this_thread::get_id());
                 // The call will return when the socket is closed.
                 io_contexts_.ioc.run();
             });
@@ -774,7 +778,7 @@ void GroxMainWindow::perform_arbitrage()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::transaction_event()
 {
-    DEBUG_ALWAYS("transaction_event : check balances");
+    main_dbg<5>.debug("transaction_event : check balances");
     update_account_balances();
 }
 
@@ -794,11 +798,11 @@ void GroxMainWindow::restart_candlestick_timer_event()
 
     if (timer_->isActive()) {
         // timer is already running
-        DEBUG_ALWAYS("Overriding: candlestick timer " << delay_seconds << " seconds");
+        main_dbg<5>.debug("Overriding: candlestick timer", delay_seconds, "seconds");
         timer_->start(delay_seconds*1000);
     }
     else {
-        DEBUG_ONLY("restarting candlestick timer " << delay_seconds << " seconds");
+        main_dbg<5>.debug("restarting candlestick timer", delay_seconds, "seconds");
         timer_->start(delay_seconds*1000);
     }
 }
@@ -807,7 +811,7 @@ void GroxMainWindow::restart_candlestick_timer_event()
 void GroxMainWindow::candlestick_timer_event()
 {
     QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
-    DEBUG_ALWAYS("candlestick_timer_event : " + now.toStdString());
+    main_dbg<5>.debug("candlestick_timer_event : " + now.toStdString());
     if (!candlestick_update_active_) {
         update_candlestick_data();
     }
@@ -885,7 +889,7 @@ void GroxMainWindow::saveTrustlines()
         settings.setValue(key.c_str(), t.issuer_.c_str());
     }
     settings.endGroup();
-    qDebug() << "Trustlines saved under:" << settings.fileName();
+    main_dbg<0>.debug(str<>("Trustlines saved"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -904,7 +908,7 @@ void GroxMainWindow::loadTrustlines()
         currency::trustlines.push_back({issuer, currency_to_hex(code)});
     }
     settings.endGroup();
-    qDebug() << "Trustlines loaded from:" << settings.fileName();
+    main_dbg<0>.debug(str<>("Trustlines loaded"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -925,7 +929,7 @@ void GroxMainWindow::saveConnectionSetups()
     }
 
     settings.endGroup();
-    qDebug() << "Connections saved under:" << settings.fileName();
+    main_dbg<0>.debug(str<>("Connections saved"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -947,7 +951,7 @@ void GroxMainWindow::loadConnectionSetups()
     }
 
     settings.endGroup();
-    qDebug() << "Connections loaded from:" << settings.fileName();
+    main_dbg<0>.debug(str<>("Connections loaded"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -974,7 +978,7 @@ void GroxMainWindow::saveWindowSettings()
     settings.setValue("mainwindowTabIndex", ui.main_tabbook->currentIndex());
 
     settings.endGroup();
-    qDebug() << "Settings saved under:" << settings.fileName();
+    main_dbg<0>.debug(str<>("Settings saved"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -1001,15 +1005,13 @@ void GroxMainWindow::loadWindowSettings()
     ui.main_tabbook->setCurrentIndex(mainwindowTabIndex);
 
     settings.endGroup();
-    qDebug() << "Settings loaded from:" << settings.fileName();
+    main_dbg<0>.debug(str<>("Settings loaded"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::stream_process(const QwtOHLCSample &ohlc)
 {
-    auto s = msecs_unix_to_calendar_time(ohlc.time);
-    std::cout << "New data  = " << ohlc << std::endl;
-    std::cout << "Event time " << s << std::endl;
+    main_dbg<0>.debug(str<>("New data"), msecs_unix_to_calendar_time(ohlc.time), ohlc);
 //    df_.process(ohlc);
 }
 
@@ -1162,10 +1164,10 @@ void GroxMainWindow::execute_filter()
 
                 funding[0].xrp = fee_estimate*funding[0].usd/p;
                 funding[0].usd = 0;
-                std::cout << "Buy  : " << msecs_unix_to_calendar_time(e.time_) << " "
-                          << "Res " << hpx::debug::str<6>(base_resolution.name_)
-                          << "xrp (" << hpx::debug::fp<2,11>(funding[0].xrp) << ") "
-                          << "usd (" << hpx::debug::fp<2,11>(funding[0].usd) << ") "
+                std::cout << "Buy  :" << msecs_unix_to_calendar_time(e.time_) << " "
+                          << "Res " << str<6>(base_resolution.name_)
+                          << "xrp (" << fp<2,11>(funding[0].xrp) << ") "
+                          << "usd (" << fp<2,11>(funding[0].usd) << ") "
                           << "\n";
                 // plot current assets
                 QPointF trade2(e.time_, funding[0].xrp);
@@ -1187,27 +1189,27 @@ void GroxMainWindow::execute_filter()
 
                 funding[0].usd = fee_estimate*funding[0].xrp*p;
                 funding[0].xrp = 0;
-                std::cout << "Sell : " << msecs_unix_to_calendar_time(e.time_) << " "
-                          << "Res " << hpx::debug::str<6>(base_resolution.name_)
-                          << "xrp (" << hpx::debug::fp<2,11>(funding[0].xrp) << ") "
-                          << "usd (" << hpx::debug::fp<2,11>(funding[0].usd) << ") "
+                std::cout << "Sell :" << msecs_unix_to_calendar_time(e.time_) << " "
+                          << "Res " << str<6>(base_resolution.name_)
+                          << "xrp (" << fp<2,11>(funding[0].xrp) << ") "
+                          << "usd (" << fp<2,11>(funding[0].usd) << ") "
                           << "\n";
             }
         }
 //            static auto algo_deb =
-//                mainwin_debug.make_timer(60, hpx::debug::str<>("Algorithm"));
+//                mainwin_debug.make_timer(60, str<>("Algorithm"));
 
 //            mainwin_debug.timed(algo_deb, "time",
-//                hpx::debug::str<20>(msecs_unix_to_calendar_time(e.time_).c_str())
-//                , hpx::debug::lambda(
+//                str<20>(msecs_unix_to_calendar_time(e.time_).c_str())
+//                , lambda(
 //                    [&](){
 //                        int res_i = 0;
 //                        std::stringstream temp;
 //                        temp << "\n";
 //                        for (const candle_res &res : resolutions) {
-//                            temp << "res "  << hpx::debug::str<5>(res.name_) << " "
-//                                 << "xrp (" << hpx::debug::fp<2,9>(funding[0].xrp) << ") "
-//                                 << "usd (" << hpx::debug::fp<2,9>(funding[0].usd) << ") "
+//                            temp << "res "  << str<5>(res.name_), ""
+//                                 << "xrp (" << fp<2,9>(funding[0].xrp) << ") "
+//                                 << "usd (" << fp<2,9>(funding[0].usd) << ") "
 //                                 << "\n";
 //                            res_i++;
 //                        }
@@ -1232,8 +1234,8 @@ void GroxMainWindow::execute_filter()
     int res_i = 0;
     for (const candle_res &res : resolutions) {
         std::cout << "res : " << res.name_ << " "
-                  << "xrp (" << hpx::debug::fp<2,9>(funding[0].xrp) << ") "
-                  << "usd (" << hpx::debug::fp<2,9>(funding[0].usd) << ") "
+                  << "xrp (" << fp<2,9>(funding[0].xrp) << ") "
+                  << "usd (" << fp<2,9>(funding[0].usd) << ") "
                   << "\n";
         res_i++;
     }

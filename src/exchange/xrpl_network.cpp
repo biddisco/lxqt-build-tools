@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QString>
 //
-#include "src/debug.hpp"
+#include "src/print.hpp"
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 #include "src/network/evp-encrypt.hpp"

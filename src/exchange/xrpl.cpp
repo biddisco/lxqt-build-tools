@@ -4,7 +4,7 @@
 #include <string_view>
 #include <iostream>
 // Grox
-#include "src/debug.hpp"
+#include "src/print.hpp"
 #include "src/currency.hpp"
 // extern
 #include <ripple/basics/StringUtilities.h>
@@ -22,6 +22,14 @@
 #include <ripple/protocol/jss.h>
 #include <ripple/protocol/Issue.h>
 #include <ripple/protocol/tokens.h>
+
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+// a debug level of N shows messages with priority<N
+constexpr int debug_level = 0;
+//
+template <int Level>
+static print_threshold<Level, debug_level> xrpl_dbg("XRPL   ");
 
 // ----------------------------------------------------------------------------
 std::string currency_to_hex(std::string_view currency)
@@ -144,9 +152,9 @@ std::string make_xrp_payment(
         }
     });
 
-    DEBUG_ALWAYS("Before signing: \n"
-              << payTx.getJson(JsonOptions::none).toStyledString() << std::endl
-              << "Serialized: " << payTx.getJson(JsonOptions::none, true)[jss::tx]);
+    xrpl_dbg<0>.debug(str<>("payment"), "Before signing: \n",
+              payTx.getJson(JsonOptions::none).toStyledString(), "\n",
+              "Serialized:", payTx.getJson(JsonOptions::none, true)[jss::tx].asString());
 
     payTx.sign(keypair.first, keypair.second);
 
@@ -192,9 +200,9 @@ std::string make_xrp_offer(
         obj[sfTakerGets] = gets;
     });
 
-    DEBUG_ALWAYS("Before signing: \n"
-              << offerTx.getJson(JsonOptions::none).toStyledString() << std::endl
-              << "Serialized: " << offerTx.getJson(JsonOptions::none, true)[jss::tx]);
+    xrpl_dbg<0>.debug(str<>("offer"), "Before signing: \n",
+              offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
+              "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
 
     offerTx.sign(keypair.first, keypair.second);
 
@@ -203,7 +211,7 @@ std::string make_xrp_offer(
 #ifdef DEBUG_TX_SIGN
     std::cout << "\nAfter signing: \n"
         << offerTx.getJson(JsonOptions::none).toStyledString() << std::endl
-        << "Serialized: " << serialized << std::endl;
+        << "Serialized:" << serialized << std::endl;
 #endif
 
     return serialized;
@@ -237,9 +245,9 @@ std::string cancel_xrp_offer(
         obj[sfOfferSequence] = offerSeq;
     });
 
-    DEBUG_ALWAYS("Before signing: \n"
-              << offerTx.getJson(JsonOptions::none).toStyledString() << std::endl
-              << "Serialized: " << offerTx.getJson(JsonOptions::none, true)[jss::tx]);
+    xrpl_dbg<0>.debug(str<>("offer cancel"), "Before signing: \n",
+              offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
+              "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
 
     offerTx.sign(keypair.first, keypair.second);
 
@@ -296,9 +304,9 @@ std::string set_trustline(
         }
     });
 
-    DEBUG_ALWAYS("Before signing: \n"
-              << offerTx.getJson(JsonOptions::none).toStyledString() << std::endl
-              << "Serialized: " << offerTx.getJson(JsonOptions::none, true)[jss::tx]);
+    xrpl_dbg<0>.debug(str<>("trustline"), "Before signing: \n",
+              offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
+              "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
 
     offerTx.sign(keypair.first, keypair.second);
 
