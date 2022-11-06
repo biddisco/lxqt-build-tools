@@ -19,7 +19,7 @@ using namespace grox::debug;
 constexpr int debug_level = 5;
 //
 template <int Level>
-static print_threshold<Level, debug_level> app_dbg("AppMain");
+static print_threshold<Level, debug_level> app_dbg("App-Main");
 
 // ----------------------------------------------------------------------------
 app_settings* global_settings()

@@ -16,7 +16,7 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> ohlc_dbg("Dataset");
+static print_threshold<Level, debug_level> ohlc_dbg("Datasets");
 
 // ----------------------------------------------------------------------------
 void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other)

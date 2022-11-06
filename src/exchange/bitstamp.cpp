@@ -10,7 +10,15 @@
 #include "src/widgets/wallet_widget.hpp"
 //
 #include "src/exchange/bitstamp.hpp"
+
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+// a debug level of N shows messages with priority<N
+constexpr int debug_level = 0;
 //
+template <int Level>
+static print_threshold<Level, debug_level> bitstamp_dbg("Bitstamp");
+
 // ----------------------------------------------------------------------------
 bitstamp_network::bitstamp_network()
 {
@@ -32,7 +40,7 @@ bitstamp_network::~bitstamp_network()
 bool bitstamp_network::subscribe_live_trades(net::contexts &io_contexts)
 {
     using namespace std::placeholders;
-    DEBUG_ALWAYS("Subscribing to live_trades_xrpusd");
+    bitstamp_dbg<0>.debug(str<>("Subscribing"), "live_trades_xrpusd");
     ws_trades = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
@@ -46,7 +54,7 @@ bool bitstamp_network::subscribe_live_trades(net::contexts &io_contexts)
 bool bitstamp_network::subscribe_order_book(net::contexts &io_contexts)
 {
     using namespace std::placeholders;
-    DEBUG_ALWAYS("Subscribing to order_book_xrpusd");
+    bitstamp_dbg<0>.debug(str<>("Subscribing"), "order_book_xrpusd");
     ws_bidask = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
@@ -62,17 +70,16 @@ bool bitstamp_network::subscribe_my_trades(net::contexts &io_contexts)
     nlohmann::json command;
     command["event"] = "bts:subscribe";
     command["data"]["channel"] = "private-my_trades_xrpusd-" + websocket_user_id_;
-    command["data"]["auth"] = websocket_user_id_;
-    DEBUG_ALWAYS(command.dump(4));
+    command["data"]["auth"] = websocket_token_;
+    bitstamp_dbg<0>.debug(str<>("subscribe trades"), command.dump(4));
 
     using namespace std::placeholders;
-    DEBUG_ALWAYS("Subscribing to my_trades_xrpusd");
+    bitstamp_dbg<0>.debug(str<>("Subscribing"), "my_trades_xrpusd");
     ws_mytrades = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         command.dump(4),
         [](std::string_view data) {
-            DEBUG_ALWAYS("My Trades data:");
-            DEBUG_ALWAYS(data);
+            bitstamp_dbg<0>.debug(str<>("Trades data"), data);
         });
     return true;
 }
@@ -84,7 +91,7 @@ bool bitstamp_network::unsubscribe_my_trades()
     command["event"] = "bts:unsubscribe";
     command["data"]["channel"] = "my_trades_xrpusd-" + get_bitstamp_instance()->account().API_user;
     command["data"]["auth"] = get_bitstamp_instance()->account().API_key;
-    DEBUG_ALWAYS(command.dump(4));
+    bitstamp_dbg<0>.debug(str<>("unsubscribe trades"), command.dump(4));
     ws_mytrades->write(command.dump(4));
     return true;
 }
@@ -96,16 +103,15 @@ bool bitstamp_network::subscribe_my_orders(net::contexts &io_contexts)
     command["event"] = "bts:subscribe";
     command["data"]["channel"] = "private-my_orders_xrpusd-" + websocket_user_id_;
     command["data"]["auth"] = websocket_token_;
-    DEBUG_ALWAYS(command.dump(4));
+    bitstamp_dbg<0>.debug(str<>("subscribe orders"), command.dump(4));
 
     using namespace std::placeholders;
-    DEBUG_ALWAYS("Subscribing to my_orders_xrpusd");
+    bitstamp_dbg<0>.debug(str<>("Subscribing"), "my_orders_xrpusd");
     ws_myorders = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         command.dump(4),
         [](std::string_view data) {
-            DEBUG_ALWAYS("My Orders data:");
-            DEBUG_ALWAYS(data);
+            bitstamp_dbg<0>.debug(str<>("Orders data"), data);
         });
     return true;
 }
@@ -117,7 +123,7 @@ bool bitstamp_network::unsubscribe_my_orders()
     command["event"] = "bts:unsubscribe";
     command["data"]["channel"] = "my_orders_xrpusd-" + get_bitstamp_instance()->account().API_user;
     command["data"]["auth"] = get_bitstamp_instance()->account().API_key;
-    DEBUG_ALWAYS(command.dump(4));
+    bitstamp_dbg<0>.debug(str<>("unsubscribe orders"), command.dump(4));
     ws_myorders->write(command.dump(4));
     return true;
 }
@@ -229,15 +235,13 @@ double bitstamp_network::get_fee_fixed(const currency_type &c1, const currency_t
 // ----------------------------------------------------------------------------
 bool bitstamp_network::make_payment(currency &c, basic_account *src, basic_account *dest)
 {
-    std::cout << "Bitstamp payment sent" << std::endl;
-
     bitstamp_account *from = static_cast<bitstamp_account*>(src);
     ledger_wallet    *to = static_cast<ledger_wallet*>(dest);
-    std::cout << "Bitstamp payment amount " << c.balance_
-              << " currency " << c.type_
-              << " from " << from->name_
-              << " to "   << to->public_
-              << ((to->tag_!=0) ? "(" + std::to_string(to->tag_) + ")" : "") << std::endl;
+    bitstamp_dbg<0>.debug(str<>("make_payment"), "amount", c.balance_
+              , "currency", c.type_
+              , "from",     from->name_
+              , "to",       to->public_
+              , ((to->tag_!=0) ? "(" + std::to_string(to->tag_) + ")" : ""));
 
     std::stringstream req_string;
     req_string << "amount=" << c.balance_
@@ -248,7 +252,7 @@ bool bitstamp_network::make_payment(currency &c, basic_account *src, basic_accou
         req_string << "&destination_tag" << c.type_;
         //
         account_request("/api/v2/xrp_withdrawal/", req_string.str(), [](std::string &&data){
-            std::cout << "/api/v2/xrp_withdrawal/ " << data << std::endl;
+            bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/xrp_withdrawal/", data);
         });
     }
     // this is an IOU transfer
@@ -256,7 +260,7 @@ bool bitstamp_network::make_payment(currency &c, basic_account *src, basic_accou
         req_string << "&currency=" << c.type_;
         //
         account_request("/api/v2/ripple_withdrawal/", req_string.str(), [](std::string &&data){
-            std::cout << "/api/v2/ripple_withdrawal/ " << data << std::endl;
+            bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/ripple_withdrawal/", data);
         });
     }
 
@@ -288,11 +292,8 @@ void bitstamp_network::get_websocket_token()
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_account_info(std::string&& data)
 {
-    DEBUG_ONLY("bitstamp account_info : thread " << std::this_thread::get_id());
-    DEBUG_ALWAYS("Response : " << data);
-    //
     nlohmann::json jdata = json::parse(data);
-    DEBUG_ONLY(jdata.dump(4));
+    bitstamp_dbg<0>.debug(str<>("account info"), jdata.dump(4));
     //
     bitstamp_account &acct = get_bitstamp_instance()->account();
 
@@ -332,10 +333,10 @@ void bitstamp_network::handle_account_info(std::string&& data)
         std::pair<std::string, std::string> cpair = std::make_pair("xrp", "usd");
         const auto [it, success] = fee_map_.insert({cpair, xrpusd_fee});
         if (success) {
-            std::cout << "Inserted bitstamp fee xrp/usd " << xrpusd_fee << std::endl;
+            bitstamp_dbg<0>.debug(str<>("new fee xrp/usd"), xrpusd_fee);
         }
         else {
-            std::cout << "Overwriting bitstamp fee xrp/usd " << xrpusd_fee << std::endl;
+            bitstamp_dbg<0>.debug(str<>("replace fee xrp/usd"), xrpusd_fee);
             fee_map_[cpair] = xrpusd_fee;
         }
     }
@@ -345,10 +346,10 @@ void bitstamp_network::handle_account_info(std::string&& data)
         std::pair<std::string, std::string> cpair = std::make_pair("xrp", "eur");
         const auto [it, success] = fee_map_.insert({cpair, xrpeur_fee});
         if (success) {
-            std::cout << "Inserted bitstamp fee xrp/eur " << xrpeur_fee << std::endl;
+            bitstamp_dbg<0>.debug(str<>("new fee xrp/eur"), xrpeur_fee);
         }
         else {
-            std::cout << "Overwriting bitstamp fee xrp/eur " << xrpeur_fee << std::endl;
+            bitstamp_dbg<0>.debug(str<>("replace fee xrp/eur"), xrpeur_fee);
             fee_map_[cpair] = xrpeur_fee;
         }
     }
@@ -358,11 +359,8 @@ void bitstamp_network::handle_account_info(std::string&& data)
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_websockets_token(std::string&& data)
 {
-    DEBUG_ONLY("bitstamp websocket token : thread " << std::this_thread::get_id());
-    DEBUG_ALWAYS("Response : " << data);
-    //
     nlohmann::json jdata = json::parse(data);
-    DEBUG_ONLY(jdata.dump(4));
+    bitstamp_dbg<0>.debug(str<>("websocket token"), jdata.dump());
     //
     bitstamp_account &acct = get_bitstamp_instance()->account();
     //
@@ -377,7 +375,7 @@ void bitstamp_network::handle_websockets_token(std::string&& data)
 void bitstamp_network::get_open_orders()
 {
     account_request("/api/v2/open_orders/all/", "", [this](std::string &&data) {
-        DEBUG_ONLY("Open Order response:\n" << data);
+        bitstamp_dbg<5>.debug(str<>("Open Order response"), data);
         handle_open_orders(std::move(data));
     });
 }
@@ -497,7 +495,7 @@ void bitstamp_network::account_request(std::string &&url_path, std::string &&url
         //
         b_request.body() = payload;
         b_request.prepare_payload();
-        DEBUG_ONLY("Request " << b_request << "\n");
+        bitstamp_dbg<5>.debug(str<>("Account request"), b_request);
 
         new_client.on_http(b_request, [cb=std::move(cb)](auto& ctx)
         {
@@ -511,7 +509,7 @@ void bitstamp_network::account_request(std::string &&url_path, std::string &&url
             return;
           }
           // debug : print the response headers and body
-          DEBUG_ONLY("Request response " << ctx.res.body() << "\n");
+          bitstamp_dbg<5>.debug(str<>("Request response"), ctx.res.body());
           cb(std::move(ctx.res.body()));
         });
         new_client.connect();
@@ -523,8 +521,7 @@ void bitstamp_network::account_request(std::string &&url_path, std::string &&url
 // ----------------------------------------------------------------------------
 void bitstamp_network::new_orderbook_data(bitstamp_network* n, std::string_view data)
 {
-    DEBUG_ONLY("bitstamp orderbook_data : thread " << std::this_thread::get_id());
-    DEBUG_ONLY("\n\nReceived " << data << std::endl << std::endl);
+    bitstamp_dbg<5>.debug(str<>("Orderbook data"), data);
 
     if (!n->orderbook_->accept_json_bitstamp(data))
         return;
@@ -535,14 +532,13 @@ void bitstamp_network::new_orderbook_data(bitstamp_network* n, std::string_view 
 // ----------------------------------------------------------------------------
 void bitstamp_network::new_trade_data(bitstamp_network* n, std::string_view data)
 {
-    DEBUG_ONLY("bitstamp trade_data : thread " << std::this_thread::get_id());
-    DEBUG_ONLY("\n\nReceived " << data);
+    bitstamp_dbg<5>.debug(str<>("Trade data"), data);
     if (!startswith(data, "{\"data\":")) return;
     //
     nlohmann::json jdata = json::parse(data);
     // extract the main subgroup
     jdata = jdata["data"];
-    DEBUG_ONLY(jdata.dump(4));
+    bitstamp_dbg<5>.debug(str<>("Trade data parsed"), jdata.dump(4));
 
     live_trades trade_data = jdata.get<live_trades>();
 
@@ -570,7 +566,7 @@ void bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http
     {
         if (samples >= 1000)
         {
-            DEBUG_ONLY("Limiting request from: " << samples);
+            bitstamp_dbg<5>.debug(str<>("Limiting request"), samples);
             samples = 1000;
             repeat_ohlc = true;
         }
@@ -578,7 +574,7 @@ void bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http
         std::string limit = std::to_string(samples);
         // send a request for ticker data using the io context thread to make the request
         req = "/api/v2/ohlc/xrpusd/?step=60&start=" + start + "&limit=" + limit;
-        std::cout << req << std::endl;
+        bitstamp_dbg<0>.debug(str<>("request"), req);
     }
 
     auto thread_function = [req=std::move(req), fn=std::move(fn), repeat_ohlc]() {
@@ -594,13 +590,13 @@ void bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http
           if (ctx.res.result() != OB::Belle::Status::ok)
           {
             // print the response status code and reason
-            std::cerr << "HTTPS Error: "
-                      << ctx.res.result_int()
-                      << " " << ctx.res.reason() << "\n\n";
+            bitstamp_dbg<0>.error(str<>("HTTPS Error:")
+                        , ctx.res.result_int()
+                        , ctx.res.reason());
             return;
           }
           // debug : print the response headers and body
-          DEBUG_ONLY("Candlestick response " << ctx.res.body() << "\n");
+          bitstamp_dbg<5>.debug(str<>("Candlestick"), ctx.res.body());
           fn(ctx, repeat_ohlc);
         });
         new_client.connect();
@@ -621,7 +617,7 @@ void bitstamp_network::cancel_order(trade_data const &t)
 {
     std::string data = "&id=" + std::to_string(t.id_);
     account_request("/api/v2/cancel_order/", std::move(data), [this](std::string &&data) {
-        DEBUG_ONLY("Cancel Order response:\n" << data);
+        bitstamp_dbg<5>.debug(str<>("Cancel Order response"), data);
         // refresh order status
         get_open_orders();
     });
@@ -652,9 +648,9 @@ void bitstamp_network::place_limit_order(trade_data const &t, bool update_after)
     std::transform(req.begin(), req.end(), req.begin(),
         [](unsigned char c){ return std::tolower(c); });
     //
-    DEBUG_ALWAYS("Placing order " << req << " " << data);
+    bitstamp_dbg<0>.debug(str<>("Buy limit-order"), req , data);
     account_request(std::move(req), std::move(data), [this, update_after](std::string &&data) {
-        DEBUG_ALWAYS("Buy-Limit Order response:\n" << data);
+        bitstamp_dbg<0>.debug(str<>("Order response"), data);
         // refresh order status
         if (update_after) get_open_orders();
     });

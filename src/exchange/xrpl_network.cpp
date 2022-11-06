@@ -26,7 +26,13 @@
 #include <QDialog>
 #include <QHBoxLayout>
 
-#define line_string "# ---------------------------------\n"
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+// a debug level of N shows messages with priority<N
+constexpr int debug_level = 0;
+//
+template <int Level>
+static print_threshold<Level, debug_level> xrpnet_dbg("XRP-legr");
 
 // ----------------------------------------------------------------------------
 xrpl_network::xrpl_network(bool testnet) : testnet_(testnet)
@@ -168,8 +174,8 @@ bool xrpl_network::subscribe_orderbook(net::contexts &io_contexts)
     // subscribe to 2 books
     command["books"] = nlohmann::json::array({buy_xrp, sell_xrp});
     std::string subscription = command.dump();
-    DEBUG_ONLY("JSON text is : " << subscription);
-    DEBUG_ALWAYS("Subscribing to xrpl:XRP/USD orderbook");
+    xrpnet_dbg<0>.debug(str<>("Subscribing"), "xrpl:XRP/USD orderbook");
+    xrpnet_dbg<5>.debug(str<>("subscribe orderbook"), subscription);
 
     ws_orderbook = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
       websocket_address(), std::to_string(websocket_port()), subscription,
@@ -189,7 +195,7 @@ bool xrpl_network::subscribe_accounts(net::contexts &io_contexts)
     }
     std::string subscription =
             "{ \"command\": \"subscribe\", \"accounts\": [ " + addresses + " ] }";
-    DEBUG_ALWAYS("Subscribing to account changes for \n" << addresses);
+    xrpnet_dbg<0>.debug(str<>("Subscribing"), "account changes for", addresses);
 
     ws_accounts = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
       websocket_address(), std::to_string(websocket_port()), subscription,
@@ -201,14 +207,12 @@ bool xrpl_network::subscribe_accounts(net::contexts &io_contexts)
 // ----------------------------------------------------------------------------
 void xrpl_network::new_orderbook_data(xrpl_network* nw, std::string_view data)
 {
-    DEBUG_ONLY("xrpl new_orderbook_data : thread " << std::this_thread::get_id());
-
     if (startswith(data, "{\"result\":")) {
-        DEBUG_ONLY("accept_json_ledger_snapshot");
+        xrpnet_dbg<5>.debug(str<>("ledger_snapshot"));
         nw->orderbook_->accept_json_ledger_snapshot(data);
     }
     else if (startswith(data, "{\"engine_result\":")) {
-        DEBUG_ONLY("accept_json_ledger_transaction");
+        xrpnet_dbg<5>.debug(str<>("ledger_transaction"));
         nw->orderbook_->accept_json_ledger_transaction(data);
     }
 
@@ -219,19 +223,18 @@ void xrpl_network::new_orderbook_data(xrpl_network* nw, std::string_view data)
 // ----------------------------------------------------------------------------
 void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
 {
-    DEBUG_ONLY("xrpl account_data : thread " << std::this_thread::get_id());
-    DEBUG_ALWAYS("Account changes : " << data);
+    xrpnet_dbg<0>.debug(str<>("Account changes"), data);
     if (startswith(data, "{\"result\":")) {
         // ignore this, just a subscription ok
-        DEBUG_ONLY("Account subscription : " << data);
+        xrpnet_dbg<5>.debug(str<>("Account subscription"), data);
     }
     else if (startswith(data, "{\"engine_result\":\"tesSUCCESS\"")) {
         nlohmann::json jdata = json::parse(data);
-        DEBUG_ONLY("Account changes : " << jdata.dump(4));
+        xrpnet_dbg<5>.debug(str<>("Account changes"), jdata.dump(4));
         nlohmann::json adata = jdata["meta"]["AffectedNodes"];
         for (const auto &a : adata) {
 //            try {
-            DEBUG_ALWAYS("AffectedNode : " << jdata.dump(4));
+            xrpnet_dbg<0>.debug(str<>("AffectedNode"), jdata.dump(4));
                 if (a.contains("ModifiedNode")) {
                     auto m = a["ModifiedNode"];
                     auto f = m["FinalFields"];
@@ -288,7 +291,7 @@ void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
                 }
 //            }
 //            catch (...) {
-//                DEBUG_ALWAYS("Exception Account changes : " << data);
+//                xrpnet_dbg<0>.debug(str<>("Exception Account changes : " << data);
 //            }
         }
     }
@@ -390,7 +393,7 @@ OB::Belle::Request setup_request(const std::string &host, nlohmann::json &conten
     req.body() = content.dump();
     // finalize
     req.prepare_payload();
-    DEBUG_ONLY(line_string << req);
+    xrpnet_dbg<5>.debug(str<>("request"), req);
     //
     return req;
 }
@@ -402,7 +405,7 @@ void xrpl_network::get_account_lines(std::string addr, fn_on_http on_http)
         OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
         // set the http 'on error' callback
         new_client.on_http_error([](auto& ctx) {
-          std::cerr << "get_account_balances : Protocol Error: " << ctx.ec.message() << "\n\n";
+          xrpnet_dbg<5>.debug(str<>("get_account_lines"), "Protocol Error", ctx.ec.message());
         });
 
         nlohmann::json params;
@@ -418,7 +421,7 @@ void xrpl_network::get_account_lines(std::string addr, fn_on_http on_http)
         new_client.on_http(req, on_http);
         new_client.connect();
     };
-    DEBUG_ONLY(addr + " Creating thread get_account_balances")
+    xrpnet_dbg<5>.debug(str<>("get_account_lines"), addr);
     auto https_thread = std::thread(std::move(thread_function));
     https_thread.detach();
 }
@@ -437,7 +440,7 @@ void xrpl_network::get_all_account_lines()
                 return;
               }
               // debug : print the response headers and body
-              DEBUG_ONLY("Ledger response " << ctx.res.body() << "\n");
+              xrpnet_dbg<5>.debug(str<>("Ledger response"), ctx.res.body());
               this->handle_account_lines(w, std::move(ctx.res.body()));
             }
         );
@@ -452,7 +455,7 @@ void xrpl_network::handle_account_lines(ledger_wallet &w, std::string&& data)
         // no balances. Might be an inactive account
         return;
     }
-    DEBUG_ONLY(jdata.dump(4));
+    xrpnet_dbg<5>.debug(str<>("account lines"), jdata.dump(4));
     std::vector<xrp_amount> balances = jdata.get<std::vector<xrp_amount>>();
     //
     for (const auto &b : balances) {
@@ -509,7 +512,7 @@ void xrpl_network::get_account_info(std::string addr, fn_on_http on_http)
         new_client.on_http(req, on_http);
         new_client.connect();
     };
-    DEBUG_ONLY(addr + " Creating thread get_account_info")
+    xrpnet_dbg<5>.debug(str<>("account_info"), addr);
     auto https_thread = std::thread(std::move(thread_function));
     https_thread.detach();
 }
@@ -528,7 +531,7 @@ void xrpl_network::get_all_account_infos()
                 return;
             }
             // debug : print the response headers and body
-            DEBUG_ONLY(line_string << "account_info response : " << w.public_ << " : " << ctx.res.body());
+            xrpnet_dbg<5>.debug(str<>("account_info"), w.public_, ctx.res.body());
             this->handle_account_info(w, std::move(ctx.res.body()));
         };
 
@@ -540,7 +543,7 @@ void xrpl_network::get_all_account_infos()
 void xrpl_network::handle_account_info(ledger_wallet &w, std::string&& data)
 {
     nlohmann::json jdata = json::parse(data)["result"]["account_data"];
-    DEBUG_ONLY(jdata.dump(4));
+    xrpnet_dbg<5>.debug(str<>("account info"), jdata.dump(4));
     //
     if (jdata.is_null()) return;
     //
@@ -563,7 +566,7 @@ void xrpl_network::handle_account_info(ledger_wallet &w, std::string&& data)
     w.add_currency(c);
     w.compute_ledger_reserve();
     //
-    DEBUG_ONLY(w.public_ << " Sequence " << w.sequence_);
+    xrpnet_dbg<5>.debug(str<>("sequence"), w.public_, w.sequence_);
     // signal GUI to update
     emit update_wallet_widget(&w);
 }
@@ -590,7 +593,7 @@ void xrpl_network::get_account_offers(std::string addr, fn_on_http on_http)
         new_client.on_http(req, on_http);
         new_client.connect();
     };
-    DEBUG_ONLY(addr + " Creating thread get_account_offers")
+    xrpnet_dbg<5>.debug(str<>("account offers"), addr);
     auto https_thread = std::thread(std::move(thread_function));
     https_thread.detach();
 }
@@ -608,7 +611,7 @@ void xrpl_network::get_all_account_offers()
                 return;
             }
             // debug : print the response headers and body
-            DEBUG_ONLY(line_string << "account_offers response : " << w.public_ << " : " << ctx.res.body());
+            xrpnet_dbg<5>.debug(str<>("account_offers"), w.public_, ctx.res.body());
             this->handle_account_offers(w, std::move(ctx.res.body()));
         };
 
@@ -620,7 +623,7 @@ void xrpl_network::get_all_account_offers()
 void xrpl_network::handle_account_offers(ledger_wallet &w, std::string&& data)
 {
     nlohmann::json jdata = json::parse(data)["result"];
-    DEBUG_ONLY(jdata.dump(4));
+    xrpnet_dbg<5>.debug(str<>("account offers"), jdata.dump(4));
     //
     if (jdata.is_null()) return;
     assert(w.public_ == jdata.at("account").get< std::string >());
@@ -741,7 +744,7 @@ void xrpl_network::submit_signed_transaction(std::string &&signed_tx)
               return;
           }
           // debug : print the response headers and body
-          DEBUG_ONLY("Tx submit response " << ctx.res.body() << "\n");
+          xrpnet_dbg<5>.debug(str<>("Tx submit response"), ctx.res.body());
           emit transaction_event();
         });
 
@@ -860,7 +863,7 @@ void xrpl_network::query_iou_fee(const issued_currency &c1)
             return;
         }
         // debug : print the response headers and body
-        DEBUG_ONLY(line_string << "account_info response : " << c1.issuer_ << " : " << ctx.res.body());
+        xrpnet_dbg<5>.debug(str<>("account_info"), c1.issuer_, ctx.res.body());
         nlohmann::json jdata = json::parse(ctx.res.body())["result"]["account_data"];
         if (jdata.contains("TransferRate")) {
             int sfee = jdata["TransferRate"].get<int>();
@@ -869,7 +872,7 @@ void xrpl_network::query_iou_fee(const issued_currency &c1)
             // recipient to get 1 billion units of the same currency.
             // A TransferRate of 1005000000 is equivalent to a transfer fee of 0.5%
             double feepercent = 100.0*(1E-9*sfee - 1.0);
-            DEBUG_ALWAYS("fee % : " << c1.issuer_ << " : " << feepercent);
+            xrpnet_dbg<0>.debug(str<>("fee %"), c1.issuer_, feepercent);
             currency_fees_[c1.issuer_] = feepercent;
         }
     };
@@ -886,7 +889,6 @@ double xrpl_network::get_transfer_fee(const currency &c1)
 // ----------------------------------------------------------------------------
 double xrpl_network::get_fee_percent(const currency_type &c1, const currency_type &c2)
 {
-
     return 0.0;
 }
 

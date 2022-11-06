@@ -56,7 +56,7 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> main_dbg("Mainwin");
+static print_threshold<Level, debug_level> main_dbg("Main-win");
 
 // ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)

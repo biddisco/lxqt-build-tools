@@ -15,6 +15,15 @@
 // Grox
 #include "src/plot/OrderBookCurve.h"
 #include "src/plot/OrderBookPlot.h"
+#include "src/print.hpp"
+
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+// a debug level of N shows messages with priority<N
+constexpr int debug_level = 0;
+//
+template <int Level>
+static print_threshold<Level, debug_level> book_dbg("ord-plot");
 
 // ----------------------------------------------------------------------------
 OrderBookPlot::OrderBookPlot(QWidget* parent)
@@ -120,7 +129,7 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
 OrderBookPlot::~OrderBookPlot()
 {
     // dummy destructor;
-    std::cout << "Destroying orderbook plot" << std::endl;
+    book_dbg<0>.debug(str<>("Destroying"), "orderbook plot");
 }
 
 // ----------------------------------------------------------------------------

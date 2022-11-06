@@ -42,7 +42,7 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> plot_dbg("OHLCplt");
+static print_threshold<Level, debug_level> plot_dbg("OHLCplot");
 
 // ----------------------------------------------------------------------------
 // Just a simple override to make the number of decimals consistent

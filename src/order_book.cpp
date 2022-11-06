@@ -26,6 +26,15 @@
 #include <range/v3/algorithm.hpp>
 #include <range/v3/all.hpp>
 
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+// a debug level of N shows messages with priority<N
+constexpr int debug_level = 0;
+//
+template <int Level>
+static print_threshold<Level, debug_level> obook_dbg("ord-book");
+
+// ----------------------------------------------------------------------------
 bool startswith(std::string_view str, std::string_view sub)
 {
     // rev search - pos=0, limits search to pos or earlier
@@ -442,7 +451,7 @@ void xrpl_order_book::accept_json_ledger_snapshot(std::string_view data)
 {
     nlohmann::json jdata = json::parse(data);
     auto joffers = jdata["result"]["offers"];
-    DEBUG_ONLY(joffers.dump(4) << std::endl);
+    obook_dbg<5>.debug("snapshot"), joffers.dump(4);
     //
     // websocket (re?)connnect: clear the orderbook ...
     orders.clear();
@@ -513,7 +522,7 @@ void xrpl_order_book::ledger_map_to_order_book()
         std::vector<xrpl_offer>& acc_bids = std::get<bid_index>(bid_ask);
         std::vector<xrpl_offer>& acc_asks = std::get<ask_index>(bid_ask);
         //
-        DEBUG_ONLY(acct << " bids : " << bids.size() << " asks : " << asks.size());
+        obook_dbg<5>.debug(str<>("bid/ask"), acct, "bids:", acc_bids.size(), "asks:", acc_asks.size());
 
         // the account may not be fully funded, so the offers may be invalid
         if (acc_bids.size()>0) {
@@ -591,10 +600,10 @@ void xrpl_order_book::accept_json_ledger_transaction(std::string_view data)
         return;
     //
     nlohmann::json affected = jdata["meta"]["AffectedNodes"];
-    DEBUG_ONLY(affected.dump(4) << std::endl);
+    obook_dbg<5>.debug(str<>("Affected nodes"), affected.dump(4));
 
     nlohmann::json transaction = jdata["transaction"];
-    DEBUG_ONLY(transaction.dump(4) << std::endl);
+    obook_dbg<5>.debug(str<>("transaction"), transaction.dump(4));
 
     std::string ttype = transaction.at("TransactionType").get<std::string>();
     if (ttype == "OfferCreate" || ttype == "OfferCancel" || ttype == "Payment")
@@ -647,7 +656,7 @@ bool xrpl_order_book::update_offer(
             final_offer.owner_funds = it2->owner_funds;
         }
         // overwrite old offer with new one
-        DEBUG_ONLY("Update Bid: " << prev_offer << " " << final_offer);
+        obook_dbg<5>.debug(str<>("Update Bid:"), prev_offer, final_offer);
         *it2 = final_offer;
     }
     else
@@ -659,7 +668,7 @@ bool xrpl_order_book::update_offer(
             return false;
         }
         // overwrite old offer with new one
-        DEBUG_ONLY("Update Ask: " << prev_offer << " " << final_offer);
+        obook_dbg<5>.debug(str<>("Update Ask:"), prev_offer, final_offer);
         *it2 = final_offer;
     }
     return true;
@@ -688,12 +697,12 @@ bool xrpl_order_book::insert_offer(const xrpl_offer& offer)
     if (offer.TakerPays.currency == currency_type::xrp)
     {
         acc_bids.push_back(offer);
-        DEBUG_ONLY("Insert Bid: " << offer);
+        obook_dbg<5>.debug(str<>("Insert Bid:"), offer);
     }
     else
     {
         acc_asks.push_back(offer);
-        DEBUG_ONLY("Insert Ask: " << offer);
+        obook_dbg<5>.debug(str<>("Insert Ask:"),  offer);
     }
     return true;
 }
@@ -724,11 +733,11 @@ bool xrpl_order_book::delete_offer(const xrpl_offer& offer)
         {
             // update tracking of account funds
             if (val->owner_funds!=-1) {
-                DEBUG_ONLY("Update owner_funds " << val->owner_funds);
+                obook_dbg<5>.debug(str<>("Update owner_funds"), val->owner_funds);
                 std::next(val)->owner_funds = val->owner_funds;
             }
         }
-        DEBUG_ONLY("Delete Bid: " << offer);
+        obook_dbg<5>.debug(str<>("Delete Bid:"), offer);
         acc_bids.erase(val);
     }
     else
@@ -744,17 +753,17 @@ bool xrpl_order_book::delete_offer(const xrpl_offer& offer)
         {
             // update tracking of account funds
             if (val->owner_funds!=-1) {
-                DEBUG_ONLY("Update owner_funds " << val->owner_funds);
+                obook_dbg<5>.debug(str<>("Update owner_funds"), val->owner_funds);
                 std::next(val)->owner_funds = val->owner_funds;
             }
         }
-        DEBUG_ONLY("Delete Ask: " << offer);
+        obook_dbg<5>.debug(str<>("Delete Ask:"), offer);
         acc_asks.erase(val);
     }
     if (acc_bids.size() == 0 && acc_asks.size() == 0)
     {
         // we can safely remove the account
-        DEBUG_ONLY("Account " << offer.Account << " can be removed");
+        obook_dbg<5>.debug(str<>("Account"), offer.Account, "can be removed");
         orders.erase(offer.Account);
     }
     return true;

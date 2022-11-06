@@ -12,7 +12,7 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> man_dbg("Manager");
+static print_threshold<Level, debug_level> man_dbg("DManager");
 
 // ----------------------------------------------------------------------------
 ohlc_dataset_manager::ohlc_dataset_manager()

@@ -13,14 +13,6 @@
 #include "src/plot/ohlc_interactor.hpp"
 #include "src/plot/ohlc_price_plot.hpp"
 
-//
-#ifndef DEBUG_ONLY
-# define DEBUG_ONLY(x)
-# define DEBUG_ALWAYS(x) { \
-    std::stringstream temp; temp << x; \
-    std::cout << temp.str() << std::endl; }
-#endif
-
 class ohlc_interactor::PrivateData
 {
   public:

@@ -24,13 +24,6 @@
 //
 #include "src/plot/OrderBookCurve.h"
 #include "src/plot/OrderBookPlot.h"
-//
-#ifndef DEBUG_ONLY
-# define DEBUG_ONLY(x)
-# define DEBUG_ALWAYS(x) { \
-    std::stringstream temp; temp << x; \
-    std::cout << temp.str() << std::endl; }
-#endif
 
 //#define GROX_TEST_MODE 1
 
