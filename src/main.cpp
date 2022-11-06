@@ -152,7 +152,11 @@ int main(int argc, char* argv[])
     QIcon icon(":images/xrp.ico");
     app.setWindowIcon(icon);
     app.setApplicationName("grox");
-    //
+
+    // disable stdout buffering so that messages appear right away
+    // (especially noticable in debugger terminal)
+    app_dbg<0>.eval([]() { std::cout.setf(std::ios::unitbuf); });
+
     init_settings(global_settings());
     //
     app_settings* app_ini = global_settings();
