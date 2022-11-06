@@ -296,10 +296,32 @@ void ohlc_price_plot::update_time_axis(double t1, double t2)
 
     // update the X axis with new min max
     setAxisScale(QwtAxis::XBottom, t1, t2);
+    // recompute the mapping to/from world/pixels
+    updateAxes();
 
-    // find the min/max price for this new range
-    auto minmax = ohlc_dataset_manager_->get_min_max_window(
-                get_candle_resolution(), t1, t2, 0.05);
+    // we need the min/max price for the new time range
+    ohlcv_minmax minmax;
+    bool candles_changed = false;
+
+    // if the mapping has changed a lot, we might need to change candle sizes
+    // scale change might trigger a candle resolution update
+    if (auto_candle_resolution()) {
+        // when candle resolution changes, the high/low values of candles do not
+        // change, so the scale is ok, but the volume bars are wrong, so
+        // recompute the volume min/max if the candle size changes
+        // recompute scaling so we can get the correct candle size
+        if (adjust_candle_size(0)) {
+            candles_changed = true;
+            minmax = ohlc_dataset_manager_->get_min_max_window(
+                        get_candle_resolution(), t1, t2, 0.05);
+            setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
+        }
+    }
+
+    if (!candles_changed) {
+        minmax = ohlc_dataset_manager_->get_min_max_window(
+            get_candle_resolution(), t1, t2, 0.05);
+    }
 
     // update the Y price axis with min max
     setAxisScale(QwtAxis::YRight, minmax.min_price_, minmax.max_price_);
@@ -307,18 +329,10 @@ void ohlc_price_plot::update_time_axis(double t1, double t2)
     // update the Y volume axis with min max
     setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
 
-    // scale change might trigger a candle resolution update
-    if (auto_candle_resolution()) {
-        // when candle resolution changes, the high/low values of candles do not
-        // change, so the scale is ok, but the volume bars are wrong, so
-        // recompute the volume min/max if the candle size changes
-        updateAxes();
-        if (adjust_candle_size(0)) {
-            minmax = ohlc_dataset_manager_->get_min_max_window(
-                        get_candle_resolution(), t1, t2, 0.05);
-            setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
-        }
-    }
+    plot_dbg<5>.debug(str<>("min_max"), ohlc_chart_data::get_resolution(get_candle_resolution()).name_
+                     , msecs_unix_to_calendar_time(t1)
+                     , "->", msecs_unix_to_calendar_time(t2)
+                     , "(", minmax.min_price_, ",", minmax.max_price_, ")");
 
     setAutoReplot(doAutoReplot);
     replot();

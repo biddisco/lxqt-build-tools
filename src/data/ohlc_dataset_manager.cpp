@@ -311,7 +311,7 @@ ohlcv_minmax ohlc_dataset_manager::get_min_max_window(double res, double start_t
 {
     ohlcv_minmax result = get_min_max(res, start_time, end_time);
     auto pdiff = (result.max_price_-result.min_price_);
-    auto vdiff = (result.max_volume_);
+    auto vdiff = (result.max_volume_ /* min =  zero */);
 
     if (pdiff>0) {
         result.min_price_ = result.min_price_ - 2.0*percent*pdiff;
@@ -329,6 +329,10 @@ ohlcv_minmax ohlc_dataset_manager::get_min_max_window(double res, double start_t
         result.min_volume_ = 0;
         result.max_volume_ = 1;
     }
+    man_dbg<5>.debug(str<>("min_max"), ohlc_chart_data::get_resolution(res).name_
+                     , msecs_unix_to_calendar_time(start_time)
+                     , "->", msecs_unix_to_calendar_time(end_time)
+                     , "(", result.min_price_, ",", result.max_price_, ")");
     return result;
 }
 
@@ -397,7 +401,6 @@ QwtOHLCSample ohlc_dataset_manager::get_trade_data_by_volume(double volume, doub
     auto index = samples->sample_index(time);
     const auto data = samples->data();
     // we use a factor of 10 to play safe, this can be adjusted
-    double vol_traded = 0;
     QwtOHLCSample ohlc(-1,-1);
     while (ohlc.volume<volume*safety && index<data.size()) {
         // and accumulate data on prices
