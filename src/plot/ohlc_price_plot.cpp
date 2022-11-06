@@ -44,6 +44,15 @@ template <int Level>
 static print_threshold<Level, debug_level> plot_dbg("OHLCplot");
 
 // ----------------------------------------------------------------------------
+void fill_text_label(QwtText &label) {
+    QColor cc("#ffffff");
+    cc.setAlpha(100);
+    label.setBorderPen(QPen(cc, 2));
+    cc.setAlpha(50);
+    label.setBackgroundBrush(cc);
+}
+
+// ----------------------------------------------------------------------------
 // Just a simple override to make the number of decimals consistent
 class ohlc_price_scaledraw : public QwtScaleDraw
 {
@@ -237,19 +246,16 @@ bool ohlc_price_plot::adjust_candle_size(double res)
     // user selected resolution
     for (const auto &r : ohlc_chart_data::available_resolutions()) {
         auto *data = ohlc_dataset_manager_->get_dataset(r);
-        data->ohlc_curve_->setSymbolExtent(0.8 * r);
         data->ohlc_curve_->setVisible(r==res);
         if (r==res) {
+            data->ohlc_curve_->setSymbolExtent(0.8 * r);
             QwtText candle_label(r.name_);
             candle_label.setRenderFlags(Qt::AlignLeft | Qt::AlignTop);
             if (auto_candle_resolution())
                 candle_label.setColor(Qt::magenta);
             else
                 candle_label.setColor(Qt::red);
-            //QColor cc("#333333");
-            //candle_label.setBorderPen(QPen(cc, 2));
-            //cc.setAlpha(200);
-            //candle_label.setBackgroundBrush(cc);
+            //fill_text_label(candle_label);
             candle_label_->setText(candle_label);
         }
     }
@@ -382,10 +388,7 @@ void ohlc_price_plot::display_candle_status(double time)
 
     QwtText status(temp.str().c_str());
     status.setRenderFlags(Qt::AlignLeft | Qt::AlignTop);
-    //QColor cc("#333333");
-    //status.setBorderPen(QPen(cc, 2));
-    //cc.setAlpha(200);
-    //status.setBackgroundBrush(cc);
+    //fill_text_label(status);
     candle_status_->setText(status);
 }
 
