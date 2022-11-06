@@ -209,9 +209,6 @@ ohlc_datasets *ohlc_datasets::resample_update(candle_res res1, ohlc_datasets *ot
     current_ohlc.time = res1*static_cast<uint64_t>(current_ohlc.time/res1);
 
     // iterate over all higher res samples for T onwards
-    ohlc_dbg<0>.debug(str<>("resampling"), str<3>(res1.name_), "from"
-                 , "time", msecs_unix_to_calendar_time(current_ohlc.time)
-                 , "index", dec<8>(orig_size));
     for (QVector<QwtOHLCSample>::const_iterator
          it=other->ohlc_samples_->data().begin() + init_sample;
          it<other->ohlc_samples_->data().end(); ++it)
@@ -232,6 +229,10 @@ ohlc_datasets *ohlc_datasets::resample_update(candle_res res1, ohlc_datasets *ot
             ohlc_samples_->append(current_ohlc);
         }
     }
+    ohlc_dbg<0>.debug(str<>("resampled"), str<3>(res1.name_)
+                , "from", msecs_unix_to_calendar_time(current_ohlc.time)
+                , "index", dec<8>(orig_size)
+                , "of", ohlc_samples_->size());
     validate_ohlc(ohlc_samples_->data(), res1, orig_T);
 
     return this;

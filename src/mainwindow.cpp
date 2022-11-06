@@ -7,7 +7,6 @@
 #include <QAction>
 #include <QApplication>
 #include <QDateTime>
-#include <QDebug>
 #include <QKeySequence>
 #include <QShortcut>
 #include <QMessageBox>

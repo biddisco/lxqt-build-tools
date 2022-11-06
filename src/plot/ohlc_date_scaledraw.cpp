@@ -1,7 +1,7 @@
 // STL
 #include <cmath>
 // Qt
-#include <QDebug>
+#include <QLocale>
 // Qwt
 #include <QwtText>
 //

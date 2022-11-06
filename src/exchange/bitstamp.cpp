@@ -32,7 +32,7 @@ bitstamp_network::bitstamp_network()
 // ----------------------------------------------------------------------------
 bitstamp_network::~bitstamp_network()
 {
-    qDebug() << "bitstamp_network: destructor";
+    bitstamp_dbg<0>.debug(str<>("destructor"));
     delete orderbook_;
 }
 
@@ -71,7 +71,7 @@ bool bitstamp_network::subscribe_my_trades(net::contexts &io_contexts)
     command["event"] = "bts:subscribe";
     command["data"]["channel"] = "private-my_trades_xrpusd-" + websocket_user_id_;
     command["data"]["auth"] = websocket_token_;
-    bitstamp_dbg<0>.debug(str<>("subscribe trades"), command.dump(4));
+    bitstamp_dbg<5>.debug(str<>("subscribe trades"), command.dump(4));
 
     using namespace std::placeholders;
     bitstamp_dbg<0>.debug(str<>("Subscribing"), "my_trades_xrpusd");
@@ -103,7 +103,7 @@ bool bitstamp_network::subscribe_my_orders(net::contexts &io_contexts)
     command["event"] = "bts:subscribe";
     command["data"]["channel"] = "private-my_orders_xrpusd-" + websocket_user_id_;
     command["data"]["auth"] = websocket_token_;
-    bitstamp_dbg<0>.debug(str<>("subscribe orders"), command.dump(4));
+    bitstamp_dbg<5>.debug(str<>("subscribe orders"), command.dump(4));
 
     using namespace std::placeholders;
     bitstamp_dbg<0>.debug(str<>("Subscribing"), "my_orders_xrpusd");
@@ -164,8 +164,7 @@ bool bitstamp_network::disconnect(net::contexts &/*io_contexts*/, streams_vector
 // ----------------------------------------------------------------------------
 void bitstamp_network::shut_down()
 {
-    qDebug() << "bitstamp_network: websockets: shutdown start";
-
+    bitstamp_dbg<0>.debug(str<>("websockets"), "shutdown start");
     if (ws_trades) {
         ws_trades->shutdown_blocking();
         ws_trades.reset();
@@ -293,7 +292,7 @@ void bitstamp_network::get_websocket_token()
 void bitstamp_network::handle_account_info(std::string&& data)
 {
     nlohmann::json jdata = json::parse(data);
-    bitstamp_dbg<0>.debug(str<>("account info"), jdata.dump(4));
+    bitstamp_dbg<5>.debug(str<>("account info"), jdata.dump(4));
     //
     bitstamp_account &acct = get_bitstamp_instance()->account();
 

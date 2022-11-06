@@ -4,7 +4,6 @@
 #include <cassert>
 // Qt
 #include <QDateTime>
-#include <QDebug>
 #include <QFontDatabase>
 #include <QMouseEvent>
 #include <QWheelEvent>

@@ -3,16 +3,25 @@
 #include <iostream>
 // Qt
 #include <QMouseEvent>
-#include <QDebug>
 // Qwt
 #include <QwtAxis>
 #include <QwtPlot>
 #include <QwtScaleMap>
 #include <QwtScaleEngine>
 // Grox
+#include "src/print.hpp"
 #include "src/plot/ohlc_interactor.hpp"
 #include "src/plot/ohlc_price_plot.hpp"
 
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+// a debug level of N shows messages with priority<N
+constexpr int debug_level = 0;
+//
+template <int Level>
+static print_threshold<Level, debug_level> inter_dbg("interact");
+
+// ----------------------------------------------------------------------------
 class ohlc_interactor::PrivateData
 {
   public:
@@ -241,10 +250,11 @@ bool ohlc_interactor::eventFilter(QObject * object, QEvent * event)
             qreal value = static_cast<QNativeGestureEvent*>(event)->value();
 
             if (value > 0) {
-                 qDebug() << static_cast<QNativeGestureEvent*>(event)->value();
+                 inter_dbg<5>.debug(str<>("gesture"), static_cast<QNativeGestureEvent*>(event)->value());
             }
             else if (value < 0) {
-                 qDebug() << static_cast<QNativeGestureEvent*>(event)->value();            }
+                 inter_dbg<5>.debug(str<>("gesture"), static_cast<QNativeGestureEvent*>(event)->value());
+            }
             break;
         }
         default:;

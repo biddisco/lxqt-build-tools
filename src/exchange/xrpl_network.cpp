@@ -42,7 +42,7 @@ xrpl_network::xrpl_network(bool testnet) : testnet_(testnet)
 // ----------------------------------------------------------------------------
 xrpl_network::~xrpl_network()
 {
-    qDebug() << "xrpl_network: destructor" << " testnet " << testnet();
+    xrpnet_dbg<0>.debug(str<>("destructor"), "testnet ", testnet());
     delete orderbook_;
 }
 
