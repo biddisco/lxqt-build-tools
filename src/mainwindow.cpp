@@ -703,7 +703,7 @@ void GroxMainWindow::update_candlestick_data()
     main_dbg<5>.debug(str<>("Requesting candlesticks"), msecs_unix_to_calendar_time(req_t*1000));
 
     // @TODO add futures here to make dependency chain simpler?
-    bitstamp_network_->request_new_candlestick_data(req_t, [this, req_t](auto& ctx, bool more) {
+    bool ok = bitstamp_network_->request_new_candlestick_data(req_t, [this, req_t](auto& ctx, bool more) {
         main_dbg<0>.debug(str<>("Received"), msecs_unix_to_calendar_time(req_t*1000));
         this->receive_ohlc_data(std::move(ctx.res.body()));
         if (more) {
@@ -714,6 +714,11 @@ void GroxMainWindow::update_candlestick_data()
             emit restart_candlestick_timer();
         }
     });
+    if (!ok) {
+        // we were already up-to-date
+        candlestick_update_active_ = false;
+        emit restart_candlestick_timer();
+    }
 }
 
 // ----------------------------------------------------------------------------

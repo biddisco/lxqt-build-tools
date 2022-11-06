@@ -167,7 +167,7 @@ public:
 
     using fn_on_http_2 = std::function<void(OB::Belle::Client::Http_Ctx&, bool)>;
 
-    void request_new_candlestick_data(uint64_t start_t, fn_on_http_2 fn);
+    bool request_new_candlestick_data(uint64_t start_t, fn_on_http_2 fn);
 
     // function called from websocket subscription to live trade data
     static void new_trade_data(bitstamp_network*, std::string_view);

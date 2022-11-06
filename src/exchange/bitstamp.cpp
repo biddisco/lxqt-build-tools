@@ -548,13 +548,17 @@ void bitstamp_network::new_trade_data(bitstamp_network* n, std::string_view data
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http_2 fn)
+bool bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http_2 fn)
 {
     QDateTime currentDateTime = QDateTime::currentDateTimeUtc();
     uint64_t unixtime = currentDateTime.toTime_t();
     //
     uint64_t diff = unixtime - start_t;
     uint64_t samples = diff / 60;
+    if (samples==0) {
+        bitstamp_dbg<0>.debug(str<>("candlesticks"), "already up to date");
+        return false;
+    }
     //
     std::string req;
     bool repeat_ohlc = false;
@@ -603,6 +607,7 @@ void bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http
     };
     auto https_thread = std::thread(std::move(thread_function));
     https_thread.detach();
+    return true;
 }
 
 // ----------------------------------------------------------------------------
