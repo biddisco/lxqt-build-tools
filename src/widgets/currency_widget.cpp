@@ -184,7 +184,8 @@ void currency_widget::execute_trade()
     //
     if (ui->amount_edit->text().isEmpty())
         return;
-    //
+
+    // total amount to be used
     double taker_gets = ui->amount_edit->text().toDouble();
     if (taker_gets==0)
         return;
@@ -195,7 +196,8 @@ void currency_widget::execute_trade()
 
     // if taker pays us xrp, we are buying it
     bool buy_order = (taker_payc == currency_type::xrp);
-    //
+
+    // smaller per order amount for N orders
     std::vector<trade_data> trades;
     for (int i=0; i<N; ++i) {
         double taker_get;
@@ -214,8 +216,8 @@ void currency_widget::execute_trade()
         //
         double fee_percent = network_->get_fee_percent(taker_payc, this->currency_.type_);
         if (feesincluded) {
-            taker_get = (1.0-0.01*fee_percent)*taker_gets/N;
-            taker_pay = (1.0-0.01*fee_percent)*taker_get*price;
+            taker_get = (1.0-0.01*fee_percent)*taker_get;
+            taker_pay = (1.0-0.01*fee_percent)*taker_pay;
         }
         //
         trade_data t{
@@ -230,6 +232,7 @@ void currency_widget::execute_trade()
                     network_->get_fee_percent(taker_payc, this->currency_.type_),
                     0,          // Id
                     now.toStdString(),
+                    false,
         };
         trades.push_back(t);
     }

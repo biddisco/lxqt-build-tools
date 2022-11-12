@@ -67,6 +67,12 @@ void trade_widget::set_data(trade_data const &t)
     ui->exchange_rate->setText(std::to_string(t.exchange_rate_).c_str());
     // fee shown in currency of our trade
     ui->fee->setText(to_string_with_precision(t.fee_percent_, 2).c_str() + QString("%"));
+
+    // Id label colour red/green for unconfirmed/confirmed
+    QColor color = t.confirmed_ ? QColor(Qt::darkGreen) : QColor(Qt::red);
+    QPalette lpalette = ui->id->palette();
+    lpalette.setColor(QPalette::WindowText, color);
+    ui->id->setPalette(lpalette);
     ui->id->setText(std::to_string(t.id_).c_str());
     ui->date_time->setText(t.datetime_.c_str());
 }

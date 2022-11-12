@@ -110,8 +110,15 @@ bool bitstamp_network::subscribe_my_orders(net::contexts &io_contexts)
     ws_myorders = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         command.dump(4),
-        [](std::string_view data) {
+        [this](std::string_view data) {
             bitstamp_dbg<0>.debug(str<>("Orders data"), data);
+            nlohmann::json jdata = json::parse(data);
+            if (jdata["event"]=="bts:subscription_succeeded") {
+                bitstamp_dbg<0>.debug(str<>("Orders data"), "bts:subscription_succeeded");
+            }
+            else {
+                process_order(jdata["data"], jdata["event"].get<std::string_view>());
+            }
         });
     return true;
 }
@@ -374,12 +381,99 @@ void bitstamp_network::handle_websockets_token(std::string&& data)
 void bitstamp_network::get_open_orders()
 {
     account_request("/api/v2/open_orders/all/", "", [this](std::string &&data) {
-        bitstamp_dbg<5>.debug(str<>("Open Order response"), data);
+        bitstamp_dbg<0>.debug(str<>("Open Order response"), data);
         handle_open_orders(std::move(data));
     });
 }
 
 // ----------------------------------------------------------------------------
+/* A typical order will have the following structure
+
+{
+  "data": {
+    "id": 1552110926278656,
+    "id_str": "1552110926278656",
+    "order_type": 1,
+    "datetime": "1667768306",
+    "microtimestamp": "1667768306268000",
+    "amount": 1000,
+    "amount_str": "1000.00000000",
+    "price": 0.54,
+    "price_str": "0.54000"
+  },
+  "channel": "private-my_orders_xrpusd-1227955",
+  "event": "order_created"
+}
+{
+  "data": {
+    "id": 1552274932695043,
+    "id_str": "1552274932695043",
+    "order_type": 1,
+    "datetime": "1667808347",
+    "microtimestamp": "1667808346897000",
+    "amount": 1000,
+    "amount_str": "1000.00000000",
+    "price": 0.54,
+    "price_str": "0.54000"
+  },
+  "channel": "private-my_orders_xrpusd-1227955",
+  "event": "order_created"
+}
+
+*/
+void bitstamp_network::process_order(nlohmann::json &jdata, std::string_view event)
+{
+    bitstamp_account &acct = get_bitstamp_instance()->account();
+    auto &trades = acct.offers_;
+    //
+    std::uint64_t id = jdata["id"];
+    auto find_by_id = [id](trade_data &t){
+        return t.id_ == id;
+    };
+
+    if (event == "order_deleted") {
+        auto trade = std::find_if(trades.begin(), trades.end(), find_by_id);
+        if (trade==trades.end()) {
+            bitstamp_dbg<0>.error(str<>("Order not found"), dec<18>(id));
+        }
+        else {
+            bitstamp_dbg<0>.debug(str<>("Order deleted"), dec<18>(id));
+            trades.erase(trade);
+        }
+    }
+    if (event == "order_created") {
+        auto trade = std::find_if(trades.begin(), trades.end(), find_by_id);
+        if (trade==trades.end()) {
+            bitstamp_dbg<0>.error(str<>("Order not found"), dec<18>(id));
+        }
+        else {
+            if (trade->confirmed_ == false) {
+                bitstamp_dbg<0>.debug(str<>("Order created"), dec<18>(id), "confirmed");
+                trade->confirmed_ = true;
+            }
+            else {
+                bitstamp_dbg<0>.error(str<>("Order created"), dec<18>(id), "already active");
+            }
+        }
+    }
+    emit update_wallet_widget(&acct);
+}
+
+/* A list of open orders take the form
+[
+  {
+    "id": "1552120149377025",
+    "datetime": "2022-11-06 21:35:58",
+    "type": "1",
+    "amount": "50000.00000000",
+    "price": "0.54200",
+    "amount_at_create": "50000.00000000",
+    "currency_pair": "XRP/USD"
+  }
+]
+
+*/
+
 void bitstamp_network::handle_open_orders(std::string&& data)
 {
     bitstamp_account &acct = get_bitstamp_instance()->account();
@@ -413,7 +507,8 @@ void bitstamp_network::handle_open_orders(std::string&& data)
                 fee_percent,
                 fee_fixed,
                 std::stoull(val["id"].get< std::string >()),
-                val["datetime"]
+                val["datetime"],
+                true
             };
             trades.push_back(t);
         }
@@ -429,7 +524,8 @@ void bitstamp_network::handle_open_orders(std::string&& data)
                 fee_percent,
                 fee_fixed,
                 std::stoull(val["id"].get< std::string >()),
-                val["datetime"]
+                val["datetime"],
+                true
             };
             trades.push_back(t);
         }
@@ -610,20 +706,16 @@ bool bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::timer_event()
-{
-//    std::cout << "Timer event : requesting account update" << std::endl;
-//    update_account_info();
-}
-
-// ----------------------------------------------------------------------------
 void bitstamp_network::cancel_order(trade_data const &t)
 {
     std::string data = "&id=" + std::to_string(t.id_);
     account_request("/api/v2/cancel_order/", std::move(data), [this](std::string &&data) {
-        bitstamp_dbg<5>.debug(str<>("Cancel Order response"), data);
+        nlohmann::json jdata = json::parse(data);
+        bitstamp_dbg<0>.debug(str<>("Cancel Order response"), jdata.dump(4));
         // refresh order status
-        get_open_orders();
+        if (ws_myorders==nullptr) {
+            get_open_orders();
+        }
     });
 }
 
@@ -652,18 +744,36 @@ void bitstamp_network::place_limit_order(trade_data const &t, bool update_after)
     std::transform(req.begin(), req.end(), req.begin(),
         [](unsigned char c){ return std::tolower(c); });
     //
-    bitstamp_dbg<0>.debug(str<>("Buy limit-order"), req , data);
-    account_request(std::move(req), std::move(data), [this, update_after](std::string &&data) {
-        bitstamp_dbg<0>.debug(str<>("Order response"), data);
-        // refresh order status
-        if (update_after) get_open_orders();
+    bitstamp_dbg<0>.debug(str<>("limit-order"), (t.get_trade_type()==trade_type::buy ? "Buy" : "Sell"), req, data);
+
+    account_request(std::move(req), std::move(data), [this, t, update_after](std::string &&data) {
+        nlohmann::json jdata = json::parse(data);
+        bitstamp_dbg<0>.debug(str<>("limit-order response"), jdata.dump(4));
+        // refresh order status if we don't have orders websocket
+        if (update_after && ws_myorders==nullptr) {
+            get_open_orders();
+        }
+        if (jdata.contains("id")) {
+            trade_data new_t = t;
+            new_t.id_ = std::stoll(jdata["id"].get_ptr<json::string_t*>()->c_str());
+            new_t.confirmed_ = true;
+            new_t.datetime_ = jdata["datetime"].get_ptr<json::string_t*>()->c_str();
+            double price  = std::stod(jdata["price"].get_ptr<json::string_t*>()->c_str());
+            double amount = std::stod(jdata["amount"].get_ptr<json::string_t*>()->c_str());
+            if (price != new_t.get_price()) {
+                bitstamp_dbg<0>.error(str<>("limit-order price"), price, new_t.get_price());
+            }
+            auto &trades = account().offers_;
+            trades.push_back(new_t);
+            emit update_wallet_widget(&account());
+        }
     });
 }
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::place_buy_sell_orders(basic_account *acct, std::vector<trade_data> const &trades)
 {
-    for (auto const &t : trades) {
+    for (auto &t : trades) {
         if (&t != &trades.back()) place_limit_order(t, false);
         else place_limit_order(t, true);
     }

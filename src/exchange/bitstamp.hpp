@@ -3,7 +3,9 @@
 #include <QString>
 //
 #include <chrono>
+#include <memory>
 #include <string>
+#include <vector>
 //
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
@@ -28,9 +30,9 @@ private:
     std::shared_ptr<net::ws::session> ws_mytrades;
     // websocket for private orders
     std::shared_ptr<net::ws::session> ws_myorders;
-    // websocket for trade feed
+    // websocket for public trade feed
     std::shared_ptr<net::ws::session> ws_trades;
-    // websocket for bid/ask order book
+    // websocket for public bid/ask order book
     std::shared_ptr<net::ws::session> ws_bidask;
 
     // websocket token / user id valid for N seconds
@@ -46,6 +48,7 @@ private:
     // usually only one present, but allow for more
     std::vector<bitstamp_account> accounts_;
 
+    // map of fees for trading of currency pairs
     std::map<std::pair<std::string, std::string>, double> fee_map_;
 
 public:
@@ -150,10 +153,11 @@ public:
     void get_open_orders();
     // process open order data response
     void handle_open_orders(std::string&&);
+    void process_order(nlohmann::json &jdata, std::string_view event);
 
-
+    // ---------------------------------------
+    // make a payment/transfer from bitstamp
     bool make_payment(currency &c, basic_account *src, basic_account *dest) override;
-    //
 
     // ---------------------------------------
     // place a buy/sell order
@@ -177,9 +181,9 @@ public:
 
     double get_fee_percent(const currency_type &c1, const currency_type &c2) override;
     double get_fee_fixed(const currency_type &c1, const currency_type &c2) override;
-    double get_transfer_fee(const currency &c1)  override { return 0; }
+    double get_transfer_fee(const currency &/*c1*/)  override { return 0; }
 
-    void custom_functions(basic_account *acct) override {};
+    void custom_functions(basic_account */*acct*/) override {};
 
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
@@ -195,6 +199,5 @@ signals:
     void update_wallet_widget(bitstamp_account*);
 
 public slots:
-    void timer_event();
 
 };

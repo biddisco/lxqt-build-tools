@@ -34,6 +34,7 @@ struct trade_data {
     double fee_fixed_;
     std::uint64_t id_;
     std::string datetime_;
+    bool confirmed_;
 
     // if we are buying or selling xrp, then how many?
     double get_xrp_amount() const {
@@ -44,6 +45,21 @@ struct trade_data {
         }
         else if (tradetype == trade_type::sell) {
             return taker_get_;
+        }
+        else {
+            throw std::runtime_error("Not an xrp transaction");
+        }
+        return 0;
+    }
+
+    double get_price() const {
+        // if taker gets xrp, we must be selling xrp
+        auto tradetype = get_trade_type();
+        if (tradetype == trade_type::buy) {
+            return taker_get_/taker_pay_;
+        }
+        else if (tradetype == trade_type::sell) {
+            return taker_pay_/taker_get_;
         }
         else {
             throw std::runtime_error("Not an xrp transaction");
