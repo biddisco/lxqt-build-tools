@@ -176,6 +176,7 @@ void currency_widget::execute_payment()
 
 void currency_widget::execute_trade()
 {
+    bool feesincluded = ui->FeesIncluded->isChecked();
     int N = ui->num_orders->value();
     currency_type taker_payc = get_currency_type({
                 ui->buy_sell_combo->currentData().toString().toStdString(),
@@ -210,6 +211,13 @@ void currency_widget::execute_trade()
             taker_get = taker_gets/N;
             taker_pay = taker_get*price;
         }
+        //
+        double fee_percent = network_->get_fee_percent(taker_payc, this->currency_.type_);
+        if (feesincluded) {
+            taker_get = (1.0-0.01*fee_percent)*taker_gets/N;
+            taker_pay = (1.0-0.01*fee_percent)*taker_get*price;
+        }
+        //
         trade_data t{
                     network_,
                     account_->name_,

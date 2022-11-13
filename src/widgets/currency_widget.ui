@@ -344,6 +344,22 @@
       <item row="0" column="2">
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
+         <widget class="QCheckBox" name="FeesIncluded">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="text">
+           <string>Fees Included</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QLabel" name="label_2">
           <property name="text">
            <string/>
