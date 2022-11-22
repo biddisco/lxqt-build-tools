@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1080</width>
-    <height>727</height>
+    <width>936</width>
+    <height>434</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,7 +26,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>2</number>
         </property>
         <widget class="QWidget" name="chart_tab">
          <attribute name="title">
@@ -126,7 +126,7 @@
              <widget class="QDateTimeEdit" name="date_init">
               <property name="dateTime">
                <datetime>
-                <hour>12</hour>
+                <hour>10</hour>
                 <minute>0</minute>
                 <second>0</second>
                 <year>2021</year>
@@ -136,7 +136,7 @@
               </property>
               <property name="minimumTime">
                <time>
-                <hour>6</hour>
+                <hour>5</hour>
                 <minute>0</minute>
                 <second>0</second>
                </time>
@@ -357,7 +357,6 @@
          <attribute name="title">
           <string>Networks</string>
          </attribute>
-         <layout class="QGridLayout" name="gridLayout_2"/>
         </widget>
         <widget class="QWidget" name="tab_2">
          <attribute name="title">
@@ -464,7 +463,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1080</width>
+     <width>936</width>
      <height>22</height>
     </rect>
    </property>

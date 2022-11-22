@@ -21,6 +21,7 @@ enum currency_type : int {
     eur_bitstamp,
     usd_gatehub,
     xrpl_trustline,
+    usd_unknown,
     other,
 };
 

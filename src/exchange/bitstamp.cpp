@@ -10,6 +10,7 @@
 #include "src/widgets/wallet_widget.hpp"
 //
 #include "src/exchange/bitstamp.hpp"
+#include "src/util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -185,11 +186,32 @@ void bitstamp_network::shut_down()
 // ----------------------------------------------------------------------------
 exchange::currency_pairlist bitstamp_network::currency_pairs()
 {
-    currency c1 = currency{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp, 0, 0, 0, nullptr};
-    currency c2 = currency{{"", "XRP"}, currency_type::xrp, 0, 0, 0, nullptr};
-    currency c3 = currency{{currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp, 0, 0, 0, nullptr};
-    currency_pairlist supported = {{c1,c2}, {c2,c1}, {c3,c2}, {c2,c3}};
-    return supported;
+//    currency c1 = currency{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp, 0, 0, 0, nullptr};
+//    currency c2 = currency{{"", "XRP"}, currency_type::xrp, 0, 0, 0, nullptr};
+//    currency c3 = currency{{currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp, 0, 0, 0, nullptr};
+//    currency_pairlist supported = {{c1,c2}, {c2,c1}, {c3,c2}, {c2,c3}};
+//    return supported;
+    return tickers_available_;
+}
+
+// ----------------------------------------------------------------------------
+bool bitstamp_network::add_currency_pair(std::string_view p1, std::string_view p2)
+{
+    auto icfn = [](std::string_view c) -> issued_currency {
+        if (c=="USD" || c=="EUR" || c=="GBP")
+            return issued_currency{currency::bitstamp_trust, std::string{c}};
+        if (c=="XRP")
+            return issued_currency{"", "XRP"};
+        else
+            return issued_currency{"", std::string{c}};
+    };
+    auto ic1 = icfn(p1);
+    auto ic2 = icfn(p2);
+    currency c1 = currency{ic1, get_currency_type(ic1), 0, 0, 0, nullptr};
+    currency c2 = currency{ic2, get_currency_type(ic2), 0, 0, 0, nullptr};
+    tickers_available_.push_back(std::make_pair(c1, c2));
+    // tickers_available_.push_back(std::make_pair(c2, c1));
+    return true;
 }
 
 // ----------------------------------------------------------------------------
@@ -207,12 +229,6 @@ bool bitstamp_network::can_send(currency &c, exchange *dest)
             return true;
     }
     return false;
-}
-
-std::string lowercase(std::string data) {
-    std::transform(data.begin(), data.end(), data.begin(),
-        [](unsigned char c){ return std::tolower(c); });
-    return data;
 }
 
 // ----------------------------------------------------------------------------
@@ -483,13 +499,10 @@ void bitstamp_network::handle_open_orders(std::string&& data)
     nlohmann::json jdata = json::parse(data);
     for (auto& [key, val] : jdata.items())
     {
-        std::string cs = val["currency_pair"];
-        std::size_t pos = cs.find("/");
-        std::string c1 = cs.substr(0,pos);
-        std::string c2 = cs.substr(pos+1);
+        const auto & [c1, c2] = get_currency_pair(JCHARP(val["currency_pair"]));
 
-        double amount = std::stod(val["amount"].get< std::string >());
-        double price = std::stod(val["price"].get< std::string >());
+        double amount = std::stod(JCHARP(val["amount"]));
+        double price = std::stod(JCHARP(val["price"]));
         double fee_percent = 0;
         double fee_fixed = 0;
         // 0=buy, 1=sell
@@ -499,8 +512,8 @@ void bitstamp_network::handle_open_orders(std::string&& data)
             trade_data t{
                 this->get_instance(),
                 account().name_,
-                get_currency_type({"", c2}),
-                get_currency_type({"", c1}),
+                get_currency_type({"", c2.cbegin()}),
+                get_currency_type({"", c1.cbegin()}),
                 amount*price,
                 amount,
                 price,
@@ -516,8 +529,8 @@ void bitstamp_network::handle_open_orders(std::string&& data)
             trade_data t{
                 this->get_instance(),
                 account().name_,
-                get_currency_type({"", c1}),
-                get_currency_type({"", c2}),
+                get_currency_type({"", c1.cbegin()}),
+                get_currency_type({"", c2.cbegin()}),
                 amount,
                 amount*price,
                 price,
@@ -706,6 +719,54 @@ bool bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http
 }
 
 // ----------------------------------------------------------------------------
+void bitstamp_network::request_tickers_available()
+{
+    std::string req = "https://www.bitstamp.net/api/v2/ticker/";
+    bitstamp_dbg<0>.debug(str<>("Tickers Request"), req);
+
+    auto thread_function = [this, req=std::move(req)]() {
+        OB::Belle::Client new_client(bitstamp_https_address, bitstamp_https_port, true);
+        // set the http 'on error' callback
+        new_client.on_http_error([](auto& ctx) {
+          std::cerr << "Tickers Request : Protocol Error: " << ctx.ec.message() << "\n\n";
+        });
+
+        new_client.on_http(req, [this](auto& ctx) mutable
+        {
+          // check http status code
+          if (ctx.res.result() != OB::Belle::Status::ok)
+          {
+            // print the response status code and reason
+            bitstamp_dbg<0>.error(str<>("HTTPS Error:")
+                        , ctx.res.result_int()
+                        , ctx.res.reason());
+            return;
+          }
+          // debug : print the response headers and body
+          bitstamp_dbg<5>.debug(str<>("Tickers"), ctx.res.body());
+          receive_tickers_available(std::move(ctx.res.body()));
+        });
+        new_client.connect();
+    };
+    auto https_thread = std::thread(std::move(thread_function));
+    https_thread.detach();
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::receive_tickers_available(std::string &&data)
+{
+    nlohmann::json jdata = json::parse(data);
+    for (auto& [key, val] : jdata.items())
+    {
+        const auto & [c1, c2] = get_currency_pair(JCHARP(val["pair"]));
+        bitstamp_dbg<0>.debug(str<>("Currency pair"), c1, c2, c1, c2);
+        add_currency_pair(c1, c2);
+    }
+
+    emit network_initialized(this);
+}
+
+// ----------------------------------------------------------------------------
 void bitstamp_network::cancel_order(trade_data const &t)
 {
     std::string data = "&id=" + std::to_string(t.id_);
@@ -741,8 +802,7 @@ void bitstamp_network::place_limit_order(trade_data const &t, bool update_after)
                 + "&price=" + to_string_with_precision(t.exchange_rate_, 5);
     }
     // make lowercase "XRPUSD"->"xrpusd" for bitstamp API
-    std::transform(req.begin(), req.end(), req.begin(),
-        [](unsigned char c){ return std::tolower(c); });
+    lowercase_i(req);
     //
     bitstamp_dbg<0>.debug(str<>("limit-order"), (t.get_trade_type()==trade_type::buy ? "Buy" : "Sell"), req, data);
 

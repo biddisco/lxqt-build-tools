@@ -14,9 +14,6 @@ currency_type get_currency_type(issued_currency const &c)
     if (c.code_=="XRP") {
         return currency_type::xrp;
     }
-    if (c.code_=="USD" && c.issuer_=="") {
-        return currency_type::usd_bitstamp;
-    }
     if (c.code_=="USD" && c.issuer_==currency::bitstamp_trust) {
         return currency_type::usd_bitstamp;
     }
@@ -29,6 +26,9 @@ currency_type get_currency_type(issued_currency const &c)
     for (auto const &t : currency::trustlines) {
         if ((t.issuer_==c.issuer_) && ((t.code_==c.code_) || currency_to_hex(t.code_)==c.code_))
             return currency_type::xrpl_trustline;
+    }
+    if (c.code_=="USD" && c.issuer_=="") {
+        return currency_type::usd_unknown;
     }
     if (c.issuer_!="") {
         currency::trustlines.push_back(c);

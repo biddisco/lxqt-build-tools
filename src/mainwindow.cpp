@@ -12,6 +12,9 @@
 #include <QMessageBox>
 #include <QDockWidget>
 #include <QScrollBar>
+#include <QCheckBox>
+#include <QListView>
+#include <QStandardItemModel>
 // Qwt
 #include <QwtAxis>
 #include <QwtOHLCSample>
@@ -26,6 +29,7 @@
 #include "src/widgets/check_trades_dialog.hpp"
 #include "src/widgets/trade_algorithm.hpp"
 #include "src/widgets/digital_clock.hpp"
+#include "src/widgets/connection_widget.hpp"
 //
 #include "src/demangle_helper.hpp"
 #include "src/print.hpp"
@@ -121,6 +125,13 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     timer_ = new QTimer(this);
     timer_->setSingleShot(true);
     candlestick_update_active_ = false;
+
+    net_layout_ = new QVBoxLayout();
+    ui.connections_tab->setLayout(net_layout_);
+
+    // ----------------------------------
+    // setup connections tab
+    loadConnectionSetups();
 
     // ----------------------------------
     // setup Qt actions/connections
@@ -237,12 +248,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     }
     ui.candle_res->addItems(slist);
     ui.candle_res_2->addItems(slist);
-
-    // ----------------------------------
-    // setup connections tab
-    loadConnectionSetups();
-    connection_widget_ = new connection_widget(io_contexts_, exchange_list_, ui.connections_tab);
-    ui.connections_tab->layout()->addWidget(connection_widget_);
 
     DigitalClock *clock = new DigitalClock(this);
     ui.controls_layout->addWidget(clock);
@@ -400,6 +405,13 @@ void GroxMainWindow::createMenus()
         stream_process(new_sample);
     } , Qt::QueuedConnection);
 
+    connect(bitstamp_network_.get(), &bitstamp_network::network_initialized, this, [this](exchange* ex) {
+        build_connection_gui(ex);
+        //connection_widget_ = new connection_widget(io_contexts_, ui.connections_tab);
+        //ui.connections_tab->layout()->addWidget(connection_widget_);
+
+    }, Qt::QueuedConnection);
+
     connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)),
             this, SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
     connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)),
@@ -416,7 +428,6 @@ void GroxMainWindow::createMenus()
     // when a transaction takes place we might need to update wallet/records
     connect(xrpl_network_.get(), SIGNAL(transaction_event()),
             this, SLOT(transaction_event()), Qt::QueuedConnection);
-
 
     connect(ui.gt_6, &QAbstractButton::clicked, this, [this]() {
         graph_rescale(-2);
@@ -662,10 +673,12 @@ void GroxMainWindow::capture_image()
 }
 
 // ----------------------------------------------------------------------------
+// @TODO : each network needs a startup/init function
 void GroxMainWindow::update_account_balances()
 {
     main_dbg<5>.debug("Updating accounts");
     //
+    bitstamp_network_->request_tickers_available();
     bitstamp_network_->get_account_info();
     bitstamp_network_->get_open_orders();
     //
@@ -1243,4 +1256,56 @@ void GroxMainWindow::execute_filter()
                   << "\n";
         res_i++;
     }
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::build_connection_gui(exchange *ex)
+{
+    QGroupBox *gb = new QGroupBox(QString::fromStdString(ex->name().data()), this);
+    QGridLayout* bl = new QGridLayout(gb);
+    connection_widget *conwidget = new connection_widget(io_contexts_, this);
+    bl->addWidget(conwidget);
+
+    // display avaialble streams
+    QVBoxLayout* sbl = new QVBoxLayout(conwidget->get_stream_box());
+    const auto streams = ex->websocket_streams();
+    for (const auto &s : streams) {
+        QString name = QString(stream_text(s).c_str());
+        QCheckBox *bx = new QCheckBox(name, conwidget->get_stream_box());
+        bx->setChecked(ex->websocket_enabled(s));
+        connect(bx, &QCheckBox::stateChanged, this, [this, s, ex](bool checked) {
+            ex->websocket_enable(s, io_contexts_, checked);
+        } , Qt::QueuedConnection);
+
+        sbl->addWidget(bx);
+    }
+    conwidget->get_stream_box()->setLayout(sbl);
+
+    const auto pl = ex->currency_pairs();
+    QStringList values;
+    for (const auto &i : pl) {
+        std::string pairname = i.first.curr_.code_ + "/" + i.second.curr_.code_;
+        values << pairname.c_str();
+    }
+
+    QStandardItemModel *model = new QStandardItemModel();
+    for (int i = 0; i < values.count(); i++)
+    {
+        QStandardItem *item = new QStandardItem();
+        item->setText(values[i]);
+        item->setCheckable(true);
+        item->setCheckState(Qt::Unchecked);
+        model->setItem(i, item);
+    }
+
+    QVBoxLayout* tbl = new QVBoxLayout(conwidget->get_ticker_box());
+    QListView *listview = new QListView(conwidget->get_ticker_box());
+    listview->setModel(model);
+    tbl->addWidget(listview);
+    conwidget->get_ticker_box()->setLayout(tbl);
+
+    // add connection widget to main window network tab
+    bl->addItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Expanding), 1, 0);
+    bl->addItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Expanding), 0, 1);
+    net_layout_->addWidget(gb);
 }

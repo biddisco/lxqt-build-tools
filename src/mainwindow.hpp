@@ -79,11 +79,11 @@ class GroxMainWindow : public QMainWindow
     std::shared_ptr<bitstamp_network> bitstamp_network_;
     std::shared_ptr<xrpl_network> xrpl_network_;
     std::shared_ptr<xrpl_network> xrpl_testnet_;
-    connection_widget *connection_widget_;
 
     // io context for websocket/https requests
     net::contexts io_contexts_;
     std::vector<std::thread> ioc_threads_;
+    QVBoxLayout *net_layout_;
 
 public:
     explicit GroxMainWindow(QWidget* parent = nullptr);
@@ -115,6 +115,8 @@ public:
     void start_io_threads(int nthreads);
 
     void execute_filter();
+
+    void build_connection_gui(exchange *ex);
 
 signals:
     void quitApplication();

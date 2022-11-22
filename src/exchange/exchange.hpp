@@ -44,7 +44,14 @@ public:
     using exchange_vector = std::vector<std::shared_ptr<exchange>>;
     using currency_pairlist = std::vector<std::pair<currency, currency>>;
 
+    // streams that are subscribed to
     std::map<network::streams, bool> enabled_streams_;
+
+    // ticker pairs available
+    currency_pairlist tickers_available_;
+    currency_pairlist tickers_subscribed_;
+
+    // ticker pairs subscribed to
 
     // obligatory virtual destructor
     virtual ~exchange() {}
@@ -84,4 +91,5 @@ public:
 signals:
     // emitted when a transaction might cause a change in data
     void transaction_event();
+    void network_initialized(exchange *ex);
 };

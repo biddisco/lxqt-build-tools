@@ -104,6 +104,7 @@ public:
 
     // supported currency pairs
     virtual currency_pairlist currency_pairs() override;
+    virtual bool add_currency_pair(std::string_view c1, std::string_view c2);
 
     // Is sending this currency to the destination exchange supported
     bool can_send(currency &c, exchange *dest) override;
@@ -184,6 +185,9 @@ public:
     double get_transfer_fee(const currency &/*c1*/)  override { return 0; }
 
     void custom_functions(basic_account */*acct*/) override {};
+
+    void request_tickers_available();
+    void receive_tickers_available(std::string &&data);
 
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
