@@ -76,9 +76,12 @@ public:
     virtual bool make_payment(currency &c, basic_account *src, basic_account *dest) = 0;
     virtual std::string_view name() = 0;
     virtual void cancel_order(trade_data const &t) = 0;
-    virtual currency_pairlist currency_pairs() = 0;
     virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const &) = 0;
     virtual std::vector<basic_account*> wallets() = 0;
+    virtual bool add_currency_pair(std::string_view p1, std::string_view p2) = 0;
+    virtual const currency_pairlist & currency_pairs() {
+        return tickers_available_;
+    }
 
     // ---------------------------------------
     // fees

@@ -3,6 +3,7 @@
 #include <QWidget>
 #include <QVBoxLayout>
 #include <QGroupBox>
+#include <QListWidget>
 //
 #include <string_view>
 
@@ -27,6 +28,7 @@ public:
 
     QGroupBox *get_stream_box();
     QGroupBox *get_ticker_box();
+    QListWidget *get_subscribed_list();
 
 public slots:
     void update_exchange_data(exchange *ex);

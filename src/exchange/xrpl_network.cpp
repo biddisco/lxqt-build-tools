@@ -37,6 +37,8 @@ static print_threshold<Level, debug_level> xrpnet_dbg("XRP-legr");
 // ----------------------------------------------------------------------------
 xrpl_network::xrpl_network(bool testnet) : testnet_(testnet)
 {
+    add_currency_pair("USD", "XRP");
+    add_currency_pair("EUR", "XRP");
 }
 
 // ----------------------------------------------------------------------------
@@ -44,6 +46,26 @@ xrpl_network::~xrpl_network()
 {
     xrpnet_dbg<0>.debug(str<>("destructor"), "testnet ", testnet());
     delete orderbook_;
+}
+
+// ----------------------------------------------------------------------------
+bool xrpl_network::add_currency_pair(std::string_view p1, std::string_view p2)
+{
+    auto icfn = [](std::string_view c) -> issued_currency {
+        if (c=="USD" || c=="EUR")
+            return issued_currency{currency::bitstamp_trust, std::string{c}};
+        if (c=="XRP")
+            return issued_currency{"", "XRP"};
+        else
+            return issued_currency{"", std::string{c}};
+    };
+    auto ic1 = icfn(p1);
+    auto ic2 = icfn(p2);
+    currency c1 = currency{ic1, get_currency_type(ic1), 0, 0, 0, nullptr};
+    currency c2 = currency{ic2, get_currency_type(ic2), 0, 0, 0, nullptr};
+    tickers_available_.push_back(std::make_pair(c1, c2));
+    // tickers_available_.push_back(std::make_pair(c2, c1));
+    return true;
 }
 
 // ----------------------------------------------------------------------------
@@ -93,16 +115,6 @@ bool xrpl_network::can_send(currency &c, exchange *dest) {
         }
     }
     return false;
-}
-
-// ----------------------------------------------------------------------------
-exchange::currency_pairlist xrpl_network::currency_pairs()
-{
-    currency c1 = currency{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp, 0, 0, 0, nullptr};
-    currency c2 = currency{{"", "XRP"}, currency_type::xrp, 0, 0, 0, nullptr};
-    currency c3 = currency{{currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp, 0, 0, 0, nullptr};
-    currency_pairlist supported = {{c1,c2}, {c2,c1}, {c3,c2}, {c2,c3}};
-    return supported;
 }
 
 // ----------------------------------------------------------------------------

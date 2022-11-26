@@ -1,23 +1,21 @@
 #pragma once
 
 #include <QObject>
-#include <QString>
 //
 #include <string>
 //
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 #include "src/network/evp-encrypt.hpp"
+#include "src/exchange/exchange.hpp"
+#include "src/order_book.hpp"
+#include "src/settings.hpp"
+#include "src/widgets/currency_widget.hpp"
 //
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
 # include "extern/belle/include/belle.hh"
 #endif
-//
-#include "src/exchange/exchange.hpp"
-#include "src/order_book.hpp"
-#include "src/settings.hpp"
-#include "src/widgets/currency_widget.hpp"
 
 //#define GROX_USE_LOCAL_SERVER
 #define GROX_USE_RIPPLE_MAINNET_SERVER
@@ -160,6 +158,8 @@ public:
         return accts;
     }
 
+    bool add_currency_pair(std::string_view p1, std::string_view p2) override;
+
     // ----------------------------------------------------------------------------
     static void new_orderbook_data(xrpl_network* nw, std::string_view);
     // ----------------------------------------------------------------------------
@@ -190,9 +190,6 @@ public:
 
     bool make_payment(currency &c, basic_account *src, basic_account *dest) override;
     void cancel_order(trade_data const &t) override;
-
-
-    currency_pairlist currency_pairs() override;
 
     // place a buy/sell order
     void place_limit_order(basic_account *acct, trade_data const &t, bool update_after);

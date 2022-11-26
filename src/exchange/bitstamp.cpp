@@ -184,17 +184,6 @@ void bitstamp_network::shut_down()
 }
 
 // ----------------------------------------------------------------------------
-exchange::currency_pairlist bitstamp_network::currency_pairs()
-{
-//    currency c1 = currency{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp, 0, 0, 0, nullptr};
-//    currency c2 = currency{{"", "XRP"}, currency_type::xrp, 0, 0, 0, nullptr};
-//    currency c3 = currency{{currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp, 0, 0, 0, nullptr};
-//    currency_pairlist supported = {{c1,c2}, {c2,c1}, {c3,c2}, {c2,c3}};
-//    return supported;
-    return tickers_available_;
-}
-
-// ----------------------------------------------------------------------------
 bool bitstamp_network::add_currency_pair(std::string_view p1, std::string_view p2)
 {
     auto icfn = [](std::string_view c) -> issued_currency {
@@ -759,7 +748,7 @@ void bitstamp_network::receive_tickers_available(std::string &&data)
     for (auto& [key, val] : jdata.items())
     {
         const auto & [c1, c2] = get_currency_pair(JCHARP(val["pair"]));
-        bitstamp_dbg<0>.debug(str<>("Currency pair"), c1, c2, c1, c2);
+        bitstamp_dbg<5>.debug(str<>("Currency pair"), c1, c2, c1, c2);
         add_currency_pair(c1, c2);
     }
 

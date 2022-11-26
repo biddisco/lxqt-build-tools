@@ -46,9 +46,6 @@
 #include "src/stream/trade_filter.hpp"
 #include "src/data/ohlc_heikin_ashi.hpp"
 
-#define get_live_trades 1
-//#define subscribe_xrpl_events 1
-
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
 
@@ -224,7 +221,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // load in the list of trustlines that we know about
     loadTrustlines();
 
-    update_account_balances();
+    bitstamp_network_->request_tickers_available();
 
     //
     // Resize order book to fit monospace text (add 1 chars - scrollbars/etc)
@@ -359,7 +356,7 @@ void GroxMainWindow::createMenus()
     // connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
 
     // button-click : fetch latest account balance data
-    connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
+    // connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
     // when new candlestick data is ready, redo main graph
     connect(this, SIGNAL(new_ohlc_data_ui(double)), this, SLOT(new_ohlc_data(double)));
@@ -631,7 +628,7 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
     {
         // convert json data into vectors of actual data
         nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
-        main_dbg<0>.debug(str<>("Received"), jdata.size(), "json OHLC samples");
+        main_dbg<0>.debug(str<>("Received"), dec<4>(jdata.size()), "json OHLC samples");
         QVector<QwtOHLCSample> new_ohlc_samples;
         new_ohlc_samples.reserve(jdata.size());
         QwtOHLCSample sample;
@@ -795,8 +792,7 @@ void GroxMainWindow::perform_arbitrage()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::transaction_event()
 {
-    main_dbg<5>.debug("transaction_event : check balances");
-    update_account_balances();
+    main_dbg<5>.debug("transaction_event : update balances?");
 }
 
 // ----------------------------------------------------------------------------
@@ -1261,8 +1257,10 @@ void GroxMainWindow::execute_filter()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::build_connection_gui(exchange *ex)
 {
+    // Group box with network name in title
     QGroupBox *gb = new QGroupBox(QString::fromStdString(ex->name().data()), this);
     QGridLayout* bl = new QGridLayout(gb);
+    // widget with panels for tickers/selected/streams
     connection_widget *conwidget = new connection_widget(io_contexts_, this);
     bl->addWidget(conwidget);
 
@@ -1279,24 +1277,40 @@ void GroxMainWindow::build_connection_gui(exchange *ex)
 
         sbl->addWidget(bx);
     }
+    sbl->addItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Expanding));
     conwidget->get_stream_box()->setLayout(sbl);
 
-    const auto pl = ex->currency_pairs();
-    QStringList values;
-    for (const auto &i : pl) {
-        std::string pairname = i.first.curr_.code_ + "/" + i.second.curr_.code_;
-        values << pairname.c_str();
-    }
-
+    // display avaialble ticker currency pairs
     QStandardItemModel *model = new QStandardItemModel();
-    for (int i = 0; i < values.count(); i++)
-    {
+    enum {CheckState = Qt::UserRole + 1};
+    for (auto const& [i, cp] : ex->currency_pairs() | ranges::views::enumerate) {
         QStandardItem *item = new QStandardItem();
-        item->setText(values[i]);
+        item->setText(cp.first.curr_.code_.c_str() + QString("/") + cp.second.curr_.code_.c_str());
         item->setCheckable(true);
         item->setCheckState(Qt::Unchecked);
+        // initial state stored in user role to track checkbox changes
+        item->setData(Qt::Unchecked, CheckState);
         model->setItem(i, item);
     }
+    // attach a slot to catch item changes and update subscribed list
+    connect(model, &QStandardItemModel::itemChanged, this, [conwidget, ex](QStandardItem* item) {
+        (void)ex;
+        if (item->checkState() != item->data(CheckState).value<Qt::CheckState>()) {
+            main_dbg<0>.debug(str<>("Checked changed"), item->text().toStdString(), item->checkState());
+            item->setData(item->checkState(), CheckState);
+            auto *sl = conwidget->get_subscribed_list();
+            if (item->checkState() == Qt::Checked) {
+                sl->addItem(item->text());
+            }
+            else {
+                auto items = sl->findItems(item->text(), Qt::MatchFlag::MatchCaseSensitive);
+                for (auto *item : items) {
+                    delete sl->takeItem(sl->row(item));
+                }
+            }
+        }
+    }, Qt::QueuedConnection);
+
 
     QVBoxLayout* tbl = new QVBoxLayout(conwidget->get_ticker_box());
     QListView *listview = new QListView(conwidget->get_ticker_box());

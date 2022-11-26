@@ -103,8 +103,7 @@ public:
     std::string_view name() override { return "Bitstamp"; }
 
     // supported currency pairs
-    virtual currency_pairlist currency_pairs() override;
-    virtual bool add_currency_pair(std::string_view c1, std::string_view c2);
+    bool add_currency_pair(std::string_view c1, std::string_view c2) override;
 
     // Is sending this currency to the destination exchange supported
     bool can_send(currency &c, exchange *dest) override;
