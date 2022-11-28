@@ -82,6 +82,8 @@ public:
     bitstamp_network();
     ~bitstamp_network() override;
 
+    void initialize() override;
+
     // returns a temp vector of account pointers (references)
     // to be used with caution because adding a wallet will
     // invalidate the pointer references

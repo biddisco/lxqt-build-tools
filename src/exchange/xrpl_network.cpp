@@ -37,8 +37,6 @@ static print_threshold<Level, debug_level> xrpnet_dbg("XRP-legr");
 // ----------------------------------------------------------------------------
 xrpl_network::xrpl_network(bool testnet) : testnet_(testnet)
 {
-    add_currency_pair("USD", "XRP");
-    add_currency_pair("EUR", "XRP");
 }
 
 // ----------------------------------------------------------------------------
@@ -46,6 +44,20 @@ xrpl_network::~xrpl_network()
 {
     xrpnet_dbg<0>.debug(str<>("destructor"), "testnet ", testnet());
     delete orderbook_;
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::initialize()
+{
+    if (!testnet()) {
+        add_currency_pair("USD", "XRP");
+        add_currency_pair("EUR", "XRP");
+    }
+    get_all_account_infos();
+    get_all_account_lines();
+    get_all_account_offers();
+    //
+    emit network_initialized(this);
 }
 
 // ----------------------------------------------------------------------------

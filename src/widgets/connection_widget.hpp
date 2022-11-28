@@ -27,7 +27,7 @@ public:
     void connect_events();
 
     QGroupBox *get_stream_box();
-    QGroupBox *get_ticker_box();
+    QListView *get_tickers_list();
     QListWidget *get_subscribed_list();
 
 public slots:

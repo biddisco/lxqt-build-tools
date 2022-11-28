@@ -39,8 +39,8 @@ QGroupBox *connection_widget::get_stream_box() {
     return ui->stream_box;
 }
 
-QGroupBox *connection_widget::get_ticker_box() {
-    return ui->ticker_box;
+QListView *connection_widget::get_tickers_list() {
+    return ui->tickers_list;
 }
 
 QListWidget *connection_widget::get_subscribed_list() {

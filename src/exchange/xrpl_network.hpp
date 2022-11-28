@@ -109,9 +109,12 @@ public:
     ~xrpl_network() override;
     //
     std::string_view name() override {
-        return testnet() ? "XRPL Testnet" : "XRPL";
+        return testnet() ? "XRPL Testnet" : "XRPL Mainnet";
     }
     //
+
+    void initialize() override;
+
     void set_plot(OrderBookPlot * obp);
     //
     bool testnet() const;

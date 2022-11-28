@@ -128,7 +128,6 @@ public slots:
     void appExitCleanupHandler();
     void restore_dockwindows();
     void new_ohlc_data(double res);
-    void update_account_balances();
     void execute_xrp();
     void execute_usd();
     void perform_arbitrage();

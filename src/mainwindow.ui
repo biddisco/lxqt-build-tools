@@ -126,7 +126,7 @@
              <widget class="QDateTimeEdit" name="date_init">
               <property name="dateTime">
                <datetime>
-                <hour>10</hour>
+                <hour>8</hour>
                 <minute>0</minute>
                 <second>0</second>
                 <year>2021</year>
@@ -136,7 +136,7 @@
               </property>
               <property name="minimumTime">
                <time>
-                <hour>5</hour>
+                <hour>4</hour>
                 <minute>0</minute>
                 <second>0</second>
                </time>
@@ -353,7 +353,7 @@
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="connections_tab">
+        <widget class="QWidget" name="networks_tab">
          <attribute name="title">
           <string>Networks</string>
          </attribute>

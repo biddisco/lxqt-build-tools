@@ -38,6 +38,14 @@ bitstamp_network::~bitstamp_network()
 }
 
 // ----------------------------------------------------------------------------
+void bitstamp_network::initialize()
+{
+    request_tickers_available();
+    get_account_info();
+    get_open_orders();
+}
+
+// ----------------------------------------------------------------------------
 bool bitstamp_network::subscribe_live_trades(net::contexts &io_contexts)
 {
     using namespace std::placeholders;

@@ -56,6 +56,8 @@ public:
     // obligatory virtual destructor
     virtual ~exchange() {}
 
+    virtual void initialize() = 0;
+
     // ---------------------------------------
     // websocket/stream connection management
     // ---------------------------------------

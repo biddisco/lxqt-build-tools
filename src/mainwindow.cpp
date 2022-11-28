@@ -123,9 +123,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     timer_->setSingleShot(true);
     candlestick_update_active_ = false;
 
-    net_layout_ = new QVBoxLayout();
-    ui.connections_tab->setLayout(net_layout_);
-
     // ----------------------------------
     // setup connections tab
     loadConnectionSetups();
@@ -221,8 +218,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // load in the list of trustlines that we know about
     loadTrustlines();
 
-    bitstamp_network_->request_tickers_available();
-
     //
     // Resize order book to fit monospace text (add 1 chars - scrollbars/etc)
     //
@@ -248,6 +243,16 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
     DigitalClock *clock = new DigitalClock(this);
     ui.controls_layout->addWidget(clock);
+
+    // initialize networks / start websocket connnections etc
+    main_dbg<0>.debug("Initializing bitstamp");
+    bitstamp_network_->initialize();
+    //
+    main_dbg<0>.debug("Initializing xrpl mainnet");
+    xrpl_network_->initialize();
+    //
+    main_dbg<0>.debug("Initializing xrpl testnet");
+    xrpl_testnet_->initialize();
 }
 
 // ----------------------------------------------------------------------------
@@ -404,9 +409,6 @@ void GroxMainWindow::createMenus()
 
     connect(bitstamp_network_.get(), &bitstamp_network::network_initialized, this, [this](exchange* ex) {
         build_connection_gui(ex);
-        //connection_widget_ = new connection_widget(io_contexts_, ui.connections_tab);
-        //ui.connections_tab->layout()->addWidget(connection_widget_);
-
     }, Qt::QueuedConnection);
 
     connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)),
@@ -426,6 +428,15 @@ void GroxMainWindow::createMenus()
     connect(xrpl_network_.get(), SIGNAL(transaction_event()),
             this, SLOT(transaction_event()), Qt::QueuedConnection);
 
+    connect(xrpl_network_.get(), &xrpl_network::network_initialized, this, [this](exchange* ex) {
+        build_connection_gui(ex);
+    }, Qt::QueuedConnection);
+
+    connect(xrpl_testnet_.get(), &xrpl_network::network_initialized, this, [this](exchange* ex) {
+        build_connection_gui(ex);
+    }, Qt::QueuedConnection);
+
+    // Graph resolution buttons
     connect(ui.gt_6, &QAbstractButton::clicked, this, [this]() {
         graph_rescale(-2);
     } , Qt::QueuedConnection);
@@ -667,26 +678,6 @@ void GroxMainWindow::capture_image()
 //    auto image = ui.tabWidget->grab();
 //    ui.imagelabel->setPixmap(image);
 //    ui.imagelabel->setScaledContents(true);
-}
-
-// ----------------------------------------------------------------------------
-// @TODO : each network needs a startup/init function
-void GroxMainWindow::update_account_balances()
-{
-    main_dbg<5>.debug("Updating accounts");
-    //
-    bitstamp_network_->request_tickers_available();
-    bitstamp_network_->get_account_info();
-    bitstamp_network_->get_open_orders();
-    //
-    xrpl_network_->get_all_account_infos();
-    xrpl_network_->get_all_account_lines();
-    xrpl_network_->get_all_account_offers();
-    //
-    if (true) {
-        xrpl_testnet_->get_all_account_infos();
-        xrpl_testnet_->get_all_account_lines();
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -1260,11 +1251,13 @@ void GroxMainWindow::build_connection_gui(exchange *ex)
     // Group box with network name in title
     QGroupBox *gb = new QGroupBox(QString::fromStdString(ex->name().data()), this);
     QGridLayout* bl = new QGridLayout(gb);
+
     // widget with panels for tickers/selected/streams
     connection_widget *conwidget = new connection_widget(io_contexts_, this);
-    bl->addWidget(conwidget);
+    bl->addWidget(conwidget, 0, 0);
 
-    // display avaialble streams
+    // -------------------------------------------
+    // display avaialble streams in a Vertical box
     QVBoxLayout* sbl = new QVBoxLayout(conwidget->get_stream_box());
     const auto streams = ex->websocket_streams();
     for (const auto &s : streams) {
@@ -1277,9 +1270,10 @@ void GroxMainWindow::build_connection_gui(exchange *ex)
 
         sbl->addWidget(bx);
     }
-    sbl->addItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Expanding));
+    sbl->addItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding));
     conwidget->get_stream_box()->setLayout(sbl);
 
+    // -------------------------------------------
     // display avaialble ticker currency pairs
     QStandardItemModel *model = new QStandardItemModel();
     enum {CheckState = Qt::UserRole + 1};
@@ -1311,15 +1305,19 @@ void GroxMainWindow::build_connection_gui(exchange *ex)
         }
     }, Qt::QueuedConnection);
 
-
-    QVBoxLayout* tbl = new QVBoxLayout(conwidget->get_ticker_box());
-    QListView *listview = new QListView(conwidget->get_ticker_box());
+    QListView *listview = conwidget->get_tickers_list();
     listview->setModel(model);
-    tbl->addWidget(listview);
-    conwidget->get_ticker_box()->setLayout(tbl);
 
     // add connection widget to main window network tab
-    bl->addItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Expanding), 1, 0);
-    bl->addItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Expanding), 0, 1);
-    net_layout_->addWidget(gb);
+    auto *layout = ui.networks_tab->layout();
+    if (layout==nullptr) {
+        main_dbg<0>.debug(str<>("Networks layout"));
+        net_layout_ = new QVBoxLayout();
+        ui.networks_tab->setLayout(net_layout_);
+        net_layout_->insertWidget(0, gb);
+        net_layout_->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Expanding));
+    }
+    else {
+        net_layout_->insertWidget(0, gb);
+    }
 }
