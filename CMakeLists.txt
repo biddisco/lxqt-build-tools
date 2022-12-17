@@ -27,9 +27,14 @@ project(
 )
 
 # ------------------------------------------------------------------------------
+# CMake configuration
+# ------------------------------------------------------------------------------
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
+
+# ------------------------------------------------------------------------------
 # CXX standard 17
 # ------------------------------------------------------------------------------
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # ------------------------------------------------------------------------------
 # Options
@@ -268,7 +273,7 @@ set(GROX_SRC
 set(GROX_QRC_SRC src/grox.qrc)
 
 add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC})
-set_property(TARGET grox PROPERTY CXX_STANDARD 17)
+set_property(TARGET grox PROPERTY CXX_STANDARD 20)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
