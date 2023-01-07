@@ -31,7 +31,6 @@
 #include "src/plot/ohlc_picker.hpp"
 #include "src/plot/ohlc_chart_curve.hpp"
 #include "src/print.hpp"
-#include "src/print.hpp"
 //
 #include <range/v3/view.hpp>
 
@@ -178,6 +177,8 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     // the desired dimensions from the grid layout.
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     setMinimumSize(0,0);
+
+    bind_graphs();
 }
 
 // ----------------------------------------------------------------------------
@@ -186,9 +187,8 @@ ohlc_price_plot::~ohlc_price_plot()
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::set_data(ohlc_dataset_manager *ohlc_dataset_manager)
+void ohlc_price_plot::bind_graphs()
 {
-    ohlc_dataset_manager_ = ohlc_dataset_manager;
     auto resolutions = ohlc_dataset_manager_->get_dataset_resolutions();
     bool first = true;
     for (auto r : resolutions) {

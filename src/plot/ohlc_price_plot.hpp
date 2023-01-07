@@ -41,7 +41,7 @@ public:
     ohlc_price_plot(QWidget *, ohlc_dataset_manager *);
     ~ohlc_price_plot();
     //
-    void set_data(ohlc_dataset_manager *ohlc_dataset_manager);
+    void bind_graphs();
     void update_live_data(QwtOHLCSample const &new_sample);
     //
     bool   adjust_candle_size(double res);

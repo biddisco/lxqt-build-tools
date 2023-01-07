@@ -1,9 +1,12 @@
 #pragma once
 
 #include <QAction>
+#include <QWidgetAction>
 #include <QMainWindow>
 #include <QScrollArea>
 #include <QTimer>
+//
+#include "DockManager.h"
 //
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
@@ -17,6 +20,7 @@
 #include "src/plot/ohlc_picker.hpp"
 #include "src/plot/OrderBookPlot.h"
 #include "src/plot/filter_plot.hpp"
+#include "src/price_chart_widget.hpp"
 //
 #include "src/data/ohlc_dataset_manager.hpp"
 //
@@ -28,6 +32,8 @@
 #include "src/order_book.hpp"
 #include "src/stream/trade_filter.hpp"
 #include "src/widgets/connection_widget.hpp"
+// generated
+#include "ui_tabbed_form.h"
 
 class AdjustingScrollArea : public QScrollArea {
    bool eventFilter(QObject * obj, QEvent * ev) override {
@@ -54,6 +60,9 @@ class GroxMainWindow : public QMainWindow
     // main form ui
     Ui::GroxMainWindow ui;
 
+    // tabbed form with old controls on
+    Ui::TabbedForm *tabs_;
+
     // widgets
     QAction* actionQuit;
     std::shared_ptr<QDockWidget> accounts_dock;
@@ -65,9 +74,7 @@ class GroxMainWindow : public QMainWindow
     ohlc_dataset_manager hdf5_ohlc_;
 
     // plots
-    ohlc_price_plot* crypto_price_plot_;
-    filter_plot *filters_plot_;
-    filter_plot *assets_plot_;
+    price_chart_widget *price_plot_;
     OrderBookPlot *obp_;
 
     // timer for candlestick updates
@@ -84,6 +91,13 @@ class GroxMainWindow : public QMainWindow
     net::contexts io_contexts_;
     std::vector<std::thread> ioc_threads_;
     QVBoxLayout *net_layout_;
+
+    // ads:: The main container for docking
+    ads::CDockManager* m_DockManager;
+
+    QAction* SavePerspectiveAction = nullptr;
+    QWidgetAction* PerspectiveListAction = nullptr;
+    QComboBox* PerspectiveComboBox = nullptr;
 
 public:
     explicit GroxMainWindow(QWidget* parent = nullptr);
@@ -118,6 +132,10 @@ public:
 
     void build_connection_gui(exchange *ex);
 
+    void createPerspectiveUi();
+
+private slots:
+
 signals:
     void quitApplication();
     void new_ohlc_data_ui(double);
@@ -147,7 +165,8 @@ public slots:
 //    void usd_dir_clicked();
     void capture_image();
 
-    void graph_rescale(int range);
+    void savePerspective();
+
 };
 
 static GroxMainWindow* mainwindow;

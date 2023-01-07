@@ -8,6 +8,7 @@
 #include <QApplication>
 #include <QDateTime>
 #include <QKeySequence>
+#include <QInputDialog>
 #include <QShortcut>
 #include <QMessageBox>
 #include <QDockWidget>
@@ -28,8 +29,8 @@
 #include "src/widgets/trade_widget.hpp"
 #include "src/widgets/check_trades_dialog.hpp"
 #include "src/widgets/trade_algorithm.hpp"
-#include "src/widgets/digital_clock.hpp"
 #include "src/widgets/connection_widget.hpp"
+#include "src/price_chart_widget.hpp"
 //
 #include "src/demangle_helper.hpp"
 #include "src/print.hpp"
@@ -45,6 +46,12 @@
 //
 #include "src/stream/trade_filter.hpp"
 #include "src/data/ohlc_heikin_ashi.hpp"
+
+#include "DockAreaWidget.h"
+#include "DockAreaTitleBar.h"
+#include "DockAreaTabBar.h"
+#include "FloatingDockContainer.h"
+#include "DockComponentsFactory.h"
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
@@ -71,34 +78,36 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     mainwindow = this;
 
-    //
-    // Create candlestick/volume plots
-    //
-    crypto_price_plot_ = new ohlc_price_plot(this, &hdf5_ohlc_);
-    ui.candlestick_layout->addWidget(crypto_price_plot_, 30);
+    using namespace ads;
+    // Create the dock manager after the ui is setup. Because the
+    // parent parameter is a QMainWindow the dock manager registers
+    // itself as the central widget as such the ui must be set up first.
+    QWidget *widget_ = new QWidget(this);
+    tabs_ = new Ui::TabbedForm();
+    tabs_->setupUi(widget_);
 
-    //
-    // Create stream/filters plot
-    //
-    assets_plot_ = new filter_plot(this);
-    ui.filters_layout->addWidget(assets_plot_, 30);
-    assets_plot_->setMinimumHeight(128);
-    assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
+    CDockManager::setConfigFlag(CDockManager::OpaqueSplitterResize, true);
+    CDockManager::setConfigFlag(CDockManager::XmlCompressionEnabled, false);
+    CDockManager::setConfigFlag(CDockManager::FocusHighlighting, true);
+    m_DockManager = new CDockManager(this);
 
-    filters_plot_ = new filter_plot(this);
-    ui.filters_layout->addWidget(filters_plot_, 30);
-    filters_plot_->setMinimumHeight(128);
-    filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
-
+    CDockWidget* CentralDockWidget = new CDockWidget("CentralWidget");
+    CentralDockWidget->setWidget(widget_);
+    auto* CentralDockArea = m_DockManager->setCentralWidget(CentralDockWidget);
+    CentralDockArea->setAllowedAreas(DockWidgetArea::AllDockAreas);
 
     // ----------------------------------
-    // Create orderbook plot
+    // Create orderbook plot as dockwindow
     //
-    obp_ = nullptr;
     obp_ = new OrderBookPlot();
     obp_->setMinimumSize(384,256);
     //
-    ui.order_plot_layout->addWidget(obp_, 0);
+    CDockWidget* OBPDockWidget = new CDockWidget("OrderBookPlot-1");
+    OBPDockWidget->setWidget(obp_);
+    OBPDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
+    auto TableArea2 = m_DockManager->addDockWidget(DockWidgetArea::LeftDockWidgetArea, OBPDockWidget);
+    ui.menubar->addAction(tr("Quit"));
+    ui.menubar->addAction(OBPDockWidget->toggleViewAction());
 
     // ----------------------------------
     // create bitstamp exchange interface
@@ -152,17 +161,31 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         }
     }
 
-    crypto_price_plot_->set_data(&hdf5_ohlc_);
+    //
+    // Create candlestick/volume plots
+    //
+    price_plot_ = new price_chart_widget(this, &hdf5_ohlc_);
+    //
+    CDockWidget* PlotDockWidget = new CDockWidget("PricePlot-1");
+    PlotDockWidget->setWidget(price_plot_);
+    PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
+    auto TableArea1 = m_DockManager->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
+    ui.menubar->addAction(PlotDockWidget->toggleViewAction());
+
     // start by displaying 1 day of data
-    graph_rescale(0);
+    price_plot_->graph_rescale(0);
 
     // ----------------------------------
     // just an experiment to display an image
     //
     // scale pixmap to fit in label's size and keep ratio of pixmap
     QPixmap pix(":/images/xrp.jpg");
-    // pix = pix.scaled(ui.image_label->size(), Qt::KeepAspectRatio);
-    // ui.image_label->setPixmap(pix);
+    // pix = pix.scaled(tabs_->image_label->size(), Qt::KeepAspectRatio);
+    // tabs_->image_label->setPixmap(pix);
+
+    // Create a dock widget with the title Label 1 and set the created label
+    // as the dock widget content
+//    ads::CDockWidget* DockWidget = new ads::CDockWidget("DockWidget");
 
     // ----------------------------------
     // create a dock widget to hold accounts/wallets
@@ -172,6 +195,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     QFrame *accounts_frame = new QFrame(accounts_scrollwidget);
     accounts_frame->setLayout(new QVBoxLayout());
     accounts_scrollwidget->setWidget(accounts_frame);
+
+//    DockWidget->setWidget(accounts_scrollwidget);
+
     accounts_dock = std::make_shared<QDockWidget>("Accounts", this);
     accounts_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
     accounts_dock->setFeatures(
@@ -210,7 +236,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
             if (network->name()=="XRPL")     w->widget_->set_data(*static_cast<ledger_wallet*>(w));
             accounts_frame->layout()->addWidget(w->widget_);
             // update wallet combo with name
-            ui.all_acct_combo->addItem(QString(w->name_.c_str()));
+            tabs_->all_acct_combo->addItem(QString(w->name_.c_str()));
         }
     }
     accounts_frame->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred));
@@ -222,44 +248,35 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // Resize order book to fit monospace text (add 1 chars - scrollbars/etc)
     //
     QString txt = "X";
-    int char_size = QFontMetrics(ui.order_book_xrpl->font()).horizontalAdvance(txt);
+    int char_size = QFontMetrics(tabs_->order_book_xrpl->font()).horizontalAdvance(txt);
     int calcWidth = char_size*85 + 8;
-    //std::cout << "width", ui.order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
-    ui.order_book_xrpl->setMinimumWidth(calcWidth);
-    //ui.order_book_xrpl->setMaximumWidth(calcWidth);
-    ui.order_book_bitstamp->setMinimumWidth(calcWidth);
-    //ui.order_book_bitstamp->setMaximumWidth(calcWidth);
+    //std::cout << "width", tabs_->order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
+    tabs_->order_book_xrpl->setMinimumWidth(calcWidth);
+    //tabs_->order_book_xrpl->setMaximumWidth(calcWidth);
+    tabs_->order_book_bitstamp->setMinimumWidth(calcWidth);
+    //tabs_->order_book_bitstamp->setMaximumWidth(calcWidth);
     //
     calcWidth = char_size*140 + 8;
-    ui.arbitrage_orders->setMinimumWidth(calcWidth);
-    //ui.arbitrage_orders->setMaximumWidth(calcWidth);
-
-    QStringList slist("Auto");
-    for (const auto &r : ohlc_chart_data::available_resolutions()) {
-        slist << r.name_;
-    }
-    ui.candle_res->addItems(slist);
-    ui.candle_res_2->addItems(slist);
-
-    DigitalClock *clock = new DigitalClock(this);
-    ui.controls_layout->addWidget(clock);
+    tabs_->arbitrage_orders->setMinimumWidth(calcWidth);
+    //tabs_->arbitrage_orders->setMaximumWidth(calcWidth);
 
     // initialize networks / start websocket connnections etc
-    main_dbg<0>.debug("Initializing bitstamp");
+    main_dbg<0>.debug("Init bitstamp");
     bitstamp_network_->initialize();
     //
-    main_dbg<0>.debug("Initializing xrpl mainnet");
+    main_dbg<0>.debug("Init xrpl mainnet");
     xrpl_network_->initialize();
     //
-    main_dbg<0>.debug("Initializing xrpl testnet");
+    main_dbg<0>.debug("Init xrpl testnet");
     xrpl_testnet_->initialize();
+    //
+    createPerspectiveUi();
 }
 
 // ----------------------------------------------------------------------------
 GroxMainWindow::~GroxMainWindow()
 {
     delete timer_;
-    delete crypto_price_plot_;
     delete obp_;
 }
 
@@ -305,7 +322,7 @@ void GroxMainWindow::createActions()
     start_io_threads(2);
 
 //    //
-//    actionQuit = ui.menubar->addAction(tr("Quit"));
+//    actionQuit = tabs_->menubar->addAction(tr("Quit"));
 //    actionQuit->setMenuRole(QAction::QuitRole);
 //    actionQuit->setShortcut(QKeySequence::Quit);
 }
@@ -313,7 +330,7 @@ void GroxMainWindow::createActions()
 // ----------------------------------------------------------------------------
 bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
 {
-    if (obj == ui.connect_button && event->type() == QEvent::MouseButtonPress)
+    if (obj == tabs_->connect_button && event->type() == QEvent::MouseButtonPress)
     {
         QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
         if (mouseEvent->modifiers() == Qt::ShiftModifier)
@@ -355,13 +372,13 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
 void GroxMainWindow::createMenus()
 {
     // to capture ctrl-click on connect button
-    ui.connect_button->installEventFilter(this);
+    tabs_->connect_button->installEventFilter(this);
 
     // action for quit (@TODO)
     // connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
 
     // button-click : fetch latest account balance data
-    // connect(ui.account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
+    // connect(tabs_->account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
     // when new candlestick data is ready, redo main graph
     connect(this, SIGNAL(new_ohlc_data_ui(double)), this, SLOT(new_ohlc_data(double)));
@@ -403,7 +420,7 @@ void GroxMainWindow::createMenus()
         QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p, v);
         hdf5_ohlc_.add_live_data(new_sample);
         //
-        crypto_price_plot_->update_live_data(new_sample);
+        price_plot_->update_live_data(new_sample);
         stream_process(new_sample);
     } , Qt::QueuedConnection);
 
@@ -436,122 +453,7 @@ void GroxMainWindow::createMenus()
         build_connection_gui(ex);
     }, Qt::QueuedConnection);
 
-    // Graph resolution buttons
-    connect(ui.gt_6, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(-2);
-    } , Qt::QueuedConnection);
-    connect(ui.gt_12, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(-1);
-    } , Qt::QueuedConnection);
-    connect(ui.gt_d, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(0);
-    } , Qt::QueuedConnection);
-    connect(ui.gt_w, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(1);
-    } , Qt::QueuedConnection);
-    connect(ui.gt_m, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(2);
-    } , Qt::QueuedConnection);
-    connect(ui.gt_y, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(3);
-    } , Qt::QueuedConnection);
-    connect(ui.gt_a, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(4);
-    } , Qt::QueuedConnection);
 
-    connect(ui.exec_algo, &QAbstractButton::clicked, this, [this]() {
-        execute_filter();
-    } , Qt::QueuedConnection);
-
-    connect(ui.candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
-        if (index>0) {
-            double res = ohlc_chart_data::available_resolutions()[index-1];
-            crypto_price_plot_->set_auto_candle_resolution(false);
-            if (crypto_price_plot_->adjust_candle_size(res)) {
-                crypto_price_plot_->adjust_data_scaling();
-            }
-            crypto_price_plot_->replot();
-        }
-        else {
-            crypto_price_plot_->set_auto_candle_resolution(true);
-            if (crypto_price_plot_->adjust_candle_size(0)) {
-                crypto_price_plot_->adjust_data_scaling();
-            }
-            crypto_price_plot_->replot();
-        }
-    } , Qt::QueuedConnection);
-
-    connect(ui.heikin, QOverload<int>::of(&QCheckBox::stateChanged), this, [this](int state){
-        if (state) {
-            crypto_price_plot_->setMode(ohlc_chart_curve::HeikinAshi);
-        }
-        else {
-            crypto_price_plot_->setMode(QwtPlotTradingCurve::SymbolStyle::CandleStick);
-        }
-    } , Qt::QueuedConnection);
-
-    connect(crypto_price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this, [this](QPointF p) {
-        auto crosshairs = crypto_price_plot_->get_crosshairs();
-        double msecs = crosshairs->quantize_x_coord(p.x());
-        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msecs);
-        QString s = QLocale::system().toString(dt, "dd-MM-yy hh:mm");
-
-        QMessageBox::StandardButton reply;
-        reply = QMessageBox::question(this, "Confirm", "Delete from " + s,
-                                      QMessageBox::Yes|QMessageBox::No);
-        if (reply == QMessageBox::Yes) {
-            hdf5_ohlc_.truncate_from_time(msecs);
-            update_candlestick_data();
-        } else {
-            main_dbg<0>.debug(str<>("Yes *not* clicked"));
-        }
-    } , Qt::QueuedConnection);
-
-    connect(crypto_price_plot_, &ohlc_price_plot::plotScaleChanged, this, [this](double t1, double t2) {
-        filters_plot_->update_time_axis(t1, t2);
-        assets_plot_->update_time_axis(t1, t2);
-
-//                axisScaleDraw(QwtPlot::xBottom)->, crypto_price_plot_->axisScaleDraw(QwtPlot::xBottom));
-        //    filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
-    } , Qt::QueuedConnection);
-
-    connect(ui.run_filter, &QPushButton::clicked, this, [this]() {
-        execute_filter();
-    } , Qt::QueuedConnection);
-}
-
-// ----------------------------------------------------------------------------
-// slot to ensure widget updates on GUI thread
-void GroxMainWindow::graph_rescale(int range)
-{
-    auto last_time = hdf5_ohlc_.get_last_sample_time(true);
-    double t1=0, t2 = last_time;
-    if (range==-2) {
-        t1 = last_time - 0.25*ohlc_chart_data::day;
-    }
-    else if (range==-1) {
-        t1 = last_time - 0.5*ohlc_chart_data::day;
-    }
-    else if (range==0) {
-        t1 = last_time - 1.0*ohlc_chart_data::day;
-    }
-    else if (range==1) {
-        t1 = last_time - 7*ohlc_chart_data::day;
-    }
-    else if (range==2) {
-        t1 = last_time - 31*ohlc_chart_data::day;
-    }
-    else if (range==3) {
-        t1 = last_time - 365*ohlc_chart_data::day;
-    }
-    // special case, to extend current view with new data
-    else if (range==100) {
-        t1 = last_time - 365*ohlc_chart_data::day;
-    }
-    else {
-        t1 = hdf5_ohlc_.get_first_sample_time();
-    }
-    crypto_price_plot_->update_time_axis(t1, t2);
 }
 
 // ----------------------------------------------------------------------------
@@ -576,7 +478,7 @@ void GroxMainWindow::new_ohlc_data(double old_res)
     }
 
     // don't change axes, just update data series and replot
-    crypto_price_plot_->replot();
+    price_plot_->replot();
 }
 
 // ----------------------------------------------------------------------------
@@ -675,9 +577,9 @@ void GroxMainWindow::capture_image()
     obp_->update_time_and_replot();
     return;
 
-//    auto image = ui.tabWidget->grab();
-//    ui.imagelabel->setPixmap(image);
-//    ui.imagelabel->setScaledContents(true);
+//    auto image = tabs_->tabWidget->grab();
+//    tabs_->imagelabel->setPixmap(image);
+//    tabs_->imagelabel->setScaledContents(true);
 }
 
 // ----------------------------------------------------------------------------
@@ -752,9 +654,9 @@ void GroxMainWindow::perform_arbitrage()
     double budget = 100000;
     std::string arbitrage_string;
     double test_offset = 0.00;
-    if (ui.arbitrage_test_mode->isChecked()) {
+    if (tabs_->arbitrage_test_mode->isChecked()) {
         try {
-            test_offset = std::stod(ui.arbitrage_test_offset->text().toStdString());
+            test_offset = std::stod(tabs_->arbitrage_test_offset->text().toStdString());
         }
         catch (...) {
             test_offset = 0.00;
@@ -765,17 +667,17 @@ void GroxMainWindow::perform_arbitrage()
     fee_data sell_fee{0.12, 0.0};
     fee_data buy_fee{0.0, 0.01};
     //
-    if (ui.enable_arbitrage->isChecked())
+    if (tabs_->enable_arbitrage->isChecked())
     {
         xrpl_network_->get_orderbook().compute_arbitrage(bitstamp_network_->get_orderbook(),
             budget, buy_fee, sell_fee, test_offset, arbitrage_string);
 
         if (arbitrage_string.size()>0) {
             QString arb_string = QString::fromStdString(arbitrage_string);
-            ui.arbitrage_orders->setPlainText(arb_string);
+            tabs_->arbitrage_orders->setPlainText(arb_string);
         }
         else {
-            ui.arbitrage_orders->setPlainText("");
+            tabs_->arbitrage_orders->setPlainText("");
         }
     }
 }
@@ -825,10 +727,10 @@ void GroxMainWindow::candlestick_timer_event()
 void GroxMainWindow::orderbook_text_update()
 {
     QString datastring = QString::fromStdString(bitstamp_network_->get_orderbook().order_text);
-    ui.order_book_bitstamp->setPlainText(datastring);
+    tabs_->order_book_bitstamp->setPlainText(datastring);
 
     datastring = QString::fromStdString(xrpl_network_->get_orderbook().order_text);
-    ui.order_book_xrpl->setPlainText(datastring);
+    tabs_->order_book_xrpl->setPlainText(datastring);
 }
 
 // ----------------------------------------------------------------------------
@@ -973,13 +875,18 @@ void GroxMainWindow::saveWindowSettings()
     settings.setValue("windowState", saveState());
 #endif
 
+    // save dockwindow perspectives
+    settings.beginGroup("DockWindow_Perspectives");
+    m_DockManager->savePerspectives(settings);
+    settings.endGroup();
+
     // save splitter state
-    QByteArray state = ui.graph_splitter->saveState();
-    settings.setValue("graphSplitter", state.toBase64());
+//    QByteArray state = tabs_->graph_splitter->saveState();
+//    settings.setValue("graphSplitter", state.toBase64());
 
     // save active tab
-    // QString currentTabName = ui.main_tabbook->currentWidget()->objectName();
-    settings.setValue("mainwindowTabIndex", ui.main_tabbook->currentIndex());
+    // QString currentTabName = tabs_->main_tabbook->currentWidget()->objectName();
+    settings.setValue("mainwindowTabIndex", tabs_->main_tabbook->currentIndex());
 
     settings.endGroup();
     main_dbg<0>.debug(str<>("Settings saved"), settings.fileName().toStdString());
@@ -1001,12 +908,20 @@ void GroxMainWindow::loadWindowSettings()
     restoreGeometry(settings.value("geometry").toByteArray());
     restoreState(settings.value("windowState").toByteArray());
 #endif
+
+    // load dockwindow perspectives
+    settings.beginGroup("DockWindow_Perspectives");
+    m_DockManager->loadPerspectives(settings);
+    PerspectiveComboBox->clear();
+    PerspectiveComboBox->addItems(m_DockManager->perspectiveNames());
+    settings.endGroup();
+
     // load splitter state
-    ui.graph_splitter->restoreState(QByteArray::fromBase64(settings.value("graphSplitter").toByteArray()));
+//    tabs_->graph_splitter->restoreState(QByteArray::fromBase64(settings.value("graphSplitter").toByteArray()));
 
     // load active tab
     int mainwindowTabIndex = settings.value("mainwindowTabIndex").toInt();
-    ui.main_tabbook->setCurrentIndex(mainwindowTabIndex);
+    tabs_->main_tabbook->setCurrentIndex(mainwindowTabIndex);
 
     settings.endGroup();
     main_dbg<0>.debug(str<>("Settings loaded"), settings.fileName().toStdString());
@@ -1024,7 +939,7 @@ QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"),
                       QColor("darkRed"), QColor("darkCyan"), QColor("darkMagenta"),
                       QColor("green"), QColor("darkGreen"), QColor("yellow"),
                       QColor("blue")};
-
+/*
 // ----------------------------------------------------------------------------
 void GroxMainWindow::execute_filter()
 {
@@ -1036,7 +951,7 @@ void GroxMainWindow::execute_filter()
         return;
     if (result != QDialog::Accepted) {
         col = 0;
-        crypto_price_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
+        price_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
 
         filters_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
         filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
@@ -1124,7 +1039,7 @@ void GroxMainWindow::execute_filter()
     }
 
     auto start = QDateTime( QDate(2020, 10, 1), QTime(0,0,0), QTimeZone::utc());
-    //start = ui.repair_date->dateTime();
+    //start = tabs_->repair_date->dateTime();
     //
     double msecs = start.toMSecsSinceEpoch();
     uint64_t start_index = data->sample_index(msecs);
@@ -1137,7 +1052,7 @@ void GroxMainWindow::execute_filter()
             continue;
 
         ohlc_in.set(ohlc);
-        time_in.set(ohlc.time + base_resolution.res_ /*+ ohlc_chart_data::minute*/);
+        time_in.set(ohlc.time + base_resolution.res_); + ohlc_chart_data::minute);
 
         for (uint i=0; i<price_pipelines.size(); ++i) {
             auto &pipe = price_pipelines[i];
@@ -1224,10 +1139,10 @@ void GroxMainWindow::execute_filter()
 
     for (uint i=0; i<price_pipelines.size(); ++i) {
         auto &data = priceplots[i];
-        crypto_price_plot_->add_price_curve("MA", data, colours[col++]);
+        price_plot_->add_price_curve("MA", data, colours[col++]);
     }
-    crypto_price_plot_->add_buy_sell_curve("Buy",  buys,  Qt::green);
-    crypto_price_plot_->add_buy_sell_curve("Sell", sells, Qt::red);
+    price_plot_->add_buy_sell_curve("Buy",  buys,  Qt::green);
+    price_plot_->add_buy_sell_curve("Sell", sells, Qt::red);
     //
     assets_plot_->add_asset_curve("Value", assets, Qt::red);
     for (uint i=0; i<filter_pipelines.size(); ++i) {
@@ -1244,7 +1159,7 @@ void GroxMainWindow::execute_filter()
         res_i++;
     }
 }
-
+*/
 // ----------------------------------------------------------------------------
 void GroxMainWindow::build_connection_gui(exchange *ex)
 {
@@ -1309,15 +1224,49 @@ void GroxMainWindow::build_connection_gui(exchange *ex)
     listview->setModel(model);
 
     // add connection widget to main window network tab
-    auto *layout = ui.networks_tab->layout();
+    auto *layout = tabs_->networks_tab->layout();
     if (layout==nullptr) {
         main_dbg<0>.debug(str<>("Networks layout"));
         net_layout_ = new QVBoxLayout();
-        ui.networks_tab->setLayout(net_layout_);
+        tabs_->networks_tab->setLayout(net_layout_);
         net_layout_->insertWidget(0, gb);
         net_layout_->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Expanding));
     }
     else {
         net_layout_->insertWidget(0, gb);
     }
+}
+
+void GroxMainWindow::createPerspectiveUi()
+{
+    SavePerspectiveAction = new QAction("Store Perspective", this);
+    connect(SavePerspectiveAction, SIGNAL(triggered()), this, SLOT(savePerspective()));
+    PerspectiveListAction = new QWidgetAction(this);
+    PerspectiveComboBox = new QComboBox(this);
+    PerspectiveComboBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    PerspectiveComboBox->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    connect(PerspectiveComboBox, SIGNAL(currentTextChanged(const QString&)),
+        m_DockManager, SLOT(openPerspective(const QString&)));
+    PerspectiveListAction->setDefaultWidget(PerspectiveComboBox);
+    ui.toolBar->addSeparator();
+    ui.toolBar->addAction(PerspectiveListAction);
+    ui.toolBar->addAction(SavePerspectiveAction);
+}
+
+
+void GroxMainWindow::savePerspective()
+{
+    QString PerspectiveName = QInputDialog::getText(
+                this, "Save Perspective", "Enter name:",
+                QLineEdit::Normal, PerspectiveComboBox->currentText());
+    if (PerspectiveName.isEmpty())
+    {
+        return;
+    }
+
+    m_DockManager->addPerspective(PerspectiveName);
+    QSignalBlocker Blocker(PerspectiveComboBox);
+    PerspectiveComboBox->clear();
+    PerspectiveComboBox->addItems(m_DockManager->perspectiveNames());
+    PerspectiveComboBox->setCurrentText(PerspectiveName);
 }

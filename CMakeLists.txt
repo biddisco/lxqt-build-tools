@@ -19,6 +19,7 @@
 cmake_minimum_required(VERSION 3.16)
 cmake_policy(SET CMP0048 NEW)
 cmake_policy(SET CMP0077 NEW)
+cmake_policy(SET CMP0135 NEW)
 
 project(
   GROX
@@ -32,7 +33,7 @@ project(
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
 # ------------------------------------------------------------------------------
-# CXX standard 17
+# CXX standard 20
 # ------------------------------------------------------------------------------
 set(CMAKE_CXX_STANDARD 20)
 
@@ -40,6 +41,7 @@ set(CMAKE_CXX_STANDARD 20)
 # Options
 # ------------------------------------------------------------------------------
 option(BUILD_SHARED_LIBS "build shared ripple libraries" OFF)
+set(Boost_NO_WARN_NEW_VERSIONS 1)
 
 # ------------------------------------------------------------------------------
 # Testing
@@ -82,7 +84,7 @@ find_package(
              Concurrent
 )
 
-find_package(Boost   REQUIRED system unit_test_framework)
+find_package(Boost   NO_MODULE REQUIRED system unit_test_framework)
 find_package(OpenSSL REQUIRED)
 find_package(MPI     REQUIRED COMPONENTS CXX) # needed by hdf5 if compiled with defaults
 find_package(HDF5    REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
@@ -112,6 +114,31 @@ if(NOT qwt_POPULATED)
   message(STATUS "Downloading QWT source...")
   fetchcontent_populate(qwt)
   add_subdirectory(${qwt_SOURCE_DIR} ${qwt_BINARY_DIR})
+endif()
+
+# ------------------------------------------------------------------------------
+# Build/Download Qt-Advanced-Docking-System
+# ------------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/Qt-Advanced-Docking-System)
+  message(STATUS "Using Qt-Advanced-Docking-System in source tree")
+  # use the source in this directory
+  set(FETCHCONTENT_SOURCE_DIR_QTADS ${CMAKE_CURRENT_SOURCE_DIR}/extern/Qt-Advanced-Docking-System)
+  # don't change branches, or pull
+  set(FETCHCONTENT_UPDATES_DISCONNECTED_QTADS ON)
+endif()
+
+# If we must pull a fresh copy, setup git location/branch and set shallow flag
+fetchcontent_declare(
+  QtADS
+  GIT_REPOSITORY https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System
+  GIT_TAG master
+  GIT_SHALLOW TRUE
+)
+fetchcontent_getproperties(QtADS)
+if(NOT QtADS_POPULATED)
+  message(STATUS "Downloading QtADS source...")
+  fetchcontent_populate(QtADS)
+  add_subdirectory(${qtads_SOURCE_DIR} ${qtads_BINARY_DIR})
 endif()
 
 # ------------------------------------------------------------------------------
@@ -218,6 +245,7 @@ set(GROX_SRC
     # main application
     src/main.cpp
     src/mainwindow.cpp
+#    src/tabbed_form.cpp
 
     # application utility
     src/currency.cpp
@@ -251,6 +279,7 @@ set(GROX_SRC
     src/widgets/trade_widget.cpp
     src/widgets/wallet_widget.cpp
     src/widgets/xrp_functions.cpp
+    src/price_chart_widget.cpp
 
     # plotting
     src/plot/OrderBookPlot.cpp
@@ -266,6 +295,8 @@ set(GROX_SRC
 
     src/stream/trade_filter.cpp
 )
+
+qt5_wrap_ui(GROX_SRC src/tabbed_form.ui)
 
 # -----------------------------------------------------------------------------
 # Qt resource files
@@ -310,6 +341,7 @@ target_link_libraries(
          Qt5::PrintSupport
          Qt5::Svg
          Qt5::Concurrent
+         qtadvanceddocking
          ${Boost_LIBRARIES}
          MPI::MPI_CXX
          ${HDF5_LIBRARIES}
