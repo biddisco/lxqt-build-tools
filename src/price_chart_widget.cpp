@@ -49,7 +49,6 @@ price_chart_widget::price_chart_widget(QWidget *parent, ohlc_dataset_manager *oh
         slist << r.name_;
     }
     ui->candle_res->addItems(slist);
-    ui->candle_res_2->addItems(slist);
 
     DigitalClock *clock = new DigitalClock(this);
     ui->controls_layout->addWidget(clock);
@@ -90,10 +89,6 @@ void price_chart_widget::connect_gui()
     } , Qt::QueuedConnection);
     connect(ui->gt_a, &QAbstractButton::clicked, this, [this]() {
         graph_rescale(4);
-    } , Qt::QueuedConnection);
-
-    connect(ui->exec_algo, &QAbstractButton::clicked, this, [this]() {
-        // execute_filter();
     } , Qt::QueuedConnection);
 
     connect(ui->candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
@@ -149,10 +144,6 @@ void price_chart_widget::connect_gui()
         //    filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
     } , Qt::QueuedConnection);
 
-    connect(ui->run_filter, &QPushButton::clicked, this, [this]() {
-        pplot_dbg<0>.error(str<>("emit execute_filter"));
-        // execute_filter();
-    } , Qt::QueuedConnection);
 }
 
 // ----------------------------------------------------------------------------

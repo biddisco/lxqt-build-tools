@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>845</width>
-    <height>456</height>
+    <width>1038</width>
+    <height>379</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -80,16 +80,6 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="exec_algo">
-       <property name="text">
-        <string>Algorithm</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="candle_res"/>
-     </item>
-     <item>
       <widget class="QCheckBox" name="heikin">
        <property name="text">
         <string>H/A</string>
@@ -97,56 +87,16 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="run_filter">
-       <property name="text">
-        <string>HA Algo</string>
-       </property>
-      </widget>
+      <widget class="QComboBox" name="candle_res"/>
      </item>
      <item>
-      <widget class="QDateTimeEdit" name="date_init">
-       <property name="dateTime">
-        <datetime>
-         <hour>0</hour>
-         <minute>0</minute>
-         <second>0</second>
-         <year>2021</year>
-         <month>5</month>
-         <day>11</day>
-        </datetime>
-       </property>
-       <property name="minimumTime">
-        <time>
-         <hour>0</hour>
-         <minute>0</minute>
-         <second>0</second>
-        </time>
-       </property>
-       <property name="currentSection">
-        <enum>QDateTimeEdit::DaySection</enum>
-       </property>
-       <property name="displayFormat">
-        <string>dd/MM/yyyy HH:mm</string>
-       </property>
-       <property name="calendarPopup">
-        <bool>false</bool>
-       </property>
-       <property name="timeSpec">
-        <enum>Qt::OffsetFromUTC</enum>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="candle_res_2"/>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer_3">
+      <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>40</width>
+         <width>0</width>
          <height>20</height>
         </size>
        </property>
@@ -160,10 +110,10 @@
       <enum>Qt::Vertical</enum>
      </property>
      <widget class="QWidget" name="horizontalLayoutWidget">
-      <layout class="QHBoxLayout" name="candlestick_layout" stretch=""/>
+      <layout class="QHBoxLayout" name="candlestick_layout"/>
      </widget>
      <widget class="QWidget" name="verticalLayoutWidget">
-      <layout class="QVBoxLayout" name="filters_layout" stretch=""/>
+      <layout class="QVBoxLayout" name="filters_layout"/>
      </widget>
     </widget>
    </item>

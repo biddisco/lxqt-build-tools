@@ -2,6 +2,7 @@
 # To build grox, the following might be necessary
 # ------------------------------------------------------------------------------
 # sudo apt install build-essential libqt5charts5-dev libqt5opengl5-dev libqt5svg5-dev libcurl4-openssl-dev
+# qt6 : sudo apt install qt6-base-dev libqt6opengl6-dev
 # Assumes hdf5, boost, installed using space environment
 #
 #

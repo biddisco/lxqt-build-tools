@@ -65,10 +65,8 @@ class GroxMainWindow : public QMainWindow
 
     // widgets
     QAction* actionQuit;
-    std::shared_ptr<QDockWidget> accounts_dock;
-    std::shared_ptr<QDockWidget> orders_dock;
-    QScrollArea *accounts_scrollwidget;
-    QScrollArea *orders_scrollwidget;
+    QFrame *orders_frame_;
+    QFrame *accounts_frame_;
 
     // data
     ohlc_dataset_manager hdf5_ohlc_;
@@ -92,12 +90,14 @@ class GroxMainWindow : public QMainWindow
     std::vector<std::thread> ioc_threads_;
     QVBoxLayout *net_layout_;
 
-    // ads:: The main container for docking
-    ads::CDockManager* m_DockManager;
-
-    QAction* SavePerspectiveAction = nullptr;
-    QWidgetAction* PerspectiveListAction = nullptr;
-    QComboBox* PerspectiveComboBox = nullptr;
+    // The main container for docking
+    ads::CDockManager* dock_manager_;
+    // menu helpers for docking support
+    QMenu* docking_menu_;
+    QMenu* dockwindows_menu_;
+    QMenu* perspectives_menu_;
+    //
+    QString active_perspective_;
 
 public:
     explicit GroxMainWindow(QWidget* parent = nullptr);
@@ -132,7 +132,8 @@ public:
 
     void build_connection_gui(exchange *ex);
 
-    void createPerspectiveUi();
+    void createPerspectives_Ui();
+    void openPerspective(const QString &name);
 
 private slots:
 
@@ -144,7 +145,6 @@ signals:
 
 public slots:
     void appExitCleanupHandler();
-    void restore_dockwindows();
     void new_ohlc_data(double res);
     void execute_xrp();
     void execute_usd();
@@ -168,5 +168,3 @@ public slots:
     void savePerspective();
 
 };
-
-static GroxMainWindow* mainwindow;

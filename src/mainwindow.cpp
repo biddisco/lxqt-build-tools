@@ -7,7 +7,11 @@
 #include <QAction>
 #include <QApplication>
 #include <QDateTime>
+#include <QFrame>
 #include <QKeySequence>
+#ifdef QT6
+# include <QKeyCombination>
+#endif
 #include <QInputDialog>
 #include <QShortcut>
 #include <QMessageBox>
@@ -65,60 +69,54 @@ constexpr int debug_level = 0;
 template <int Level>
 static print_threshold<Level, debug_level> main_dbg("Main-win");
 
+using namespace ads;
+
 // ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)
   : QMainWindow(parent)
+  , net_layout_(nullptr)
+  , dockwindows_menu_(nullptr)
+  , perspectives_menu_(nullptr)
+
 {
-    // qRegisterMetaType<currency>("currency");
-
-    //
-    // Build GUI from designer generated widgets/controls
-    //
     ui.setupUi(this);
-    //
-    mainwindow = this;
 
-    using namespace ads;
-    // Create the dock manager after the ui is setup. Because the
-    // parent parameter is a QMainWindow the dock manager registers
+    // ----------------------------------
+    app_settings* app_ini = global_settings();
+
+    // ----------------------------------
+    // Create Dock manager and set default flags
+    // Because the parent parameter is a QMainWindow the dock manager registers
     // itself as the central widget as such the ui must be set up first.
-    QWidget *widget_ = new QWidget(this);
-    tabs_ = new Ui::TabbedForm();
-    tabs_->setupUi(widget_);
 
     CDockManager::setConfigFlag(CDockManager::OpaqueSplitterResize, true);
     CDockManager::setConfigFlag(CDockManager::XmlCompressionEnabled, false);
     CDockManager::setConfigFlag(CDockManager::FocusHighlighting, true);
-    m_DockManager = new CDockManager(this);
+    dock_manager_ = new CDockManager(this);
 
-    CDockWidget* CentralDockWidget = new CDockWidget("CentralWidget");
-    CentralDockWidget->setWidget(widget_);
-    auto* CentralDockArea = m_DockManager->setCentralWidget(CentralDockWidget);
-    CentralDockArea->setAllowedAreas(DockWidgetArea::AllDockAreas);
+    // ----------------------------------
+    // Setup a menu to allow dockwindow control
+    createPerspectives_Ui();
 
     // ----------------------------------
     // Create orderbook plot as dockwindow
-    //
     obp_ = new OrderBookPlot();
     obp_->setMinimumSize(384,256);
     //
     CDockWidget* OBPDockWidget = new CDockWidget("OrderBookPlot-1");
     OBPDockWidget->setWidget(obp_);
-    OBPDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
-    auto TableArea2 = m_DockManager->addDockWidget(DockWidgetArea::LeftDockWidgetArea, OBPDockWidget);
-    ui.menubar->addAction(tr("Quit"));
-    ui.menubar->addAction(OBPDockWidget->toggleViewAction());
+    OBPDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, OBPDockWidget);
+    dockwindows_menu_->addAction(OBPDockWidget->toggleViewAction());
 
     // ----------------------------------
     // create bitstamp exchange interface
-    //
     bitstamp_network_ = bitstamp_network::get_bitstamp_instance();
     bitstamp_network_->set_plot(obp_);
 
     // ----------------------------------
     // create xrp network interfaces
     // we do not plot the xrp testnet orderbook
-    //
     xrpl_network_ = xrpl_network::get_xrpl_instance(false);
     xrpl_testnet_ = xrpl_network::get_xrpl_instance(true);
     xrpl_network_->set_plot(obp_);
@@ -133,6 +131,70 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     candlestick_update_active_ = false;
 
     // ----------------------------------
+    // Create dockwidget for network connections
+    QFrame *netbox = new QFrame(this);
+    net_layout_ = new QVBoxLayout();
+    netbox->setLayout(net_layout_);
+    //
+    CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
+    NetworkDockWidget->setWidget(netbox);
+    NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    auto RightArea = dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
+    dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
+
+    // ----------------------------------
+    // Create dockwidget for algorithmic trading
+    QWidget *algowidget_ = new QWidget(this);
+    tabs_ = new Ui::TabbedForm();
+    tabs_->setupUi(algowidget_);
+
+    CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
+    AlgorithmsDockWidget->setWidget(algowidget_);
+    AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
+    dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
+
+    // ----------------------------------
+    // create a dock widget to hold accounts/wallets
+    accounts_frame_ = new QFrame();
+    accounts_frame_->setLayout(new QVBoxLayout());
+    //
+    CDockWidget* AccountsDockWidget = new CDockWidget("Accounts");
+    AccountsDockWidget->setWidget(accounts_frame_);
+    AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, AccountsDockWidget, RightArea, 2);
+    dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
+
+    // ----------------------------------
+    // create a dock widget to hold open orders
+    orders_frame_ = new QFrame();
+    orders_frame_->setLayout(new QVBoxLayout());
+    //
+    CDockWidget* OrdersDockWidget = new CDockWidget("Trades");
+    OrdersDockWidget->setWidget(orders_frame_);
+    OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, OrdersDockWidget, RightArea, 3);
+    dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
+
+    // for each wallet on each network
+    for (auto network : app_ini->networks_) {
+        for (auto w : network->wallets()) {
+            // create a gui widget for the wallet
+            w->widget_ = new wallet_widget(this);
+            w->widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+            if (network->name()=="Bitstamp") w->widget_->set_data(*static_cast<bitstamp_account*>(w));
+            if (network->name()=="XRPL")     w->widget_->set_data(*static_cast<ledger_wallet*>(w));
+            accounts_frame_->layout()->addWidget(w->widget_);
+            // update wallet combo with name
+            tabs_->all_acct_combo->addItem(QString(w->name_.c_str()));
+        }
+    }
+    accounts_frame_->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred));
+
+    // load in the list of trustlines that we know about
+    loadTrustlines();
+
+    // ----------------------------------
     // setup connections tab
     loadConnectionSetups();
 
@@ -141,9 +203,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     createActions();
     createMenus();
-
-    // ----------------------------------
-    app_settings* app_ini = global_settings();
 
     // ----------------------------------
     // Load existing candlestick data
@@ -161,88 +220,18 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         }
     }
 
-    //
+    // ----------------------------------
     // Create candlestick/volume plots
-    //
     price_plot_ = new price_chart_widget(this, &hdf5_ohlc_);
     //
     CDockWidget* PlotDockWidget = new CDockWidget("PricePlot-1");
     PlotDockWidget->setWidget(price_plot_);
-    PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
-    auto TableArea1 = m_DockManager->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
-    ui.menubar->addAction(PlotDockWidget->toggleViewAction());
+    PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    auto LeftArea = dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
+    dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
 
     // start by displaying 1 day of data
     price_plot_->graph_rescale(0);
-
-    // ----------------------------------
-    // just an experiment to display an image
-    //
-    // scale pixmap to fit in label's size and keep ratio of pixmap
-    QPixmap pix(":/images/xrp.jpg");
-    // pix = pix.scaled(tabs_->image_label->size(), Qt::KeepAspectRatio);
-    // tabs_->image_label->setPixmap(pix);
-
-    // Create a dock widget with the title Label 1 and set the created label
-    // as the dock widget content
-//    ads::CDockWidget* DockWidget = new ads::CDockWidget("DockWidget");
-
-    // ----------------------------------
-    // create a dock widget to hold accounts/wallets
-    //
-    accounts_scrollwidget = new QScrollArea(this);
-    accounts_scrollwidget->setWidgetResizable(true);
-    QFrame *accounts_frame = new QFrame(accounts_scrollwidget);
-    accounts_frame->setLayout(new QVBoxLayout());
-    accounts_scrollwidget->setWidget(accounts_frame);
-
-//    DockWidget->setWidget(accounts_scrollwidget);
-
-    accounts_dock = std::make_shared<QDockWidget>("Accounts", this);
-    accounts_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
-    accounts_dock->setFeatures(
-            QDockWidget::DockWidgetClosable |
-            QDockWidget::DockWidgetMovable |
-            QDockWidget::DockWidgetFloatable);
-    accounts_dock->setObjectName("AccountsDock");
-    accounts_dock->setWidget(accounts_scrollwidget);
-    addDockWidget(Qt::RightDockWidgetArea, accounts_dock.get());
-
-    // ----------------------------------
-    // create a dock widget to hold trade orders
-    //
-    orders_scrollwidget = new QScrollArea(this);
-    orders_scrollwidget->setWidgetResizable(true);
-    QFrame *main_frame = new QFrame(orders_scrollwidget);
-    main_frame->setLayout(new QVBoxLayout());
-    orders_scrollwidget->setWidget(main_frame);
-    orders_dock = std::make_shared<QDockWidget>("Orders", this);
-    orders_dock->setAllowedAreas(Qt::AllDockWidgetAreas);
-    orders_dock->setFeatures(
-            QDockWidget::DockWidgetClosable |
-            QDockWidget::DockWidgetMovable |
-            QDockWidget::DockWidgetFloatable);
-    orders_dock->setObjectName("OrdersDock");
-    orders_dock->setWidget(orders_scrollwidget);
-    addDockWidget(Qt::RightDockWidgetArea, orders_dock.get());
-
-    // for each wallet on each network
-    for (auto network : app_ini->networks_) {
-        for (auto w : network->wallets()) {
-            // create a gui widget for the wallet
-            w->widget_ = new wallet_widget(this);
-            w->widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-            if (network->name()=="Bitstamp") w->widget_->set_data(*static_cast<bitstamp_account*>(w));
-            if (network->name()=="XRPL")     w->widget_->set_data(*static_cast<ledger_wallet*>(w));
-            accounts_frame->layout()->addWidget(w->widget_);
-            // update wallet combo with name
-            tabs_->all_acct_combo->addItem(QString(w->name_.c_str()));
-        }
-    }
-    accounts_frame->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred));
-
-    // load in the list of trustlines that we know about
-    loadTrustlines();
 
     //
     // Resize order book to fit monospace text (add 1 chars - scrollbars/etc)
@@ -269,8 +258,14 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     main_dbg<0>.debug("Init xrpl testnet");
     xrpl_testnet_->initialize();
-    //
-    createPerspectiveUi();
+
+    // ----------------------------------
+    // just an experiment to display an image
+    // scale pixmap to fit in label's size and keep ratio of pixmap
+    QPixmap pix(":/images/xrp.jpg");
+    // pix = pix.scaled(tabs_->image_label->size(), Qt::KeepAspectRatio);
+    // tabs_->image_label->setPixmap(pix);
+
 }
 
 // ----------------------------------------------------------------------------
@@ -312,16 +307,16 @@ void GroxMainWindow::appExitCleanupHandler()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::createActions()
 {
-    new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q), this, SLOT(close()));
-    new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_D), this, SLOT(restore_dockwindows()));
+    new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
 
     // Ctrl+R : shows how to connect a lambda to a shortcut
-    QObject::connect(new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_R),  this), &QShortcut::activated, [=](){
+    QObject::connect(new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_R)),  this), &QShortcut::activated, [=](){
     });
 
     start_io_threads(2);
 
 //    //
+//    ui.menubar->addAction(tr("Quit"));
 //    actionQuit = tabs_->menubar->addAction(tr("Quit"));
 //    actionQuit->setMenuRole(QAction::QuitRole);
 //    actionQuit->setShortcut(QKeySequence::Quit);
@@ -453,6 +448,15 @@ void GroxMainWindow::createMenus()
         build_connection_gui(ex);
     }, Qt::QueuedConnection);
 
+
+    connect(tabs_->exec_algo, &QAbstractButton::clicked, this, [this]() {
+        // execute_filter();
+    } , Qt::QueuedConnection);
+
+    connect(tabs_->run_filter, &QPushButton::clicked, this, [this]() {
+        // pplot_dbg<0>.error(str<>("emit execute_filter"));
+        // execute_filter();
+    } , Qt::QueuedConnection);
 
 }
 
@@ -642,13 +646,6 @@ void GroxMainWindow::start_io_threads(int nthreads)
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::restore_dockwindows()
-{
-    accounts_dock->show();
-    orders_dock->show();
-}
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
 void GroxMainWindow::perform_arbitrage()
 {
     double budget = 100000;
@@ -737,10 +734,10 @@ void GroxMainWindow::orderbook_text_update()
 void GroxMainWindow::display_offers()
 {
     // Delete previous space in offer window
-    for (int i = 0; i < orders_scrollwidget->widget()->layout()->count(); ++i) {
-        QLayoutItem *layoutItem = orders_scrollwidget->widget()->layout()->itemAt(i);
+    for (int i = 0; i < orders_frame_->layout()->count(); ++i) {
+        QLayoutItem *layoutItem = orders_frame_->layout()->itemAt(i);
         if (layoutItem->spacerItem()) {
-            orders_scrollwidget->widget()->layout()->removeItem(layoutItem);
+            orders_frame_->layout()->removeItem(layoutItem);
             delete layoutItem;
             --i;
         }
@@ -750,11 +747,11 @@ void GroxMainWindow::display_offers()
     // for each wallet on each network
     for (auto network : app_ini->networks_) {
         for (auto w : network->wallets()) {
-            check_trades_dialog::create_trade_widgets(orders_scrollwidget->widget(), w->name_, w->offers_);
+            check_trades_dialog::create_trade_widgets(orders_frame_, w->name_, w->offers_);
         }
     }
     // absorb any extra space in the parent by adding a spacer
-    orders_scrollwidget->widget()->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
+    orders_frame_->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
 }
 
 // ----------------------------------------------------------------------------
@@ -865,30 +862,19 @@ void GroxMainWindow::saveWindowSettings()
 {
     app_settings* app_ini = global_settings();
     QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
-    // Start section
-    settings.beginGroup(objectName());
-#ifdef workaround
-    settings.setValue("geometry", QVariant(geometry()));
-    settings.setValue("windowState",saveState());
-#else
+
+    // Mainwindow
+    settings.beginGroup("MainWindow");
     settings.setValue("geometry", saveGeometry());
     settings.setValue("windowState", saveState());
-#endif
+    settings.endGroup();
 
-    // save dockwindow perspectives
+    // Dockwindow perspectives
     settings.beginGroup("DockWindow_Perspectives");
-    m_DockManager->savePerspectives(settings);
+    dock_manager_->savePerspectives(settings);
+    settings.setValue("active", active_perspective_);
     settings.endGroup();
 
-    // save splitter state
-//    QByteArray state = tabs_->graph_splitter->saveState();
-//    settings.setValue("graphSplitter", state.toBase64());
-
-    // save active tab
-    // QString currentTabName = tabs_->main_tabbook->currentWidget()->objectName();
-    settings.setValue("mainwindowTabIndex", tabs_->main_tabbook->currentIndex());
-
-    settings.endGroup();
     main_dbg<0>.debug(str<>("Settings saved"), settings.fileName().toStdString());
 }
 
@@ -897,33 +883,22 @@ void GroxMainWindow::loadWindowSettings()
 {
     app_settings* app_ini = global_settings();
     QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
-    // Start GroxMainWindow section
-    settings.beginGroup(objectName());
 
-#ifdef workaround
-    if(settings.contains("geometry"))
-        setGeometry(settings.value("geometry").value<QRect>());
-    restoreState(settings.value("windowState").toByteArray());
-#else
+    // MainWindow section
+    settings.beginGroup("MainWindow");
     restoreGeometry(settings.value("geometry").toByteArray());
     restoreState(settings.value("windowState").toByteArray());
-#endif
+    settings.endGroup();
 
-    // load dockwindow perspectives
+    // Dockwindow perspectives
     settings.beginGroup("DockWindow_Perspectives");
-    m_DockManager->loadPerspectives(settings);
-    PerspectiveComboBox->clear();
-    PerspectiveComboBox->addItems(m_DockManager->perspectiveNames());
+    dock_manager_->loadPerspectives(settings);
+    createPerspectives_Ui();
+    if (settings.contains("active")) {
+        openPerspective(settings.value("active", "Default").toString());
+    }
     settings.endGroup();
 
-    // load splitter state
-//    tabs_->graph_splitter->restoreState(QByteArray::fromBase64(settings.value("graphSplitter").toByteArray()));
-
-    // load active tab
-    int mainwindowTabIndex = settings.value("mainwindowTabIndex").toInt();
-    tabs_->main_tabbook->setCurrentIndex(mainwindowTabIndex);
-
-    settings.endGroup();
     main_dbg<0>.debug(str<>("Settings loaded"), settings.fileName().toStdString());
 }
 
@@ -1160,11 +1135,13 @@ void GroxMainWindow::execute_filter()
     }
 }
 */
+
 // ----------------------------------------------------------------------------
 void GroxMainWindow::build_connection_gui(exchange *ex)
 {
     // Group box with network name in title
-    QGroupBox *gb = new QGroupBox(QString::fromStdString(ex->name().data()), this);
+    QString name = QString::fromStdString(ex->name().data());
+    QGroupBox *gb = new QGroupBox(name, this);
     QGridLayout* bl = new QGridLayout(gb);
 
     // widget with panels for tickers/selected/streams
@@ -1172,7 +1149,7 @@ void GroxMainWindow::build_connection_gui(exchange *ex)
     bl->addWidget(conwidget, 0, 0);
 
     // -------------------------------------------
-    // display avaialble streams in a Vertical box
+    // display available streams in a Vertical box
     QVBoxLayout* sbl = new QVBoxLayout(conwidget->get_stream_box());
     const auto streams = ex->websocket_streams();
     for (const auto &s : streams) {
@@ -1189,7 +1166,7 @@ void GroxMainWindow::build_connection_gui(exchange *ex)
     conwidget->get_stream_box()->setLayout(sbl);
 
     // -------------------------------------------
-    // display avaialble ticker currency pairs
+    // display available ticker currency pairs
     QStandardItemModel *model = new QStandardItemModel();
     enum {CheckState = Qt::UserRole + 1};
     for (auto const& [i, cp] : ex->currency_pairs() | ranges::views::enumerate) {
@@ -1223,50 +1200,69 @@ void GroxMainWindow::build_connection_gui(exchange *ex)
     QListView *listview = conwidget->get_tickers_list();
     listview->setModel(model);
 
-    // add connection widget to main window network tab
-    auto *layout = tabs_->networks_tab->layout();
-    if (layout==nullptr) {
-        main_dbg<0>.debug(str<>("Networks layout"));
-        net_layout_ = new QVBoxLayout();
-        tabs_->networks_tab->setLayout(net_layout_);
-        net_layout_->insertWidget(0, gb);
-        net_layout_->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Expanding));
-    }
-    else {
-        net_layout_->insertWidget(0, gb);
-    }
+    //
+    // add connection widget to network dock window
+    //
+    net_layout_->insertWidget(0, gb);
 }
 
-void GroxMainWindow::createPerspectiveUi()
+// ----------------------------------------------------------------------------
+void GroxMainWindow::createPerspectives_Ui()
 {
-    SavePerspectiveAction = new QAction("Store Perspective", this);
-    connect(SavePerspectiveAction, SIGNAL(triggered()), this, SLOT(savePerspective()));
-    PerspectiveListAction = new QWidgetAction(this);
-    PerspectiveComboBox = new QComboBox(this);
-    PerspectiveComboBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    PerspectiveComboBox->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-    connect(PerspectiveComboBox, SIGNAL(currentTextChanged(const QString&)),
-        m_DockManager, SLOT(openPerspective(const QString&)));
-    PerspectiveListAction->setDefaultWidget(PerspectiveComboBox);
-    ui.toolBar->addSeparator();
-    ui.toolBar->addAction(PerspectiveListAction);
-    ui.toolBar->addAction(SavePerspectiveAction);
+    // create one time setup menu items
+    if (!dockwindows_menu_) {
+        // main window menu entry
+        QMenu* docking_menu_ = new QMenu("Window");
+        ui.menubar->addMenu(docking_menu_);
+        // subsection for dockwindows
+        QAction* menuentry_ = docking_menu_->addAction("Dock windows...");
+        dockwindows_menu_ = new QMenu();
+        menuentry_->setMenu(dockwindows_menu_);
+        // subsection for perspectives
+        QAction* menuentry2_ = docking_menu_->addAction("Perspectives...");
+        perspectives_menu_ = new QMenu();
+        menuentry2_->setMenu(perspectives_menu_);
+        // action to create a new perspective
+        QAction* SavePerspectiveAction = new QAction("Save Perspective");
+        connect(SavePerspectiveAction, SIGNAL(triggered()), this, SLOT(savePerspective()));
+        docking_menu_->addAction(SavePerspectiveAction);
+    }
+    //
+    perspectives_menu_->clear();
+    for (const QString &name : dock_manager_->perspectiveNames()) {
+        QAction* LoadPerspectiveAction = new QAction(name);
+        LoadPerspectiveAction->setCheckable(true);
+        connect(LoadPerspectiveAction, &QAction::triggered, this, [this,name](){
+            openPerspective(name);
+        }, Qt::QueuedConnection);
+        perspectives_menu_->addAction(LoadPerspectiveAction);
+    }
 }
 
-
+// ----------------------------------------------------------------------------
 void GroxMainWindow::savePerspective()
 {
-    QString PerspectiveName = QInputDialog::getText(
+    QString Name = QInputDialog::getText(
                 this, "Save Perspective", "Enter name:",
-                QLineEdit::Normal, PerspectiveComboBox->currentText());
-    if (PerspectiveName.isEmpty())
+                QLineEdit::Normal, active_perspective_);
+    if (!Name.isEmpty())
     {
-        return;
+        dock_manager_->addPerspective(Name);
+        createPerspectives_Ui();
     }
+}
 
-    m_DockManager->addPerspective(PerspectiveName);
-    QSignalBlocker Blocker(PerspectiveComboBox);
-    PerspectiveComboBox->clear();
-    PerspectiveComboBox->addItems(m_DockManager->perspectiveNames());
-    PerspectiveComboBox->setCurrentText(PerspectiveName);
+// ----------------------------------------------------------------------------
+void GroxMainWindow::openPerspective(const QString &name)
+{
+    active_perspective_ = name;
+    for (auto *action : perspectives_menu_->actions()) {
+        if (action->text()==name) {
+            action->setChecked(true);
+        }
+        else {
+            action->setChecked(false);
+        }
+    }
+    dock_manager_->openPerspective(name);
 }
