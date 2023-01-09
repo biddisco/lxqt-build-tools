@@ -13,7 +13,7 @@ QDateTime boostToQDateTime(const boost::posix_time::ptime &boostTime)
     // TODO - ... check overflow here ...
     time_t secsSince1970 = time_t(secsSince1970Dur);
 
-    QDateTime convertedDateTime = QDateTime::fromTime_t(secsSince1970, Qt::UTC);
+    QDateTime convertedDateTime = QDateTime::fromSecsSinceEpoch(secsSince1970, Qt::UTC);
     return convertedDateTime;
 }
 

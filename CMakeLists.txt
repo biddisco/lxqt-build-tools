@@ -2,7 +2,8 @@
 # To build grox, the following might be necessary
 # ------------------------------------------------------------------------------
 # sudo apt install build-essential libqt5charts5-dev libqt5opengl5-dev libqt5svg5-dev libcurl4-openssl-dev
-# qt6 : sudo apt install qt6-base-dev libqt6opengl6-dev
+# QPlatformNativeInterface requires base-private-dev
+# qt6 : sudo apt install qt6-base-dev qt6-base-private-dev libqt6opengl6-dev libqt6svg6-dev
 # Assumes hdf5, boost, installed using space environment
 #
 #
@@ -71,19 +72,47 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
 )
 
 # ------------------------------------------------------------------------------
-# Find packages
+# Utility function to print all vars
+# ------------------------------------------------------------------------------
+function(dump_cmake_variables)
+    get_cmake_property(_variableNames VARIABLES)
+    list (SORT _variableNames)
+    foreach (_variableName ${_variableNames})
+        if (ARGV0)
+            unset(MATCHED)
+            string(REGEX MATCH ${ARGV0} MATCHED ${_variableName})
+            if (NOT MATCHED)
+                continue()
+            endif()
+        endif()
+        message(STATUS "${_variableName}=${${_variableName}}")
+    endforeach()
+endfunction()
+
+# ------------------------------------------------------------------------------
+# FindPkg
 # ------------------------------------------------------------------------------
 include(FindPkgConfig)
-find_package(
-  Qt5 REQUIRED QUIET
-  COMPONENTS Core
-             Widgets
-             Gui
-             OpenGL
-             PrintSupport
-             Svg
-             Concurrent
-)
+
+# ------------------------------------------------------------------------------
+# Find Qt, first 6, then 5 if not found
+# ------------------------------------------------------------------------------
+# this line to force correct var so that Qt-AdvancedDocking uses Qt6 by default 
+find_package(QT NAMES Qt6 COMPONENTS Core REQUIRED)
+# 
+find_package(Qt6 COMPONENTS Core)
+if (NOT Qt6_FOUND)
+    find_package(Qt5 5.15 REQUIRED COMPONENTS Core)
+endif()
+message(STATUS "Grox Using Qt${QT_DEFAULT_MAJOR_VERSION}")
+
+if (${QT_DEFAULT_MAJOR_VERSION} EQUAL 6)
+    set(qtcomponents Core Widgets Gui OpenGL OpenGLWidgets PrintSupport Svg Concurrent)
+else()
+    set(qtcomponents Core Widgets Gui OpenGL PrintSupport Svg Concurrent)
+endif()
+
+find_package(Qt${QT_DEFAULT_MAJOR_VERSION} REQUIRED COMPONENTS ${qtcomponents})
 
 find_package(Boost   NO_MODULE REQUIRED system unit_test_framework)
 find_package(OpenSSL REQUIRED)
@@ -297,7 +326,7 @@ set(GROX_SRC
     src/stream/trade_filter.cpp
 )
 
-qt5_wrap_ui(GROX_SRC src/tabbed_form.ui)
+qt_wrap_ui(GROX_SRC src/tabbed_form.ui)
 
 # -----------------------------------------------------------------------------
 # Qt resource files
@@ -335,13 +364,14 @@ target_compile_definitions(grox
 target_link_libraries(
   grox
   PUBLIC qwt
-         Qt5::Core
-         Qt5::Widgets
-         Qt5::Gui
-         Qt5::OpenGL
-         Qt5::PrintSupport
-         Qt5::Svg
-         Qt5::Concurrent
+         Qt::Core
+         Qt::Widgets
+         Qt::Gui
+         Qt::OpenGL
+         $<$<EQUAL:${QT_DEFAULT_MAJOR_VERSION},6>:Qt::OpenGLWidgets>
+         Qt::PrintSupport
+         Qt::Svg
+         Qt::Concurrent
          qtadvanceddocking
          ${Boost_LIBRARIES}
          MPI::MPI_CXX

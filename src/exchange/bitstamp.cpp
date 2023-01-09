@@ -656,7 +656,7 @@ void bitstamp_network::new_trade_data(bitstamp_network* n, std::string_view data
 bool bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http_2 fn)
 {
     QDateTime currentDateTime = QDateTime::currentDateTimeUtc();
-    uint64_t unixtime = currentDateTime.toTime_t();
+    uint64_t unixtime = currentDateTime.toSecsSinceEpoch();
     //
     uint64_t diff = unixtime - start_t;
     uint64_t samples = diff / 60;
