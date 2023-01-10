@@ -34,7 +34,7 @@
 #include "src/widgets/check_trades_dialog.hpp"
 #include "src/widgets/trade_algorithm.hpp"
 #include "src/widgets/connection_widget.hpp"
-#include "src/price_chart_widget.hpp"
+#include "src/widgets/price_chart_widget.hpp"
 //
 #include "src/demangle_helper.hpp"
 #include "src/print.hpp"
@@ -46,7 +46,6 @@
 //
 #include "json_types.hpp"
 #include "settings.hpp"
-#include "print.hpp"
 //
 #include "src/stream/trade_filter.hpp"
 #include "src/data/ohlc_heikin_ashi.hpp"

@@ -309,7 +309,7 @@ set(GROX_SRC
     src/widgets/trade_widget.cpp
     src/widgets/wallet_widget.cpp
     src/widgets/xrp_functions.cpp
-    src/price_chart_widget.cpp
+    src/widgets/price_chart_widget.cpp
 
     # plotting
     src/plot/OrderBookPlot.cpp

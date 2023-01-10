@@ -20,7 +20,7 @@
 #include "src/plot/ohlc_picker.hpp"
 #include "src/plot/OrderBookPlot.h"
 #include "src/plot/filter_plot.hpp"
-#include "src/price_chart_widget.hpp"
+#include "src/widgets/price_chart_widget.hpp"
 //
 #include "src/data/ohlc_dataset_manager.hpp"
 //

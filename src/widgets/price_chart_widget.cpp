@@ -1,12 +1,12 @@
 #include <QMessageBox>
 //
-#include "price_chart_widget.hpp"
 #include "ui_price_chart_widget.h"
+#include "src/widgets/price_chart_widget.hpp"
 //
 #include "src/data/ohlc_dataset_manager.hpp"
 #include "src/widgets/digital_clock.hpp"
 //
-#include "print.hpp"
+#include "src/print.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -144,6 +144,8 @@ void price_chart_widget::connect_gui()
         //    filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
     } , Qt::QueuedConnection);
 
+    filters_plot_->hide();
+    assets_plot_->hide();
 }
 
 // ----------------------------------------------------------------------------
