@@ -206,6 +206,10 @@ void ohlc_price_plot::update_live_data(QwtOHLCSample const &new_sample)
     // repaint the live dataset
     if (!direct_painter_) {
         direct_painter_ = new QwtPlotDirectPainter(this);
+        // qwt directpainter used inside a Qt-AdvancedDockingSystem window
+        // has bad repaint effects unless we turn on CopyBackingStore
+        direct_painter_->setAttribute(QwtPlotDirectPainter::FullRepaint, false);
+        direct_painter_->setAttribute(QwtPlotDirectPainter::CopyBackingStore, true);
         ohlc_dataset_manager_->get_live_curve()->attach(this);
         ohlc_dataset_manager_->get_live_curve()->setVisible(true);
     }
