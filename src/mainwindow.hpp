@@ -90,8 +90,6 @@ class GroxMainWindow : public QMainWindow
     std::vector<std::thread> ioc_threads_;
     QVBoxLayout *net_layout_;
 
-    // The main container for docking
-    ads::CDockManager* dock_manager_;
     // menu helpers for docking support
     QMenu* docking_menu_;
     QMenu* dockwindows_menu_;

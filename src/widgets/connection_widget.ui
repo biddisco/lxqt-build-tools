@@ -6,14 +6,21 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>362</width>
-    <height>128</height>
+    <width>611</width>
+    <height>266</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="name">
+     <property name="text">
+      <string>Name</string>
+     </property>
+    </widget>
+   </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
@@ -28,6 +35,20 @@
         <string>All Tickers</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Filter</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="filter"/>
+          </item>
+         </layout>
+        </item>
         <item>
          <widget class="QListView" name="tickers_list">
           <property name="sizePolicy">
@@ -69,6 +90,13 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QPushButton" name="apply">
+          <property name="text">
+           <string>Apply</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </item>
@@ -84,19 +112,6 @@
         <string>Streams</string>
        </property>
       </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
      </item>
     </layout>
    </item>

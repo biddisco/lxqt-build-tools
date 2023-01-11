@@ -86,6 +86,11 @@ public:
     }
 
     // ---------------------------------------
+    // subscription to tickers
+    // ---------------------------------------
+    virtual void subscribe_currency_pair(std::string_view p1) {};
+
+    // ---------------------------------------
     // fees
     // ---------------------------------------
     virtual double get_fee_percent(const currency_type &c1, const currency_type &c2) = 0;

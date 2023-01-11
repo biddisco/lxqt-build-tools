@@ -3,13 +3,13 @@
 #include <string>
 //
 #include "src/print.hpp"
-#include "src/exchange/xrpl_network.hpp"
+#include "src/settings.hpp"
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 #include "src/network/evp-encrypt.hpp"
-#include "src/widgets/wallet_widget.hpp"
-//
+#include "src/exchange/xrpl_network.hpp"
 #include "src/exchange/bitstamp.hpp"
+#include "src/widgets/wallet_widget.hpp"
 #include "src/util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
@@ -834,4 +834,12 @@ void bitstamp_network::place_buy_sell_orders(basic_account *acct, std::vector<tr
         if (&t != &trades.back()) place_limit_order(t, false);
         else place_limit_order(t, true);
     }
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::subscribe_currency_pair(std::string_view p1)
+{
+    // ----------------------------------
+    app_settings* app_ini = global_settings();
+    (void)app_ini->dock_manager;
 }

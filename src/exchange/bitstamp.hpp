@@ -190,6 +190,8 @@ public:
     void request_tickers_available();
     void receive_tickers_available(std::string &&data);
 
+    void subscribe_currency_pair(std::string_view p1) override;
+
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
     // procesing operations that affect Qt/GUI managed items in a thread safe way

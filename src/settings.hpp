@@ -16,6 +16,9 @@
 //
 
 class wallet_widget;
+namespace ads {
+  class CDockManager;
+}
 
 // ----------------------------------------------------------------------------
 // base class for account/wallet info
@@ -148,6 +151,8 @@ struct app_settings
     secure_string randomBytes;
     //
     double bitstamp_xrp_fee;
+    //
+    ads::CDockManager *dock_manager;
 };
 
 app_settings* global_settings();

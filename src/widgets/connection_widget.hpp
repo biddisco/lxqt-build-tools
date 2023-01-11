@@ -4,9 +4,10 @@
 #include <QVBoxLayout>
 #include <QGroupBox>
 #include <QListWidget>
+#include <QString>
+#include <QStandardItemModel>
+#include <QSortFilterProxyModel>
 //
-#include <string_view>
-
 #include "src/exchange/exchange.hpp"
 #include "src/currency.hpp"
 #include "src/trade_data.hpp"
@@ -20,22 +21,19 @@ class connection_widget : public QWidget
     Q_OBJECT
 
 public:
-//    explicit connection_widget(QWidget *parent = nullptr);
-    explicit connection_widget(net::contexts &io_contexts, QWidget *parent = nullptr);
+    explicit connection_widget(QWidget *parent, net::contexts &io_contexts, exchange *ex);
     ~connection_widget();
 
-    void connect_events();
-
-    QGroupBox *get_stream_box();
-    QListView *get_tickers_list();
-    QListWidget *get_subscribed_list();
+    void setup_gui();
 
 public slots:
-    void update_exchange_data(exchange *ex);
+    void filter_changed(const QString &s);
+    void apply();
 
 private:
     Ui::connection_widget *ui;
-//    QVBoxLayout* net_layout_;
     net::contexts &io_contexts_;
-
+    exchange *exchange_;
+    QStandardItemModel *model_;
+    QSortFilterProxyModel *filter_;
 };

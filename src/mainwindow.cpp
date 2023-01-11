@@ -91,7 +91,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockManager::setConfigFlag(CDockManager::OpaqueSplitterResize, true);
     CDockManager::setConfigFlag(CDockManager::XmlCompressionEnabled, false);
     CDockManager::setConfigFlag(CDockManager::FocusHighlighting, true);
-    dock_manager_ = new CDockManager(this);
+    app_ini->dock_manager = new CDockManager(this);
 
     // ----------------------------------
     // Setup a menu to allow dockwindow control
@@ -105,7 +105,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* OBPDockWidget = new CDockWidget("OrderBookPlot-1");
     OBPDockWidget->setWidget(obp_);
     OBPDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, OBPDockWidget);
+    app_ini->dock_manager->addDockWidget(DockWidgetArea::CenterDockWidgetArea, OBPDockWidget);
     dockwindows_menu_->addAction(OBPDockWidget->toggleViewAction());
 
     // ----------------------------------
@@ -138,7 +138,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
     NetworkDockWidget->setWidget(netbox);
     NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    auto RightArea = dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
+    auto RightArea = app_ini->dock_manager->addDockWidget(DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
     dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
 
     // ----------------------------------
@@ -150,7 +150,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
     AlgorithmsDockWidget->setWidget(algowidget_);
     AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
+    app_ini->dock_manager->addDockWidget(DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
     dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
     // ----------------------------------
@@ -161,7 +161,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* AccountsDockWidget = new CDockWidget("Accounts");
     AccountsDockWidget->setWidget(accounts_frame_);
     AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, AccountsDockWidget, RightArea, 2);
+    app_ini->dock_manager->addDockWidget(DockWidgetArea::RightDockWidgetArea, AccountsDockWidget, RightArea, 2);
     dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
 
     // ----------------------------------
@@ -172,7 +172,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* OrdersDockWidget = new CDockWidget("Trades");
     OrdersDockWidget->setWidget(orders_frame_);
     OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, OrdersDockWidget, RightArea, 3);
+    app_ini->dock_manager->addDockWidget(DockWidgetArea::RightDockWidgetArea, OrdersDockWidget, RightArea, 3);
     dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
 
     // for each wallet on each network
@@ -226,7 +226,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* PlotDockWidget = new CDockWidget("PricePlot-1");
     PlotDockWidget->setWidget(price_plot_);
     PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    auto LeftArea = dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
+    auto LeftArea = app_ini->dock_manager->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
     dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
 
     // start by displaying 1 day of data
@@ -870,7 +870,7 @@ void GroxMainWindow::saveWindowSettings()
 
     // Dockwindow perspectives
     settings.beginGroup("DockWindow_Perspectives");
-    dock_manager_->savePerspectives(settings);
+    app_ini->dock_manager->savePerspectives(settings);
     settings.setValue("active", active_perspective_);
     settings.endGroup();
 
@@ -891,7 +891,7 @@ void GroxMainWindow::loadWindowSettings()
 
     // Dockwindow perspectives
     settings.beginGroup("DockWindow_Perspectives");
-    dock_manager_->loadPerspectives(settings);
+    app_ini->dock_manager->loadPerspectives(settings);
     createPerspectives_Ui();
     if (settings.contains("active")) {
         openPerspective(settings.value("active", "Default").toString());
@@ -1138,71 +1138,10 @@ void GroxMainWindow::execute_filter()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::build_connection_gui(exchange *ex)
 {
-    // Group box with network name in title
-    QString name = QString::fromStdString(ex->name().data());
-    QGroupBox *gb = new QGroupBox(name, this);
-    QGridLayout* bl = new QGridLayout(gb);
-
     // widget with panels for tickers/selected/streams
-    connection_widget *conwidget = new connection_widget(io_contexts_, this);
-    bl->addWidget(conwidget, 0, 0);
-
-    // -------------------------------------------
-    // display available streams in a Vertical box
-    QVBoxLayout* sbl = new QVBoxLayout(conwidget->get_stream_box());
-    const auto streams = ex->websocket_streams();
-    for (const auto &s : streams) {
-        QString name = QString(stream_text(s).c_str());
-        QCheckBox *bx = new QCheckBox(name, conwidget->get_stream_box());
-        bx->setChecked(ex->websocket_enabled(s));
-        connect(bx, &QCheckBox::stateChanged, this, [this, s, ex](bool checked) {
-            ex->websocket_enable(s, io_contexts_, checked);
-        } , Qt::QueuedConnection);
-
-        sbl->addWidget(bx);
-    }
-    sbl->addItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding));
-    conwidget->get_stream_box()->setLayout(sbl);
-
-    // -------------------------------------------
-    // display available ticker currency pairs
-    QStandardItemModel *model = new QStandardItemModel();
-    enum {CheckState = Qt::UserRole + 1};
-    for (auto const& [i, cp] : ex->currency_pairs() | ranges::views::enumerate) {
-        QStandardItem *item = new QStandardItem();
-        item->setText(cp.first.curr_.code_.c_str() + QString("/") + cp.second.curr_.code_.c_str());
-        item->setCheckable(true);
-        item->setCheckState(Qt::Unchecked);
-        // initial state stored in user role to track checkbox changes
-        item->setData(Qt::Unchecked, CheckState);
-        model->setItem(i, item);
-    }
-    // attach a slot to catch item changes and update subscribed list
-    connect(model, &QStandardItemModel::itemChanged, this, [conwidget, ex](QStandardItem* item) {
-        (void)ex;
-        if (item->checkState() != item->data(CheckState).value<Qt::CheckState>()) {
-            main_dbg<0>.debug(str<>("Checked changed"), item->text().toStdString(), item->checkState());
-            item->setData(item->checkState(), CheckState);
-            auto *sl = conwidget->get_subscribed_list();
-            if (item->checkState() == Qt::Checked) {
-                sl->addItem(item->text());
-            }
-            else {
-                auto items = sl->findItems(item->text(), Qt::MatchFlag::MatchCaseSensitive);
-                for (auto *item : items) {
-                    delete sl->takeItem(sl->row(item));
-                }
-            }
-        }
-    }, Qt::QueuedConnection);
-
-    QListView *listview = conwidget->get_tickers_list();
-    listview->setModel(model);
-
-    //
-    // add connection widget to network dock window
-    //
-    net_layout_->insertWidget(0, gb);
+    connection_widget *conwidget = new connection_widget(this, io_contexts_, ex);
+    conwidget->setup_gui();
+    net_layout_->insertWidget(0, conwidget);
 }
 
 // ----------------------------------------------------------------------------
@@ -1227,8 +1166,9 @@ void GroxMainWindow::createPerspectives_Ui()
         docking_menu_->addAction(SavePerspectiveAction);
     }
     //
+    app_settings* app_ini = global_settings();
     perspectives_menu_->clear();
-    for (const QString &name : dock_manager_->perspectiveNames()) {
+    for (const QString &name : app_ini->dock_manager->perspectiveNames()) {
         QAction* LoadPerspectiveAction = new QAction(name);
         LoadPerspectiveAction->setCheckable(true);
         connect(LoadPerspectiveAction, &QAction::triggered, this, [this,name](){
@@ -1241,12 +1181,13 @@ void GroxMainWindow::createPerspectives_Ui()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::savePerspective()
 {
+    app_settings* app_ini = global_settings();
     QString Name = QInputDialog::getText(
                 this, "Save Perspective", "Enter name:",
                 QLineEdit::Normal, active_perspective_);
     if (!Name.isEmpty())
     {
-        dock_manager_->addPerspective(Name);
+        app_ini->dock_manager->addPerspective(Name);
         createPerspectives_Ui();
     }
 }
@@ -1254,6 +1195,7 @@ void GroxMainWindow::savePerspective()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::openPerspective(const QString &name)
 {
+    app_settings* app_ini = global_settings();
     active_perspective_ = name;
     for (auto *action : perspectives_menu_->actions()) {
         if (action->text()==name) {
@@ -1263,5 +1205,5 @@ void GroxMainWindow::openPerspective(const QString &name)
             action->setChecked(false);
         }
     }
-    dock_manager_->openPerspective(name);
+    app_ini->dock_manager->openPerspective(name);
 }
