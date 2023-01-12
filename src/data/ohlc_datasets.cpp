@@ -72,8 +72,8 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
         auto last_existing = ohlc_samples_->data().back().time;
         auto first_new = new_ohlc_samples_.front().time;
 
-        ohlc_dbg<5>.debug(str<>("merging"), dec<8>(last_existing),
-                          "new", dec<8>(first_new));
+        ohlc_dbg<5>.debug(str<>("merging"), dec<9>(last_existing),
+                          "new", dec<9>(first_new));
         // 1 minute candle OHLC data is stored in msecs
         if (first_new - last_existing != ohlc_chart_data::minute)
         {
@@ -95,8 +95,8 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
         last_existing = ohlc_samples_->data().back().time;
         (void)last_existing; //warning about unused value store
 
-        ohlc_dbg<5>.debug(str<>("merged"), dec<8>(last_existing),
-                          "new", dec<8>(first_new));
+        ohlc_dbg<5>.debug(str<>("merged"), dec<9>(last_existing),
+                          "new", dec<9>(first_new));
 
         ohlc_samples_->data().append(new_ohlc_samples_);
         update += new_ohlc_samples_.size();
@@ -136,7 +136,7 @@ int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, cand
     }
     ohlc_dbg<5>.debug(str<>("Validating"), str<3>(res.name_)
                  , "from", msecs_unix_to_calendar_time(init_time)
-                 , "index", dec<8>(init_index));
+                 , "index", dec<9>(init_index));
 
     for (int64_t index=init_index; index<samples.size(); ++index)
     {
@@ -146,13 +146,13 @@ int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, cand
         if (expected_time != s1.time)
         {
             ohlc_dbg<5>.error(str<>("Validation"), str<3>(res.name_)
-                      , "index", dec<8>(index)
+                      , "index", dec<9>(index)
                       , "expected", msecs_unix_to_calendar_time(expected_time)
                       , "found", msecs_unix_to_calendar_time(s1.time));
             throw std::runtime_error("OHLC data integrity failure");
         }
     }
-    ohlc_dbg<5>.debug(str<>("validated"), dec<8>(samples.size()));
+    ohlc_dbg<5>.debug(str<>("validated"), dec<9>(samples.size()));
     return samples.size();
 }
 
@@ -231,7 +231,7 @@ ohlc_datasets *ohlc_datasets::resample_update(candle_res res1, ohlc_datasets *ot
     }
     ohlc_dbg<0>.debug(str<>("resampled"), str<3>(res1.name_)
                 , "from", msecs_unix_to_calendar_time(current_ohlc.time)
-                , "index", dec<8>(orig_size)
+                , "index", dec<9>(orig_size)
                 , "of", ohlc_samples_->size());
     validate_ohlc(ohlc_samples_->data(), res1, orig_T);
 

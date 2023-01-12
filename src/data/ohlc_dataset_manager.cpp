@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cmath>
 //
+#include <highfive/H5File.hpp>
+//
 #include "src/print.hpp"
 #include "src/data/ohlc_dataset_manager.hpp"
 
@@ -49,13 +51,13 @@ void ohlc_dataset_manager::merge_data(
     // returns the number of samples that are 'new'
     uint64_t update = data->merge_data(new_ohlc_samples_);
     // write new samples to the main datafile
-    write_hdf5(data->ohlc_samples_->data(), update, false);
+    write_hdf5("bitstamp", "XRP-USD", data->ohlc_samples_->data(), update, false);
 }
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::read_hdf5()
 {
-    read_hdf5(candles_.begin()->second->ohlc_samples_->data());
+    read_hdf5("bitstamp", "XRP-USD", candles_.begin()->second->ohlc_samples_->data());
 }
 
 // ----------------------------------------------------------------------------
@@ -67,143 +69,93 @@ void hdf5_check(const char *msg, herr_t err)
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_dataset_manager::read_hdf5(QVector<QwtOHLCSample> &data)
+void ohlc_dataset_manager::read_hdf5(std::string group, std::string dataname, QVector<QwtOHLCSample> &data)
 {
-    if (std::filesystem::exists(file_name_))
-    {
-        man_dbg<0>.debug(str<>("Opening"), file_name_);
-        data.clear();
-        //
-        hid_t file = H5Fopen(file_name_.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-        // check if datasets exist
-        if (H5Lexists(file, "ohlc", H5P_DEFAULT) > 0)
-        {
-            // read OHLC data
-            hid_t dset1 = H5Dopen(file, "ohlc", H5P_DEFAULT);
-            hid_t space1 = H5Dget_space(dset1);
-            const int ndims1 = H5Sget_simple_extent_ndims(space1);
-            hsize_t dims1[ndims1];
-            hdf5_check("H5Sget_simple_extent_dims", H5Sget_simple_extent_dims(space1, dims1, NULL));
-            //
-            int N = dims1[0] / (sizeof(QwtOHLCSample) / sizeof(double));
-            data.resize(N);
-            hdf5_check("H5Dread", H5Dread(dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                data.data()));
-
-            // free/close datasets
-            hdf5_check("H5Dclose", H5Dclose(dset1));
-            // free/close dataspaces
-            hdf5_check("H5Sclose", H5Sclose(space1));
-        }
-        // free/close file
-        hdf5_check("H5Fclose", H5Fclose(file));
+    using namespace HighFive;
+    std::string path = group + "/" + dataname;
+    if (std::filesystem::exists(file_name_)) {
+        man_dbg<0>.debug(str<>("File Open"), "read_hdf5", file_name_);
+        File file(file_name_, File::ReadWrite | File::OpenOrCreate);
+        auto dataset = file.getDataSet(path);
+        const uint64_t ohlc_size = sizeof(QwtOHLCSample) / sizeof(double);
+        std::size_t N = dataset.getElementCount() / ohlc_size;
+        man_dbg<0>.debug(str<>("Dataset Read"), path, "size", dec<9>(N));
+        data.resize(N);
+        dataset.read<double>(reinterpret_cast<double*>(data.data()));
     }
-    else
-    {
-        man_dbg<5>.debug(str<>("Creating empty"), file_name_);
-
-        // Create a new file using default properties.
-        hid_t file_id = H5Fcreate(
-            file_name_.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-        hdf5_check("H5Fclose", H5Fclose(file_id));
+    else {
+        data.clear();
     }
     //
     ohlc_datasets::validate_ohlc(data, ohlc_chart_data::minute);
+    man_dbg<0>.debug(str<>("File Close"), "read_hdf5", dec<9>(data.size()));
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_dataset_manager::write_hdf5(QVector<QwtOHLCSample> const &samples,
+void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
+    QVector<QwtOHLCSample> const &data,
     const uint64_t update, bool truncate)
 {
-    int valid = ohlc_datasets::validate_ohlc(samples, ohlc_chart_data::minute);
-    if (valid!=samples.size()) {
+    int valid = ohlc_datasets::validate_ohlc(data, ohlc_chart_data::minute);
+    if (valid!=data.size()) {
         man_dbg<0>.error(str<>("Error"), "Aborting write");
+        return;
     }
-    //
-    man_dbg<0>.debug(str<>("Opening"), file_name_);
 
-    // In the OHLC dataset:
-    // There are 24*60=1440 60s candles per day, each candle has 6 {t,o,h,l,c,v} entries,
-    // so the chunking size ought to be around 1440 * 6 = 8640 elements minimum,
-    // a week's data will be 60480 doubles, so a nice binary number size for
-    // chunking dimensions will be 65536
-    //
-    // Use unlimited size so that the data can be extended arbitrarily
-
+    using namespace HighFive;
+    // size of data as an array of doubles
     const uint64_t ohlc_size = sizeof(QwtOHLCSample) / sizeof(double);
-    const uint64_t N = samples.size() * ohlc_size;
-    hsize_t ohlc_dims[1] = {N};
-    hsize_t max_dims[1] = {H5S_UNLIMITED};
-    hsize_t chunk_dim1[1] = {65536};
+    const uint64_t N = data.size() * ohlc_size;
 
-    // open the file, use UNLIMITED for main dimension so we can extend datasets
-    hid_t file = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-
-    // create datasets if they do not exist already
-    if (H5Lexists(file, "ohlc", H5P_DEFAULT) <= 0)
-    {
-        // create a property list to set the chunking property on our OHLC dataset
-        hid_t dprop1 = H5Pcreate(H5P_DATASET_CREATE);
-        hdf5_check("H5Pset_chunk", H5Pset_chunk(dprop1, 1, chunk_dim1));
-
-        // write OHLC data,
-        hid_t space1 = H5Screate_simple(1, ohlc_dims, max_dims);
-        hid_t dset1 = H5Dcreate(
-            file, "ohlc", H5T_IEEE_F64LE, space1, H5P_DEFAULT, dprop1, H5P_DEFAULT);
-        hdf5_check("H5Dwrite", H5Dwrite(
-            dset1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, samples.data()));
-
-        // free/close datasets
-        hdf5_check("H5Dclose", H5Dclose(dset1));
-        // free/close properties
-        hdf5_check("H5Pclose", H5Pclose(dprop1));
-        // free/close dataspaces
-        hdf5_check("H5Sclose", H5Sclose(space1));
+    std::string path = group + "/" + dataname;
+    if (!std::filesystem::exists(file_name_)) {
+        man_dbg<0>.debug(str<>("File Create"), "write_hdf5", file_name_);
+        File file(file_name_, File::ReadWrite | File::OpenOrCreate);
     }
 
-    // if we are extending a dataset
+    // open for read/write
+    man_dbg<0>.debug(str<>("File Open"), "write_hdf5", file_name_);
+    File file(file_name_, File::ReadWrite);
+
+    // Create dataset if it does not already exist
+    if (!file.exist(path)) {
+        // 24*60=1440 60s OHLC candles per day, 6 {t,o,h,l,c,v} entries,
+        // so the chunking size ought to be around 1440 * 6 = 8640 elements minimum,
+        // a week's data will be 60480 doubles, so a nice binary number size for
+        // chunking dimensions will be 65536
+        // Use unlimited size so that the data can be extended arbitrarily
+        DataSpace dataspace = DataSpace({N, DataSpace::UNLIMITED});
+        // Set properties to use chunking
+        DataSetCreateProps props;
+        props.add(Chunking(std::vector<hsize_t>{65536}));
+        // Create the dataset and write data
+        man_dbg<0>.debug(str<>("Dataset Create"), path, "size", dec<9>(data.size()));
+        DataSet dataset =
+            file.createDataSet(path, dataspace, create_datatype<double>(), props);
+    }
+    // if we are extending an existing dataset
     else if (update > 0)
     {
-        man_dbg<5>.debug(str<>("Extending"), dec<8>(update));
-        uint64_t offset = samples.size() - update;
-        hsize_t offset1[1] = {offset * ohlc_size};
-        hsize_t ext1[1] = {update * ohlc_size};
+        man_dbg<5>.debug(str<>("Dataset Extend"), path, dec<9>(update));
+        DataSet dataset = file.getDataSet(path);
+        // resize along 1 dimmension
+        dataset.resize({N});
 
-        hid_t dset1 = H5Dopen(file, "ohlc", H5P_DEFAULT);
-        // extend dataset to new size
-        hdf5_check("H5Dextend", H5Dextend(dset1, ohlc_dims));
-        // Select a hyperslab from the file dataspace
-        hid_t fspace1 = H5Dget_space(dset1);
-        // select hyperslab in new dataset : start, stride(NULL), count, block(NULL)
-        hdf5_check("H5Sselect_hyperslab", H5Sselect_hyperslab(fspace1, H5S_SELECT_SET, offset1, NULL, ext1, NULL));
-        // Define memory space that we write our new data from
-        hid_t dspace1 = H5Screate_simple(1, ext1, NULL);
-        // Write new data to the hyperslab
-        hdf5_check("H5Dwrite", H5Dwrite(
-            dset1, H5T_NATIVE_DOUBLE, dspace1, fspace1, H5P_DEFAULT, &samples[offset]));
-
-        // free/close datasets
-        hdf5_check("H5Dclose", H5Dclose(dset1));
-        // free/close dataspaces
-        hdf5_check("H5Sclose", H5Sclose(fspace1));
-        hdf5_check("H5Sclose", H5Sclose(dspace1));
+        // create a new hyperslab selection from old end with size of update
+        uint64_t offset = data.size() - update;
+        Selection sel = dataset.select({offset * ohlc_size}, {update * ohlc_size});
+        // write data from the old endpoint into the new hyperslab
+        sel.write_raw(reinterpret_cast<const double*>(&data[offset]));
     }
     // truncating a dataset
     else if (truncate)
     {
-        man_dbg<0>.debug(str<>("Truncating"), dec<8>(samples.size()));
-
-        hid_t dset1 = H5Dopen(file, "ohlc", H5P_DEFAULT);
-        // extend dataset to new size
-        hdf5_check("H5Dset_extent", H5Dset_extent(dset1, ohlc_dims));
-
-        // free/close datasets
-        hdf5_check("H5Dclose", H5Dclose(dset1));
+        man_dbg<0>.debug(str<>("Dataset Truncate"), dec<9>(data.size()));
+        DataSet dataset = file.getDataSet(path);
+        // resize along 1 dimension
+        dataset.resize({N});
     }
-    // free/close file
-    hdf5_check("H5Fclose", H5Fclose(file));
-
-    man_dbg<0>.debug(str<>("Closed"), dec<8>(samples.size()));
+    man_dbg<0>.debug(str<>("File Close"), "write_hdf5", dec<9>(data.size()));
 }
 
 // ----------------------------------------------------------------------------
@@ -218,7 +170,7 @@ void ohlc_dataset_manager::truncate_from_time(double t)
                      str<3>(ohlc_chart_data::get_resolution(res).name_)
                      , "at index", index);
         if (res==ohlc_chart_data::minute) {
-            write_hdf5(samples->data(), 0, true);
+            write_hdf5("bitstamp", "XRP-USD", samples->data(), 0, true);
         }
     }
 }

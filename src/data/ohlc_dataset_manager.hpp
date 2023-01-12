@@ -39,10 +39,10 @@ public:
 
     // read datasets from hdf5 file
     void read_hdf5();
-    void read_hdf5(QVector<QwtOHLCSample> &data);
+    void read_hdf5(std::string group, std::string dataname, QVector<QwtOHLCSample> &data);
 
     // write out data to hdf5
-    void write_hdf5(const QVector<QwtOHLCSample>& samples,
+    void write_hdf5(std::string group, std::string dataname, const QVector<QwtOHLCSample>& samples,
         const uint64_t update, bool truncate);
 
     // Add new downloaded data to an existing dataset

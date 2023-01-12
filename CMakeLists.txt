@@ -97,9 +97,9 @@ include(FindPkgConfig)
 # ------------------------------------------------------------------------------
 # Find Qt, first 6, then 5 if not found
 # ------------------------------------------------------------------------------
-# this line to force correct var so that Qt-AdvancedDocking uses Qt6 by default 
+# this line to force correct var so that Qt-AdvancedDocking uses Qt6 by default
 find_package(QT NAMES Qt6 COMPONENTS Core REQUIRED)
-# 
+#
 find_package(Qt6 COMPONENTS Core)
 if (NOT Qt6_FOUND)
     find_package(Qt5 5.15 REQUIRED COMPONENTS Core)
@@ -194,6 +194,33 @@ if(NOT range-v3_POPULATED)
   message(STATUS "Downloading range-v3 source...")
   fetchcontent_populate(range-v3)
   add_subdirectory(${range-v3_SOURCE_DIR} ${range-v3_BINARY_DIR})
+endif()
+
+# ------------------------------------------------------------------------------
+# Build/Download HighFive hdf5 c++ library
+# ------------------------------------------------------------------------------
+set(HIGHFIVE_UNIT_TESTS OFF CACHE STRING "HighFive unit testing")
+set(HIGHFIVE_BUILD_DOCS OFF)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/HighFive)
+  message(STATUS "Using HighFive in source tree")
+  # use the source in this directory
+  set(FETCHCONTENT_SOURCE_DIR_HIGHFIVE ${CMAKE_CURRENT_SOURCE_DIR}/extern/HighFive)
+  # don't change branches, or pull
+  set(FETCHCONTENT_UPDATES_DISCONNECTED_HIGHFIVE ON)
+endif()
+
+# If we must pull a fresh copy, setup git location/branch and set shallow flag
+fetchcontent_declare(
+  HighFive
+  GIT_REPOSITORY https://github.com/BlueBrain/HighFive.git
+  GIT_TAG master
+  GIT_SHALLOW TRUE
+)
+fetchcontent_getproperties(HighFive)
+if(NOT HighFive_POPULATED)
+  message(STATUS "Downloading HighFive source...")
+  fetchcontent_populate(HighFive)
+  add_subdirectory(${highfive_SOURCE_DIR} ${highfive_BINARY_DIR})
 endif()
 
 # ------------------------------------------------------------------------------
@@ -375,10 +402,10 @@ target_link_libraries(
          qtadvanceddocking
          ${Boost_LIBRARIES}
          MPI::MPI_CXX
-         ${HDF5_LIBRARIES}
          range-v3
          ${STD_FILESYSTEM_LIB}
          Ripple::xrpl_core
+         HighFive
          uuid
          OpenSSL::SSL
          pthread
