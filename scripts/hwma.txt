@@ -1,0 +1,11 @@
+//@version=2
+study("Hamming Windowed Volume Weighted Moving Average",overlay=true)
+length = input(14)
+//
+pi = 3.14159265359
+c = nz(c[1],1) == length ? 1 : nz(c[1],1) + 1
+s = 1/length
+h = volume * (0.54 - 0.46 * cos((2*pi*c)/length))
+hwma = sum(h*close,length)/sum(h,length)
+//
+plot(hwma,title = "HWVWMA",color=#FA8258,transp=0)

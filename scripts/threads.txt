@@ -1,0 +1,2 @@
+watch 'ps huH p $(pgrep grox) | wc -l'
+
