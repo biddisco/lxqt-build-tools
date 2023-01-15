@@ -6,8 +6,6 @@
 #include <QScrollArea>
 #include <QTimer>
 //
-#include "DockManager.h"
-//
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
 # include "extern/belle/include/belle.hh"
@@ -68,9 +66,6 @@ class GroxMainWindow : public QMainWindow
     QFrame *orders_frame_;
     QFrame *accounts_frame_;
 
-    // data
-    ohlc_dataset_manager hdf5_ohlc_;
-
     // plots
     price_chart_widget *price_plot_;
     OrderBookPlot *obp_;
@@ -92,7 +87,6 @@ class GroxMainWindow : public QMainWindow
 
     // menu helpers for docking support
     QMenu* docking_menu_;
-    QMenu* dockwindows_menu_;
     QMenu* perspectives_menu_;
     //
     QString active_perspective_;
@@ -100,8 +94,7 @@ class GroxMainWindow : public QMainWindow
 public:
     explicit GroxMainWindow(QWidget* parent = nullptr);
     ~GroxMainWindow() override;
-    void createActions();
-    void createMenus();
+    void connect_gui_controls();
     bool eventFilter(QObject* obj, QEvent* event) override;
 
     //

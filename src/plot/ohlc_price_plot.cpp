@@ -65,13 +65,13 @@ public:
 };
 
 // ----------------------------------------------------------------------------
-ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
+ohlc_price_plot::ohlc_price_plot(QWidget *parent, std::shared_ptr<ohlc_dataset_view> data)
     : QwtPlot(parent)
     , plot_interactor_(nullptr)
     , timescaleDraw_(nullptr)
     , timescaleEngine_(nullptr)
     , direct_painter_(nullptr)
-    , ohlc_dataset_manager_(data)
+    , ohlc_dataset_view_(data)
     , auto_candle_resolution_(true)
 {
     // find a fix font char size for candle status/data
@@ -137,7 +137,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, ohlc_dataset_manager *data)
     setContentsMargins(2, 2, 2, 2);
 
     // A custom interactor for zooming/panning
-    plot_interactor_ = new ohlc_interactor(this, ohlc_dataset_manager_);
+    plot_interactor_ = new ohlc_interactor(this, ohlc_dataset_view_);
 
     // Custom crosshairs to show current cursor pos
     crosshairs_ = new ohlc_picker(canvas());
@@ -189,10 +189,10 @@ ohlc_price_plot::~ohlc_price_plot()
 // ----------------------------------------------------------------------------
 void ohlc_price_plot::bind_graphs()
 {
-    auto resolutions = ohlc_dataset_manager_->get_dataset_resolutions();
+    auto resolutions = ohlc_dataset_view_->get_dataset_resolutions();
     bool first = true;
     for (auto r : resolutions) {
-        auto *data = ohlc_dataset_manager_->get_dataset(r);
+        auto *data = ohlc_dataset_view_->get_dataset(r);
         // bind it to this plot
         data->ohlc_curve_->attach(this);
         data->ohlc_curve_->setVisible(first);
@@ -210,14 +210,14 @@ void ohlc_price_plot::update_live_data(QwtOHLCSample const &new_sample)
         // has bad repaint effects unless we turn on CopyBackingStore
         direct_painter_->setAttribute(QwtPlotDirectPainter::FullRepaint, false);
         direct_painter_->setAttribute(QwtPlotDirectPainter::CopyBackingStore, true);
-        ohlc_dataset_manager_->get_live_curve()->attach(this);
-        ohlc_dataset_manager_->get_live_curve()->setVisible(true);
+        ohlc_dataset_view_->get_live_curve()->attach(this);
+        ohlc_dataset_view_->get_live_curve()->setVisible(true);
     }
     else {
-        ohlc_dataset_manager_->get_live_curve()->itemChanged();
+        ohlc_dataset_view_->get_live_curve()->itemChanged();
     }
-    direct_painter_->drawSeries(ohlc_dataset_manager_->get_live_curve(),
-        0, ohlc_dataset_manager_->get_live_data()->size() - 1);
+    direct_painter_->drawSeries(ohlc_dataset_view_->get_live_curve(),
+        0, ohlc_dataset_view_->get_live_data()->size() - 1);
 }
 
 // ----------------------------------------------------------------------------
@@ -249,7 +249,7 @@ bool ohlc_price_plot::adjust_candle_size(double res)
     }
     // user selected resolution
     for (const auto &r : ohlc_chart_data::available_resolutions()) {
-        auto *data = ohlc_dataset_manager_->get_dataset(r);
+        auto *data = ohlc_dataset_view_->get_dataset(r);
         data->ohlc_curve_->setVisible(r==res);
         if (r==res) {
             data->ohlc_curve_->setSymbolExtent(0.8 * r);
@@ -322,14 +322,14 @@ void ohlc_price_plot::update_time_axis(double t1, double t2)
         // recompute scaling so we can get the correct candle size
         if (adjust_candle_size(0)) {
             candles_changed = true;
-            minmax = ohlc_dataset_manager_->get_min_max_window(
+            minmax = ohlc_dataset_view_->get_min_max_window(
                         get_candle_resolution(), t1, t2, 0.05);
             setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
         }
     }
 
     if (!candles_changed) {
-        minmax = ohlc_dataset_manager_->get_min_max_window(
+        minmax = ohlc_dataset_view_->get_min_max_window(
             get_candle_resolution(), t1, t2, 0.05);
     }
 
@@ -354,7 +354,7 @@ void ohlc_price_plot::adjust_data_scaling()
 {
     const double t1 = axisScaleDiv(QwtAxis::XBottom).lowerBound();
     const double t2 = axisScaleDiv(QwtAxis::XBottom).upperBound();
-    auto minmax = ohlc_dataset_manager_->get_min_max_window(
+    auto minmax = ohlc_dataset_view_->get_min_max_window(
                 get_candle_resolution(), t1, t2, 0.05);
     setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
 }
@@ -363,7 +363,7 @@ void ohlc_price_plot::adjust_data_scaling()
 void ohlc_price_plot::display_candle_status(double time)
 {
     int64_t index = -1;
-    auto *dataset = ohlc_dataset_manager_->get_dataset(get_candle_resolution());
+    auto *dataset = ohlc_dataset_view_->get_dataset(get_candle_resolution());
     if (dataset->ohlc_samples_->size()>0) {
         index = dataset->ohlc_samples_->sample_index(time);
     }

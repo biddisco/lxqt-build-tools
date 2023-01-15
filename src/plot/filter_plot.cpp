@@ -128,7 +128,7 @@ void filter_plot::update_time_axis(double t1, double t2)
     setAxisScale(QwtAxis::XBottom, t1, t2);
 /*
     // find the min/max price for this new range
-    auto minmax = ohlc_dataset_manager_->get_min_max_window(
+    auto minmax = ohlc_dataset_view_->get_min_max_window(
                 get_candle_resolution(), t1, t2, 0.05);
 
     // update the Y price axis with min max

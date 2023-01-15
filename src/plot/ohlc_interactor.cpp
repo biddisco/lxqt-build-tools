@@ -55,9 +55,9 @@ class ohlc_interactor::PrivateData
     ohlc_price_plot* plot;
 };
 
-ohlc_interactor::ohlc_interactor(ohlc_price_plot* parent, ohlc_dataset_manager *data)
+ohlc_interactor::ohlc_interactor(ohlc_price_plot* parent, std::shared_ptr<ohlc_dataset_view> data)
     : QObject(parent)
-    , ohlc_dataset_manager_(data)
+    , ohlc_dataset_view_(data)
 {
     m_data = new PrivateData();
 

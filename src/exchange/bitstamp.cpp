@@ -1,4 +1,5 @@
 #include <QString>
+#include <QMenu>
 //
 #include <string>
 //
@@ -11,6 +12,11 @@
 #include "src/exchange/bitstamp.hpp"
 #include "src/widgets/wallet_widget.hpp"
 #include "src/util/stringutils.hpp"
+#include "src/widgets/price_chart_widget.hpp"
+//
+#include "DockManager.h"
+#include "DockWidget.h"
+#include "DockAreaWidget.h"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -194,20 +200,9 @@ void bitstamp_network::shut_down()
 // ----------------------------------------------------------------------------
 bool bitstamp_network::add_currency_pair(std::string_view p1, std::string_view p2)
 {
-    auto icfn = [](std::string_view c) -> issued_currency {
-        if (c=="USD" || c=="EUR" || c=="GBP")
-            return issued_currency{currency::bitstamp_trust, std::string{c}};
-        if (c=="XRP")
-            return issued_currency{"", "XRP"};
-        else
-            return issued_currency{"", std::string{c}};
-    };
-    auto ic1 = icfn(p1);
-    auto ic2 = icfn(p2);
-    currency c1 = currency{ic1, get_currency_type(ic1), 0, 0, 0, nullptr};
-    currency c2 = currency{ic2, get_currency_type(ic2), 0, 0, 0, nullptr};
+    currency c1 = get_currency(p1);
+    currency c2 = get_currency(p2);
     tickers_available_.push_back(std::make_pair(c1, c2));
-    // tickers_available_.push_back(std::make_pair(c2, c1));
     return true;
 }
 
@@ -837,9 +832,30 @@ void bitstamp_network::place_buy_sell_orders(basic_account *acct, std::vector<tr
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::subscribe_currency_pair(std::string_view p1)
+void bitstamp_network::ticker_subscribe(const currency &c1, const currency &c2)
 {
-    // ----------------------------------
+    // exit if this exchange has already subscribed to this ticker
+    std::string cps = currency_pair_string({c1,c2});
+    if (ticker_subscribed(c1,c2)) {
+        bitstamp_dbg<0>.debug(str<>("subscription"), cps, "subscribed");
+        return;
+    }
+    bitstamp_dbg<0>.debug(str<>("subscribing"), cps);
+    tickers_subscribed_.insert({currency_pair{c1,c2}, true});
+
     app_settings* app_ini = global_settings();
-    (void)app_ini->dock_manager;
+    auto view = app_ini->data_manager_->create_dataset_view("bitstamp", c1, c2);
+    auto *price_plot_ = new price_chart_widget(nullptr, view, shared_from_this(), cps);
+
+    using namespace ads;
+    std::string title = std::string(name()) + "-" + cps;
+    CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
+    PlotDockWidget->setWidget(price_plot_);
+    PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    app_ini->dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
+    app_ini->dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
+
+    // start by displaying 1 day of data
+    price_plot_->graph_rescale(0);
 }
+

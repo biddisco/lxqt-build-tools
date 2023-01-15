@@ -8,6 +8,13 @@
 #include <vector>
 #include <algorithm>
 
+//        {"rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg", "ELS"},
+//        {"rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz", "SOLO"},
+//        {"raEQc5krJ2rUXyi6fgmUAf63oAXmF7p6jp", "ALV"},
+//        {"rM7zpZQBfz9y2jEkDrKcXiYPitJx9YTS1J", "DKP"},
+//        {"rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY", "1"},
+//        {"rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY", "PASA"},
+
 class currency_widget;
 
 // ----------------------------------------------------------------------------
@@ -35,15 +42,15 @@ struct issued_currency {
 struct currency {
     static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
     static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
+    static inline std::vector<issued_currency> trustlines = {};
     //
-    static inline std::vector<issued_currency> trustlines = {
-//        {"rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg", "ELS"},
-//        {"rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz", "SOLO"},
-//        {"raEQc5krJ2rUXyi6fgmUAf63oAXmF7p6jp", "ALV"},
-//        {"rM7zpZQBfz9y2jEkDrKcXiYPitJx9YTS1J", "DKP"},
-//        {"rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY", "1"},
-//        {"rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY", "PASA"},
-    };
+    bool operator == (const currency &c) const {
+        return curr_.code_ == c.curr_.code_ &&
+               curr_.issuer_ == c.curr_.issuer_;
+    }
+    bool operator < (const currency &c) const {
+        return curr_.code_ < c.curr_.code_;
+    }
     //
     issued_currency curr_;
     currency_type type_;
@@ -53,12 +60,17 @@ struct currency {
     currency_widget *widget_;
 };
 
+using currency_pair = std::tuple<currency, currency>;
+using currency_pairlist = std::vector<currency_pair>;
+
 // To ensure Qt can emit signals of this type
 Q_DECLARE_METATYPE(currency)
 
 // ----------------------------------------------------------------------------
 // convert a string pair, name, issuer to a currency type enum
 currency_type get_currency_type(issued_currency const &c);
+// return a currency object from a string like "USD"
+currency get_currency(std::string_view c);
 
 // ----------------------------------------------------------------------------
 // return true if the currency is a fiat currency such as USD, EUR etc etc
@@ -70,6 +82,8 @@ bool is_xrp(currency_type c);
 // convert a currency type enum to a string pair, {name, issuer}
 std::pair<std::string, std::string> to_string(const currency_type &t);
 std::pair<std::string, std::string> to_string(const currency &t);
+std::string currency_pair_string(const currency_pair &p);
+currency_pair string_to_pair(std::string_view s, std::string_view delim);
 
 // ----------------------------------------------------------------------------
 // displays an amount such as 1.34 as a string, but uses different numbers

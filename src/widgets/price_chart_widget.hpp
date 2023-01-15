@@ -6,10 +6,9 @@
 #include "src/plot/ohlc_price_plot.hpp"
 #include "src/plot/ohlc_picker.hpp"
 #include "src/plot/filter_plot.hpp"
-//
-// Grox
+#include "src/exchange/exchange.hpp"
 
-class ohlc_dataset_manager;
+class ohlc_dataset_view;
 
 namespace Ui {
 class price_chart_widget;
@@ -26,11 +25,11 @@ private:
     filter_plot *filters_plot_;
     filter_plot *assets_plot_;
     //
-    ohlc_dataset_manager *hdf5_ohlc_;
+    std::shared_ptr<exchange> exchange_;
+    std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;
 
 public:
-    //explicit price_chart_widget(QWidget *parent = nullptr);
-    price_chart_widget(QWidget *, ohlc_dataset_manager *);
+    price_chart_widget(QWidget *, std::shared_ptr<ohlc_dataset_view>, std::shared_ptr<exchange> ex, std::string ticker);
     ~price_chart_widget();
 
     void connect_gui();

@@ -7,7 +7,6 @@
 // Grox
 #include "src/plot/ohlc_interactor.hpp"
 //
-class ohlc_dataset_manager;
 class ohlc_chart_curve;
 //class ohlc_price_scaledraw;
 class ohlc_picker;

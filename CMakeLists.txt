@@ -318,6 +318,7 @@ set(GROX_SRC
 
     # data, hdf5
     src/data/ohlc_dataset_manager.cpp
+    src/data/ohlc_dataset_view.cpp
     src/data/ohlc_datasets.cpp
 
     # exchange APIs

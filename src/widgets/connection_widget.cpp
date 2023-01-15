@@ -1,10 +1,10 @@
 #include <QCheckBox>
 #include <QRegularExpression>
 //
+#include <range/v3/view.hpp>
+//
 #include "connection_widget.hpp"
 #include "ui_connection_widget.h"
-//
-#include "range/v3/view.hpp"
 
 // ----------------------------------------------------------------------------
 connection_widget::connection_widget(QWidget *parent, net::contexts &io_contexts, exchange *ex) :
@@ -53,13 +53,20 @@ void connection_widget::setup_gui()
     filter_ = new QSortFilterProxyModel();
 
     enum {CheckState = Qt::UserRole + 1};
-    for (auto const& [i, cp] : exchange_->currency_pairs() | ranges::views::enumerate) {
+    for (auto const& [i, cp] : exchange_->get_currency_pairs() | ranges::views::enumerate) {
         QStandardItem *item = new QStandardItem();
-        item->setText(cp.first.curr_.code_.c_str() + QString("/") + cp.second.curr_.code_.c_str());
+        item->setText(std::get<0>(cp).curr_.code_.c_str() + QString("/") + std::get<1>(cp).curr_.code_.c_str());
         item->setCheckable(true);
-        item->setCheckState(Qt::Unchecked);
         // initial state stored in user role to track checkbox changes
-        item->setData(Qt::Unchecked, CheckState);
+        if (exchange_->ticker_subscribed(std::get<0>(cp), std::get<1>(cp))) {
+            item->setData(Qt::Checked, CheckState);
+            item->setCheckState(Qt::Checked);
+            ui->subscribed_list->addItem(item->text());
+        }
+        else {
+            item->setData(Qt::Unchecked, CheckState);
+            item->setCheckState(Qt::Unchecked);
+        }
         model_->setItem(i, item);
     }
     // attach a slot to catch item changes and update subscribed list
@@ -98,7 +105,11 @@ void connection_widget::apply()
     auto *sl = ui->subscribed_list;
     for(int i = 0; i < sl->count(); ++i)
     {
-        exchange_->subscribe_currency_pair(sl->item(i)->text().toStdString());
+        std::string s = sl->item(i)->text().toStdString();
+        auto temp = s.find("/");
+        std::string c1 = s.substr(0, temp);
+        std::string c2 = s.substr(temp+1, s.back());
+        exchange_->ticker_subscribe(c1,c2);
     }
 }
 

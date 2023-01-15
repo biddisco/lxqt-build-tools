@@ -63,20 +63,9 @@ void xrpl_network::initialize()
 // ----------------------------------------------------------------------------
 bool xrpl_network::add_currency_pair(std::string_view p1, std::string_view p2)
 {
-    auto icfn = [](std::string_view c) -> issued_currency {
-        if (c=="USD" || c=="EUR")
-            return issued_currency{currency::bitstamp_trust, std::string{c}};
-        if (c=="XRP")
-            return issued_currency{"", "XRP"};
-        else
-            return issued_currency{"", std::string{c}};
-    };
-    auto ic1 = icfn(p1);
-    auto ic2 = icfn(p2);
-    currency c1 = currency{ic1, get_currency_type(ic1), 0, 0, 0, nullptr};
-    currency c2 = currency{ic2, get_currency_type(ic2), 0, 0, 0, nullptr};
+    currency c1 = ::get_currency(p1);
+    currency c2 = ::get_currency(p2);
     tickers_available_.push_back(std::make_pair(c1, c2));
-    // tickers_available_.push_back(std::make_pair(c2, c1));
     return true;
 }
 

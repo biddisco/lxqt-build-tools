@@ -8,7 +8,7 @@
 #include <QwtScaleDiv>
 // Grox
 #include "src/plot/ohlc_interactor.hpp"
-#include "src/data/ohlc_dataset_manager.hpp"
+#include "src/data/ohlc_dataset_view.hpp"
 
 class ohlc_price_plot;
 class QCursor;
@@ -19,7 +19,7 @@ class QWT_EXPORT ohlc_interactor : public QObject
     Q_OBJECT
 
 public:
-    explicit ohlc_interactor(ohlc_price_plot* plot, ohlc_dataset_manager *data);
+    ohlc_interactor(ohlc_price_plot* plot, std::shared_ptr<ohlc_dataset_view> data);
     virtual ~ohlc_interactor();
 
     QWidget* parentWidget();
@@ -92,5 +92,5 @@ private:
     PrivateData* m_data;
 
 protected:
-    ohlc_dataset_manager *ohlc_dataset_manager_;
+    std::shared_ptr<ohlc_dataset_view> ohlc_dataset_view_;
 };

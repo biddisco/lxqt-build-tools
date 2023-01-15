@@ -39,6 +39,20 @@ currency_type get_currency_type(issued_currency const &c)
 }
 
 // ----------------------------------------------------------------------------
+currency get_currency(std::string_view c) {
+    auto icfn = [](std::string_view c) -> issued_currency {
+        if (c=="USD" || c=="EUR")
+            return issued_currency{currency::bitstamp_trust, std::string{c}};
+        if (c=="XRP")
+            return issued_currency{"", "XRP"};
+        else
+            return issued_currency{"", std::string{c}};
+    };
+    auto ic1 = icfn(c);
+    return currency{ic1, get_currency_type(ic1), 0, 0, 0, nullptr};
+}
+
+// ----------------------------------------------------------------------------
 bool is_fiat(currency_type c)
 {
     if (c==currency_type::usd_bitstamp || c==eur_bitstamp || c==usd_gatehub)
@@ -101,6 +115,22 @@ std::pair<std::string, std::string> to_string(const currency &t)
         return std::make_pair("Unknown", ""); break;
     }
     return std::make_pair("error", "");
+}
+
+// ----------------------------------------------------------------------------
+std::string currency_pair_string(const currency_pair &p)
+{
+    std::string str = std::get<0>(p).curr_.code_ + "-" + std::get<1>(p).curr_.code_;
+    return str;
+}
+
+// ----------------------------------------------------------------------------
+currency_pair string_to_pair(std::string_view s, std::string_view delim)
+{
+    auto temp = s.find(delim);
+    std::string_view p1 = s.substr(0, temp);
+    std::string_view p2 = s.substr(temp+1, s.back());
+    return {get_currency(p1), ::get_currency(p2)};
 }
 
 // ----------------------------------------------------------------------------

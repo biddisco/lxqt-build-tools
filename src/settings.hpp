@@ -13,9 +13,11 @@
 #include "json_types.hpp"
 #include "currency.hpp"
 #include "src/exchange/exchange.hpp"
+#include "src/data/ohlc_dataset_manager.hpp"
 //
-
 class wallet_widget;
+class QMenu;
+
 namespace ads {
   class CDockManager;
 }
@@ -137,6 +139,7 @@ struct bitstamp_account : public ledger_wallet {
 // ----------------------------------------------------------------------------
 struct app_settings
 {
+    // file names for data and log storage
     QString     iniFileName;
     std::string logFileName;
     std::string hdfFileName;
@@ -145,14 +148,15 @@ struct app_settings
     std::string tempLocation;
     QString     configLocation;
     //
-    std::vector<std::shared_ptr<exchange>> networks_;
-    //
     secure_string grox_password;
     secure_string randomBytes;
     //
-    double bitstamp_xrp_fee;
+    std::vector<std::shared_ptr<exchange>> networks_;
     //
-    ads::CDockManager *dock_manager;
+    std::shared_ptr<ads::CDockManager> dock_manager_;
+    QMenu* dockwindows_menu_;
+    //
+    std::shared_ptr<ohlc_dataset_manager> data_manager_;
 };
 
 app_settings* global_settings();

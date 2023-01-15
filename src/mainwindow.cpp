@@ -50,6 +50,7 @@
 #include "src/stream/trade_filter.hpp"
 #include "src/data/ohlc_heikin_ashi.hpp"
 
+#include "DockManager.h"
 #include "DockAreaWidget.h"
 #include "DockAreaTitleBar.h"
 #include "DockAreaTabBar.h"
@@ -74,29 +75,34 @@ using namespace ads;
 GroxMainWindow::GroxMainWindow(QWidget* parent)
   : QMainWindow(parent)
   , net_layout_(nullptr)
-  , dockwindows_menu_(nullptr)
   , perspectives_menu_(nullptr)
 
 {
     ui.setupUi(this);
 
     // ----------------------------------
+    // global persistent settings
     app_settings* app_ini = global_settings();
+    app_ini->dockwindows_menu_ = nullptr;
+
+    // ----------------------------------
+    app_ini->data_manager_ = std::make_shared<ohlc_dataset_manager>();
+    app_ini->data_manager_->init(app_ini->appDataLocation, app_ini->hdfFileName);
 
     // ----------------------------------
     // Create Dock manager and set default flags
     // Because the parent parameter is a QMainWindow the dock manager registers
     // itself as the central widget as such the ui must be set up first.
-
     CDockManager::setConfigFlag(CDockManager::OpaqueSplitterResize, true);
     CDockManager::setConfigFlag(CDockManager::XmlCompressionEnabled, false);
     CDockManager::setConfigFlag(CDockManager::FocusHighlighting, true);
-    app_ini->dock_manager = new CDockManager(this);
+    app_ini->dock_manager_ = std::make_shared<CDockManager>(this);
 
     // ----------------------------------
     // Setup a menu to allow dockwindow control
     createPerspectives_Ui();
 
+    // @TODO this should be dynamic and not hard coded
     // ----------------------------------
     // Create orderbook plot as dockwindow
     obp_ = new OrderBookPlot();
@@ -105,8 +111,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* OBPDockWidget = new CDockWidget("OrderBookPlot-1");
     OBPDockWidget->setWidget(obp_);
     OBPDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    app_ini->dock_manager->addDockWidget(DockWidgetArea::CenterDockWidgetArea, OBPDockWidget);
-    dockwindows_menu_->addAction(OBPDockWidget->toggleViewAction());
+    app_ini->dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, OBPDockWidget);
+    app_ini->dockwindows_menu_->addAction(OBPDockWidget->toggleViewAction());
 
     // ----------------------------------
     // create bitstamp exchange interface
@@ -138,8 +144,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
     NetworkDockWidget->setWidget(netbox);
     NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    auto RightArea = app_ini->dock_manager->addDockWidget(DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
-    dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
+    auto RightArea = app_ini->dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
+    app_ini->dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
 
     // ----------------------------------
     // Create dockwidget for algorithmic trading
@@ -150,8 +156,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
     AlgorithmsDockWidget->setWidget(algowidget_);
     AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    app_ini->dock_manager->addDockWidget(DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
-    dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
+    app_ini->dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
+    app_ini->dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
     // ----------------------------------
     // create a dock widget to hold accounts/wallets
@@ -161,8 +167,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* AccountsDockWidget = new CDockWidget("Accounts");
     AccountsDockWidget->setWidget(accounts_frame_);
     AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    app_ini->dock_manager->addDockWidget(DockWidgetArea::RightDockWidgetArea, AccountsDockWidget, RightArea, 2);
-    dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
+    app_ini->dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, AccountsDockWidget, RightArea, 2);
+    app_ini->dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
 
     // ----------------------------------
     // create a dock widget to hold open orders
@@ -172,8 +178,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* OrdersDockWidget = new CDockWidget("Trades");
     OrdersDockWidget->setWidget(orders_frame_);
     OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    app_ini->dock_manager->addDockWidget(DockWidgetArea::RightDockWidgetArea, OrdersDockWidget, RightArea, 3);
-    dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
+    app_ini->dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, OrdersDockWidget, RightArea, 3);
+    app_ini->dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
 
     // for each wallet on each network
     for (auto network : app_ini->networks_) {
@@ -190,49 +196,36 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     }
     accounts_frame_->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred));
 
+    // ----------------------------------
+    // setup Qt actions/connections between controls
+    connect_gui_controls();
+
+    // ----------------------------------
     // load in the list of trustlines that we know about
     loadTrustlines();
+
+    // ----------------------------------
+    // start asio threads
+    start_io_threads(2);
+
+    // ----------------------------------
+    // initialize networks / start websocket connnections etc
+    main_dbg<0>.debug("Init bitstamp");
+    bitstamp_network_->initialize();
+    //
+    main_dbg<0>.debug("Init xrpl mainnet");
+    xrpl_network_->initialize();
+    //
+    main_dbg<0>.debug("Init xrpl testnet");
+    xrpl_testnet_->initialize();
 
     // ----------------------------------
     // setup connections tab
     loadConnectionSetups();
 
+
+    // @TODO get rid of this
     // ----------------------------------
-    // setup Qt actions/connections
-    //
-    createActions();
-    createMenus();
-
-    // ----------------------------------
-    // Load existing candlestick data
-    hdf5_ohlc_.init(app_ini->appDataLocation, app_ini->hdfFileName);
-    hdf5_ohlc_.read_hdf5();
-
-    // get all available candle resolutions, except highest res
-    // since we we use that one to generate all the others
-    const auto &resolutions = ohlc_chart_data::available_resolutions();
-    for (size_t i=1; i<resolutions.size(); ++i) {
-        auto const &res = resolutions[i];
-        auto new_data = hdf5_ohlc_.get_dataset(res.base_)->resample(res, ohlc_chart_data::get_resolution(res.base_));
-        if (new_data) {
-            hdf5_ohlc_.add_dataset(res, new_data);
-        }
-    }
-
-    // ----------------------------------
-    // Create candlestick/volume plots
-    price_plot_ = new price_chart_widget(this, &hdf5_ohlc_);
-    //
-    CDockWidget* PlotDockWidget = new CDockWidget("PricePlot-1");
-    PlotDockWidget->setWidget(price_plot_);
-    PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    auto LeftArea = app_ini->dock_manager->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
-    dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
-
-    // start by displaying 1 day of data
-    price_plot_->graph_rescale(0);
-
-    //
     // Resize order book to fit monospace text (add 1 chars - scrollbars/etc)
     //
     QString txt = "X";
@@ -248,22 +241,26 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     tabs_->arbitrage_orders->setMinimumWidth(calcWidth);
     //tabs_->arbitrage_orders->setMaximumWidth(calcWidth);
 
-    // initialize networks / start websocket connnections etc
-    main_dbg<0>.debug("Init bitstamp");
-    bitstamp_network_->initialize();
-    //
-    main_dbg<0>.debug("Init xrpl mainnet");
-    xrpl_network_->initialize();
-    //
-    main_dbg<0>.debug("Init xrpl testnet");
-    xrpl_testnet_->initialize();
-
     // ----------------------------------
     // just an experiment to display an image
     // scale pixmap to fit in label's size and keep ratio of pixmap
     QPixmap pix(":/images/xrp.jpg");
     // pix = pix.scaled(tabs_->image_label->size(), Qt::KeepAspectRatio);
     // tabs_->image_label->setPixmap(pix);
+
+    // ----------------------------------
+    // Create candlestick/volume plots
+//    auto view = app_ini->data_manager_->create_dataset_view("XRP", "USD");
+//    price_plot_ = new price_chart_widget(this, view, bitstamp_network_, std::string("USD/XRP"));
+//    //
+//    CDockWidget* PlotDockWidget = new CDockWidget("PricePlot-1");
+//    PlotDockWidget->setWidget(price_plot_);
+//    PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+//    /*auto LeftArea = */app_ini->dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
+//    app_ini->dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
+
+//    // start by displaying 1 day of data
+//    price_plot_->graph_rescale(0);
 
 }
 
@@ -272,6 +269,14 @@ GroxMainWindow::~GroxMainWindow()
 {
     delete timer_;
     delete obp_;
+
+    app_settings* app_ini = global_settings();
+    // release dockmanager
+    app_ini->dock_manager_.reset();
+    // release all networks
+    for (auto & n: app_ini->networks_) n.reset();
+    // release datamanager
+    app_ini->data_manager_.reset();
 }
 
 // ----------------------------------------------------------------------------
@@ -301,24 +306,6 @@ void GroxMainWindow::appExitCleanupHandler()
         if (t.joinable()) t.join();
     }
     main_dbg<0>.debug(str<>("boost::asio"), "shutdown complete");
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::createActions()
-{
-    new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
-
-    // Ctrl+R : shows how to connect a lambda to a shortcut
-    QObject::connect(new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_R)),  this), &QShortcut::activated, [=](){
-    });
-
-    start_io_threads(2);
-
-//    //
-//    ui.menubar->addAction(tr("Quit"));
-//    actionQuit = tabs_->menubar->addAction(tr("Quit"));
-//    actionQuit->setMenuRole(QAction::QuitRole);
-//    actionQuit->setShortcut(QKeySequence::Quit);
 }
 
 // ----------------------------------------------------------------------------
@@ -363,7 +350,7 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::createMenus()
+void GroxMainWindow::connect_gui_controls()
 {
     // to capture ctrl-click on connect button
     tabs_->connect_button->installEventFilter(this);
@@ -411,11 +398,12 @@ void GroxMainWindow::createMenus()
     connect(bitstamp_network_.get(), &bitstamp_network::new_trade_data_ui, this, [this](live_trades t) {
         auto p = t.price;
         auto v = t.amount;
-        QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p, v);
-        hdf5_ohlc_.add_live_data(new_sample);
-        //
-        price_plot_->update_live_data(new_sample);
-        stream_process(new_sample);
+//        QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p, v);
+//        app_settings* app_ini = global_settings();
+//        app_ini->data_manager_->add_live_data(new_sample);
+//        //
+//        price_plot_->update_live_data(new_sample);
+//        stream_process(new_sample);
     } , Qt::QueuedConnection);
 
     connect(bitstamp_network_.get(), &bitstamp_network::network_initialized, this, [this](exchange* ex) {
@@ -457,6 +445,7 @@ void GroxMainWindow::createMenus()
         // execute_filter();
     } , Qt::QueuedConnection);
 
+    auto shutdown = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
 }
 
 // ----------------------------------------------------------------------------
@@ -467,21 +456,22 @@ void GroxMainWindow::new_ohlc_data(double old_res)
     //
     // get all available candle resolutions, except highest res
     // since we we use that one to generate all the others
-    const auto &resolutions = ohlc_chart_data::available_resolutions();
-    for (size_t i=1; i<resolutions.size(); ++i) {
-        auto const &res = resolutions[i];
-        auto data = hdf5_ohlc_.get_dataset(res);
-        if (data) {
-            data->resample_update(res, hdf5_ohlc_.get_dataset(res.base_), ohlc_chart_data::get_resolution(res.base_));
-        }
-        else {
-            data = hdf5_ohlc_.get_dataset(res.base_)->resample(res, ohlc_chart_data::get_resolution(res.base_));
-            hdf5_ohlc_.add_dataset(res, data);
-        }
-    }
+//    app_settings* app_ini = global_settings();
+//    const auto &resolutions = ohlc_chart_data::available_resolutions();
+//    for (size_t i=1; i<resolutions.size(); ++i) {
+//        auto const &res = resolutions[i];
+//        auto data = app_ini->data_manager_->get_dataset(res);
+//        if (data) {
+//            data->resample_update(res, app_ini->data_manager_->get_dataset(res.base_), ohlc_chart_data::get_resolution(res.base_));
+//        }
+//        else {
+//            data = app_ini->data_manager_->get_dataset(res.base_)->resample(res, ohlc_chart_data::get_resolution(res.base_));
+//            app_ini->data_manager_->add_dataset(res, data);
+//        }
+//    }
 
-    // don't change axes, just update data series and replot
-    price_plot_->replot();
+//    // don't change axes, just update data series and replot
+//    price_plot_->replot();
 }
 
 // ----------------------------------------------------------------------------
@@ -558,14 +548,14 @@ void GroxMainWindow::receive_ohlc_data(std::string&& data)
             new_ohlc_samples.push_back(sample);
         }
         //
-        main_dbg<5>.debug("Converted", new_ohlc_samples.size(), "new OHLC samples");
-        hdf5_ohlc_.merge_data(ohlc_chart_data::minute, new_ohlc_samples);
-        // what is the last sample we currently have
-        auto last_time = hdf5_ohlc_.get_last_sample_time(false);
-        main_dbg<0>.debug(str<>("Data merged up to"), msecs_unix_to_calendar_time(last_time));
-        hdf5_ohlc_.delete_live_data_up_to(last_time);
-        //
-        emit new_ohlc_data_ui(ohlc_chart_data::minute);
+//        main_dbg<5>.debug("Converted", new_ohlc_samples.size(), "new OHLC samples");
+//        app_ini->data_manager_->merge_data(ohlc_chart_data::minute, new_ohlc_samples);
+//        // what is the last sample we currently have
+//        auto last_time = app_ini->data_manager_->get_last_sample_time(false);
+//        main_dbg<0>.debug(str<>("Data merged up to"), msecs_unix_to_calendar_time(last_time));
+//        app_ini->data_manager_->delete_live_data_up_to(last_time);
+//        //
+//        emit new_ohlc_data_ui(ohlc_chart_data::minute);
 
     }
     catch (std::exception& e)
@@ -588,10 +578,11 @@ void GroxMainWindow::capture_image()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::update_candlestick_data()
 {
+/*
     candlestick_update_active_ = true;
     uint64_t req_t = 0, start_t = 0;
     // what is the most recent sample we currently have
-    start_t = static_cast<uint64_t>(hdf5_ohlc_.get_last_sample_time(false));
+    start_t = static_cast<uint64_t>(app_ini->data_manager_->get_last_sample_time(false));
     if (start_t == 0) {
         // linux time 1496275200 = Thu Jun 01 2017 00:00:00 GMT+0000
         start_t = 1496275200*1000.0;
@@ -624,6 +615,7 @@ void GroxMainWindow::update_candlestick_data()
         candlestick_update_active_ = false;
         emit restart_candlestick_timer();
     }
+*/
 }
 
 // ----------------------------------------------------------------------------
@@ -781,13 +773,11 @@ void GroxMainWindow::showEvent(QShowEvent *event )
 // ----------------------------------------------------------------------------
 void GroxMainWindow::saveTrustlines()
 {
-    app_settings* app_ini = global_settings();
-    QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
-    // Start GroxMainWindow section
+    QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+    // Start Grox MainWindow section
     settings.beginGroup("Trustlines");
-    int index = 0;
     for (auto const &t : currency::trustlines) {
-        std::string key = std::to_string(index++) + '_' + hex_to_currency(t.code_);
+        std::string key = hex_to_currency(t.code_);
         settings.setValue(key.c_str(), t.issuer_.c_str());
     }
     settings.endGroup();
@@ -797,15 +787,12 @@ void GroxMainWindow::saveTrustlines()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::loadTrustlines()
 {
-    app_settings* app_ini = global_settings();
-    QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
-    // Start section
+    QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+    // Start "Trustlines" section
     settings.beginGroup("Trustlines");
     QStringList childKeys = settings.childKeys();
     for (auto const &k : childKeys) {
-        std::string key = k.toStdString();
-        auto delim = key.find('_');
-        std::string code = key.substr(delim+1, key.back());
+        std::string code = k.toStdString();
         std::string issuer = settings.value(k).toString().toStdString();
         currency::trustlines.push_back({issuer, currency_to_hex(code)});
     }
@@ -816,20 +803,26 @@ void GroxMainWindow::loadTrustlines()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::saveConnectionSetups()
 {
-    // connection_widget_;
-    app_settings* app_ini = global_settings();
-    QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
-    // Start section
-    settings.beginGroup("Streams");
+    QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+    // Start "Tickers" section and remove all existing values
+    settings.beginGroup("Tickers");
+    settings.remove("");
     for (const auto &e : exchange_list_) {
-        std::string prefix(e->name());
-        auto streams = e->websocket_streams();
-        for (const auto &s : streams) {
-            std::string key = prefix + "_" + stream_text(s);
+        for (const auto &t : e->tickers_subscribed()) {
+            std::string key = std::string(e->name()) + "/" + currency_pair_string(t.first);
+            settings.setValue(key.c_str(), true);
+        }
+    }
+    settings.endGroup();
+    // Start "Streams" section and remove all existing values
+    settings.beginGroup("Streams");
+    settings.remove("");
+    for (const auto &e : exchange_list_) {
+        for (const auto &s : e->websocket_streams()) {
+            std::string key = std::string(e->name()) + "/" + stream_text(s);
             settings.setValue(key.c_str(), e->websocket_enabled(s));
         }
     }
-
     settings.endGroup();
     main_dbg<0>.debug(str<>("Connections saved"), settings.fileName().toStdString());
 }
@@ -837,21 +830,35 @@ void GroxMainWindow::saveConnectionSetups()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::loadConnectionSetups()
 {
-    // connection_widget_;
-    app_settings* app_ini = global_settings();
-    QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
-    // Start section
+    QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+    settings.beginGroup("Tickers");
+    for (const auto &e : exchange_list_) {
+        settings.beginGroup(QString(e->name().data()));
+        QStringList childKeys = settings.childKeys();
+        for (auto const &k : childKeys) {
+            std::string currencypair = k.toStdString();
+            bool enabled = settings.value(k).toBool();
+            if (enabled) {
+                main_dbg<0>.debug(str<>("Enable Ticker"), currencypair);
+                auto cp = string_to_pair(currencypair, "-");
+                e->ticker_subscribe(std::get<0>(cp), std::get<1>(cp));
+            }
+        }
+        settings.endGroup();
+    }
+    settings.endGroup();
+
     settings.beginGroup("Streams");
     for (const auto &e : exchange_list_) {
-        std::string prefix(e->name());
+        settings.beginGroup(QString(e->name().data()));
         auto streams = e->websocket_streams();
         for (const auto &s : streams) {
-            std::string key = prefix + "_" + stream_text(s);
+            std::string key = stream_text(s);
             bool enabled = settings.value(key.c_str()).toBool();
             e->websocket_enable(s, io_contexts_, enabled);
         }
+        settings.endGroup();
     }
-
     settings.endGroup();
     main_dbg<0>.debug(str<>("Connections loaded"), settings.fileName().toStdString());
 }
@@ -870,7 +877,7 @@ void GroxMainWindow::saveWindowSettings()
 
     // Dockwindow perspectives
     settings.beginGroup("DockWindow_Perspectives");
-    app_ini->dock_manager->savePerspectives(settings);
+    app_ini->dock_manager_->savePerspectives(settings);
     settings.setValue("active", active_perspective_);
     settings.endGroup();
 
@@ -891,7 +898,7 @@ void GroxMainWindow::loadWindowSettings()
 
     // Dockwindow perspectives
     settings.beginGroup("DockWindow_Perspectives");
-    app_ini->dock_manager->loadPerspectives(settings);
+    app_ini->dock_manager_->loadPerspectives(settings);
     createPerspectives_Ui();
     if (settings.contains("active")) {
         openPerspective(settings.value("active", "Default").toString());
@@ -954,7 +961,7 @@ void GroxMainWindow::execute_filter()
 
 //    base_resolution = ohlc_chart_data::minute;
 
-    auto dataset = hdf5_ohlc_.get_dataset(base_resolution);
+    auto dataset = app_ini->data_manager_->get_dataset(base_resolution);
     auto data = dataset->ohlc_samples_;
 
     // NB. Inputs need to be used by reference, with the original object
@@ -1048,7 +1055,7 @@ void GroxMainWindow::execute_filter()
         trade_event e = pipe.operator()();
         if (e.type_ == buy_sell_type::buy_event) {
             if (funding[0].usd>0) {
-                double p = hdf5_ohlc_.get_estimated_buy_price(funding[0].usd, e.time_, 2.0);
+                double p = app_ini->data_manager_->get_estimated_buy_price(funding[0].usd, e.time_, 2.0);
                 if (p==0) break;
 
                 // plot buy price
@@ -1069,7 +1076,7 @@ void GroxMainWindow::execute_filter()
         }
         else if (e.type_ == buy_sell_type::sell_event) {
             if (funding[0].xrp>0) {
-                double p = hdf5_ohlc_.get_estimated_sell_price(funding[0].xrp, e.time_, 2.0);
+                double p = app_ini->data_manager_->get_estimated_sell_price(funding[0].xrp, e.time_, 2.0);
                 if (p==0) break;
 
                 // plot sell price
@@ -1147,15 +1154,16 @@ void GroxMainWindow::build_connection_gui(exchange *ex)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::createPerspectives_Ui()
 {
+    app_settings* app_ini = global_settings();
     // create one time setup menu items
-    if (!dockwindows_menu_) {
+    if (!app_ini->dockwindows_menu_) {
         // main window menu entry
         QMenu* docking_menu_ = new QMenu("Window");
         ui.menubar->addMenu(docking_menu_);
         // subsection for dockwindows
         QAction* menuentry_ = docking_menu_->addAction("Dock windows...");
-        dockwindows_menu_ = new QMenu();
-        menuentry_->setMenu(dockwindows_menu_);
+        app_ini->dockwindows_menu_ = new QMenu();
+        menuentry_->setMenu(app_ini->dockwindows_menu_);
         // subsection for perspectives
         QAction* menuentry2_ = docking_menu_->addAction("Perspectives...");
         perspectives_menu_ = new QMenu();
@@ -1166,9 +1174,8 @@ void GroxMainWindow::createPerspectives_Ui()
         docking_menu_->addAction(SavePerspectiveAction);
     }
     //
-    app_settings* app_ini = global_settings();
     perspectives_menu_->clear();
-    for (const QString &name : app_ini->dock_manager->perspectiveNames()) {
+    for (const QString &name : app_ini->dock_manager_->perspectiveNames()) {
         QAction* LoadPerspectiveAction = new QAction(name);
         LoadPerspectiveAction->setCheckable(true);
         connect(LoadPerspectiveAction, &QAction::triggered, this, [this,name](){
@@ -1187,7 +1194,7 @@ void GroxMainWindow::savePerspective()
                 QLineEdit::Normal, active_perspective_);
     if (!Name.isEmpty())
     {
-        app_ini->dock_manager->addPerspective(Name);
+        app_ini->dock_manager_->addPerspective(Name);
         createPerspectives_Ui();
     }
 }
@@ -1205,5 +1212,5 @@ void GroxMainWindow::openPerspective(const QString &name)
             action->setChecked(false);
         }
     }
-    app_ini->dock_manager->openPerspective(name);
+    app_ini->dock_manager_->openPerspective(name);
 }

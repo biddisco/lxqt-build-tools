@@ -18,13 +18,17 @@ template <int Level>
 static print_threshold<Level, debug_level> pplot_dbg("PricePlt");
 
 // ----------------------------------------------------------------------------
-price_chart_widget::price_chart_widget(QWidget *parent, ohlc_dataset_manager *ohlc)
+price_chart_widget::price_chart_widget(QWidget *parent,
+                                       std::shared_ptr<ohlc_dataset_view> ohlc,
+                                       std::shared_ptr<exchange> ex,
+                                       std::string ticker)
     : QWidget(parent)
     , ui(new Ui::price_chart_widget)
+    , exchange_(ex)
     , hdf5_ohlc_(ohlc)
 {
     ui->setupUi(this);
-
+    ui->ticker->setText(ticker.data());
     //
     // Create candlestick plot
     //

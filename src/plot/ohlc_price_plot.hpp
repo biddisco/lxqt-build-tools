@@ -5,7 +5,7 @@
 // Grox
 #include "src/plot/ohlc_interactor.hpp"
 //
-class ohlc_dataset_manager;
+class ohlc_dataset_view;
 class ohlc_chart_curve;
 class ohlc_price_scaledraw;
 class ohlc_picker;
@@ -29,7 +29,7 @@ private:
     QwtDateScaleEngine            *timescaleEngine_;
     QwtPlotDirectPainter          *direct_painter_;
     ohlc_picker                   *crosshairs_;
-    ohlc_dataset_manager          *ohlc_dataset_manager_;
+    std::shared_ptr<ohlc_dataset_view> ohlc_dataset_view_;
     QwtTextLabel                  *candle_label_;
     QwtTextLabel                  *candle_status_;
     double                         candle_resolution_;
@@ -38,7 +38,7 @@ private:
     int                            fixed_char_size_y_;
 
 public:
-    ohlc_price_plot(QWidget *, ohlc_dataset_manager *);
+    ohlc_price_plot(QWidget *, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_);
     ~ohlc_price_plot();
     //
     void bind_graphs();

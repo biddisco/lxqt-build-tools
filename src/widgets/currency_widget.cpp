@@ -118,10 +118,10 @@ void currency_widget::show_hide()
         }
 */
         ui->buy_sell_combo->clear();
-        auto pairs = network_->currency_pairs();
+        auto pairs = network_->get_currency_pairs();
         for (auto &p : pairs) {
-            auto c1 = p.first;
-            auto c2 = p.second;
+            auto c1 = std::get<0>(p);
+            auto c2 = std::get<1>(p);
             if (c1.type_ == currency_.type_) {
                 auto cstr = to_string(c2);
                 ui->buy_sell_combo->addItem(QString(cstr.first.c_str()),
