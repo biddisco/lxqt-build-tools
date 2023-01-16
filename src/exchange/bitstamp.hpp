@@ -51,6 +51,7 @@ private:
     // map of fees for trading of currency pairs
     std::map<std::pair<std::string, std::string>, double> fee_map_;
 
+    bool candlestick_update_active_;
 public:
     //
     static inline const std::string bitstamp_https_address = "www.bitstamp.net";
@@ -119,12 +120,12 @@ public:
 
     // ---------------------------------------
     // init connections/websockets etc
-    bool subscribe_live_trades(net::contexts &io_contexts);
-    bool subscribe_order_book(net::contexts &io_contexts);
-    bool subscribe_my_trades(net::contexts &io_contexts);
-    bool subscribe_my_orders(net::contexts &io_contexts);
-    bool unsubscribe_my_trades();
-    bool unsubscribe_my_orders();
+    bool subscribe_live_trades(std::string_view ticker, net::contexts &io_contexts);
+    bool subscribe_order_book(std::string_view ticker, net::contexts &io_contexts);
+    bool subscribe_my_trades(std::string_view ticker, net::contexts &io_contexts);
+    bool subscribe_my_orders(std::string_view ticker, net::contexts &io_contexts);
+    bool unsubscribe_my_trades(std::string_view ticker);
+    bool unsubscribe_my_orders(std::string_view ticker);
 
     streams_vector websocket_streams() override {
         return {
@@ -134,9 +135,10 @@ public:
             network::streams::order_book
         };
     }
+
     // connect to (multiple) streams
-    bool connect(net::contexts &io_contexts, streams_vector const &streams) override;
-    bool disconnect(net::contexts &io_contexts, streams_vector const &streams) override;
+    bool websocket_connect(net::contexts &io_contexts, streams_vector const &streams) override;
+    bool websocket_disconnect(net::contexts &io_contexts, streams_vector const &streams) override;
 
     // shut down sockets/connections
     void shut_down() override;
@@ -173,7 +175,7 @@ public:
 
     using fn_on_http_2 = std::function<void(OB::Belle::Client::Http_Ctx&, bool)>;
 
-    bool request_new_candlestick_data(uint64_t start_t, fn_on_http_2 fn);
+    bool request_new_candlestick_data(std::string ticker, uint64_t start_t, fn_on_http_2 fn);
 
     // function called from websocket subscription to live trade data
     static void new_trade_data(bitstamp_network*, std::string_view);
@@ -192,6 +194,12 @@ public:
 
     void ticker_subscribe(const currency &c1, const currency &c2) override;
 
+    //
+    void receive_ohlc_data(ticker_data *, std::string&&);
+    void update_candlestick_data();
+
+    void start_timer() override;
+
 signals:
     // Signals are emitted so that the Qt appication/GUI thread can perform
     // procesing operations that affect Qt/GUI managed items in a thread safe way
@@ -205,6 +213,14 @@ signals:
     // when the wallet widget needs to be updated with new data/currencies
     void update_wallet_widget(bitstamp_account*);
 
-public slots:
+    // trigger this to restart the timer from a Qt thread
+    void restart_candlestick_timer();
 
+    // after new data is received, trigger this to update plots
+    void new_ohlc_data(ticker_data *, double);
+
+public slots:
+    void candlestick_timer_event();
+    void restart_candlestick_timer_event();
+    void new_ohlc_data_event(ticker_data *, double);
 };

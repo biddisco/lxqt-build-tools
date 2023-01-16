@@ -125,7 +125,7 @@ const xrpl_order_book &xrpl_network::get_orderbook() const
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::connect(net::contexts &io_contexts, streams_vector const &streams)
+bool xrpl_network::websocket_connect(net::contexts &io_contexts, streams_vector const &streams)
 {
     bool ok = true;
     for (const auto &s : streams) {
@@ -136,7 +136,7 @@ bool xrpl_network::connect(net::contexts &io_contexts, streams_vector const &str
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::disconnect(net::contexts &/*io_contexts*/, streams_vector const &streams)
+bool xrpl_network::websocket_disconnect(net::contexts &/*io_contexts*/, streams_vector const &streams)
 {
     bool ok = true;
     for (const auto &s : streams) {

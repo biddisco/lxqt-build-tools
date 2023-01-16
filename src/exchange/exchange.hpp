@@ -9,6 +9,7 @@
 //
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
+#include "src/data/ohlc_dataset_view.hpp"
 #include "src/trade_data.hpp"
 
 class basic_account;
@@ -35,6 +36,13 @@ static std::string stream_text(network::streams stype) {
     return "Unknown";
 }
 
+class price_chart_widget;
+
+struct ticker_data {
+    std::shared_ptr<ohlc_dataset_view> view_;
+    price_chart_widget *chart_widget_;
+};
+
 // ----------------------------------------------------------------------------
 class exchange : public QObject, public std::enable_shared_from_this<exchange>
 {
@@ -42,6 +50,7 @@ class exchange : public QObject, public std::enable_shared_from_this<exchange>
 
 public:
     using exchange_vector = std::vector<std::shared_ptr<exchange>>;
+    using exchange_map = std::map<currency_pair, ticker_data>;
 
     // websocket streams subscribed to
     std::map<network::streams, bool> enabled_streams_;
@@ -50,7 +59,10 @@ public:
     currency_pairlist tickers_available_;
 
     // ticker pairs subscribed to
-    std::map<currency_pair, bool> tickers_subscribed_;
+    exchange_map tickers_subscribed_;
+
+    // timer for data updates
+    QTimer *timer_;
 
     // obligatory virtual destructor
     virtual ~exchange() {}
@@ -68,8 +80,8 @@ public:
     virtual bool websocket_enabled(network::streams s);
     virtual void websocket_enable(network::streams s, net::contexts &io_contexts, bool enable);
     //
-    virtual bool connect(net::contexts &io_contexts, streams_vector const &streams) = 0;
-    virtual bool disconnect(net::contexts &io_contexts, streams_vector const &streams) = 0;
+    virtual bool websocket_connect(net::contexts &io_contexts, streams_vector const &streams) = 0;
+    virtual bool websocket_disconnect(net::contexts &io_contexts, streams_vector const &streams) = 0;
     //
     virtual void shut_down() = 0;
 
@@ -92,11 +104,14 @@ public:
     // ---------------------------------------
     // subscription to tickers
     // ---------------------------------------
-    virtual bool ticker_subscribed(currency c1, currency c2);
+    // query which tickers are subscribed
+    virtual bool ticker_subscribed(const currency &c1, const currency &c2);
     virtual bool ticker_subscribed(std::string_view p1, std::string_view p2);
-    virtual void ticker_subscribe(const currency &c1, const currency &c2) {};
+    // subscribe to a ticker
+    virtual void ticker_subscribe(const currency &c1, const currency &c2);
     virtual void ticker_subscribe(std::string_view p1, std::string_view p2);
-    const std::map<currency_pair, bool> & tickers_subscribed();
+    // return list of subscribed tickers
+    const exchange_map & tickers_subscribed();
 
     // ---------------------------------------
     // fees
@@ -105,6 +120,8 @@ public:
     virtual double get_fee_fixed(const currency_type &c1, const currency_type &c2) = 0;
     virtual double get_transfer_fee(const currency &c1)  = 0;
     virtual void custom_functions(basic_account *acct) = 0;
+
+    virtual void start_timer() {}
 
 signals:
     // emitted when a transaction might cause a change in data

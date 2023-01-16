@@ -29,17 +29,29 @@ static print_threshold<Level, debug_level> bitstamp_dbg("Bitstamp");
 // ----------------------------------------------------------------------------
 bitstamp_network::bitstamp_network()
 {
+    // timer will fire once each time it is reset
+    timer_ = new QTimer(this);
+    timer_->setSingleShot(true);
+    candlestick_update_active_ = false;
     bitstamp_account default_acct;
     default_acct.name_ = "Bitstamp Main";
     accounts_.push_back(default_acct);
     using namespace std::literals;
     token_expiry_ = std::chrono::steady_clock::now() - 60*1s;
+
+    // used to fetch account balances after N seconds
+    connect(timer_, SIGNAL(timeout()), this, SLOT(candlestick_timer_event()));
+    // Timers must be started from the qt thread that created them
+    connect(this, SIGNAL(restart_candlestick_timer()), this, SLOT(restart_candlestick_timer_event()));
+    // after new data has been received, trigger this to process new candles and replot
+    connect(this, SIGNAL(new_ohlc_data(ticker_data*, double)), this, SLOT(new_ohlc_data_event(ticker_data*, double)));
 }
 
 // ----------------------------------------------------------------------------
 bitstamp_network::~bitstamp_network()
 {
     bitstamp_dbg<0>.debug(str<>("destructor"));
+    delete timer_;
     delete orderbook_;
 }
 
@@ -52,39 +64,44 @@ void bitstamp_network::initialize()
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_live_trades(net::contexts &io_contexts)
+std::string string_join(std::string_view s1, std::string_view s2) {
+    return (std::string(s1) += s2);
+}
+
+// ----------------------------------------------------------------------------
+bool bitstamp_network::subscribe_live_trades(std::string_view ticker, net::contexts &io_contexts)
 {
     using namespace std::placeholders;
-    bitstamp_dbg<0>.debug(str<>("Subscribing"), "live_trades_xrpusd");
+    bitstamp_dbg<0>.debug(str<>("Subscribing"), string_join("live_trades_", ticker));
     ws_trades = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
-        "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
-        "\"live_trades_xrpusd\"}}",
+        string_join("{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
+        "\"live_trades_", ticker) + "\"}}",
         std::bind(bitstamp_network::new_trade_data, this, _1));
 
     return true;
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_order_book(net::contexts &io_contexts)
+bool bitstamp_network::subscribe_order_book(std::string_view ticker, net::contexts &io_contexts)
 {
     using namespace std::placeholders;
-    bitstamp_dbg<0>.debug(str<>("Subscribing"), "order_book_xrpusd");
+    bitstamp_dbg<0>.debug(str<>("Subscribing"), string_join("order_book_", ticker));
     ws_bidask = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
-        "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
-        "\"order_book_xrpusd\"}}",
+        string_join("{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
+        "\"order_book_", ticker) + "\"}}",
         std::bind(&bitstamp_network::new_orderbook_data, this, _1));
 
     return true;
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_my_trades(net::contexts &io_contexts)
+bool bitstamp_network::subscribe_my_trades(std::string_view ticker, net::contexts &io_contexts)
 {
     nlohmann::json command;
     command["event"] = "bts:subscribe";
-    command["data"]["channel"] = "private-my_trades_xrpusd-" + websocket_user_id_;
+    command["data"]["channel"] = string_join("private-my_trades_", ticker) + "-" + websocket_user_id_;
     command["data"]["auth"] = websocket_token_;
     bitstamp_dbg<5>.debug(str<>("subscribe trades"), command.dump(4));
 
@@ -100,11 +117,11 @@ bool bitstamp_network::subscribe_my_trades(net::contexts &io_contexts)
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::unsubscribe_my_trades()
+bool bitstamp_network::unsubscribe_my_trades(std::string_view ticker)
 {
     nlohmann::json command;
     command["event"] = "bts:unsubscribe";
-    command["data"]["channel"] = "my_trades_xrpusd-" + get_bitstamp_instance()->account().API_user;
+    command["data"]["channel"] = string_join("my_trades_", ticker) + "-" + get_bitstamp_instance()->account().API_user;
     command["data"]["auth"] = get_bitstamp_instance()->account().API_key;
     bitstamp_dbg<0>.debug(str<>("unsubscribe trades"), command.dump(4));
     ws_mytrades->write(command.dump(4));
@@ -112,16 +129,16 @@ bool bitstamp_network::unsubscribe_my_trades()
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_my_orders(net::contexts &io_contexts)
+bool bitstamp_network::subscribe_my_orders(std::string_view ticker, net::contexts &io_contexts)
 {
     nlohmann::json command;
     command["event"] = "bts:subscribe";
-    command["data"]["channel"] = "private-my_orders_xrpusd-" + websocket_user_id_;
+    command["data"]["channel"] = string_join("private-my_orders_", ticker) + "-" + websocket_user_id_;
     command["data"]["auth"] = websocket_token_;
     bitstamp_dbg<5>.debug(str<>("subscribe orders"), command.dump(4));
 
     using namespace std::placeholders;
-    bitstamp_dbg<0>.debug(str<>("Subscribing"), "my_orders_xrpusd");
+    bitstamp_dbg<0>.debug(str<>("Subscribing"), string_join("my_orders_", ticker));
     ws_myorders = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         command.dump(4),
@@ -139,11 +156,11 @@ bool bitstamp_network::subscribe_my_orders(net::contexts &io_contexts)
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::unsubscribe_my_orders()
+bool bitstamp_network::unsubscribe_my_orders(std::string_view ticker)
 {
     nlohmann::json command;
     command["event"] = "bts:unsubscribe";
-    command["data"]["channel"] = "my_orders_xrpusd-" + get_bitstamp_instance()->account().API_user;
+    command["data"]["channel"] = string_join("my_orders_", ticker) + "-" + get_bitstamp_instance()->account().API_user;
     command["data"]["auth"] = get_bitstamp_instance()->account().API_key;
     bitstamp_dbg<0>.debug(str<>("unsubscribe orders"), command.dump(4));
     ws_myorders->write(command.dump(4));
@@ -152,8 +169,9 @@ bool bitstamp_network::unsubscribe_my_orders()
 
 // ----------------------------------------------------------------------------
 // connect to (multiple) streams
-bool bitstamp_network::connect(net::contexts &io_contexts, streams_vector const &streams)
+bool bitstamp_network::websocket_connect(net::contexts &io_contexts, streams_vector const &streams)
 {
+    std::string ticker = "xrpusd";
     using namespace std::literals;
     auto now = std::chrono::steady_clock::now();
     while ((token_expiry_ - now)/1s < 5) {
@@ -162,17 +180,18 @@ bool bitstamp_network::connect(net::contexts &io_contexts, streams_vector const 
     }
     bool ok = true;
     for (const auto &s : streams) {
-        if (s == network::streams::my_trades) ok &= subscribe_my_trades(io_contexts);
-        if (s == network::streams::my_orders) ok &= subscribe_my_orders(io_contexts);
-        if (s == network::streams::trades) ok &= subscribe_live_trades(io_contexts);
-        if (s == network::streams::order_book) ok &= subscribe_order_book(io_contexts);
+        if (s == network::streams::my_trades) ok &= subscribe_my_trades(ticker, io_contexts);
+        if (s == network::streams::my_orders) ok &= subscribe_my_orders(ticker, io_contexts);
+        if (s == network::streams::trades) ok &= subscribe_live_trades(ticker, io_contexts);
+        if (s == network::streams::order_book) ok &= subscribe_order_book(ticker, io_contexts);
     }
     return ok;
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::disconnect(net::contexts &/*io_contexts*/, streams_vector const &streams)
+bool bitstamp_network::websocket_disconnect(net::contexts &/*io_contexts*/, streams_vector const &streams)
 {
+    std::string ticker = "xrpusd";
     bool ok = true;
     for (const auto &s : streams) {
         if (s == network::streams::my_trades) ws_mytrades->shutdown_blocking(); // unsubscribe_my_trades();
@@ -641,14 +660,11 @@ void bitstamp_network::new_trade_data(bitstamp_network* n, std::string_view data
     bitstamp_dbg<5>.debug(str<>("Trade data parsed"), jdata.dump(4));
 
     live_trades trade_data = jdata.get<live_trades>();
-
-    //    emit candlestickdata(ohlc_vector);
-
     emit n->new_trade_data_ui(trade_data);
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::request_new_candlestick_data(uint64_t start_t, fn_on_http_2 fn)
+bool bitstamp_network::request_new_candlestick_data(std::string ticker, uint64_t start_t, fn_on_http_2 fn)
 {
     QDateTime currentDateTime = QDateTime::currentDateTimeUtc();
     uint64_t unixtime = currentDateTime.toSecsSinceEpoch();
@@ -840,13 +856,19 @@ void bitstamp_network::ticker_subscribe(const currency &c1, const currency &c2)
         bitstamp_dbg<0>.debug(str<>("subscription"), cps, "subscribed");
         return;
     }
-    bitstamp_dbg<0>.debug(str<>("subscribing"), cps);
-    tickers_subscribed_.insert({currency_pair{c1,c2}, true});
-
     app_settings* app_ini = global_settings();
-    auto view = app_ini->data_manager_->create_dataset_view("bitstamp", c1, c2);
+    bitstamp_dbg<0>.debug(str<>("subscribing"), cps);
+
+    // create a new data view from hdf5
+    std::shared_ptr<ohlc_dataset_view> view = app_ini->data_manager_->create_dataset_view("bitstamp", c1, c2);
+
+    // create a new price plot object
     auto *price_plot_ = new price_chart_widget(nullptr, view, shared_from_this(), cps);
 
+    // add the subscribed ticker/data/plot to our list for tracking
+    tickers_subscribed_.insert({currency_pair{c1,c2}, {view, price_plot_}});
+
+    // put the price plot into a dock widget
     using namespace ads;
     std::string title = std::string(name()) + "-" + cps;
     CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
@@ -859,3 +881,154 @@ void bitstamp_network::ticker_subscribe(const currency &c1, const currency &c2)
     price_plot_->graph_rescale(0);
 }
 
+// ----------------------------------------------------------------------------
+void bitstamp_network::start_timer()
+{
+    timer_->start(2000);
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::receive_ohlc_data(ticker_data *tdata, std::string&& data)
+{
+    try
+    {
+        // convert json data into vectors of actual data
+        nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
+        bitstamp_dbg<0>.debug(str<>("Received"), dec<4>(jdata.size()), "json OHLC samples");
+        QVector<QwtOHLCSample> new_ohlc_samples;
+        new_ohlc_samples.reserve(jdata.size());
+        QwtOHLCSample sample;
+        for (auto item : jdata) {
+            sample.close  = atof(item["close"].get_ptr<json::string_t*>()->c_str());
+            sample.high   = atof(item["high"].get_ptr<json::string_t*>()->c_str());
+            sample.low    = atof(item["low"].get_ptr<json::string_t*>()->c_str());
+            sample.open   = atof(item["open"].get_ptr<json::string_t*>()->c_str());
+            sample.time   = atof(item["timestamp"].get_ptr<json::string_t*>()->c_str())*1000;
+            sample.volume = atof(item["volume"].get_ptr<json::string_t*>()->c_str());
+            new_ohlc_samples.push_back(sample);
+        }
+        //
+        bitstamp_dbg<5>.debug("Converted", new_ohlc_samples.size(), "new OHLC samples");
+        tdata->view_->merge_data(ohlc_chart_data::minute, new_ohlc_samples);
+        // what is the last sample we currently have
+        auto last_time = tdata->view_->get_last_sample_time(false);
+        bitstamp_dbg<0>.debug(str<>("Data merged up to"), msecs_unix_to_calendar_time(last_time));
+        tdata->view_->delete_live_data_up_to(last_time);
+        //
+        emit new_ohlc_data(tdata, ohlc_chart_data::minute);
+    }
+    catch (std::exception& e)
+    {
+        bitstamp_dbg<0>.error(str<>("JSON error"), "decoding OHLC data:", e.what(), "\n", data, "\n\n");
+    }
+}
+
+// -------------------------------------------------10---------------------------
+void bitstamp_network::new_ohlc_data_event(ticker_data *tdata, double old_res)
+{
+    (void)(old_res);
+    bitstamp_dbg<5>.debug(str<>("new ohlc data"), "resolution", old_res);
+    //
+    // get all available candle resolutions, except highest res
+    // since we we use that one to generate all the others
+    const auto &resolutions = ohlc_chart_data::available_resolutions();
+    for (size_t i=1; i<resolutions.size(); ++i) {
+        auto const &res = resolutions[i];
+        auto data = tdata->view_->get_dataset(res);
+        if (data) {
+            data->resample_update(res, tdata->view_->get_dataset(res.base_), ohlc_chart_data::get_resolution(res.base_));
+        }
+        else {
+            data = tdata->view_->get_dataset(res.base_)->resample(res, ohlc_chart_data::get_resolution(res.base_));
+            tdata->view_->add_dataset(res, data);
+        }
+    }
+
+    // don't change axes, just update data series and replot
+    tdata->chart_widget_->replot();
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::update_candlestick_data()
+{
+    for (auto &[ticker, data] : tickers_subscribed_)
+    {
+        std::string ticker_lowercase = currency_pair_lowercase_string(ticker);
+        std::string ticker_display   = currency_pair_string(ticker);
+        bitstamp_dbg<5>.debug(str<>("Candlestick"), ticker_display);
+        //
+        candlestick_update_active_ = true;
+
+        uint64_t req_t = 0, start_t = 0;
+        // what is the most recent sample we currently have
+        start_t = static_cast<uint64_t>(data.view_->get_last_sample_time(false));
+        if (start_t == 0) {
+            // linux time 1496275200 = Thu Jun 01 2017 00:00:00 GMT+0000
+            start_t = 1496275200*1000.0;
+            std::string s = msecs_unix_to_calendar_time(start_t);
+            bitstamp_dbg<5>.debug(str<>("No Data"), ticker_display, "requesting from", s);
+        }
+        else {
+            std::string s = msecs_unix_to_calendar_time(start_t);
+            bitstamp_dbg<5>.debug(str<>("Data ok up to"), ticker_display, s);
+        }
+        // convert to unix timestamp : next sample is 60s after last
+        req_t = start_t/1000 + 60;
+
+        bitstamp_dbg<5>.debug(str<>("Requesting"), ticker_display, msecs_unix_to_calendar_time(req_t*1000));
+
+        // @TODO add futures here to make dependency chain simpler?
+        ticker_data *tdata = &data;
+        bool ok = request_new_candlestick_data(ticker_lowercase, req_t, [this, req_t, tdata](auto& ctx, bool more) {
+            bitstamp_dbg<0>.debug(str<>("Received"), msecs_unix_to_calendar_time(req_t*1000));
+            this->receive_ohlc_data(tdata, std::move(ctx.res.body()));
+            if (more) {
+                update_candlestick_data();
+            }
+            else {
+                candlestick_update_active_ = false;
+                emit restart_candlestick_timer();
+            }
+        });
+        if (!ok) {
+            // we were already up-to-date
+            candlestick_update_active_ = false;
+            emit restart_candlestick_timer();
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::candlestick_timer_event()
+{
+    QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
+    bitstamp_dbg<5>.debug("candlestick_timer_event : " + now.toStdString());
+    if (!candlestick_update_active_) {
+        update_candlestick_data();
+    }
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::restart_candlestick_timer_event()
+{
+    using namespace std::chrono;
+    // how long until the minute candle closes
+    // UTC! for local use # tm local_tm = *localtime(&tt);
+    system_clock::time_point now = system_clock::now();
+    time_t tt = system_clock::to_time_t(now);
+    tm utc_tm = *gmtime(&tt);
+    // we need to give bitstamp time to update its data,
+    // so only check a few seconds after each new minute begins
+    const int safety = 8;
+    int delay_seconds = 60 + safety - utc_tm.tm_sec;
+
+    if (timer_->isActive()) {
+        // timer is already running
+        bitstamp_dbg<5>.debug("Overriding: candlestick timer", delay_seconds, "seconds");
+        timer_->start(delay_seconds*1000);
+    }
+    else {
+        bitstamp_dbg<5>.debug("restarting candlestick timer", delay_seconds, "seconds");
+        timer_->start(delay_seconds*1000);
+    }
+}

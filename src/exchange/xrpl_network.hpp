@@ -137,8 +137,8 @@ public:
     }
 
     // connect to (multiple) streams
-    bool connect(net::contexts &io_contexts, streams_vector const &streams) override;
-    bool disconnect(net::contexts &io_contexts, streams_vector const &streams) override;
+    bool websocket_connect(net::contexts &io_contexts, streams_vector const &streams) override;
+    bool websocket_disconnect(net::contexts &io_contexts, streams_vector const &streams) override;
 
     // shut down sockets/connections
     void shut_down() override;

@@ -26,12 +26,12 @@ void exchange::websocket_enable(network::streams s, net::contexts &io_contexts, 
 {
     if (enable) {
         if (!websocket_enabled(s)) {
-            enabled_streams_[s] = connect(io_contexts, {s});
+            enabled_streams_[s] = websocket_connect(io_contexts, {s});
         }
     }
     else {
         if (websocket_enabled(s)) {
-            enabled_streams_[s] = !disconnect(io_contexts, {s});
+            enabled_streams_[s] = !websocket_disconnect(io_contexts, {s});
         }
     }
 }
@@ -42,13 +42,13 @@ const currency_pairlist & exchange::get_currency_pairs() {
 }
 
 // ----------------------------------------------------------------------------
-const std::map<currency_pair, bool> & exchange::tickers_subscribed()
+const exchange::exchange_map & exchange::tickers_subscribed()
 {
     return tickers_subscribed_;
 }
 
 // ----------------------------------------------------------------------------
-bool exchange::ticker_subscribed(currency c1, currency c2)
+bool exchange::ticker_subscribed(const currency &c1, const currency &c2)
 {
     auto present = (tickers_subscribed_.contains(currency_pair{c1,c2}));
     return present;
@@ -60,6 +60,12 @@ bool exchange::ticker_subscribed(std::string_view p1, std::string_view p2)
     currency c1 = ::get_currency(p1);
     currency c2 = ::get_currency(p2);
     return ticker_subscribed(c1,c2);
+}
+
+// ----------------------------------------------------------------------------
+void exchange::ticker_subscribe(const currency &c1, const currency &c2)
+{
+    throw std::runtime_error("Exchange classes must implement this function");
 }
 
 // ----------------------------------------------------------------------------

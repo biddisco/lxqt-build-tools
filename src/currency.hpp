@@ -83,6 +83,7 @@ bool is_xrp(currency_type c);
 std::pair<std::string, std::string> to_string(const currency_type &t);
 std::pair<std::string, std::string> to_string(const currency &t);
 std::string currency_pair_string(const currency_pair &p);
+std::string currency_pair_lowercase_string(const currency_pair &p);
 currency_pair string_to_pair(std::string_view s, std::string_view delim);
 
 // ----------------------------------------------------------------------------

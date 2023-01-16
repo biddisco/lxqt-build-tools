@@ -130,11 +130,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     exchange_list_.push_back(xrpl_network_);
     exchange_list_.push_back(xrpl_testnet_);
 
-    // timer will fire once each time it is reset
-    timer_ = new QTimer(this);
-    timer_->setSingleShot(true);
-    candlestick_update_active_ = false;
-
     // ----------------------------------
     // Create dockwidget for network connections
     QFrame *netbox = new QFrame(this);
@@ -150,8 +145,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // ----------------------------------
     // Create dockwidget for algorithmic trading
     QWidget *algowidget_ = new QWidget(this);
-    tabs_ = new Ui::TabbedForm();
-    tabs_->setupUi(algowidget_);
+    algo_form_ = new Ui::TabbedForm();
+    algo_form_->setupUi(algowidget_);
 
     CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
     AlgorithmsDockWidget->setWidget(algowidget_);
@@ -191,7 +186,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
             if (network->name()=="XRPL")     w->widget_->set_data(*static_cast<ledger_wallet*>(w));
             accounts_frame_->layout()->addWidget(w->widget_);
             // update wallet combo with name
-            tabs_->all_acct_combo->addItem(QString(w->name_.c_str()));
+            algo_form_->all_acct_combo->addItem(QString(w->name_.c_str()));
         }
     }
     accounts_frame_->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred));
@@ -229,24 +224,24 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // Resize order book to fit monospace text (add 1 chars - scrollbars/etc)
     //
     QString txt = "X";
-    int char_size = QFontMetrics(tabs_->order_book_xrpl->font()).horizontalAdvance(txt);
+    int char_size = QFontMetrics(algo_form_->order_book_xrpl->font()).horizontalAdvance(txt);
     int calcWidth = char_size*85 + 8;
-    //std::cout << "width", tabs_->order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
-    tabs_->order_book_xrpl->setMinimumWidth(calcWidth);
-    //tabs_->order_book_xrpl->setMaximumWidth(calcWidth);
-    tabs_->order_book_bitstamp->setMinimumWidth(calcWidth);
-    //tabs_->order_book_bitstamp->setMaximumWidth(calcWidth);
+    //std::cout << "width", algo_form_->order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
+    algo_form_->order_book_xrpl->setMinimumWidth(calcWidth);
+    //algo_form_->order_book_xrpl->setMaximumWidth(calcWidth);
+    algo_form_->order_book_bitstamp->setMinimumWidth(calcWidth);
+    //algo_form_->order_book_bitstamp->setMaximumWidth(calcWidth);
     //
     calcWidth = char_size*140 + 8;
-    tabs_->arbitrage_orders->setMinimumWidth(calcWidth);
-    //tabs_->arbitrage_orders->setMaximumWidth(calcWidth);
+    algo_form_->arbitrage_orders->setMinimumWidth(calcWidth);
+    //algo_form_->arbitrage_orders->setMaximumWidth(calcWidth);
 
     // ----------------------------------
     // just an experiment to display an image
     // scale pixmap to fit in label's size and keep ratio of pixmap
     QPixmap pix(":/images/xrp.jpg");
-    // pix = pix.scaled(tabs_->image_label->size(), Qt::KeepAspectRatio);
-    // tabs_->image_label->setPixmap(pix);
+    // pix = pix.scaled(algo_form_->image_label->size(), Qt::KeepAspectRatio);
+    // algo_form_->image_label->setPixmap(pix);
 
     // ----------------------------------
     // Create candlestick/volume plots
@@ -267,7 +262,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 // ----------------------------------------------------------------------------
 GroxMainWindow::~GroxMainWindow()
 {
-    delete timer_;
     delete obp_;
 
     app_settings* app_ini = global_settings();
@@ -311,7 +305,7 @@ void GroxMainWindow::appExitCleanupHandler()
 // ----------------------------------------------------------------------------
 bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
 {
-    if (obj == tabs_->connect_button && event->type() == QEvent::MouseButtonPress)
+    if (obj == algo_form_->connect_button && event->type() == QEvent::MouseButtonPress)
     {
         QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
         if (mouseEvent->modifiers() == Qt::ShiftModifier)
@@ -353,13 +347,13 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
 void GroxMainWindow::connect_gui_controls()
 {
     // to capture ctrl-click on connect button
-    tabs_->connect_button->installEventFilter(this);
+    algo_form_->connect_button->installEventFilter(this);
 
     // action for quit (@TODO)
     // connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
 
     // button-click : fetch latest account balance data
-    // connect(tabs_->account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
+    // connect(algo_form_->account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
     // when new candlestick data is ready, redo main graph
     connect(this, SIGNAL(new_ohlc_data_ui(double)), this, SLOT(new_ohlc_data(double)));
@@ -368,12 +362,6 @@ void GroxMainWindow::connect_gui_controls()
     // signals emitted from networking thread completion handlers should use
     // Qt::QueuedConnection to ensure they transfer to Qt main thread
     // ---------------------------------------------------------------------
-
-    // used to fetch account balances after N seconds
-    connect(timer_, SIGNAL(timeout()), this, SLOT(candlestick_timer_event()));
-
-    // Timers must be started from the qt thread that created them
-    connect(this, SIGNAL(restart_candlestick_timer()), this, SLOT(restart_candlestick_timer_event()));
 
     // orderbook updates from bitstamp network connection
     // 1 Priority, arbitrage, 2 plot update, 3 text update
@@ -436,42 +424,16 @@ void GroxMainWindow::connect_gui_controls()
     }, Qt::QueuedConnection);
 
 
-    connect(tabs_->exec_algo, &QAbstractButton::clicked, this, [this]() {
+    connect(algo_form_->exec_algo, &QAbstractButton::clicked, this, [this]() {
         // execute_filter();
     } , Qt::QueuedConnection);
 
-    connect(tabs_->run_filter, &QPushButton::clicked, this, [this]() {
+    connect(algo_form_->run_filter, &QPushButton::clicked, this, [this]() {
         // pplot_dbg<0>.error(str<>("emit execute_filter"));
         // execute_filter();
     } , Qt::QueuedConnection);
 
     auto shutdown = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::new_ohlc_data(double old_res)
-{
-    (void)(old_res);
-    main_dbg<5>.debug(str<>("new ohlc data"), "resolution", old_res);
-    //
-    // get all available candle resolutions, except highest res
-    // since we we use that one to generate all the others
-//    app_settings* app_ini = global_settings();
-//    const auto &resolutions = ohlc_chart_data::available_resolutions();
-//    for (size_t i=1; i<resolutions.size(); ++i) {
-//        auto const &res = resolutions[i];
-//        auto data = app_ini->data_manager_->get_dataset(res);
-//        if (data) {
-//            data->resample_update(res, app_ini->data_manager_->get_dataset(res.base_), ohlc_chart_data::get_resolution(res.base_));
-//        }
-//        else {
-//            data = app_ini->data_manager_->get_dataset(res.base_)->resample(res, ohlc_chart_data::get_resolution(res.base_));
-//            app_ini->data_manager_->add_dataset(res, data);
-//        }
-//    }
-
-//    // don't change axes, just update data series and replot
-//    price_plot_->replot();
 }
 
 // ----------------------------------------------------------------------------
@@ -528,51 +490,14 @@ void GroxMainWindow::execute_usd()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::receive_ohlc_data(std::string&& data)
-{
-    try
-    {
-        // convert json data into vectors of actual data
-        nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
-        main_dbg<0>.debug(str<>("Received"), dec<4>(jdata.size()), "json OHLC samples");
-        QVector<QwtOHLCSample> new_ohlc_samples;
-        new_ohlc_samples.reserve(jdata.size());
-        QwtOHLCSample sample;
-        for (auto item : jdata) {
-            sample.close  = atof(item["close"].get_ptr<json::string_t*>()->c_str());
-            sample.high   = atof(item["high"].get_ptr<json::string_t*>()->c_str());
-            sample.low    = atof(item["low"].get_ptr<json::string_t*>()->c_str());
-            sample.open   = atof(item["open"].get_ptr<json::string_t*>()->c_str());
-            sample.time   = atof(item["timestamp"].get_ptr<json::string_t*>()->c_str())*1000;
-            sample.volume = atof(item["volume"].get_ptr<json::string_t*>()->c_str());
-            new_ohlc_samples.push_back(sample);
-        }
-        //
-//        main_dbg<5>.debug("Converted", new_ohlc_samples.size(), "new OHLC samples");
-//        app_ini->data_manager_->merge_data(ohlc_chart_data::minute, new_ohlc_samples);
-//        // what is the last sample we currently have
-//        auto last_time = app_ini->data_manager_->get_last_sample_time(false);
-//        main_dbg<0>.debug(str<>("Data merged up to"), msecs_unix_to_calendar_time(last_time));
-//        app_ini->data_manager_->delete_live_data_up_to(last_time);
-//        //
-//        emit new_ohlc_data_ui(ohlc_chart_data::minute);
-
-    }
-    catch (std::exception& e)
-    {
-        main_dbg<0>.error(str<>("JSON error"), "decoding OHLC data:", e.what(), "\n", data, "\n\n");
-    }
-}
-
-// ----------------------------------------------------------------------------
 void GroxMainWindow::capture_image()
 {
     obp_->update_time_and_replot();
     return;
 
-//    auto image = tabs_->tabWidget->grab();
-//    tabs_->imagelabel->setPixmap(image);
-//    tabs_->imagelabel->setScaledContents(true);
+//    auto image = algo_form_->tabWidget->grab();
+//    algo_form_->imagelabel->setPixmap(image);
+//    algo_form_->imagelabel->setScaledContents(true);
 }
 
 // ----------------------------------------------------------------------------
@@ -642,9 +567,9 @@ void GroxMainWindow::perform_arbitrage()
     double budget = 100000;
     std::string arbitrage_string;
     double test_offset = 0.00;
-    if (tabs_->arbitrage_test_mode->isChecked()) {
+    if (algo_form_->arbitrage_test_mode->isChecked()) {
         try {
-            test_offset = std::stod(tabs_->arbitrage_test_offset->text().toStdString());
+            test_offset = std::stod(algo_form_->arbitrage_test_offset->text().toStdString());
         }
         catch (...) {
             test_offset = 0.00;
@@ -655,17 +580,17 @@ void GroxMainWindow::perform_arbitrage()
     fee_data sell_fee{0.12, 0.0};
     fee_data buy_fee{0.0, 0.01};
     //
-    if (tabs_->enable_arbitrage->isChecked())
+    if (algo_form_->enable_arbitrage->isChecked())
     {
         xrpl_network_->get_orderbook().compute_arbitrage(bitstamp_network_->get_orderbook(),
             budget, buy_fee, sell_fee, test_offset, arbitrage_string);
 
         if (arbitrage_string.size()>0) {
             QString arb_string = QString::fromStdString(arbitrage_string);
-            tabs_->arbitrage_orders->setPlainText(arb_string);
+            algo_form_->arbitrage_orders->setPlainText(arb_string);
         }
         else {
-            tabs_->arbitrage_orders->setPlainText("");
+            algo_form_->arbitrage_orders->setPlainText("");
         }
     }
 }
@@ -676,49 +601,15 @@ void GroxMainWindow::transaction_event()
     main_dbg<5>.debug("transaction_event : update balances?");
 }
 
-// ----------------------------------------------------------------------------
-void GroxMainWindow::restart_candlestick_timer_event()
-{
-    using namespace std::chrono;
-    // how long until the minute candle closes
-    // UTC! for local use # tm local_tm = *localtime(&tt);
-    system_clock::time_point now = system_clock::now();
-    time_t tt = system_clock::to_time_t(now);
-    tm utc_tm = *gmtime(&tt);
-    // we need to give bitstamp time to update its data,
-    // so only check a few seconds after each new minute begins
-    const int safety = 8;
-    int delay_seconds = 60 + safety - utc_tm.tm_sec;
-
-    if (timer_->isActive()) {
-        // timer is already running
-        main_dbg<5>.debug("Overriding: candlestick timer", delay_seconds, "seconds");
-        timer_->start(delay_seconds*1000);
-    }
-    else {
-        main_dbg<5>.debug("restarting candlestick timer", delay_seconds, "seconds");
-        timer_->start(delay_seconds*1000);
-    }
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::candlestick_timer_event()
-{
-    QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
-    main_dbg<5>.debug("candlestick_timer_event : " + now.toStdString());
-    if (!candlestick_update_active_) {
-        update_candlestick_data();
-    }
-}
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::orderbook_text_update()
 {
     QString datastring = QString::fromStdString(bitstamp_network_->get_orderbook().order_text);
-    tabs_->order_book_bitstamp->setPlainText(datastring);
+    algo_form_->order_book_bitstamp->setPlainText(datastring);
 
     datastring = QString::fromStdString(xrpl_network_->get_orderbook().order_text);
-    tabs_->order_book_xrpl->setPlainText(datastring);
+    algo_form_->order_book_xrpl->setPlainText(datastring);
 }
 
 // ----------------------------------------------------------------------------
@@ -766,8 +657,10 @@ void GroxMainWindow::showEvent(QShowEvent *event )
         loadWindowSettings();
         only_once = false;
     }
-    // start timer that will fetch latest candlestick data
-    timer_->start(2000);
+    // start timers on networks that need them
+    for (const auto &e : exchange_list_) {
+        e->start_timer();
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -1020,7 +913,7 @@ void GroxMainWindow::execute_filter()
     }
 
     auto start = QDateTime( QDate(2020, 10, 1), QTime(0,0,0), QTimeZone::utc());
-    //start = tabs_->repair_date->dateTime();
+    //start = algo_form_->repair_date->dateTime();
     //
     double msecs = start.toMSecsSinceEpoch();
     uint64_t start_index = data->sample_index(msecs);

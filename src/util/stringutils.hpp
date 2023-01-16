@@ -10,7 +10,7 @@
 
 // ----------------------------------------------------------------------------
 // returns a lowercase copy of the input string
-std::string lowercase(std::string data) {
+inline std::string lowercase(std::string data) {
     std::transform(data.begin(), data.end(), data.begin(),
         [](unsigned char c){ return std::tolower(c); });
     return data;
@@ -18,7 +18,7 @@ std::string lowercase(std::string data) {
 
 // ----------------------------------------------------------------------------
 // in place conversion of string to lowercase
-void lowercase_i(std::string &data) {
+inline void lowercase_i(std::string &data) {
     std::transform(data.begin(), data.end(), data.begin(),
         [](unsigned char c){ return std::tolower(c); });
 }
@@ -27,13 +27,13 @@ void lowercase_i(std::string &data) {
 // ----------------------------------------------------------------------------
 // Function to transform a range into a std::string
 // Replace this with 'std::string_view' to make it a view instead.
-auto make_string = [](auto&& r) -> std::string_view {
+inline auto make_string = [](auto&& r) -> std::string_view {
     const auto data = &*r.begin();
     const auto size = static_cast<std::size_t>(ranges::distance(r));
     return std::string_view{data, size};
 };
 
-std::pair<std::string_view, std::string_view> get_currency_pair(const std::string& str)
+inline std::pair<std::string_view, std::string_view> get_currency_pair(const std::string& str)
 {
     const auto range = str |
                        ranges::views::split('/') |

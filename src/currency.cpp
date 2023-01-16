@@ -4,9 +4,10 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
-
+//
 #include <range/v3/algorithm.hpp>
 #include "currency.hpp"
+#include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
 currency_type get_currency_type(issued_currency const &c)
@@ -121,6 +122,15 @@ std::pair<std::string, std::string> to_string(const currency &t)
 std::string currency_pair_string(const currency_pair &p)
 {
     std::string str = std::get<0>(p).curr_.code_ + "-" + std::get<1>(p).curr_.code_;
+    return str;
+}
+
+
+// ----------------------------------------------------------------------------
+std::string currency_pair_lowercase_string(const currency_pair &p)
+{
+    std::string str = std::get<0>(p).curr_.code_ + std::get<1>(p).curr_.code_;
+    lowercase_i(str);
     return str;
 }
 

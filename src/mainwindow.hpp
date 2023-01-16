@@ -59,7 +59,7 @@ class GroxMainWindow : public QMainWindow
     Ui::GroxMainWindow ui;
 
     // tabbed form with old controls on
-    Ui::TabbedForm *tabs_;
+    Ui::TabbedForm *algo_form_;
 
     // widgets
     QAction* actionQuit;
@@ -67,12 +67,7 @@ class GroxMainWindow : public QMainWindow
     QFrame *accounts_frame_;
 
     // plots
-    price_chart_widget *price_plot_;
     OrderBookPlot *obp_;
-
-    // timer for candlestick updates
-    QTimer *timer_;
-    bool candlestick_update_active_;
 
     // network/exchanges
     exchange::exchange_vector exchange_list_;
@@ -86,7 +81,6 @@ class GroxMainWindow : public QMainWindow
     QVBoxLayout *net_layout_;
 
     // menu helpers for docking support
-    QMenu* docking_menu_;
     QMenu* perspectives_menu_;
     //
     QString active_perspective_;
@@ -96,9 +90,6 @@ public:
     ~GroxMainWindow() override;
     void connect_gui_controls();
     bool eventFilter(QObject* obj, QEvent* event) override;
-
-    //
-    void receive_ohlc_data(std::string&&);
 
     void update_candlestick_data();
 
@@ -130,19 +121,14 @@ private slots:
 
 signals:
     void quitApplication();
-    void new_ohlc_data_ui(double);
     void new_ledger_data();
-    void restart_candlestick_timer();
 
 public slots:
     void appExitCleanupHandler();
-    void new_ohlc_data(double res);
     void execute_xrp();
     void execute_usd();
     void perform_arbitrage();
     void transaction_event();
-    void restart_candlestick_timer_event();
-    void candlestick_timer_event();
     void orderbook_text_update();
 
     // to connect to xrpl ledger signals
