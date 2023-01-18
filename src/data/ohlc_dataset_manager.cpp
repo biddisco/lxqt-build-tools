@@ -48,6 +48,9 @@ void hdf5_check(const char *msg, herr_t err)
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::read_hdf5(std::string group, std::string dataname, QVector<QwtOHLCSample> &data)
 {
+    // we do not support multi-threaded file access yet.
+    std::lock_guard lock(hdf5_mutex_);
+
     using namespace HighFive;
     std::string path = group + "/" + dataname;
     if (std::filesystem::exists(file_name_)) {
@@ -84,6 +87,9 @@ void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
         man_dbg<0>.error(str<>("Error"), "Aborting write");
         return;
     }
+
+    // we do not support multi-threaded file access yet.
+    std::lock_guard lock(hdf5_mutex_);
 
     using namespace HighFive;
     // size of data as an array of doubles

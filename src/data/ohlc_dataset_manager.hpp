@@ -2,6 +2,7 @@
 
 // STL
 #include <vector>
+#include <mutex>
 // Qt
 #include <QVector>
 // Qwt
@@ -19,6 +20,7 @@ class ohlc_dataset_manager
 protected:
     std::string data_dir_;
     std::string file_name_;
+    std::mutex  hdf5_mutex_;
 
 public:
     ohlc_dataset_manager();
