@@ -43,6 +43,9 @@ struct ticker_data {
     price_chart_widget *chart_widget_;
 };
 
+// To ensure Qt can emit signals of this type
+Q_DECLARE_METATYPE(ticker_data)
+
 // ----------------------------------------------------------------------------
 class exchange : public QObject, public std::enable_shared_from_this<exchange>
 {

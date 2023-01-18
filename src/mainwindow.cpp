@@ -355,9 +355,6 @@ void GroxMainWindow::connect_gui_controls()
     // button-click : fetch latest account balance data
     // connect(algo_form_->account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
-    // when new candlestick data is ready, redo main graph
-    connect(this, SIGNAL(new_ohlc_data_ui(double)), this, SLOT(new_ohlc_data(double)));
-
     // ---------------------------------------------------------------------
     // signals emitted from networking thread completion handlers should use
     // Qt::QueuedConnection to ensure they transfer to Qt main thread
@@ -381,17 +378,6 @@ void GroxMainWindow::connect_gui_controls()
     connect(bitstamp_network_.get(), &bitstamp_network::update_wallet_widget, this, [this](bitstamp_account *acct) {
         acct->widget_->set_data(*acct);
         display_offers();
-    } , Qt::QueuedConnection);
-
-    connect(bitstamp_network_.get(), &bitstamp_network::new_trade_data_ui, this, [this](live_trades t) {
-        auto p = t.price;
-        auto v = t.amount;
-//        QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p, v);
-//        app_settings* app_ini = global_settings();
-//        app_ini->data_manager_->add_live_data(new_sample);
-//        //
-//        price_plot_->update_live_data(new_sample);
-//        stream_process(new_sample);
     } , Qt::QueuedConnection);
 
     connect(bitstamp_network_.get(), &bitstamp_network::network_initialized, this, [this](exchange* ex) {

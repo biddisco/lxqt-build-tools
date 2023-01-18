@@ -60,6 +60,7 @@ struct currency {
     currency_widget *widget_;
 };
 
+
 using currency_pair = std::tuple<currency, currency>;
 using currency_pairlist = std::vector<currency_pair>;
 

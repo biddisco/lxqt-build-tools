@@ -53,12 +53,18 @@ void ohlc_dataset_manager::read_hdf5(std::string group, std::string dataname, QV
     if (std::filesystem::exists(file_name_)) {
         man_dbg<0>.debug(str<>("File Open"), "read_hdf5", file_name_);
         File file(file_name_, File::ReadWrite | File::OpenOrCreate);
-        auto dataset = file.getDataSet(path);
-        const uint64_t ohlc_size = sizeof(QwtOHLCSample) / sizeof(double);
-        std::size_t N = dataset.getElementCount() / ohlc_size;
-        man_dbg<0>.debug(str<>("Dataset Read"), path, "size", dec<9>(N));
-        data.resize(N);
-        dataset.read<double>(reinterpret_cast<double*>(data.data()));
+        if (file.exist(path)) {
+            auto dataset = file.getDataSet(path);
+            const uint64_t ohlc_size = sizeof(QwtOHLCSample) / sizeof(double);
+            std::size_t N = dataset.getElementCount() / ohlc_size;
+            man_dbg<0>.debug(str<>("Dataset Read"), path, "size", dec<9>(N));
+            data.resize(N);
+            dataset.read<double>(reinterpret_cast<double*>(data.data()));
+        }
+        else {
+            data.clear();
+            man_dbg<0>.debug(str<>("Dataset missing"), path);
+        }
     }
     else {
         data.clear();
@@ -86,12 +92,12 @@ void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
 
     std::string path = group + "/" + dataname;
     if (!std::filesystem::exists(file_name_)) {
-        man_dbg<0>.debug(str<>("File Create"), "write_hdf5", file_name_);
+        man_dbg<0>.debug(str<>("File Create"), "write_hdf5", file_name_, path);
         File file(file_name_, File::ReadWrite | File::OpenOrCreate);
     }
 
     // open for read/write
-    man_dbg<0>.debug(str<>("File Open"), "write_hdf5", file_name_);
+    man_dbg<0>.debug(str<>("File Open"), "write_hdf5", file_name_, path);
     File file(file_name_, File::ReadWrite);
 
     // Create dataset if it does not already exist
@@ -127,12 +133,12 @@ void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
     // truncating a dataset
     else if (truncate)
     {
-        man_dbg<0>.debug(str<>("Dataset Truncate"), dec<9>(data.size()));
+        man_dbg<0>.debug(str<>("Dataset Truncate"), path, dec<9>(data.size()));
         DataSet dataset = file.getDataSet(path);
         // resize along 1 dimension
         dataset.resize({N});
     }
-    man_dbg<0>.debug(str<>("File Close"), "write_hdf5", dec<9>(data.size()));
+    man_dbg<0>.debug(str<>("File Close"), "write_hdf5", path, dec<9>(data.size()));
 }
 
 // ----------------------------------------------------------------------------

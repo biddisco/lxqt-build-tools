@@ -9,6 +9,15 @@
 #define JCHARP(val) val.get_ptr<json::string_t*>()->c_str()
 
 // ----------------------------------------------------------------------------
+inline std::string string_join(std::string_view s1, std::string_view s2) {
+    std::string result;
+    result.reserve(s1.size() + s2.size() + 1);
+    (result += s1) += s2;
+    std::cout << s1 << " " << s2 << " " << result << std::endl;
+    return result;
+}
+
+// ----------------------------------------------------------------------------
 // returns a lowercase copy of the input string
 inline std::string lowercase(std::string data) {
     std::transform(data.begin(), data.end(), data.begin(),

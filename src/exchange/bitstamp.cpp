@@ -5,6 +5,7 @@
 //
 #include "src/print.hpp"
 #include "src/settings.hpp"
+//#include "src/util/stringutils.hpp"
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 #include "src/network/evp-encrypt.hpp"
@@ -45,6 +46,16 @@ bitstamp_network::bitstamp_network()
     connect(this, SIGNAL(restart_candlestick_timer()), this, SLOT(restart_candlestick_timer_event()));
     // after new data has been received, trigger this to process new candles and replot
     connect(this, SIGNAL(new_ohlc_data(ticker_data*, double)), this, SLOT(new_ohlc_data_event(ticker_data*, double)));
+
+    connect(this, &bitstamp_network::new_trade_data_ui, this, [this](ticker_data tdata, live_trades t) {
+        auto p = t.price;
+        auto v = t.amount;
+        QwtOHLCSample new_sample(1000.0*std::atof(t.timestamp.c_str()), p, p, p, p, v);
+        tdata.view_->add_live_data(new_sample);
+        tdata.chart_widget_->update_live_data(new_sample);
+        // stream_process(new_sample);
+    } , Qt::QueuedConnection);
+
 }
 
 // ----------------------------------------------------------------------------
@@ -64,28 +75,25 @@ void bitstamp_network::initialize()
 }
 
 // ----------------------------------------------------------------------------
-std::string string_join(std::string_view s1, std::string_view s2) {
-    return (std::string(s1) += s2);
-}
-
-// ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_live_trades(std::string_view ticker, net::contexts &io_contexts)
+bool bitstamp_network::subscribe_live_trades(const currency_pair &cp, net::contexts &io_contexts)
 {
     using namespace std::placeholders;
-    bitstamp_dbg<0>.debug(str<>("Subscribing"), string_join("live_trades_", ticker));
+    ticker_data tdata = tickers_subscribed_[cp];
+    std::string ticker = currency_pair_lowercase_string(cp);
     ws_trades = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         string_join("{\"event\": \"bts:subscribe\",\"data\": {\"channel\": "
         "\"live_trades_", ticker) + "\"}}",
-        std::bind(bitstamp_network::new_trade_data, this, _1));
+        std::bind(bitstamp_network::new_trade_data, this, tdata, _1));
 
     return true;
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_order_book(std::string_view ticker, net::contexts &io_contexts)
+bool bitstamp_network::subscribe_order_book(const currency_pair &cp, net::contexts &io_contexts)
 {
     using namespace std::placeholders;
+    std::string ticker = currency_pair_lowercase_string(cp);
     bitstamp_dbg<0>.debug(str<>("Subscribing"), string_join("order_book_", ticker));
     ws_bidask = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
@@ -97,8 +105,9 @@ bool bitstamp_network::subscribe_order_book(std::string_view ticker, net::contex
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_my_trades(std::string_view ticker, net::contexts &io_contexts)
+bool bitstamp_network::subscribe_my_trades(const currency_pair &cp, net::contexts &io_contexts)
 {
+    std::string ticker = currency_pair_lowercase_string(cp);
     nlohmann::json command;
     command["event"] = "bts:subscribe";
     command["data"]["channel"] = string_join("private-my_trades_", ticker) + "-" + websocket_user_id_;
@@ -106,7 +115,7 @@ bool bitstamp_network::subscribe_my_trades(std::string_view ticker, net::context
     bitstamp_dbg<5>.debug(str<>("subscribe trades"), command.dump(4));
 
     using namespace std::placeholders;
-    bitstamp_dbg<0>.debug(str<>("Subscribing"), "my_trades_xrpusd");
+    bitstamp_dbg<0>.debug(str<>("Subscribing"), string_join("my_trades_", ticker));
     ws_mytrades = net::ws::create_session(io_contexts.ioc, io_contexts.ctx,
         bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
         command.dump(4),
@@ -117,8 +126,9 @@ bool bitstamp_network::subscribe_my_trades(std::string_view ticker, net::context
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::unsubscribe_my_trades(std::string_view ticker)
+bool bitstamp_network::unsubscribe_my_trades(const currency_pair &cp)
 {
+    std::string ticker = currency_pair_lowercase_string(cp);
     nlohmann::json command;
     command["event"] = "bts:unsubscribe";
     command["data"]["channel"] = string_join("my_trades_", ticker) + "-" + get_bitstamp_instance()->account().API_user;
@@ -129,8 +139,9 @@ bool bitstamp_network::unsubscribe_my_trades(std::string_view ticker)
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_my_orders(std::string_view ticker, net::contexts &io_contexts)
+bool bitstamp_network::subscribe_my_orders(const currency_pair &cp, net::contexts &io_contexts)
 {
+    std::string ticker = currency_pair_lowercase_string(cp);
     nlohmann::json command;
     command["event"] = "bts:subscribe";
     command["data"]["channel"] = string_join("private-my_orders_", ticker) + "-" + websocket_user_id_;
@@ -156,8 +167,9 @@ bool bitstamp_network::subscribe_my_orders(std::string_view ticker, net::context
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::unsubscribe_my_orders(std::string_view ticker)
+bool bitstamp_network::unsubscribe_my_orders(const currency_pair &cp)
 {
+    std::string ticker = currency_pair_lowercase_string(cp);
     nlohmann::json command;
     command["event"] = "bts:unsubscribe";
     command["data"]["channel"] = string_join("my_orders_", ticker) + "-" + get_bitstamp_instance()->account().API_user;
@@ -171,7 +183,7 @@ bool bitstamp_network::unsubscribe_my_orders(std::string_view ticker)
 // connect to (multiple) streams
 bool bitstamp_network::websocket_connect(net::contexts &io_contexts, streams_vector const &streams)
 {
-    std::string ticker = "xrpusd";
+    currency_pair cp = string_to_pair("XRP-USD", "-");
     using namespace std::literals;
     auto now = std::chrono::steady_clock::now();
     while ((token_expiry_ - now)/1s < 5) {
@@ -180,10 +192,10 @@ bool bitstamp_network::websocket_connect(net::contexts &io_contexts, streams_vec
     }
     bool ok = true;
     for (const auto &s : streams) {
-        if (s == network::streams::my_trades) ok &= subscribe_my_trades(ticker, io_contexts);
-        if (s == network::streams::my_orders) ok &= subscribe_my_orders(ticker, io_contexts);
-        if (s == network::streams::trades) ok &= subscribe_live_trades(ticker, io_contexts);
-        if (s == network::streams::order_book) ok &= subscribe_order_book(ticker, io_contexts);
+        if (s == network::streams::my_trades) ok &= subscribe_my_trades(cp, io_contexts);
+        if (s == network::streams::my_orders) ok &= subscribe_my_orders(cp, io_contexts);
+        if (s == network::streams::trades) ok &= subscribe_live_trades(cp, io_contexts);
+        if (s == network::streams::order_book) ok &= subscribe_order_book(cp, io_contexts);
     }
     return ok;
 }
@@ -191,7 +203,7 @@ bool bitstamp_network::websocket_connect(net::contexts &io_contexts, streams_vec
 // ----------------------------------------------------------------------------
 bool bitstamp_network::websocket_disconnect(net::contexts &/*io_contexts*/, streams_vector const &streams)
 {
-    std::string ticker = "xrpusd";
+    currency_pair cp = string_to_pair("XRP", "USD");
     bool ok = true;
     for (const auto &s : streams) {
         if (s == network::streams::my_trades) ws_mytrades->shutdown_blocking(); // unsubscribe_my_trades();
@@ -245,7 +257,6 @@ bool bitstamp_network::can_send(currency &c, exchange *dest)
 // ----------------------------------------------------------------------------
 double bitstamp_network::get_fee_percent(const currency_type &c1, const currency_type &c2)
 {
-    // for bitstamp we put xrp first : "xrpusd_fee"
     std::pair<std::string, std::string> cpair;
     if (c1 == currency_type::xrp) {
         cpair = std::make_pair(
@@ -649,7 +660,7 @@ void bitstamp_network::new_orderbook_data(bitstamp_network* n, std::string_view 
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::new_trade_data(bitstamp_network* n, std::string_view data)
+void bitstamp_network::new_trade_data(bitstamp_network* n, ticker_data tdata, std::string_view data)
 {
     bitstamp_dbg<5>.debug(str<>("Trade data"), data);
     if (!startswith(data, "{\"data\":")) return;
@@ -660,7 +671,7 @@ void bitstamp_network::new_trade_data(bitstamp_network* n, std::string_view data
     bitstamp_dbg<5>.debug(str<>("Trade data parsed"), jdata.dump(4));
 
     live_trades trade_data = jdata.get<live_trades>();
-    emit n->new_trade_data_ui(trade_data);
+    emit n->new_trade_data_ui(tdata, trade_data);
 }
 
 // ----------------------------------------------------------------------------
@@ -680,7 +691,7 @@ bool bitstamp_network::request_new_candlestick_data(std::string ticker, uint64_t
     bool repeat_ohlc = false;
     if (start_t == 0)
     {
-        req = "/api/v2/ohlc/xrpusd/?step=60&limit=1000";
+        req = string_join("/api/v2/ohlc/", ticker) + "/?step=60&limit=1000";
     }
     else
     {
@@ -693,7 +704,7 @@ bool bitstamp_network::request_new_candlestick_data(std::string ticker, uint64_t
         std::string start = std::to_string(start_t);
         std::string limit = std::to_string(samples);
         // send a request for ticker data using the io context thread to make the request
-        req = "/api/v2/ohlc/xrpusd/?step=60&start=" + start + "&limit=" + limit;
+        req = string_join("/api/v2/ohlc/", ticker) + "/?step=60&start=" + start + "&limit=" + limit;
         bitstamp_dbg<0>.debug(str<>("request"), req);
     }
 
@@ -794,6 +805,7 @@ void bitstamp_network::place_limit_order(trade_data const &t, bool update_after)
     double amount = t.get_xrp_amount();
 
     // bitstamp trade pair is always xrpusd, so swap symbols accordingly
+    bitstamp_dbg<0>.error(str<>("limit-order"), "@TODO USD assumption false");
     std::string req, data;
     if (t.get_trade_type()==trade_type::buy) {
         req = std::string("/api/v2/buy/")
@@ -863,22 +875,22 @@ void bitstamp_network::ticker_subscribe(const currency &c1, const currency &c2)
     std::shared_ptr<ohlc_dataset_view> view = app_ini->data_manager_->create_dataset_view("bitstamp", c1, c2);
 
     // create a new price plot object
-    auto *price_plot_ = new price_chart_widget(nullptr, view, shared_from_this(), cps);
+    auto *chart_widget = new price_chart_widget(nullptr, view, shared_from_this(), cps);
 
     // add the subscribed ticker/data/plot to our list for tracking
-    tickers_subscribed_.insert({currency_pair{c1,c2}, {view, price_plot_}});
+    tickers_subscribed_.insert({currency_pair{c1,c2}, {view, chart_widget}});
 
     // put the price plot into a dock widget
     using namespace ads;
     std::string title = std::string(name()) + "-" + cps;
     CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
-    PlotDockWidget->setWidget(price_plot_);
+    PlotDockWidget->setWidget(chart_widget);
     PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
     app_ini->dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
     app_ini->dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
 
     // start by displaying 1 day of data
-    price_plot_->graph_rescale(0);
+    chart_widget->graph_rescale(0);
 }
 
 // ----------------------------------------------------------------------------

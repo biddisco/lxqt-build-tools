@@ -153,7 +153,7 @@ std::ostream& operator<<(std::ostream& os, const currency_type &t)
 // ----------------------------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, const currency &c)
 {
-    os << c.curr_.code_ << " " << c.curr_.issuer_ << " " << c.balance_;
+    os << c.curr_.code_ << "(" << c.curr_.issuer_ << ")" << c.balance_;
     return os;
 }
 

@@ -120,12 +120,12 @@ public:
 
     // ---------------------------------------
     // init connections/websockets etc
-    bool subscribe_live_trades(std::string_view ticker, net::contexts &io_contexts);
-    bool subscribe_order_book(std::string_view ticker, net::contexts &io_contexts);
-    bool subscribe_my_trades(std::string_view ticker, net::contexts &io_contexts);
-    bool subscribe_my_orders(std::string_view ticker, net::contexts &io_contexts);
-    bool unsubscribe_my_trades(std::string_view ticker);
-    bool unsubscribe_my_orders(std::string_view ticker);
+    bool subscribe_live_trades(const currency_pair &cp, net::contexts &io_contexts);
+    bool subscribe_order_book(const currency_pair &cp, net::contexts &io_contexts);
+    bool subscribe_my_trades(const currency_pair &cp, net::contexts &io_contexts);
+    bool subscribe_my_orders(const currency_pair &cp, net::contexts &io_contexts);
+    bool unsubscribe_my_trades(const currency_pair &cp);
+    bool unsubscribe_my_orders(const currency_pair &cp);
 
     streams_vector websocket_streams() override {
         return {
@@ -178,7 +178,7 @@ public:
     bool request_new_candlestick_data(std::string ticker, uint64_t start_t, fn_on_http_2 fn);
 
     // function called from websocket subscription to live trade data
-    static void new_trade_data(bitstamp_network*, std::string_view);
+    static void new_trade_data(bitstamp_network*, ticker_data, std::string_view);
 
     // function called from websocket subscription to live orderbook data
     static void new_orderbook_data(bitstamp_network*, std::string_view);
@@ -208,7 +208,7 @@ signals:
     void orderbook_changed();
 
     // emitted when data for new trades is ready
-    void new_trade_data_ui(live_trades);
+    void new_trade_data_ui(ticker_data, live_trades);
 
     // when the wallet widget needs to be updated with new data/currencies
     void update_wallet_widget(bitstamp_account*);
