@@ -683,7 +683,7 @@ bool bitstamp_network::request_new_candlestick_data(std::string ticker, uint64_t
     uint64_t diff = unixtime - start_t;
     uint64_t samples = diff / 60;
     if (samples==0) {
-        bitstamp_dbg<0>.debug(str<>("candlesticks"), "already up to date");
+        bitstamp_dbg<0>.debug(str<>("candlesticks"), ticker, "already up to date");
         return false;
     }
     //

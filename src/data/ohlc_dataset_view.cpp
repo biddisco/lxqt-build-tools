@@ -54,7 +54,8 @@ void ohlc_dataset_view::merge_data(
     // returns the number of samples that are 'new'
     uint64_t update = data->merge_data(new_ohlc_samples_);
     // write new samples to the main datafile
-    data_manager_->write_hdf5("bitstamp", "XRP-USD", data->ohlc_samples_->data(), update, false);
+    auto ticker_str = currency_pair_string({c1_, c2_});
+    data_manager_->write_hdf5("bitstamp", ticker_str, data->ohlc_samples_->data(), update, false);
 }
 
 // ----------------------------------------------------------------------------
@@ -77,7 +78,8 @@ void ohlc_dataset_view::truncate_from_time(double t)
                      str<3>(ohlc_chart_data::get_resolution(res).name_)
                      , "at index", index);
         if (res==ohlc_chart_data::minute) {
-            data_manager_->write_hdf5("bitstamp", "XRP-USD", samples->data(), 0, true);
+            auto ticker_str = currency_pair_string({c1_, c2_});
+            data_manager_->write_hdf5("bitstamp", ticker_str, samples->data(), 0, true);
         }
     }
 }

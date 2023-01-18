@@ -107,7 +107,7 @@ void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
         // a week's data will be 60480 doubles, so a nice binary number size for
         // chunking dimensions will be 65536
         // Use unlimited size so that the data can be extended arbitrarily
-        DataSpace dataspace = DataSpace({N, DataSpace::UNLIMITED});
+        DataSpace dataspace = DataSpace({N}, {DataSpace::UNLIMITED});
         // Set properties to use chunking
         DataSetCreateProps props;
         props.add(Chunking(std::vector<hsize_t>{65536}));
@@ -117,7 +117,7 @@ void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
             file.createDataSet(path, dataspace, create_datatype<double>(), props);
     }
     // if we are extending an existing dataset
-    else if (update > 0)
+    if (update > 0)
     {
         man_dbg<5>.debug(str<>("Dataset Extend"), path, dec<9>(update));
         DataSet dataset = file.getDataSet(path);
