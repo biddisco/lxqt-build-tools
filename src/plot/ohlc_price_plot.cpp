@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <cassert>
+#include <string>
 // Qt
 #include <QDateTime>
 #include <QFontDatabase>
@@ -33,11 +34,12 @@
 #include "src/print.hpp"
 //
 #include <range/v3/view.hpp>
+#include <fmt/format.h>
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
+constexpr int debug_level = 5;
 //
 template <int Level>
 static print_threshold<Level, debug_level> plot_dbg("OHLCplot");
@@ -55,12 +57,40 @@ void fill_text_label(QwtText &label) {
 // Just a simple override to make the number of decimals consistent
 class ohlc_price_scaledraw : public QwtScaleDraw
 {
+    int dig_;
     int dec_;
+    char form_;
+    std::string fstr;
 public:
-    ohlc_price_scaledraw(int N) : QwtScaleDraw(), dec_(N) {}
+    // pass in max-min of estimated scale range to best fit digits etc
+    ohlc_price_scaledraw(double range)
+        : QwtScaleDraw()
+    {
+        form_ = 'f';
+        dec_= 4;
+
+        int exponent  = range>0 ? (int)floor(log10(fabs(range))) : 0;
+        double base   = (range * pow(10.0,  -1*exponent));
+
+        // if negative we need decimal places
+        if (exponent<0) {
+            dec_ = 1 - exponent;
+            if (dec_>4) {
+                form_ = 'e';
+                dec_ = 3;
+                dig_ = dec_ + 6;
+            }
+        }
+        else {
+            dig_ = dec_ + 2;
+        }
+        fstr = fmt::format("%{}.{}{}", dig_, dec_, form_);
+        plot_dbg<5>.debug(str<>("Format string"), fstr);
+    }
 
     QwtText label(double value) const QWT_OVERRIDE {
-        return QString::number(value, 'f', dec_);
+        return QwtText(QString().asprintf(fstr.c_str(), value),
+                       QwtText::TextFormat::PlainText);
     }
 };
 
@@ -119,10 +149,15 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, std::shared_ptr<ohlc_dataset_v
     setAxisScaleEngine(QwtPlot::xBottom, timescaleEngine_);
     setAxisLabelAlignment(QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom);
 
+    ohlcv_minmax minmax = data->get_min_max(
+                ohlc_chart_data::minute,
+                data->get_first_sample_time(),
+                data->get_last_sample_time(false));
+
     // Y axis : setup price axis scaling and tick draw
     // NB : We do not need to explicitly set a left Y axis
     // the default axis can be used even when not visible
-    pricescaleDraw_ = new ohlc_price_scaledraw(4);
+    pricescaleDraw_ = new ohlc_price_scaledraw(minmax.max_price_ - minmax.min_price_);
     setAxisScaleDraw(QwtPlot::yRight, pricescaleDraw_);
 
     // No auto scaling - we do scaling in the interactor zoom/pan class

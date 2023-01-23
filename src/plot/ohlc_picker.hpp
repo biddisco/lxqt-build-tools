@@ -115,8 +115,7 @@ public:
         //
         // display price inside price axis
         //
-        QString str = QString::number(last_coord_.y(), 'f', 4);
-        QwtText price_text(str);
+        QwtText price_text = ydraw->label(last_coord_.y());
         QColor c("#555555");
         c.setAlpha(200);
         price_text.setColor(Qt::white);

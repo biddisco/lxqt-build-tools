@@ -116,10 +116,11 @@ find_package(Qt${QT_DEFAULT_MAJOR_VERSION} REQUIRED COMPONENTS ${qtcomponents})
 
 find_package(Boost   NO_MODULE REQUIRED system unit_test_framework)
 find_package(OpenSSL REQUIRED)
-find_package(MPI     REQUIRED COMPONENTS CXX) # needed by hdf5 if compiled with defaults
+# find_package(MPI     REQUIRED COMPONENTS CXX) # needed by hdf5 if compiled with defaults
 find_package(HDF5    REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
 find_package(ZLIB)
 find_package(pika)
+find_package(fmt)
 
 # ------------------------------------------------------------------------------
 # Build/Download qwt
@@ -369,6 +370,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set_property(TARGET grox PROPERTY AUTOMOC ON)
 set_property(TARGET grox PROPERTY AUTOUIC ON)
 set_property(TARGET grox PROPERTY AUTORCC ON)
+set_property(TARGET grox PROPERTY CXX_STANDARD 20)
 
 target_include_directories(
   grox
@@ -402,7 +404,7 @@ target_link_libraries(
          Qt::Concurrent
          qtadvanceddocking
          ${Boost_LIBRARIES}
-         MPI::MPI_CXX
+         fmt::fmt
          range-v3
          ${STD_FILESYSTEM_LIB}
          Ripple::xrpl_core
