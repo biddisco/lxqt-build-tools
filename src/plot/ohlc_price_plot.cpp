@@ -39,7 +39,7 @@
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 5;
+constexpr int debug_level = 0;
 //
 template <int Level>
 static print_threshold<Level, debug_level> plot_dbg("OHLCplot");
@@ -70,7 +70,6 @@ public:
         dec_= 4;
 
         int exponent  = range>0 ? (int)floor(log10(fabs(range))) : 0;
-        double base   = (range * pow(10.0,  -1*exponent));
 
         // if negative we need decimal places
         if (exponent<0) {
@@ -80,6 +79,11 @@ public:
                 dec_ = 3;
                 dig_ = dec_ + 6;
             }
+        }
+        else if (exponent>3) {
+            dec_ = 0;
+            form_ = 'f';
+            dig_ = exponent + 1;
         }
         else {
             dig_ = dec_ + 2;

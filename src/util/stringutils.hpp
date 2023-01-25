@@ -13,7 +13,6 @@ inline std::string string_join(std::string_view s1, std::string_view s2) {
     std::string result;
     result.reserve(s1.size() + s2.size() + 1);
     (result += s1) += s2;
-    std::cout << s1 << " " << s2 << " " << result << std::endl;
     return result;
 }
 

@@ -75,3 +75,11 @@ void exchange::ticker_subscribe(std::string_view p1, std::string_view p2)
     currency c2 = ::get_currency(p2);
     ticker_subscribe(c1,c2);
 }
+
+// ----------------------------------------------------------------------------
+void exchange::ticker_unsubscribe(const currency &c1, const currency &c2)
+{
+    if (ticker_subscribed(c1, c2)) {
+        tickers_subscribed_.erase(currency_pair{c1,c2});
+    }
+}

@@ -102,6 +102,7 @@ void connection_widget::filter_changed(const QString &s)
 // ----------------------------------------------------------------------------
 void connection_widget::apply()
 {
+    // add any new subscribed tickers to exchange list
     auto *sl = ui->subscribed_list;
     for(int i = 0; i < sl->count(); ++i)
     {
@@ -110,6 +111,15 @@ void connection_widget::apply()
         std::string c1 = s.substr(0, temp);
         std::string c2 = s.substr(temp+1, s.back());
         exchange_->ticker_subscribe(c1,c2);
+    }
+    // remove any unsubscribed ones
+    auto ticker_copy = exchange_->tickers_subscribed();
+    for (auto &[ticker, data] : ticker_copy) {
+        std::string text = currency_pair_string(ticker, "/");
+        auto list = sl->findItems(QString(text.c_str()), Qt::MatchFlag::MatchExactly);
+        if (list.empty()) {
+            exchange_->ticker_unsubscribe(std::get<0>(ticker),std::get<1>(ticker));
+        }
     }
 }
 

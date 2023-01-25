@@ -113,6 +113,7 @@ public:
     // subscribe to a ticker
     virtual void ticker_subscribe(const currency &c1, const currency &c2);
     virtual void ticker_subscribe(std::string_view p1, std::string_view p2);
+    virtual void ticker_unsubscribe(const currency &c1, const currency &c2);
     // return list of subscribed tickers
     const exchange_map & tickers_subscribed();
 

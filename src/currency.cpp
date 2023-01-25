@@ -119,9 +119,9 @@ std::pair<std::string, std::string> to_string(const currency &t)
 }
 
 // ----------------------------------------------------------------------------
-std::string currency_pair_string(const currency_pair &p)
+std::string currency_pair_string(const currency_pair &p, std::string_view sep)
 {
-    std::string str = std::get<0>(p).curr_.code_ + "-" + std::get<1>(p).curr_.code_;
+    std::string str = std::get<0>(p).curr_.code_ + std::string(sep) + std::get<1>(p).curr_.code_;
     return str;
 }
 
