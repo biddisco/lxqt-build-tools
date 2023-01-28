@@ -66,9 +66,6 @@ class GroxMainWindow : public QMainWindow
     QFrame *orders_frame_;
     QFrame *accounts_frame_;
 
-    // plots
-    OrderBookPlot *obp_;
-
     // network/exchanges
     exchange::exchange_vector exchange_list_;
     std::shared_ptr<bitstamp_network> bitstamp_network_;

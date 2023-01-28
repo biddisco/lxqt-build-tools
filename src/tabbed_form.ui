@@ -141,7 +141,7 @@
            <widget class="QDateTimeEdit" name="date_init">
             <property name="dateTime">
              <datetime>
-              <hour>20</hour>
+              <hour>18</hour>
               <minute>0</minute>
               <second>0</second>
               <year>2021</year>
@@ -151,7 +151,7 @@
             </property>
             <property name="minimumTime">
              <time>
-              <hour>22</hour>
+              <hour>21</hour>
               <minute>0</minute>
               <second>0</second>
              </time>
@@ -206,32 +206,6 @@
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="QPlainTextEdit" name="order_book_bitstamp">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="font">
-        <font>
-         <family>Courier</family>
-         <pointsize>8</pointsize>
-        </font>
-       </property>
-      </widget>
       <widget class="QPlainTextEdit" name="order_book_xrpl">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">

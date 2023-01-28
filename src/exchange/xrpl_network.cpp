@@ -8,6 +8,7 @@
 #include "src/network/https-async.hpp"
 #include "src/network/websocket-ssl.hpp"
 #include "src/network/evp-encrypt.hpp"
+#include "src/util/stringutils.hpp"
 //
 #include "src/order_book.hpp"
 #include "src/settings.hpp"
@@ -169,7 +170,7 @@ void xrpl_network::add_wallet(const ledger_wallet &w)
 bool xrpl_network::subscribe_orderbook(net::contexts &io_contexts)
 {
     using namespace std::placeholders;
-    //
+    //startswith
     nlohmann::json command;
     command["command"] = "subscribe";
     // buying xrp

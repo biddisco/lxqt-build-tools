@@ -102,29 +102,16 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // Setup a menu to allow dockwindow control
     createPerspectives_Ui();
 
-    // @TODO this should be dynamic and not hard coded
-    // ----------------------------------
-    // Create orderbook plot as dockwindow
-    obp_ = new OrderBookPlot();
-    obp_->setMinimumSize(384,256);
-    //
-    CDockWidget* OBPDockWidget = new CDockWidget("OrderBookPlot-1");
-    OBPDockWidget->setWidget(obp_);
-    OBPDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    app_ini->dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, OBPDockWidget);
-    app_ini->dockwindows_menu_->addAction(OBPDockWidget->toggleViewAction());
-
     // ----------------------------------
     // create bitstamp exchange interface
     bitstamp_network_ = bitstamp_network::get_bitstamp_instance();
-    bitstamp_network_->set_plot(obp_);
 
     // ----------------------------------
     // create xrp network interfaces
     // we do not plot the xrp testnet orderbook
     xrpl_network_ = xrpl_network::get_xrpl_instance(false);
     xrpl_testnet_ = xrpl_network::get_xrpl_instance(true);
-    xrpl_network_->set_plot(obp_);
+    //xrpl_network_->set_plot(obp_);
 
     exchange_list_.push_back(bitstamp_network_);
     exchange_list_.push_back(xrpl_network_);
@@ -229,7 +216,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //std::cout << "width", algo_form_->order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
     algo_form_->order_book_xrpl->setMinimumWidth(calcWidth);
     //algo_form_->order_book_xrpl->setMaximumWidth(calcWidth);
-    algo_form_->order_book_bitstamp->setMinimumWidth(calcWidth);
     //algo_form_->order_book_bitstamp->setMaximumWidth(calcWidth);
     //
     calcWidth = char_size*140 + 8;
@@ -262,8 +248,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 // ----------------------------------------------------------------------------
 GroxMainWindow::~GroxMainWindow()
 {
-    delete obp_;
-
     app_settings* app_ini = global_settings();
     // release dockmanager
     app_ini->dock_manager_.reset();
@@ -364,10 +348,10 @@ void GroxMainWindow::connect_gui_controls()
     // 1 Priority, arbitrage, 2 plot update, 3 text update
     connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
             this, SLOT(perform_arbitrage()), Qt::QueuedConnection);
-    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
-            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
-    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
-            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
+//    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
+//            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
+//    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
+//            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
 
     // when a transaction takes place we might need to update wallet/records
     connect(bitstamp_network_.get(), &bitstamp_network::transaction_event, this, [this]() {
@@ -392,10 +376,10 @@ void GroxMainWindow::connect_gui_controls()
             this, SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
     connect(xrpl_testnet_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)),
             this, SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
-    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
-            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
-    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
-            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
+//    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
+//            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
+//    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
+//            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
 
     // when a transaction takes place we might need to update wallet/records
     connect(xrpl_network_.get(), SIGNAL(transaction_event()),
@@ -478,9 +462,7 @@ void GroxMainWindow::execute_usd()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::capture_image()
 {
-    obp_->update_time_and_replot();
     return;
-
 //    auto image = algo_form_->tabWidget->grab();
 //    algo_form_->imagelabel->setPixmap(image);
 //    algo_form_->imagelabel->setScaledContents(true);
@@ -587,14 +569,10 @@ void GroxMainWindow::transaction_event()
     main_dbg<5>.debug("transaction_event : update balances?");
 }
 
-
 // ----------------------------------------------------------------------------
 void GroxMainWindow::orderbook_text_update()
 {
-    QString datastring = QString::fromStdString(bitstamp_network_->get_orderbook().order_text);
-    algo_form_->order_book_bitstamp->setPlainText(datastring);
-
-    datastring = QString::fromStdString(xrpl_network_->get_orderbook().order_text);
+    QString datastring = QString::fromStdString(xrpl_network_->get_orderbook().order_text);
     algo_form_->order_book_xrpl->setPlainText(datastring);
 }
 

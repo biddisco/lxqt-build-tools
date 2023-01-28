@@ -9,6 +9,18 @@
 #define JCHARP(val) val.get_ptr<json::string_t*>()->c_str()
 
 // ----------------------------------------------------------------------------
+inline bool startswith(std::string_view str, std::string_view sub)
+{
+    // rev search - pos=0, limits search to pos or earlier
+    // equivalent to if data.startswith(...)
+    if (str.rfind(sub, 0) != 0)
+    {
+        return false;
+    }
+    return true;
+}
+
+// ----------------------------------------------------------------------------
 inline std::string string_join(std::string_view s1, std::string_view s2) {
     std::string result;
     result.reserve(s1.size() + s2.size() + 1);

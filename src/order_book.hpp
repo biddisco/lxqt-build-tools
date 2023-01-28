@@ -25,9 +25,6 @@
 #include "src/plot/OrderBookCurve.h"
 #include "src/plot/OrderBookPlot.h"
 
-//#define GROX_TEST_MODE 1
-
-bool startswith(std::string_view str, std::string_view sub);
 //
 constexpr static int bid_index = 0;
 constexpr static int ask_index = 1;

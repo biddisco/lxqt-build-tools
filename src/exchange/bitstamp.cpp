@@ -1,5 +1,6 @@
 #include <QString>
 #include <QMenu>
+#include <QPlainTextEdit>
 //
 #include <string>
 //
@@ -888,6 +889,47 @@ void bitstamp_network::ticker_subscribe(const currency &c1, const currency &c2)
     PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
     app_ini->dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
     app_ini->dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
+
+    // create a new orderbook text display
+    const size_t font_size = 8;
+    auto *orderbook_text = new QPlainTextEdit(nullptr);
+    QString txt = "X";
+    int char_size = QFontMetrics(orderbook_text->font()).horizontalAdvance(txt);
+    int calcWidth = char_size*85 + 8;
+    orderbook_text->setMinimumWidth(calcWidth);
+    QFont font = QFont();
+    font.setPointSize(font_size);
+    font.setFamily("Courier");
+    orderbook_text->setFont(font);
+
+    // put the order book into a dock widget
+    using namespace ads;
+    std::string obtitle = "OrderBookText-" + std::string(name()) + "-" + cps;
+    CDockWidget* obPlotDockWidget = new CDockWidget(QString(obtitle.c_str()));
+    obPlotDockWidget->setWidget(orderbook_text);
+    obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    app_ini->dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, obPlotDockWidget);
+    app_ini->dockwindows_menu_->addAction(obPlotDockWidget->toggleViewAction());
+
+    // ----------------------------------
+    // Create orderbook plot widget
+    OrderBookPlot *orderbookplot = new OrderBookPlot();
+    orderbookplot->setMinimumSize(384,256);
+    set_plot(orderbookplot);
+    //
+    std::string obptitle = "OrderBookPlot-" + std::string(name()) + "-" + cps;
+    CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
+    obpDockWidget->setWidget(orderbookplot);
+    obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    app_ini->dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, obpDockWidget);
+    app_ini->dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
+
+    connect(this, &bitstamp_network::orderbook_changed, this, [orderbookplot, orderbook_text, this]() {
+        QString datastring = QString::fromStdString(get_orderbook().order_text);
+        orderbook_text->setPlainText(datastring);
+        //
+        orderbookplot->update_time_and_replot();
+    }, Qt::QueuedConnection);
 
     // start by displaying 1 day of data
     chart_widget->graph_rescale(0);

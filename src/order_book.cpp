@@ -16,6 +16,7 @@
 //
 #include "src/plot/OrderBookCurve.h"
 #include "src/plot/OrderBookPlot.h"
+#include "util/stringutils.hpp"
 //
 #include "order_book.hpp"
 // extern
@@ -33,18 +34,6 @@ constexpr int debug_level = 0;
 //
 template <int Level>
 static print_threshold<Level, debug_level> obook_dbg("ord-book");
-
-// ----------------------------------------------------------------------------
-bool startswith(std::string_view str, std::string_view sub)
-{
-    // rev search - pos=0, limits search to pos or earlier
-    // equivalent to if data.startswith(...)
-    if (str.rfind(sub, 0) != 0)
-    {
-        return false;
-    }
-    return true;
-}
 
 // ----------------------------------------------------------------------------
 // WARNING
