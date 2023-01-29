@@ -34,7 +34,6 @@
 #include "src/widgets/check_trades_dialog.hpp"
 #include "src/widgets/trade_algorithm.hpp"
 #include "src/widgets/connection_widget.hpp"
-#include "src/widgets/price_chart_widget.hpp"
 //
 #include "src/demangle_helper.hpp"
 #include "src/print.hpp"
@@ -228,20 +227,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     QPixmap pix(":/images/xrp.jpg");
     // pix = pix.scaled(algo_form_->image_label->size(), Qt::KeepAspectRatio);
     // algo_form_->image_label->setPixmap(pix);
-
-    // ----------------------------------
-    // Create candlestick/volume plots
-//    auto view = app_ini->data_manager_->create_dataset_view("XRP", "USD");
-//    price_plot_ = new price_chart_widget(this, view, bitstamp_network_, std::string("USD/XRP"));
-//    //
-//    CDockWidget* PlotDockWidget = new CDockWidget("PricePlot-1");
-//    PlotDockWidget->setWidget(price_plot_);
-//    PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-//    /*auto LeftArea = */app_ini->dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
-//    app_ini->dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
-
-//    // start by displaying 1 day of data
-//    price_plot_->graph_rescale(0);
 
 }
 
@@ -466,49 +451,6 @@ void GroxMainWindow::capture_image()
 //    auto image = algo_form_->tabWidget->grab();
 //    algo_form_->imagelabel->setPixmap(image);
 //    algo_form_->imagelabel->setScaledContents(true);
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::update_candlestick_data()
-{
-/*
-    candlestick_update_active_ = true;
-    uint64_t req_t = 0, start_t = 0;
-    // what is the most recent sample we currently have
-    start_t = static_cast<uint64_t>(app_ini->data_manager_->get_last_sample_time(false));
-    if (start_t == 0) {
-        // linux time 1496275200 = Thu Jun 01 2017 00:00:00 GMT+0000
-        start_t = 1496275200*1000.0;
-        std::string s = msecs_unix_to_calendar_time(start_t);
-        main_dbg<5>.debug(str<>("No Data"),  "requesting from", s);
-    }
-    else {
-        std::string s = msecs_unix_to_calendar_time(start_t);
-        main_dbg<5>.debug(str<>("Data present until"), s);
-    }
-    // convert to unix timestamp : next sample is 60s after last
-    req_t = start_t/1000 + 60;
-
-    main_dbg<5>.debug(str<>("Requesting candlesticks"), msecs_unix_to_calendar_time(req_t*1000));
-
-    // @TODO add futures here to make dependency chain simpler?
-    bool ok = bitstamp_network_->request_new_candlestick_data(req_t, [this, req_t](auto& ctx, bool more) {
-        main_dbg<0>.debug(str<>("Received"), msecs_unix_to_calendar_time(req_t*1000));
-        this->receive_ohlc_data(std::move(ctx.res.body()));
-        if (more) {
-            update_candlestick_data();
-        }
-        else {
-            candlestick_update_active_ = false;
-            emit restart_candlestick_timer();
-        }
-    });
-    if (!ok) {
-        // we were already up-to-date
-        candlestick_update_active_ = false;
-        emit restart_candlestick_timer();
-    }
-*/
 }
 
 // ----------------------------------------------------------------------------

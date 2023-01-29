@@ -18,7 +18,6 @@
 #include "src/plot/ohlc_picker.hpp"
 #include "src/plot/OrderBookPlot.h"
 #include "src/plot/filter_plot.hpp"
-#include "src/widgets/price_chart_widget.hpp"
 //
 #include "src/data/ohlc_dataset_manager.hpp"
 //
@@ -87,8 +86,6 @@ public:
     ~GroxMainWindow() override;
     void connect_gui_controls();
     bool eventFilter(QObject* obj, QEvent* event) override;
-
-    void update_candlestick_data();
 
     void update_balance(std::string_view addr, double oldb, double newb);
     void display_offers();

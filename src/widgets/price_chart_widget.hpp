@@ -44,6 +44,7 @@ public:
         crypto_price_plot_->replot();
     }
 
+    void resizeEvent(QResizeEvent *event) override;
 };
 
 #endif // PRICE_CHART_WIDGET_H
