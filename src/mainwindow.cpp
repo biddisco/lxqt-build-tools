@@ -75,7 +75,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   : QMainWindow(parent)
   , net_layout_(nullptr)
   , perspectives_menu_(nullptr)
-
+  , dark_mode_(0)
 {
     ui.setupUi(this);
 
@@ -233,6 +233,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 // ----------------------------------------------------------------------------
 GroxMainWindow::~GroxMainWindow()
 {
+    delete qs_shutdown_;
+    delete qs_darkmode_;
+    //
     app_settings* app_ini = global_settings();
     // release dockmanager
     app_ini->dock_manager_.reset();
@@ -388,7 +391,11 @@ void GroxMainWindow::connect_gui_controls()
         // execute_filter();
     } , Qt::QueuedConnection);
 
-    auto shutdown = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
+    qs_shutdown_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
+    qs_darkmode_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_D)), this, [this](){
+        dark_mode_ = (dark_mode_ + 1) % 3;
+        LoadStyleSheet(dark_mode_);
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -668,6 +675,10 @@ void GroxMainWindow::saveWindowSettings()
     app_settings* app_ini = global_settings();
     QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
 
+    settings.beginGroup("StyleSheet");
+    settings.setValue("Dark", dark_mode_);
+    settings.endGroup();
+
     // Mainwindow
     settings.beginGroup("MainWindow");
     settings.setValue("geometry", saveGeometry());
@@ -688,6 +699,11 @@ void GroxMainWindow::loadWindowSettings()
 {
     app_settings* app_ini = global_settings();
     QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+
+    settings.beginGroup("StyleSheet");
+    dark_mode_ = settings.value("Dark").toInt();
+    LoadStyleSheet(dark_mode_);
+    settings.endGroup();
 
     // MainWindow section
     settings.beginGroup("MainWindow");
@@ -1012,4 +1028,37 @@ void GroxMainWindow::openPerspective(const QString &name)
         }
     }
     app_ini->dock_manager_->openPerspective(name);
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::LoadStyleSheet(int dark)
+{
+#ifdef GROX_DEBUG_RESOURCES
+    QDirIterator it(":", QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        qDebug() << it.next();
+    }
+#endif
+    QString name;
+    if (dark==0) {
+        global_settings()->dock_manager_->setStyleSheet("");
+        qApp->setStyleSheet("");
+        return;
+    }
+    else if (dark==1) {
+        name = ":qdarkstyle/dark/darkstyle.qss";
+    }
+    else if (dark==2) {
+        name = ":qdarkstyle/light/lightstyle.qss";
+    }
+    QFile f(name);
+    if (!f.exists()) {
+        main_dbg<0>.error(str<>("Stylesheet"), "Unable to set stylesheet, file not found");
+    }
+    else {
+        f.open(QFile::ReadOnly | QFile::Text);
+        QTextStream ts(&f);
+        global_settings()->dock_manager_->setStyleSheet("");
+        qApp->setStyleSheet(ts.readAll());
+    }
 }

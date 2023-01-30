@@ -173,6 +173,30 @@ if(NOT QtADS_POPULATED)
 endif()
 
 # ------------------------------------------------------------------------------
+# Build/Download QDarkStyleSheet
+# ------------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/QDarkStyleSheet)
+  message(STATUS "Using QDarkStyleSheet in source tree")
+  # use the source in this directory
+  set(FETCHCONTENT_SOURCE_DIR_QDARKSTYLESHEET ${CMAKE_CURRENT_SOURCE_DIR}/extern/QDarkStyleSheet)
+  # don't change branches, or pull
+  set(FETCHCONTENT_UPDATES_DISCONNECTED_QDARKSTYLESHEET ON)
+endif()
+
+# If we must pull a fresh copy, setup git location/branch and set shallow flag
+fetchcontent_declare(
+  QDarkStyleSheet
+  GIT_REPOSITORY https://github.com/ColinDuquesnoy/QDarkStyleSheet.git
+  GIT_TAG master
+  GIT_SHALLOW TRUE
+)
+fetchcontent_getproperties(QDarkStyleSheet)
+if(NOT QDarkStyleSheet_POPULATED)
+  message(STATUS "Downloading QDarkStyleSheet source...")
+  fetchcontent_populate(QDarkStyleSheet)
+endif()
+
+# ------------------------------------------------------------------------------
 # Build/Download range-v3 library
 # ------------------------------------------------------------------------------
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/range-v3)
@@ -360,7 +384,11 @@ qt_wrap_ui(GROX_SRC src/tabbed_form.ui)
 # -----------------------------------------------------------------------------
 # Qt resource files
 # -----------------------------------------------------------------------------
-set(GROX_QRC_SRC src/grox.qrc)
+set(GROX_QRC_SRC
+    src/grox.qrc
+    ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
+    ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc
+)
 
 add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC})
 set_property(TARGET grox PROPERTY CXX_STANDARD 20)

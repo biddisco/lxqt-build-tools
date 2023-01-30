@@ -4,6 +4,7 @@
 #include <QWidgetAction>
 #include <QMainWindow>
 #include <QScrollArea>
+#include <QShortcut>
 #include <QTimer>
 //
 #ifndef Q_MOC_RUN
@@ -80,6 +81,10 @@ class GroxMainWindow : public QMainWindow
     QMenu* perspectives_menu_;
     //
     QString active_perspective_;
+    //
+    QShortcut *qs_shutdown_;
+    QShortcut *qs_darkmode_;
+    int dark_mode_;
 
 public:
     explicit GroxMainWindow(QWidget* parent = nullptr);
@@ -110,6 +115,7 @@ public:
 
     void createPerspectives_Ui();
     void openPerspective(const QString &name);
+    void LoadStyleSheet(int dark);
 
 private slots:
 
