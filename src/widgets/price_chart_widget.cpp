@@ -190,14 +190,14 @@ void price_chart_widget::graph_rescale(int range)
 void price_chart_widget::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
-    bool changed = false;
-    if (crypto_price_plot_->auto_candle_resolution()) {
-        changed = crypto_price_plot_->adjust_candle_size(0);
-    }
-    else {
-        changed = crypto_price_plot_->adjust_candle_size(crypto_price_plot_->get_candle_resolution());
-    }
-    if (changed) {
-        crypto_price_plot_->adjust_data_scaling();
-    }
+    bool changed = crypto_price_plot_->update_candle_size();
+    pplot_dbg<5>.debug(str<>("Resize"), "res changed", changed);
+}
+
+// ----------------------------------------------------------------------------
+void price_chart_widget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    bool changed = crypto_price_plot_->update_candle_size();
+    pplot_dbg<5>.debug(str<>("Show"), "res changed", changed);
 }

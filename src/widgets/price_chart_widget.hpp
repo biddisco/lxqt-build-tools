@@ -45,6 +45,7 @@ public:
     }
 
     void resizeEvent(QResizeEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 };
 
 #endif // PRICE_CHART_WIDGET_H

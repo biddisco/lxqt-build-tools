@@ -107,6 +107,8 @@ ohlc_price_plot::ohlc_price_plot(QWidget *parent, std::shared_ptr<ohlc_dataset_v
     , direct_painter_(nullptr)
     , ohlc_dataset_view_(data)
     , auto_candle_resolution_(true)
+    , first_update_(true)
+    , last_auto_res_(-1)
 {
     // find a fix font char size for candle status/data
     QString X = "X";
@@ -262,9 +264,6 @@ void ohlc_price_plot::update_live_data(QwtOHLCSample const &new_sample)
 // ----------------------------------------------------------------------------
 bool ohlc_price_plot::adjust_candle_size(double res)
 {
-    // to track the last auto change we made
-    static double last_auto_res = 0;
-
     // auto mode
     if (res==0) {
         // if we don't find a usable coarser resolution, use 1m
@@ -276,15 +275,15 @@ bool ohlc_price_plot::adjust_candle_size(double res)
         for (const auto &r : ranges::views::reverse(ohlc_chart_data::available_resolutions())) {
             if (r<xm) {
                 // if we have not changed value, just exit
-                if (r==last_auto_res) return false;
-                res = last_auto_res = r;
+                if (r==last_auto_res_) return false;
+                res = last_auto_res_ = r;
                 //
                 break;
             }
         }
     }
     else {
-        last_auto_res = 0;
+        last_auto_res_ = 0;
     }
     // user selected resolution
     for (const auto &r : ohlc_chart_data::available_resolutions()) {
@@ -345,6 +344,7 @@ void ohlc_price_plot::update_time_axis(double t1, double t2)
 
     // update the X axis with new min max
     setAxisScale(QwtAxis::XBottom, t1, t2);
+
     // recompute the mapping to/from world/pixels
     updateAxes();
 
@@ -378,7 +378,7 @@ void ohlc_price_plot::update_time_axis(double t1, double t2)
     // update the Y volume axis with min max
     setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
 
-    plot_dbg<5>.debug(str<>("min_max"), ohlc_chart_data::get_resolution(get_candle_resolution()).name_
+    plot_dbg<8>.debug(str<>("min_max"), ohlc_chart_data::get_resolution(get_candle_resolution()).name_
                      , msecs_unix_to_calendar_time(t1)
                      , "->", msecs_unix_to_calendar_time(t2)
                      , "(", minmax.min_price_, ",", minmax.max_price_, ")");
@@ -386,6 +386,22 @@ void ohlc_price_plot::update_time_axis(double t1, double t2)
     setAutoReplot(doAutoReplot);
     replot();
     emit plotScaleChanged(t1, t2);
+}
+
+// ----------------------------------------------------------------------------
+bool ohlc_price_plot::update_candle_size()
+{
+    bool changed = false;
+    if (auto_candle_resolution()) {
+        changed = adjust_candle_size(0);
+    }
+    else {
+        changed = adjust_candle_size(get_candle_resolution());
+    }
+    if (changed) {
+        adjust_data_scaling();
+    }
+    return changed;
 }
 
 // ----------------------------------------------------------------------------
@@ -479,19 +495,10 @@ void ohlc_price_plot::add_price_curve(const QString& title,
 void ohlc_price_plot::updateLayout()
 {
     QwtPlot::updateLayout();
-    //
-    static bool was_visible = isVisible();
-    //
-    if (isVisible() && was_visible != isVisible()) {
+    if (first_update_) {
         plot_dbg<5>.debug(str<>("updateLayout"), "adjust_candle_size");
-        if (auto_candle_resolution()) {
-            adjust_candle_size(0);
-        }
-        else {
-            adjust_candle_size(get_candle_resolution());
-        }
-        was_visible=isVisible();
+        update_candle_size();
+        first_update_ = false;
     }
 }
 
-// ----------------------------------------------------------------------------

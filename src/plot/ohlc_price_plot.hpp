@@ -36,6 +36,8 @@ private:
     bool                           auto_candle_resolution_;
     int                            fixed_char_size_x_;
     int                            fixed_char_size_y_;
+    bool                           first_update_;
+    double                         last_auto_res_;
 
 public:
     ohlc_price_plot(QWidget *, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_);
@@ -54,6 +56,7 @@ public:
 
     // when candle resolution changes, the volume bar min/max must be updated
     void   adjust_data_scaling();
+    bool   update_candle_size();
 
     // when the picker moves, we find the current candle and display info
     void   display_candle_status(double time);
