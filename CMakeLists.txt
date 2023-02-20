@@ -6,6 +6,8 @@
 # qt6 : sudo apt install qt6-base-dev qt6-base-private-dev libqt6opengl6-dev libqt6svg6-dev
 # Assumes hdf5, boost, installed using space environment
 #
+# Rippled needs
+# sudo apt install liblz4-dev libarchive-dev libsoci-dev
 #
 # Build boost (1.75) on raspberry pi (4) ./bootstrap ./b2 architecture=arm
 # address-model=32 threading=multi link=shared variant=release
@@ -440,6 +442,7 @@ target_link_libraries(
          uuid
          OpenSSL::SSL
          pthread
+         pika::pika
 )
 
 # ---------------------------------------------------

@@ -11,6 +11,14 @@
 #include "src/widgets/password_dialog.hpp"
 #include "src/settings.hpp"
 #include "src/print.hpp"
+//
+#include <pika/modules/execution.hpp>
+#include <pika/modules/executors.hpp>
+#include <pika/modules/resource_partitioner.hpp>
+#include <pika/modules/schedulers.hpp>
+#include <pika/modules/thread_manager.hpp>
+#include <pika/init.hpp>
+#include <pika/program_options.hpp>
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -146,7 +154,7 @@ void generate_encrypted_ini_data(password_dialog& npw)
 }
 
 // ----------------------------------------------------------------------------
-int main(int argc, char* argv[])
+int qt_main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     QIcon icon(":images/xrp.ico");
@@ -326,4 +334,88 @@ int main(int argc, char* argv[])
     mainWindow.show();
 
     return app.exec();
+}
+
+//----------------------------------------------------------------------------
+std::string qt_pool_name = "Qt:pool";
+//----------------------------------------------------------------------------
+int pika_main(int argc, char ** argv)
+{
+    namespace ex = pika::execution::experimental;
+    namespace tt = pika::this_thread::experimental;
+
+    // Get a scheduler on the thread pool we have reserved for Qt
+    auto qt_sch = ex::thread_pool_scheduler{
+            &pika::resource::get_thread_pool(qt_pool_name)};
+
+    // create a sender to transfer work to the qt pool scheduler
+    auto snd = ex::transfer_just(qt_sch) | ex::then([argc, argv](){
+        // run the main qt application entry on our thread
+        qt_main(argc, argv);
+    });
+
+    // launch and block on completion of the Qt application thread
+    tt::sync_wait(std::move(snd));
+
+    // allow pika to shutdown
+    return pika::finalize();
+}
+
+//----------------------------------------------------------------------------
+void init_resource_partitioner_handler(pika::resource::partitioner& rp,
+    pika::program_options::variables_map const& vm)
+{
+    // Don't create the pool if the user disabled it
+    if (vm["no-qt-pool"].as<bool>()) {
+        qt_pool_name = "default";
+        return;
+    }
+
+    using pika::threads::scheduler_mode;
+    auto mode = scheduler_mode::default_mode;
+#ifdef GROX_DISABLE_IDLE_BACKOFF
+    // Disable idle backoff on the Qt pool
+    mode = scheduler_mode(mode & ~scheduler_mode::enable_idle_backoff);
+#endif
+
+    // Create a thread pool with a single core for Qt
+    rp.create_thread_pool(qt_pool_name,
+        pika::resource::scheduling_policy::unspecified, mode);
+
+    rp.add_resource(
+        rp.numa_domains()[0].cores()[0].pus()[0], qt_pool_name);
+}
+
+//----------------------------------------------------------------------------
+// the normal int main function that is called at startup and runs on an OS
+// thread the user must call pika::init to start the pika runtime which
+// will execute pika_main on an pika thread
+int main(int argc, char* argv[])
+{
+    namespace po = pika::program_options;
+
+    // Configure application-specific options.
+    po::options_description cmdline("usage: " PIKA_APPLICATION_STRING " [options]");
+
+    // clang-format off
+    cmdline.add_options()("no-qt-pool", pika::program_options::bool_switch(),
+        "Disable the Qt pool.");
+
+    cmdline.add_options()("decode",
+        po::value<std::string>()->default_value(""),
+        "shortcut");
+
+    cmdline.add_options()("disable something",
+        po::value<bool>()->default_value(false),
+        "placeholder for disabling some functionality");
+    // clang-format on
+
+    // Initialize and run pika.
+    pika::init_params init_args;
+    init_args.desc_cmdline = cmdline;
+    // Set the callback to init thread_pools
+    init_args.rp_callback = &init_resource_partitioner_handler;
+
+    auto result = pika::init(pika_main, argc, argv, init_args);
+    return result;
 }
