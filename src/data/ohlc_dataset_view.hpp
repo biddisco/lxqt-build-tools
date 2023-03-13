@@ -73,6 +73,7 @@ class ohlc_dataset_view {
     // Get first/last sample time, value is returned as UTC = unix time stamp * 1000
     double get_last_sample_time(bool include_live);
     double get_first_sample_time();
+    double get_time_from_index(std::uint64_t i);
 
     // compute the average price for a buy at/after time T
     QwtOHLCSample get_trade_data_by_volume(double volume, double time, double safety=10);

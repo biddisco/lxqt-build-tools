@@ -149,7 +149,7 @@ int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, cand
                       , "index", dec<9>(index)
                       , "expected", msecs_unix_to_calendar_time(expected_time)
                       , "found", msecs_unix_to_calendar_time(s1.time));
-            throw std::runtime_error("OHLC data integrity failure");
+            throw ohlc_data_integrity_exception(index);
         }
     }
     ohlc_dbg<5>.debug(str<>("validated"), dec<9>(samples.size()));

@@ -159,6 +159,13 @@ class ohlc_chart_data : public QwtTradingChartData
         return std::max(int64_t(0), i);
     }
 
+    // return the index of the sample at time t
+    inline double sample_time(int64_t i) const
+    {
+        double t = (i*resolution_) + m_samples[0].time;
+        return t;
+    }
+
     inline QVector<QwtOHLCSample> const &data() const { return m_samples; }
     inline QVector<QwtOHLCSample> &data() { return m_samples; };
 };

@@ -1,5 +1,7 @@
 #include <cmath>
 //
+#include <QInputDialog>
+//
 #include "src/print.hpp"
 #include "src/settings.hpp"
 #include "src/data/ohlc_dataset_view.hpp"
@@ -61,9 +63,24 @@ void ohlc_dataset_view::merge_data(
 // ----------------------------------------------------------------------------
 void ohlc_dataset_view::read_from_disk()
 {
-    data_manager_->read_hdf5(exchange_,
-                             currency_pair_string({c1_, c2_}),
-                             candles_.begin()->second->ohlc_samples_->data());
+    try {
+        data_manager_->read_hdf5(exchange_,
+                                 currency_pair_string({c1_, c2_}),
+                                 candles_.begin()->second->ohlc_samples_->data());
+    }
+    catch (ohlc_data_integrity_exception &e) {
+        // QInputDialog requires int and not int64 unfortunately
+        int64_t index = e.index();
+        man_dbg<0>.error(str<>("Data integrity error"), "at index", dec<9>(index));
+        bool ok = false;
+        QString label = "First bad index is :" + QString::number(index);
+        index = QInputDialog::getInt(
+                    nullptr, "Truncate from", label, index, 0, 1<<30, 1, &ok);
+        if (ok) {
+            double t = get_time_from_index(index);
+            truncate_from_time(t);
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -76,7 +93,7 @@ void ohlc_dataset_view::truncate_from_time(double t)
         samples->data().resize(index);
         man_dbg<0>.debug(str<>("Truncating"),
                      str<3>(ohlc_chart_data::get_resolution(res).name_)
-                     , "at index", index);
+                     , "at index", dec<9>(index));
         if (res==ohlc_chart_data::minute) {
             auto ticker_str = currency_pair_string({c1_, c2_});
             data_manager_->write_hdf5("bitstamp", ticker_str, samples->data(), 0, true);
@@ -93,6 +110,16 @@ void ohlc_dataset_view::delete_live_data_up_to(double msecs)
         auto index = live_samples->sample_index(msecs);
         live_data.erase(live_data.begin(), live_data.begin() + index + 1);
     }
+}
+
+// ----------------------------------------------------------------------------
+double ohlc_dataset_view::get_time_from_index(std::uint64_t i)
+{
+    double t = 0;
+    if (!candles_.begin()->second->ohlc_samples_->data().empty()) {
+        t = candles_.begin()->second->ohlc_samples_->sample_time(i);
+    }
+    return t;
 }
 
 // ----------------------------------------------------------------------------

@@ -48,7 +48,7 @@ void hdf5_check(const char *msg, herr_t err)
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::read_hdf5(std::string group, std::string dataname, QVector<QwtOHLCSample> &data)
 {
-    // we do not support multi-threaded file access yet.
+    // we do not currently support multi-threaded file access.
     std::lock_guard lock(hdf5_mutex_);
 
     using namespace HighFive;

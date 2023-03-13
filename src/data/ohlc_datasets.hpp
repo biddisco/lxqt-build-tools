@@ -13,6 +13,18 @@
 std::string msecs_unix_to_calendar_time(uint64_t unixmsecs);
 void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other);
 
+class ohlc_data_integrity_exception: public std::exception {
+    std::uint64_t index_;
+public:
+    ohlc_data_integrity_exception(std::uint64_t bad_index)
+        : index_(bad_index) {
+    }
+    const char* what() const noexcept override {
+        return "Data integrity error";
+    }
+    std::uint64_t index() { return index_; }
+};
+
 struct ohlc_resample
 {
     QwtOHLCSample ohlc_;
