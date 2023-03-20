@@ -63,6 +63,7 @@ ohlc_datasets::~ohlc_datasets()
 uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples_)
 {
     uint64_t update = 0;
+    // initial data may be empty, so just copy without merge/update
     if (ohlc_samples_->data().size() == 0)
     {
         ohlc_samples_->data() = new_ohlc_samples_;
@@ -72,31 +73,15 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
     {
         auto last_existing = ohlc_samples_->data().back().time;
         auto first_new = new_ohlc_samples_.front().time;
-
-        ohlc_dbg<5>.debug(str<>("merging"), ticker_str_, last_existing, "new", first_new);
-        // 1 minute candle OHLC data is stored in msecs
+        // new samples must start exactly one timestep after old
+        int offset = (first_new - last_existing) / ohlc_chart_data::minute;
+        ohlc_dbg<5>.debug(str<>("merging"), ticker_str_, "new samples offset", dec<5>(offset));
         if (first_new - last_existing != ohlc_chart_data::minute)
         {
-            // How many missing samples are there?
-            int N = (first_new - last_existing) / ohlc_chart_data::minute;
-            if (N<=0) {
-                throw std::runtime_error("Data OHLC time mismatch in merge");
-            }
-            auto prev = ohlc_samples_->data().back();
-            // got from 1 to N to add N-1 samples with time offsets from 1
-            for (int i=1; i<N; ++i) {
-                QwtOHLCSample dummy(last_existing + i*ohlc_chart_data::minute,
-                                    prev.close, prev.close, prev.close, prev.close, 0.0);
-                ohlc_samples_->data().append(dummy);
-            }
-            update += (N-1);
+            throw std::runtime_error("Data OHLC time mismatch in merge");
         }
-        // try again with dummy data inserted into gap
-        last_existing = ohlc_samples_->data().back().time;
-        (void)last_existing; //warning about unused value store
-
-        ohlc_dbg<5>.debug(str<>("merged"), ticker_str_, last_existing, "new", first_new);
-
+        // add new samples
+        ohlc_dbg<5>.debug(str<>("merging"), ticker_str_, "new samples", dec<5>(new_ohlc_samples_.size()));
         ohlc_samples_->data().append(new_ohlc_samples_);
         update += new_ohlc_samples_.size();
     }
