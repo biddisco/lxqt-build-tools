@@ -268,6 +268,10 @@ namespace grox::debug {
           : data_(v)
         {
         }
+        str(const std::string &v)
+          : data_(v.c_str())
+        {
+        }
         const char* data_;
         friend std::ostream& operator<<(std::ostream& os, str<N> const& d)
         {

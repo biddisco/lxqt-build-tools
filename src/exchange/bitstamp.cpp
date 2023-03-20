@@ -23,7 +23,7 @@
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
+constexpr int debug_level = 4;
 //
 template <int Level>
 static print_threshold<Level, debug_level> bitstamp_dbg("Bitstamp");
@@ -184,18 +184,19 @@ bool bitstamp_network::unsubscribe_my_orders(const currency_pair &cp)
 // connect to (multiple) streams
 bool bitstamp_network::websocket_connect(net::contexts &io_contexts, streams_vector const &streams)
 {
-    currency_pair cp = string_to_pair("XRP-USD", "-");
     using namespace std::literals;
     auto now = std::chrono::steady_clock::now();
     while ((token_expiry_ - now)/1s < 5) {
         get_websocket_token();
         sleep(1);
     }
+    //
     bool ok = true;
+    currency_pair cp = string_to_pair("XRP-USD", "-");
     for (const auto &s : streams) {
-        if (s == network::streams::my_trades) ok &= subscribe_my_trades(cp, io_contexts);
-        if (s == network::streams::my_orders) ok &= subscribe_my_orders(cp, io_contexts);
-        if (s == network::streams::trades) ok &= subscribe_live_trades(cp, io_contexts);
+        if (s == network::streams::my_trades)  ok &= subscribe_my_trades(cp, io_contexts);
+        if (s == network::streams::my_orders)  ok &= subscribe_my_orders(cp, io_contexts);
+        if (s == network::streams::trades)     ok &= subscribe_live_trades(cp, io_contexts);
         if (s == network::streams::order_book) ok &= subscribe_order_book(cp, io_contexts);
     }
     return ok;
@@ -338,7 +339,7 @@ void bitstamp_network::get_websocket_token()
 void bitstamp_network::handle_account_info(std::string&& data)
 {
     nlohmann::json jdata = json::parse(data);
-    bitstamp_dbg<5>.debug(str<>("account info"), jdata.dump(4));
+    bitstamp_dbg<6>.debug(str<>("account info"), jdata.dump(4));
     //
     bitstamp_account &acct = get_bitstamp_instance()->account();
 
@@ -626,7 +627,7 @@ void bitstamp_network::account_request(std::string &&url_path, std::string &&url
         //
         b_request.body() = payload;
         b_request.prepare_payload();
-        bitstamp_dbg<5>.debug(str<>("Account request"), b_request);
+        bitstamp_dbg<7>.debug(str<>("Account request"), b_request);
 
         new_client.on_http(b_request, [cb=std::move(cb)](auto& ctx)
         {
@@ -640,7 +641,7 @@ void bitstamp_network::account_request(std::string &&url_path, std::string &&url
             return;
           }
           // debug : print the response headers and body
-          bitstamp_dbg<5>.debug(str<>("Request response"), ctx.res.body());
+          bitstamp_dbg<6>.debug(str<>("Request response"), ctx.res.body());
           cb(std::move(ctx.res.body()));
         });
         new_client.connect();
@@ -669,7 +670,7 @@ void bitstamp_network::new_trade_data(bitstamp_network* n, ticker_data tdata, st
     nlohmann::json jdata = json::parse(data);
     // extract the main subgroup
     jdata = jdata["data"];
-    bitstamp_dbg<5>.debug(str<>("Trade data parsed"), jdata.dump(4));
+    bitstamp_dbg<7>.debug(str<>("Trade data parsed"), jdata.dump(4));
 
     live_trades trade_data = jdata.get<live_trades>();
     emit n->new_trade_data_ui(tdata, trade_data);
@@ -706,7 +707,7 @@ bool bitstamp_network::request_new_candlestick_data(std::string ticker, uint64_t
         std::string limit = std::to_string(samples);
         // send a request for ticker data using the io context thread to make the request
         req = string_join("/api/v2/ohlc/", ticker) + "/?step=60&start=" + start + "&limit=" + limit;
-        bitstamp_dbg<0>.debug(str<>("request"), req);
+        bitstamp_dbg<0>.debug(str<>("request"), ticker, req);
     }
 
     auto thread_function = [req=std::move(req), fn=std::move(fn), repeat_ohlc]() {
@@ -728,7 +729,7 @@ bool bitstamp_network::request_new_candlestick_data(std::string ticker, uint64_t
             return;
           }
           // debug : print the response headers and body
-          bitstamp_dbg<5>.debug(str<>("Candlestick"), ctx.res.body());
+          bitstamp_dbg<6>.debug(str<>("Candlestick"), ctx.res.body());
           fn(ctx, repeat_ohlc);
         });
         new_client.connect();
@@ -763,7 +764,7 @@ void bitstamp_network::request_tickers_available()
             return;
           }
           // debug : print the response headers and body
-          bitstamp_dbg<5>.debug(str<>("Tickers"), ctx.res.body());
+          bitstamp_dbg<6>.debug(str<>("Tickers"), ctx.res.body());
           receive_tickers_available(std::move(ctx.res.body()));
         });
         new_client.connect();
@@ -779,7 +780,7 @@ void bitstamp_network::receive_tickers_available(std::string &&data)
     for (auto& [key, val] : jdata.items())
     {
         const auto & [c1, c2] = get_currency_pair(JCHARP(val["pair"]));
-        bitstamp_dbg<5>.debug(str<>("Currency pair"), c1, c2, c1, c2);
+        bitstamp_dbg<8>.debug(str<>("Currency pair"), c1, c2, c1, c2);
         add_currency_pair(c1, c2);
     }
 
@@ -948,7 +949,7 @@ void bitstamp_network::receive_ohlc_data(ticker_data *tdata, std::string&& data)
     {
         // convert json data into vectors of actual data
         nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
-        bitstamp_dbg<0>.debug(str<>("Received"), dec<4>(jdata.size()), "json OHLC samples");
+        bitstamp_dbg<0>.debug(str<>("received"), tdata->view_->get_ticker_string(), dec<4>(jdata.size()), "json OHLC samples");
         QVector<QwtOHLCSample> new_ohlc_samples;
         new_ohlc_samples.reserve(jdata.size());
         QwtOHLCSample sample;
@@ -962,11 +963,11 @@ void bitstamp_network::receive_ohlc_data(ticker_data *tdata, std::string&& data)
             new_ohlc_samples.push_back(sample);
         }
         //
-        bitstamp_dbg<5>.debug("Converted", new_ohlc_samples.size(), "new OHLC samples");
+        bitstamp_dbg<5>.debug(str<>("Converted"), tdata->view_->get_ticker_string(), new_ohlc_samples.size(), "new OHLC samples");
         tdata->view_->merge_data(ohlc_chart_data::minute, new_ohlc_samples);
         // what is the last sample we currently have
         auto last_time = tdata->view_->get_last_sample_time(false);
-        bitstamp_dbg<0>.debug(str<>("Data merged up to"), msecs_unix_to_calendar_time(last_time));
+        bitstamp_dbg<0>.debug(str<>("data merged up to"), tdata->view_->get_ticker_string(), msecs_unix_to_calendar_time(last_time));
         tdata->view_->delete_live_data_up_to(last_time);
         //
         emit new_ohlc_data(tdata, ohlc_chart_data::minute);
@@ -1009,7 +1010,7 @@ void bitstamp_network::update_candlestick_data()
     {
         std::string ticker_lowercase = currency_pair_lowercase_string(ticker);
         std::string ticker_display   = currency_pair_string(ticker);
-        bitstamp_dbg<5>.debug(str<>("Candlestick"), ticker_display);
+        bitstamp_dbg<6>.debug(str<>("Candlestick"), ticker_display);
         //
         candlestick_update_active_ = true;
 
@@ -1024,17 +1025,17 @@ void bitstamp_network::update_candlestick_data()
         }
         else {
             std::string s = msecs_unix_to_calendar_time(start_t);
-            bitstamp_dbg<5>.debug(str<>("Data ok up to"), ticker_display, s);
+            bitstamp_dbg<5>.debug(str<>("data ok up to"), ticker_display, s);
         }
         // convert to unix timestamp : next sample is 60s after last
         req_t = start_t/1000 + 60;
 
-        bitstamp_dbg<5>.debug(str<>("Requesting"), ticker_display, msecs_unix_to_calendar_time(req_t*1000));
+        bitstamp_dbg<5>.debug(str<>("requesting"), ticker_display, msecs_unix_to_calendar_time(req_t*1000));
 
         // @TODO add futures here to make dependency chain simpler?
         ticker_data *tdata = &data;
         bool ok = request_new_candlestick_data(ticker_lowercase, req_t, [this, req_t, tdata](auto& ctx, bool more) {
-            bitstamp_dbg<0>.debug(str<>("Received"), msecs_unix_to_calendar_time(req_t*1000));
+            bitstamp_dbg<0>.debug(str<>("received"), tdata->view_->get_ticker_string(), msecs_unix_to_calendar_time(req_t*1000));
             this->receive_ohlc_data(tdata, std::move(ctx.res.body()));
             if (more) {
                 update_candlestick_data();

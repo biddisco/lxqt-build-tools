@@ -24,6 +24,7 @@ class ohlc_dataset_view {
     std::string exchange_;
     currency c1_;
     currency c2_;
+    std::string ticker_string_;
 
   public:
     ohlc_dataset_view(std::string exchange, const currency &c1, const currency &c2);
@@ -81,4 +82,5 @@ class ohlc_dataset_view {
     double get_estimated_sell_price(double volume, double time, double safety=10);
     double get_estimated_buy_price(double volume, double time, double safety=10);
 
+    const std::string &get_ticker_string() { return ticker_string_; }
 };

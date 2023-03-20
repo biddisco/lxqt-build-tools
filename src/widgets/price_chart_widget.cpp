@@ -26,6 +26,7 @@ price_chart_widget::price_chart_widget(QWidget *parent,
     , ui(new Ui::price_chart_widget)
     , exchange_(ex)
     , hdf5_ohlc_(ohlc)
+    , ticker_string_(ticker)
 {
     ui->setupUi(this);
     ui->ticker->setText(ticker.data());

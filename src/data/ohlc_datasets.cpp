@@ -13,7 +13,7 @@
 using namespace grox::debug;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
+constexpr int debug_level = 5;
 //
 template <int Level>
 static print_threshold<Level, debug_level> ohlc_dbg("Datasets");
@@ -33,7 +33,8 @@ void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other)
 }
 
 // ----------------------------------------------------------------------------
-ohlc_datasets::ohlc_datasets(double res)
+ohlc_datasets::ohlc_datasets(double res, const std::string &name)
+    : ticker_str_(name)
 {
     // we do not destroy these in the destructor because they are given to the
     // plot curve object which deletes them when it is destroyed
@@ -72,8 +73,7 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
         auto last_existing = ohlc_samples_->data().back().time;
         auto first_new = new_ohlc_samples_.front().time;
 
-        ohlc_dbg<5>.debug(str<>("merging"), dec<9>(last_existing),
-                          "new", dec<9>(first_new));
+        ohlc_dbg<5>.debug(str<>("merging"), ticker_str_, last_existing, "new", first_new);
         // 1 minute candle OHLC data is stored in msecs
         if (first_new - last_existing != ohlc_chart_data::minute)
         {
@@ -95,8 +95,7 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
         last_existing = ohlc_samples_->data().back().time;
         (void)last_existing; //warning about unused value store
 
-        ohlc_dbg<5>.debug(str<>("merged"), dec<9>(last_existing),
-                          "new", dec<9>(first_new));
+        ohlc_dbg<5>.debug(str<>("merged"), ticker_str_, last_existing, "new", first_new);
 
         ohlc_samples_->data().append(new_ohlc_samples_);
         update += new_ohlc_samples_.size();
@@ -120,7 +119,7 @@ uint64_t sample_index(double init, double time, double res)
 }
 
 // ----------------------------------------------------------------------------
-int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, candle_res res, double time)
+int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, candle_res res, double time, std::string name)
 {
     if (samples.empty()) return 0;
     //
@@ -134,7 +133,7 @@ int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, cand
         init_index = sample_index(origin_time, time, res);
         init_time = samples.at(init_index).time;
     }
-    ohlc_dbg<5>.debug(str<>("Validating"), str<3>(res.name_)
+    ohlc_dbg<6>.debug(str<>("validating"), name, str<3>(res.name_)
                  , "from", msecs_unix_to_calendar_time(init_time)
                  , "index", dec<9>(init_index));
 
@@ -145,14 +144,14 @@ int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, cand
         double expected_time = origin_time + (res*index);
         if (expected_time != s1.time)
         {
-            ohlc_dbg<5>.error(str<>("Validation"), str<3>(res.name_)
+            ohlc_dbg<1>.error(str<>("validation"), name, str<3>(res.name_)
                       , "index", dec<9>(index)
                       , "expected", msecs_unix_to_calendar_time(expected_time)
                       , "found", msecs_unix_to_calendar_time(s1.time));
             throw ohlc_data_integrity_exception(index);
         }
     }
-    ohlc_dbg<5>.debug(str<>("validated"), dec<9>(samples.size()));
+    ohlc_dbg<6>.debug(str<>("validated"), name, dec<9>(samples.size()));
     return samples.size();
 }
 
@@ -160,7 +159,7 @@ int64_t ohlc_datasets::validate_ohlc(QVector<QwtOHLCSample> const &samples, cand
 // resample from res2 to res1
 ohlc_datasets *ohlc_datasets::resample(candle_res res1, candle_res res2)
 {
-    ohlc_datasets *result = new ohlc_datasets(res1);
+    ohlc_datasets *result = new ohlc_datasets(res1, ticker_str_);
     result->resample_update(res1, this, res2);
     return result;
 }
@@ -173,7 +172,7 @@ ohlc_datasets *ohlc_datasets::resample_update(candle_res res1, ohlc_datasets *ot
 
     // how many of the hi-res candles in the new lower-res candle?
     int subsamples = static_cast<int>(res1/res2);
-    ohlc_dbg<5>.debug(str<>("resample_update"), str<3>(res2.name_),
+    ohlc_dbg<6>.debug(str<>("resample"), ticker_str_, str<3>(res2.name_),
                       "subsamples", str<3>(res1.name_), dec<2>(subsamples));
 
     // Get the final time-point of this dataset if present -
@@ -191,7 +190,7 @@ ohlc_datasets *ohlc_datasets::resample_update(candle_res res1, ohlc_datasets *ot
     }
     // the start time must start an integral candle at the new resolution
     while (static_cast<int>(0.5 + start_T/res2) % subsamples !=0) {
-        ohlc_dbg<5>.debug(str<>("candle modulus"),
+        ohlc_dbg<7>.debug(str<>("candle modulus"), ticker_str_,
                      dec<3>(static_cast<int>(0.5 + start_T/res2) % subsamples)
                      , "of", dec<3>(subsamples));
         start_T += res2;
@@ -229,11 +228,11 @@ ohlc_datasets *ohlc_datasets::resample_update(candle_res res1, ohlc_datasets *ot
             ohlc_samples_->append(current_ohlc);
         }
     }
-    ohlc_dbg<0>.debug(str<>("resampled"), str<3>(res1.name_)
+    ohlc_dbg<0>.debug(str<>("resampled"), ticker_str_, str<3>(res1.name_)
                 , "from", msecs_unix_to_calendar_time(current_ohlc.time)
                 , "index", dec<9>(orig_size)
                 , "of", ohlc_samples_->size());
-    validate_ohlc(ohlc_samples_->data(), res1, orig_T);
+    validate_ohlc(ohlc_samples_->data(), res1, orig_T, ticker_str_);
 
     return this;
 }

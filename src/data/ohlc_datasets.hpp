@@ -85,7 +85,10 @@ struct ohlc_datasets
     ohlc_chart_data    *live_samples_;
     ohlc_chart_curve   *live_curve_;
 
-    ohlc_datasets(double res);
+    // for debugging, show the dataset name
+    std::string         ticker_str_;
+
+    ohlc_datasets(double res, const std::string &name);
     ~ohlc_datasets();
 
     // Add new downloaded data to the existing dataset
@@ -94,7 +97,7 @@ struct ohlc_datasets
     // Checks that all data from time T (if present) has consecutive time stamps.
     // Important when merging new downloaded data with old to ensure no gaps
     // have crept in
-    static int64_t validate_ohlc(QVector<QwtOHLCSample> const &samples, candle_res res, double time=0);
+    static int64_t validate_ohlc(QVector<QwtOHLCSample> const &samples, candle_res res, double time, std::string name);
 
     // Resample the current dataset to a new resolution, it is assumed (without checks)
     // that the new lower resolution is an exact multiople of the current one

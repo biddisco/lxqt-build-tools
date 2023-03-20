@@ -10,7 +10,7 @@
 using namespace grox::debug;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
+constexpr int debug_level = 5;
 //
 template <int Level>
 static print_threshold<Level, debug_level> man_dbg("DataView");
@@ -20,10 +20,11 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, const currency &c1, c
     : exchange_(exchange)
     , c1_(c1)
     , c2_(c2)
+    , ticker_string_(currency_pair_string({c1_, c2_}))
 {
     data_manager_ = global_settings()->data_manager_;
     // insert empty highest resolution candle dataset
-    ohlc_datasets *min_res = new ohlc_datasets(ohlc_chart_data::minute);
+    ohlc_datasets *min_res = new ohlc_datasets(ohlc_chart_data::minute, ticker_string_);
     candles_.insert(std::make_pair(ohlc_chart_data::minute, min_res));
     // load highest res data
     read_from_disk();
@@ -56,8 +57,7 @@ void ohlc_dataset_view::merge_data(
     // returns the number of samples that are 'new'
     uint64_t update = data->merge_data(new_ohlc_samples_);
     // write new samples to the main datafile
-    auto ticker_str = currency_pair_string({c1_, c2_});
-    data_manager_->write_hdf5("bitstamp", ticker_str, data->ohlc_samples_->data(), update, false);
+    data_manager_->write_hdf5("bitstamp", ticker_string_, data->ohlc_samples_->data(), update, false);
 }
 
 // ----------------------------------------------------------------------------
@@ -65,13 +65,14 @@ void ohlc_dataset_view::read_from_disk()
 {
     try {
         data_manager_->read_hdf5(exchange_,
-                                 currency_pair_string({c1_, c2_}),
+                                 ticker_string_,
                                  candles_.begin()->second->ohlc_samples_->data());
     }
     catch (ohlc_data_integrity_exception &e) {
         // QInputDialog requires int and not int64 unfortunately
         int64_t index = e.index();
-        man_dbg<0>.error(str<>("Data integrity error"), "at index", dec<9>(index));
+        man_dbg<0>.error(str<>("Data integrity error"), ticker_string_,
+                         "at index", dec<9>(index));
         bool ok = false;
         QString label = "First bad index is :" + QString::number(index);
         index = QInputDialog::getInt(
@@ -91,12 +92,11 @@ void ohlc_dataset_view::truncate_from_time(double t)
         auto samples = k.second->ohlc_samples_;
         auto index = samples->sample_index(t);
         samples->data().resize(index);
-        man_dbg<0>.debug(str<>("Truncating"),
+        man_dbg<0>.debug(str<>("Truncating"), ticker_string_,
                      str<3>(ohlc_chart_data::get_resolution(res).name_)
                      , "at index", dec<9>(index));
         if (res==ohlc_chart_data::minute) {
-            auto ticker_str = currency_pair_string({c1_, c2_});
-            data_manager_->write_hdf5("bitstamp", ticker_str, samples->data(), 0, true);
+            data_manager_->write_hdf5("bitstamp", ticker_string_, samples->data(), 0, true);
         }
     }
 }
@@ -217,7 +217,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(double res, double start_time
         result.min_volume_ = 0;
         result.max_volume_ = 1;
     }
-    man_dbg<5>.debug(str<>("min_max"), ohlc_chart_data::get_resolution(res).name_
+    man_dbg<8>.debug(str<>("min_max"), ohlc_chart_data::get_resolution(res).name_
                      , msecs_unix_to_calendar_time(start_time)
                      , "->", msecs_unix_to_calendar_time(end_time)
                      , "(", result.min_price_, ",", result.max_price_, ")");
