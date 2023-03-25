@@ -34,7 +34,6 @@ bitstamp_network::bitstamp_network()
     // timer will fire once each time it is reset
     timer_ = new QTimer(this);
     timer_->setSingleShot(true);
-    candlestick_update_active_ = false;
     bitstamp_account default_acct;
     default_acct.name_ = "Bitstamp Main";
     accounts_.push_back(default_acct);
@@ -1004,51 +1003,61 @@ void bitstamp_network::new_ohlc_data_event(ticker_data *tdata, double old_res)
 }
 
 // ----------------------------------------------------------------------------
+void bitstamp_network::update_ticker_data(currency_pair ticker, ticker_data *tdata)
+{
+    std::string ticker_lowercase = currency_pair_lowercase_string(ticker);
+    std::string ticker_display   = currency_pair_string(ticker);
+    bitstamp_dbg<6>.debug(str<>("update_ticker_data"), ticker_display);
+    //
+    //if (!candlestick_updates_active_.contains(ticker)) {
+    // doesn't really matter if the key is already in the set
+        candlestick_updates_active_.insert(ticker);
+    //}
+
+    uint64_t req_t = 0, start_t = 0;
+    // what is the most recent sample we currently have
+    start_t = static_cast<uint64_t>(tdata->view_->get_last_sample_time(false));
+    if (start_t == 0) {
+        // linux time 1496275200 = Thu Jun 01 2017 00:00:00 GMT+0000
+        start_t = 1496275200*1000.0;
+        std::string s = msecs_unix_to_calendar_time(start_t);
+        bitstamp_dbg<5>.debug(str<>("No Data"), ticker_display, "requesting from", s);
+    }
+    else {
+        std::string s = msecs_unix_to_calendar_time(start_t);
+        bitstamp_dbg<5>.debug(str<>("data ok up to"), ticker_display, s);
+    }
+    // convert to unix timestamp : next sample is 60s after last
+    req_t = start_t/1000 + 60;
+
+    bitstamp_dbg<5>.debug(str<>("requesting"), ticker_display, msecs_unix_to_calendar_time(req_t*1000));
+
+    // @TODO add futures here to make dependency chain simpler?
+    bool ok = request_new_candlestick_data(ticker_lowercase, req_t, [this, req_t, ticker, tdata](auto& ctx, bool more) {
+        bitstamp_dbg<0>.debug(str<>("received"), tdata->view_->get_ticker_string(), msecs_unix_to_calendar_time(req_t*1000));
+        this->receive_ohlc_data(tdata, std::move(ctx.res.body()));
+        if (more) {
+            update_ticker_data(ticker, tdata);
+        }
+        else {
+            candlestick_updates_active_.erase(ticker);
+            emit restart_candlestick_timer();
+        }
+    });
+    if (!ok) {
+        // we were already up-to-date
+        candlestick_updates_active_.erase(ticker);
+        emit restart_candlestick_timer();
+    }
+}
+
+// ----------------------------------------------------------------------------
 void bitstamp_network::update_candlestick_data()
 {
     for (auto &[ticker, data] : tickers_subscribed_)
     {
-        std::string ticker_lowercase = currency_pair_lowercase_string(ticker);
-        std::string ticker_display   = currency_pair_string(ticker);
-        bitstamp_dbg<6>.debug(str<>("Candlestick"), ticker_display);
-        //
-        candlestick_update_active_ = true;
-
-        uint64_t req_t = 0, start_t = 0;
-        // what is the most recent sample we currently have
-        start_t = static_cast<uint64_t>(data.view_->get_last_sample_time(false));
-        if (start_t == 0) {
-            // linux time 1496275200 = Thu Jun 01 2017 00:00:00 GMT+0000
-            start_t = 1496275200*1000.0;
-            std::string s = msecs_unix_to_calendar_time(start_t);
-            bitstamp_dbg<5>.debug(str<>("No Data"), ticker_display, "requesting from", s);
-        }
-        else {
-            std::string s = msecs_unix_to_calendar_time(start_t);
-            bitstamp_dbg<5>.debug(str<>("data ok up to"), ticker_display, s);
-        }
-        // convert to unix timestamp : next sample is 60s after last
-        req_t = start_t/1000 + 60;
-
-        bitstamp_dbg<5>.debug(str<>("requesting"), ticker_display, msecs_unix_to_calendar_time(req_t*1000));
-
-        // @TODO add futures here to make dependency chain simpler?
-        ticker_data *tdata = &data;
-        bool ok = request_new_candlestick_data(ticker_lowercase, req_t, [this, req_t, tdata](auto& ctx, bool more) {
-            bitstamp_dbg<0>.debug(str<>("received"), tdata->view_->get_ticker_string(), msecs_unix_to_calendar_time(req_t*1000));
-            this->receive_ohlc_data(tdata, std::move(ctx.res.body()));
-            if (more) {
-                update_candlestick_data();
-            }
-            else {
-                candlestick_update_active_ = false;
-                emit restart_candlestick_timer();
-            }
-        });
-        if (!ok) {
-            // we were already up-to-date
-            candlestick_update_active_ = false;
-            emit restart_candlestick_timer();
+        if (!candlestick_updates_active_.contains(ticker)) {
+            update_ticker_data(ticker, &data);
         }
     }
 }
@@ -1058,9 +1067,7 @@ void bitstamp_network::candlestick_timer_event()
 {
     QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
     bitstamp_dbg<5>.debug("candlestick_timer_event : " + now.toStdString());
-    if (!candlestick_update_active_) {
-        update_candlestick_data();
-    }
+    update_candlestick_data();
 }
 
 // ----------------------------------------------------------------------------

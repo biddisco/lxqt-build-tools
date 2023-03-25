@@ -4,6 +4,7 @@
 //
 #include <chrono>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 //
@@ -51,7 +52,7 @@ private:
     // map of fees for trading of currency pairs
     std::map<std::pair<std::string, std::string>, double> fee_map_;
 
-    bool candlestick_update_active_;
+    std::set<currency_pair> candlestick_updates_active_;
 public:
     //
     static inline const std::string bitstamp_https_address = "www.bitstamp.net";
@@ -196,6 +197,7 @@ public:
 
     //
     void receive_ohlc_data(ticker_data *, std::string&&);
+    void update_ticker_data(currency_pair cp, ticker_data *data);
     void update_candlestick_data();
 
     void start_timer() override;
