@@ -25,7 +25,7 @@ ohlc_chart_curve::ohlc_chart_curve(ohlc_chart_data *chartData)
     setOrientation(Qt::Vertical);
 
     // overridden if/when scale/resolution changes
-    setSymbolExtent(0.8 * ohlc_chart_data::minute);
+    setSymbolExtent(0.8 * ohlc_data_resolutions::minute);
     setMinSymbolWidth(1);
     setMaxSymbolWidth(0.0);
 

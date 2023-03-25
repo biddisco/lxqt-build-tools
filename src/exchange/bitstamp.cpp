@@ -963,13 +963,13 @@ void bitstamp_network::receive_ohlc_data(ticker_data *tdata, std::string&& data)
         }
         //
         bitstamp_dbg<5>.debug(str<>("Converted"), tdata->view_->get_ticker_string(), new_ohlc_samples.size(), "new OHLC samples");
-        tdata->view_->merge_data(ohlc_chart_data::minute, new_ohlc_samples);
+        tdata->view_->merge_data(ohlc_data_resolutions::minute, new_ohlc_samples);
         // what is the last sample we currently have
         auto last_time = tdata->view_->get_last_sample_time(false);
         bitstamp_dbg<0>.debug(str<>("data merged up to"), tdata->view_->get_ticker_string(), msecs_unix_to_calendar_time(last_time));
         tdata->view_->delete_live_data_up_to(last_time);
         //
-        emit new_ohlc_data(tdata, ohlc_chart_data::minute);
+        emit new_ohlc_data(tdata, ohlc_data_resolutions::minute);
     }
     catch (std::exception& e)
     {
@@ -985,15 +985,15 @@ void bitstamp_network::new_ohlc_data_event(ticker_data *tdata, double old_res)
     //
     // get all available candle resolutions, except highest res
     // since we we use that one to generate all the others
-    const auto &resolutions = ohlc_chart_data::available_resolutions();
+    const auto &resolutions = ohlc_data_resolutions::available_resolutions();
     for (size_t i=1; i<resolutions.size(); ++i) {
         auto const &res = resolutions[i];
         auto data = tdata->view_->get_dataset(res);
         if (data) {
-            data->resample_update(res, tdata->view_->get_dataset(res.base_), ohlc_chart_data::get_resolution(res.base_));
+            data->resample_update(res, tdata->view_->get_dataset(res.base_), ohlc_data_resolutions::get_resolution(res.base_));
         }
         else {
-            data = tdata->view_->get_dataset(res.base_)->resample(res, ohlc_chart_data::get_resolution(res.base_));
+            data = tdata->view_->get_dataset(res.base_)->resample(res, ohlc_data_resolutions::get_resolution(res.base_));
             tdata->view_->add_dataset(res, data);
         }
     }

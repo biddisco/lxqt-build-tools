@@ -90,13 +90,21 @@ void make_heikin_ashi_pipeline(ohlc_input_type &ohlc_input,
                                      std::vector<event_type> &event_pipelines,
                                      std::vector<price_type> &price_pipelines)
 {
-    auto pipeline = ((ohlc_input | ohlc_candlemaker(res, ohlc_chart_data::minute).f() | ohlc_heikin_ashi().f() | heikin_ashi_transition().f())
+    using cm_filter = pipeline::filter<std::optional<QwtOHLCSample>, const QwtOHLCSample&>;
+    using ha_filter = pipeline::filter<std::optional<QwtOHLCSample>, std::optional<QwtOHLCSample>>;
+    using ha_trans  = pipeline::filter<buy_sell_type, std::optional<QwtOHLCSample>>;
+    using time_filt = pipeline::filter<trade_event, buy_sell_type, double>;
+
+    auto pipeline = ((ohlc_input |
+                      cm_filter(ohlc_candlemaker(res, ohlc_data_resolutions::minute)) |
+                      ha_filter(ohlc_heikin_ashi()) |
+                      ha_trans(heikin_ashi_transition()))
                      +
                     (time_input | dummy<double>().f()))
-                    | add_time_filter().f();
+                    | time_filt(add_time_filter());
     event_pipelines.push_back(pipeline);
     //
-    int N = res.res_ / ohlc_chart_data::minute;
+    int N = res.res_ / ohlc_data_resolutions::minute;
     auto pipeline2 = ((ohlc_input | volume_weighted_moving_average(N).f()));
     price_pipelines.push_back(pipeline2);
 }
@@ -108,10 +116,11 @@ void make_moving_average_gradient(ohlc_input_type &ohlc_input,
                                         std::vector<event_type> &event_pipelines,
                                         std::vector<price_type> &price_pipelines)
 {
+    using time_filt = pipeline::filter<trade_event, buy_sell_type, double>;
     auto pipeline = ((ohlc_input | volume_weighted_moving_average(N).f() | gradient_change().f())
                     +
                      (time_input | dummy<double>().f()))
-                     | add_time_filter().f();
+                     | time_filt(add_time_filter());
     event_pipelines.push_back(pipeline);
     //
     auto pipeline2 = ((ohlc_input | volume_weighted_moving_average(N).f()));
@@ -126,13 +135,14 @@ void make_moving_average_cross(ohlc_input_type &ohlc_input,
                                      std::vector<event_type> &event_pipelines,
                                      std::vector<price_type> &price_pipelines)
 {
+    using time_filt = pipeline::filter<trade_event, buy_sell_type, double>;
 #define VWMA volume_weighted_moving_average
     auto pipeline = ((((ohlc_input | VWMA(N).f())
                         +
                        (ohlc_input | VWMA(M).f()))
                       | cross().f())
                      + (time_input | dummy<double>().f()))
-                        | add_time_filter().f();
+                        | time_filt(add_time_filter());
     event_pipelines.push_back(pipeline);
     //
     auto pipeline2 = ((ohlc_input | VWMA(N).f()));

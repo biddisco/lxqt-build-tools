@@ -31,7 +31,7 @@
 #include "src/widgets/connection_widget.hpp"
 #include "src/widgets/currency_widget.hpp"
 #include "src/widgets/password_dialog.hpp"
-#include "src/widgets/trade_algorithm.hpp"
+#include "src/widgets/indicator_dialog.hpp"
 #include "src/widgets/trade_widget.hpp"
 #include "src/widgets/wallet_widget.hpp"
 //
@@ -840,8 +840,8 @@ void GroxMainWindow::execute_filter()
     bool all_resolutions = false;
     int algorithm = ta_dialog.algorithm();
 
-    std::vector<candle_res> resolutions = ohlc_chart_data::available_resolutions();
-    candle_res base_resolution = ohlc_chart_data::minute;
+    std::vector<candle_res> resolutions = ohlc_data_resolutions::available_resolutions();
+    candle_res base_resolution = ohlc_data_resolutions::minute;
     // get the highest resolution used by the algorithm
     if (!all_resolutions) {
         resolutions.clear();
@@ -854,7 +854,7 @@ void GroxMainWindow::execute_filter()
         base_resolution = ohlc_chart_data::gcd(base_resolution, res);
     }
 
-//    base_resolution = ohlc_chart_data::minute;
+//    base_resolution = ohlc_data_resolutions::minute;
 
     auto dataset = app_ini->data_manager_->get_dataset(base_resolution);
     auto data = dataset->ohlc_samples_;
@@ -928,7 +928,7 @@ void GroxMainWindow::execute_filter()
             continue;
 
         ohlc_in.set(ohlc);
-        time_in.set(ohlc.time + base_resolution.res_); + ohlc_chart_data::minute);
+        time_in.set(ohlc.time + base_resolution.res_); + ohlc_data_resolutions::minute);
 
         for (uint i=0; i<price_pipelines.size(); ++i) {
             auto &pipe = price_pipelines[i];

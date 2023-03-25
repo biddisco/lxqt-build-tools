@@ -360,11 +360,12 @@ set(GROX_SRC
     src/widgets/currency_widget.cpp
     src/widgets/digital_clock.cpp
     src/widgets/password_dialog.cpp
-    src/widgets/trade_algorithm.cpp
+    src/widgets/indicator_dialog.cpp
     src/widgets/trade_widget.cpp
     src/widgets/wallet_widget.cpp
     src/widgets/xrp_functions.cpp
     src/widgets/price_chart_widget.cpp
+    src/widgets/indicator_label.hpp
 
     # plotting
     src/plot/OrderBookPlot.cpp

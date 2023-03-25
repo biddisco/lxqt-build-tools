@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>trade_algorithm</class>
- <widget class="QWidget" name="trade_algorithm">
+ <class>indicator_dialog</class>
+ <widget class="QWidget" name="indicator_dialog">
   <property name="enabled">
    <bool>true</bool>
   </property>

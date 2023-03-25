@@ -74,9 +74,9 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
         auto last_existing = ohlc_samples_->data().back().time;
         auto first_new = new_ohlc_samples_.front().time;
         // new samples must start exactly one timestep after old
-        int offset = (first_new - last_existing) / ohlc_chart_data::minute;
+        int offset = (first_new - last_existing) / ohlc_data_resolutions::minute;
         ohlc_dbg<5>.debug(str<>("merging"), ticker_str_, "new samples offset", dec<5>(offset));
-        if (first_new - last_existing != ohlc_chart_data::minute)
+        if (first_new - last_existing != ohlc_data_resolutions::minute)
         {
             throw std::runtime_error("Data OHLC time mismatch in merge");
         }

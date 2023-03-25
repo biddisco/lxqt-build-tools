@@ -5,8 +5,6 @@
 #include <optional>
 // Qwt
 #include <QwtOHLCSample>
-//
-#include "src/stream/pipeline.hpp"
 
 // ----------------------------------------------------------------------------
 enum buy_sell_type {
@@ -64,9 +62,6 @@ struct ohlc_heikin_ashi
         prev_ = result;
         return result;
     }
-
-    pipeline::filter<std::optional<QwtOHLCSample>, std::optional<QwtOHLCSample>> f() { return *this; }
-
 };
 
 // ----------------------------------------------------------------------------
@@ -104,7 +99,6 @@ struct heikin_ashi_transition
         return buy_sell_type::no_event;
     }
 
-    pipeline::filter<buy_sell_type, std::optional<QwtOHLCSample>> f() { return *this; }
 };
 
 // ----------------------------------------------------------------------------
@@ -116,6 +110,4 @@ struct add_time_filter
     {
         return {time, bs};
     }
-
-    pipeline::filter<trade_event, buy_sell_type, double> f() { return *this; }
 };

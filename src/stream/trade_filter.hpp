@@ -16,21 +16,6 @@
 #include <boost/accumulators/statistics/median.hpp>
 #include <boost/accumulators/statistics/weighted_median.hpp>
 
-// ----------------------------------------------------------------------------
-struct trade_algo_data {
-    const std::string name;
-    const int num_datasets;
-    const int num_params;
-    const std::vector<double> defaults;
-};
-
-const std::vector<trade_algo_data> available_algorithms = {
-    {"Heikin Ashi", 1, 0, {}},
-    {"MA gradient", 1, 0, {}},
-    {"MA cross",    2, 0, {}},
-    {"MACD",        1, 3, {12, 26, 9}},
-};
-
 
 //----------------------------------------------------------------------------
 struct volume_weighted_moving_average

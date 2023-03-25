@@ -6,7 +6,6 @@
 // Qt
 #include <QVector>
 // Grox
-#include "src/stream/pipeline.hpp"
 #include "src/plot/ohlc_chart_data.hpp"
 #include "src/plot/ohlc_chart_curve.hpp"
 
@@ -67,8 +66,6 @@ struct ohlc_candlemaker
         }
         return std::nullopt;
     }
-
-    pipeline::filter<std::optional<QwtOHLCSample>, const QwtOHLCSample&> f() { return *this; }
 
 private:
     QwtOHLCSample val_;

@@ -24,15 +24,15 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, const currency &c1, c
 {
     data_manager_ = global_settings()->data_manager_;
     // insert empty highest resolution candle dataset
-    ohlc_datasets *min_res = new ohlc_datasets(ohlc_chart_data::minute, ticker_string_);
-    candles_.insert(std::make_pair(ohlc_chart_data::minute, min_res));
+    ohlc_datasets *min_res = new ohlc_datasets(ohlc_data_resolutions::minute, ticker_string_);
+    candles_.insert(std::make_pair(ohlc_data_resolutions::minute, min_res));
     // load highest res data
     read_from_disk();
     // generate lower res datasets from loaded data
-    const auto &resolutions = ohlc_chart_data::available_resolutions();
+    const auto &resolutions = ohlc_data_resolutions::available_resolutions();
     for (size_t i=1; i<resolutions.size(); ++i) {
         auto const &res = resolutions[i];
-        auto new_data = get_dataset(res.base_)->resample(res, ohlc_chart_data::get_resolution(res.base_));
+        auto new_data = get_dataset(res.base_)->resample(res, ohlc_data_resolutions::get_resolution(res.base_));
         if (new_data) {
             add_dataset(res, new_data);
         }
@@ -93,9 +93,9 @@ void ohlc_dataset_view::truncate_from_time(double t)
         auto index = samples->sample_index(t);
         samples->data().resize(index);
         man_dbg<0>.debug(str<>("Truncating"), ticker_string_,
-                     str<3>(ohlc_chart_data::get_resolution(res).name_)
+                     str<3>(ohlc_data_resolutions::get_resolution(res).name_)
                      , "at index", dec<9>(index));
-        if (res==ohlc_chart_data::minute) {
+        if (res==ohlc_data_resolutions::minute) {
             data_manager_->write_hdf5("bitstamp", ticker_string_, samples->data(), 0, true);
         }
     }
@@ -186,7 +186,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max(double res, double start_time, doubl
     auto mm1 = get_min_max(get_dataset(res)->ohlc_samples_, res, start_time, end_time);
 
     // live data is always at highest resolution, but if it is out of range, ignore it
-    res = ohlc_chart_data::minute;
+    res = ohlc_data_resolutions::minute;
     auto mm2 = get_min_max(get_dataset(res)->live_samples_, res, start_time, end_time);
     if (mm2.valid_==false) {
         return mm1;
@@ -217,7 +217,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(double res, double start_time
         result.min_volume_ = 0;
         result.max_volume_ = 1;
     }
-    man_dbg<8>.debug(str<>("min_max"), ohlc_chart_data::get_resolution(res).name_
+    man_dbg<8>.debug(str<>("min_max"), ohlc_data_resolutions::get_resolution(res).name_
                      , msecs_unix_to_calendar_time(start_time)
                      , "->", msecs_unix_to_calendar_time(end_time)
                      , "(", result.min_price_, ",", result.max_price_, ")");
@@ -227,14 +227,14 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(double res, double start_time
 // ----------------------------------------------------------------------------
 ohlc_chart_data *ohlc_dataset_view::get_live_data()
 {
-    ohlc_datasets *temp = get_dataset(ohlc_chart_data::minute);
+    ohlc_datasets *temp = get_dataset(ohlc_data_resolutions::minute);
     return temp->live_samples_;
 }
 
 // ----------------------------------------------------------------------------
 ohlc_chart_curve *ohlc_dataset_view::get_live_curve()
 {
-    ohlc_datasets *temp = get_dataset(ohlc_chart_data::minute);
+    ohlc_datasets *temp = get_dataset(ohlc_data_resolutions::minute);
     return temp->live_curve_;
 }
 
@@ -242,7 +242,7 @@ ohlc_chart_curve *ohlc_dataset_view::get_live_curve()
 bool ohlc_dataset_view::add_live_data(QwtOHLCSample new_sample)
 {
     // snap sample to last minute in which it occured
-    new_sample.time = ohlc_chart_data::minute*std::trunc(new_sample.time/ohlc_chart_data::minute);
+    new_sample.time = ohlc_data_resolutions::minute*std::trunc(new_sample.time/ohlc_data_resolutions::minute);
 
     auto live_samples = candles_.begin()->second->live_samples_;
     // if this is the first one, just add it
@@ -259,7 +259,7 @@ bool ohlc_dataset_view::add_live_data(QwtOHLCSample new_sample)
         auto prev = live_samples->data().back();
         prev.high = prev.low = prev.open = prev.close;
         for (size_t s=live_samples->size(); s<=index; ++s) {
-            prev.time += ohlc_chart_data::minute;
+            prev.time += ohlc_data_resolutions::minute;
             live_samples->append(prev);
         }
         // return true as new candle is being started

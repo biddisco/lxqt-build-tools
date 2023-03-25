@@ -4,7 +4,9 @@
 #include "ui_price_chart_widget.h"
 //
 #include "src/data/ohlc_dataset_manager.hpp"
+#include "src/indicators/indicator_definitiions.hpp"
 #include "src/widgets/digital_clock.hpp"
+#include "src/widgets/indicator_dialog.hpp"
 //
 #include "src/print.hpp"
 #include "src/settings.hpp"
@@ -50,11 +52,15 @@ price_chart_widget::price_chart_widget(QWidget* parent,
     filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
 
     QStringList slist("Auto");
-    for (const auto& r : ohlc_chart_data::available_resolutions())
+    for (const auto& r : ohlc_data_resolutions::available_resolutions())
     {
         slist << r.name_;
     }
     ui->candle_res->addItems(slist);
+
+    indicators_ = new indicator_label(this);
+    indicators_->setText("Indicators");
+    ui->controls_layout->addWidget(indicators_);
 
     DigitalClock* clock =
         new DigitalClock(this, global_settings()->get_global_clock_timer());
@@ -103,7 +109,7 @@ void price_chart_widget::connect_gui()
         [this](int index) {
             if (index > 0)
             {
-                double res = ohlc_chart_data::available_resolutions()[index - 1];
+                double res = ohlc_data_resolutions::available_resolutions()[index - 1];
                 crypto_price_plot_->set_auto_candle_resolution(false);
                 if (crypto_price_plot_->adjust_candle_size(res))
                 {
@@ -173,6 +179,40 @@ void price_chart_widget::connect_gui()
         },
         Qt::QueuedConnection);
 
+
+    QAction* pAction1 = new QAction("Moving average", indicators_);
+    QAction* pAction2 = new QAction("bar", indicators_);
+    QAction* pAction3 = new QAction("test", indicators_);
+    indicators_->addAction(pAction1);
+    indicators_->addAction(pAction2);
+    indicators_->addAction(pAction3);
+
+    connect(pAction1, &QAction::triggered, this, [this](bool b) {
+        pplot_dbg<0>.debug(str<>("Moving Average"), exchange_->name(), ticker_string_);
+
+        indicator_dialog in_dialog = indicator_dialog();
+        auto result = in_dialog.exec();
+        if (result == QDialog::Rejected)
+            return;
+        if (result != QDialog::Accepted)
+        {
+            int col = 0;
+            //            price_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
+
+            //            filters_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
+            //            filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
+
+            //            assets_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
+            //            assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
+            return;
+        }
+
+        indicator_moving_average ma{};
+        ma.generate(hdf5_ohlc_);
+    });
+//    connect(pAction2, SIGNAL(triggered()), this, SLOT(onAction2()));
+//    connect(pAction3, SIGNAL(triggered()), this, SLOT(onAction3()));
+
     filters_plot_->hide();
     assets_plot_->hide();
 }
@@ -185,32 +225,32 @@ void price_chart_widget::graph_rescale(int range)
     double t1 = 0, t2 = last_time;
     if (range == -2)
     {
-        t1 = last_time - 0.25 * ohlc_chart_data::day;
+        t1 = last_time - 0.25 * ohlc_data_resolutions::day;
     }
     else if (range == -1)
     {
-        t1 = last_time - 0.5 * ohlc_chart_data::day;
+        t1 = last_time - 0.5 * ohlc_data_resolutions::day;
     }
     else if (range == 0)
     {
-        t1 = last_time - 1.0 * ohlc_chart_data::day;
+        t1 = last_time - 1.0 * ohlc_data_resolutions::day;
     }
     else if (range == 1)
     {
-        t1 = last_time - 7 * ohlc_chart_data::day;
+        t1 = last_time - 7 * ohlc_data_resolutions::day;
     }
     else if (range == 2)
     {
-        t1 = last_time - 31 * ohlc_chart_data::day;
+        t1 = last_time - 31 * ohlc_data_resolutions::day;
     }
     else if (range == 3)
     {
-        t1 = last_time - 365 * ohlc_chart_data::day;
+        t1 = last_time - 365 * ohlc_data_resolutions::day;
     }
     // special case, to extend current view with new data
     else if (range == 100)
     {
-        t1 = last_time - 365 * ohlc_chart_data::day;
+        t1 = last_time - 365 * ohlc_data_resolutions::day;
     }
     else
     {

@@ -1,28 +1,14 @@
 #pragma once
 //
-#include <any>
-#include <iostream>
-#include <optional>
 #include <tuple>
-#include <vector>
-//
-// Boost Accumulators
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/stats.hpp>
-#include <boost/accumulators/statistics/mean.hpp>
-#include <boost/accumulators/statistics/rolling_mean.hpp>
-#include <boost/accumulators/statistics/moment.hpp>
-#include <boost/accumulators/statistics/median.hpp>
-#include <boost/accumulators/statistics/weighted_median.hpp>
+#include <utility>
 //
 namespace pipeline {
 
     template <typename Out, typename ... Args>
-//    using pfunc = std::function<Out(Args...)>;
     struct pfunc : std::function<Out(Args...)> {
         using std::function<Out(Args...)>::function;
     };
-
 
     // --------------------------------------------------------------
     template <typename Out>
@@ -36,92 +22,12 @@ namespace pipeline {
     template <typename Out, typename... Args>
     using filter = pfunc<Out, Args...>;
 
-/*
-    template <typename Filter, typename Out, typename ... Args>
-    struct shared_filter;
-
-    // --------------------------------------------------------------
-    template <typename Filter, typename Out>
-    struct shared_filter<Filter, Out>
-    {
-        using shared_filter_type = shared_filter<Filter, Out>;
-
-        // Makes a copy of the filter as a shared pointer
-        shared_filter(Filter& f) {
-            filter_ = std::make_shared<Filter>(f);
-        };
-
-        // provide default copy, move, assignment
-        shared_filter(const shared_filter_type &) = default;
-        shared_filter(shared_filter_type &&) = default;
-        shared_filter_type & operator = (shared_filter_type &) = default;
-
-        // call operator invokes our internal function object and returns its result
-        Out operator () () const {
-            return filter_->operator()();
-        }
-
-        Filter &target() {
-            return filter_.get();
-        }
-    private:
-        // the function object we are wrapping
-        std::shared_ptr<Filter> filter_;
-    };
-
-    // --------------------------------------------------------------
-    template <typename Filter,
-              typename Out,
-              typename ... Args>
-    struct shared_filter
-    {
-        using shared_filter_type = shared_filter<Filter, Out, Args...>;
-
-        // Makes a copy of the filter as a shared pointer
-        shared_filter(Filter& f) {
-            filter_ = std::make_shared<Filter>(f);
-        };
-
-        // provide default copy, move, assignment
-        shared_filter(const shared_filter_type &) = default;
-        shared_filter(shared_filter_type &&) = default;
-        shared_filter_type & operator = (shared_filter_type &) = default;
-
-        // call operator invokes our internal function object and returns its result
-        Out operator () (Args... args) const {
-            return filter_->operator()(args...);
-        }
-
-        Filter &target() {
-            return filter_;
-        }
-    private:
-        // the function object we are wrapping
-        std::shared_ptr<Filter> filter_;
-    };
-*/
-
-    // --------------------------------------------------------------
-    // Make a shared filter from a filter
-//    template <typename Filter>
-//    [[nodiscard]] auto make(Filter&& f) {
-//        using Out  = typename Filter::Out;
-//        using Args = typename Filter::Args;
-//        if constexpr (std::is_same<void, Args>::value) {
-//            return input<Filter, Out>(f);
-//        }
-//        else {
-//            return shared_filter<Filter, Out, Args>(f);
-//        }
-//    }
-
-
     // --------------------------------------------------------------
     // pipeline operation : connect an input to a filter
     // return a function of type function<Output(Input /*=void*/)>
     // which Args a filter<Out,In>, void input gives filter<Out>
     template <typename Out, typename In>
-    decltype (auto) operator | (pipeline::input<In> ip, pipeline::filter<Out, In> f) {
+    pipeline::input<Out> operator | (pipeline::input<In> ip, pipeline::filter<Out, In> f) {
         pipeline::input<Out> new_function = [ip, f]() {
             In temp = ip();
             return f(temp);
@@ -133,7 +39,7 @@ namespace pipeline {
     // pipeline operation : Connect two filters
     // return a function of type function<Output(inputs...)>
     template <typename... In, typename Mid, typename Out>
-    decltype (auto) operator | (pipeline::filter<Mid, In...> ip, pipeline::filter<Out, Mid> op) {
+    pipeline::filter<Out, In...> operator | (pipeline::filter<Mid, In...> ip, pipeline::filter<Out, Mid> op) {
         pipeline::filter<Out, In...> new_function = [ip, op](In... args) {
             return op( ip(std::forward<In>(args)...) );
         };
@@ -144,7 +50,7 @@ namespace pipeline {
     // pipeline operation : connect a filter to an output
     // return a function of type pfunc<void(void)>
     template <typename Out>
-    decltype (auto) operator | (pipeline::filter<Out> ip, pipeline::output<Out> op) {
+    pipeline::output<> operator | (pipeline::filter<Out> ip, pipeline::output<Out> op) {
         pipeline::output<> new_function = [ip, op]() {
             op(ip());
         };
@@ -188,6 +94,7 @@ namespace pipeline {
         ((std::get<I>(tuple) = std::get<I>(func)()), ...);
     }
 
+    // --------------------------------------------------------------
     template <class Tuple, class Functions>
     constexpr decltype(auto) for_each(Tuple&& tuple, Functions&& f)
     {
@@ -224,11 +131,6 @@ namespace pipeline {
     };
 
     // --------------------------------------------------------------
-//    template <typename Out1, typename Out2>
-//    decltype(auto) operator + (pipeline::input<Out1> &&f1, pipeline::input<Out2> &&f2) {
-//        return filter_joiner<Out1, Out2, pipeline::input<Out1>, pipeline::input<Out2>>(std::move(f1), std::move(f2));
-//    }
-
     template <typename Out1, typename Out2, typename ... Args>
     decltype(auto) operator + (pipeline::pfunc<Out1, Args...> &&f1, pipeline::pfunc<Out2, Args...> &&f2) {
         return filter_joiner<Out1, Out2, pipeline::pfunc<Out1>, pipeline::pfunc<Out2>>(std::move(f1), std::move(f2));
