@@ -7,8 +7,9 @@
 #include "src/exchange/xrpl_network.hpp"
 
 // ----------------------------------------------------------------------------
-password_dialog::password_dialog()
+password_dialog::password_dialog(bool simple)
   : QDialog()
+  , simple_mode_(simple)
 {
     ui.setupUi(this);
     ui.ok_button->setEnabled(false);
@@ -34,7 +35,7 @@ password_dialog::password_dialog()
 
 password_dialog::password_dialog(const std::array<std::string, 5>& strings,
                                  const std::vector<ledger_wallet> &wallets)
-    : password_dialog()
+    : password_dialog(false)
 {
     // exchange data
     ui.api_user->setText(QString(strings[0].c_str()));
@@ -140,12 +141,14 @@ void password_dialog::refresh_gui(int index)
 // ----------------------------------------------------------------------------
 void password_dialog::enable_ok_button()
 {
-    if (ui.api_user->text().isEmpty() || ui.api_key->text().isEmpty() ||
-        ui.api_secret->text().isEmpty() || ui.api_tag->text().isEmpty() ||
-        ui.api_address->text().isEmpty() || ui.password->text().isEmpty())
-    {
-        ui.ok_button->setEnabled(false);
-        return;
+    if (!simple_mode_) {
+        if (ui.api_user->text().isEmpty() || ui.api_key->text().isEmpty() ||
+            ui.api_secret->text().isEmpty() || ui.api_tag->text().isEmpty() ||
+            ui.api_address->text().isEmpty() || ui.password->text().isEmpty())
+        {
+            ui.ok_button->setEnabled(false);
+            return;
+        }
     }
     if (ui.password->text() != ui.confirm->text())
     {

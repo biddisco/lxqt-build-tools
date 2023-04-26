@@ -16,7 +16,7 @@ class password_dialog : public QDialog
     std::vector<ledger_wallet> wallets_;
 
 public:
-    password_dialog();
+    password_dialog(bool simple);
     password_dialog(const std::array<std::string, 5>& strings,
                     const std::vector<ledger_wallet> &wallets);
     ~password_dialog();
@@ -42,4 +42,5 @@ private slots:
 
 private:
     Ui::password_dialog ui;
+    bool simple_mode_;
 };

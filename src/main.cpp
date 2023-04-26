@@ -5,19 +5,20 @@
 
 #include <algorithm>
 #include <memory>
+#include <regex>
 
-#include "src/network/evp-encrypt.hpp"
 #include "mainwindow.hpp"
-#include "src/widgets/password_dialog.hpp"
-#include "src/settings.hpp"
+#include "src/network/evp-encrypt.hpp"
 #include "src/print.hpp"
+#include "src/settings.hpp"
+#include "src/widgets/password_dialog.hpp"
 //
+#include <pika/init.hpp>
 #include <pika/modules/execution.hpp>
 #include <pika/modules/executors.hpp>
 #include <pika/modules/resource_partitioner.hpp>
 #include <pika/modules/schedulers.hpp>
 #include <pika/modules/thread_manager.hpp>
-#include <pika/init.hpp>
 #include <pika/program_options.hpp>
 
 // ----------------------------------------------------------------------------
@@ -79,7 +80,7 @@ QByteArray base64_decode(QByteArray ba)
     return QByteArray::fromBase64(ba);
 }
 
-QByteArray base64_decode(const secure_string &s)
+QByteArray base64_decode(const secure_string& s)
 {
     return QByteArray::fromBase64(QByteArray::fromStdString(s));
 }
@@ -100,7 +101,8 @@ void generate_encrypted_ini_data(password_dialog& npw)
 
     // we write a dummy random number to ini file
     // if this is present assume that the initial encryption step is valid
-    secure_string adummy_string = generate_random_alphanumeric_string(encryption::BLOCK_SIZE, 111111);
+    secure_string adummy_string =
+        generate_random_alphanumeric_string(encryption::BLOCK_SIZE, 111111);
     settings.setValue("EncodedData/randomBytes",
         QString::fromStdString(base64_encode(adummy_string).toStdString()));
 
@@ -109,7 +111,7 @@ void generate_encrypted_ini_data(password_dialog& npw)
     // -----------------------
     encryption encryptor(app_ini->grox_password, app_ini->randomBytes);
     //
-    auto &bitstamp = bitstamp_network::get_bitstamp_instance()->account();
+    auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
     bitstamp.API_user = npw.getAPIUser().toStdString();
     bitstamp.API_key = npw.getAPIKey().toStdString();
     bitstamp.API_secret = npw.getAPISecret().toStdString();
@@ -135,7 +137,8 @@ void generate_encrypted_ini_data(password_dialog& npw)
     xrpl_network::get_xrpl_instance(true)->clear_wallets();
     xrpl_network::get_xrpl_instance(false)->clear_wallets();
     int index = 0;
-    for (const auto &w : npw.get_wallets()) {
+    for (const auto& w : npw.get_wallets())
+    {
         std::dynamic_pointer_cast<xrpl_network>(w.network_)->add_wallet(w);
         secure_string name_ = encryptor.encrypt(w.name_);
         secure_string public_ = encryptor.encrypt(w.public_);
@@ -148,9 +151,26 @@ void generate_encrypted_ini_data(password_dialog& npw)
             QString::fromStdString(base64_encode(public_).toStdString()));
         settings.setValue("EncryptedData/XRP_secret_" + num,
             QString::fromStdString(base64_encode(private_).toStdString()));
-        xrpl_network * net = dynamic_cast<xrpl_network*>(w.network_.get());
+        xrpl_network* net = dynamic_cast<xrpl_network*>(w.network_.get());
         settings.setValue("EncryptedData/XRP_test_" + num, net->testnet());
     }
+}
+
+// ----------------------------------------------------------------------------
+std::string exec(const char* cmd)
+{
+    std::array<char, 1024> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe)
+    {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
+    {
+        result += buffer.data();
+    }
+    return result;
 }
 
 // ----------------------------------------------------------------------------
@@ -170,21 +190,47 @@ int qt_main(int argc, char* argv[])
     app_settings* app_ini = global_settings();
     QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
     //
+    bool authenticated = false;
     if (std::getenv("rand3") != nullptr)
     {
         // generate a base64 encoded pw : bash commmand : echo "password" | base64
         std::string raw = std::getenv("rand3");
         app_ini->grox_password = base64_decode(raw).toStdString();
-        app_ini->grox_password = app_ini->grox_password.substr(8,13);
+        app_ini->grox_password = app_ini->grox_password.substr(8, 13);
+        authenticated = true;
     }
     else
     {
-        app_dbg<5>.debug(str<>("GROX_PASSWORD"), "base64 encoded var");
+        std::string commandLine = "ssh pi@192.168.1.15 cat /home/pi/.ssh/.skey.sh";
+        std::cout << "Executing command: " << commandLine << std::endl;
+        auto result = exec(commandLine.c_str());
+        std::regex rgx(".*rand3=\"(.*)\".*");
+        std::smatch match;
+        if (std::regex_search(result, match, rgx))
+        {
+            app_ini->grox_password = base64_decode(match[1]).toStdString();
+            app_ini->grox_password = app_ini->grox_password.substr(8, 13);
+            authenticated = true;
+        }
+    }
+    if (!authenticated)
+    {
+        password_dialog npw(true);
+        if (npw.exec() == QDialog::Accepted)
+        {
+            app_ini->grox_password = npw.getPassword().toStdString();
+            authenticated = true;
+        }
+    }
+    if (!authenticated)
+    {
+        app_dbg<5>.error(str<>("Authentication"), "fail");
         return EXIT_FAILURE;
     }
 
     // we need random data for the encryption block
-    app_ini->randomBytes = generate_random_alphanumeric_string(encryption::BLOCK_SIZE, 654792);
+    app_ini->randomBytes =
+        generate_random_alphanumeric_string(encryption::BLOCK_SIZE, 654792);
 
     // read random initialization data
     QByteArray rand =
@@ -194,7 +240,7 @@ int qt_main(int argc, char* argv[])
     // then we should ask the user for new password and account details
     if (rand.size() != encryption::BLOCK_SIZE)
     {
-        password_dialog npw;
+        password_dialog npw(false);
         if (npw.exec() == QDialog::Accepted)
         {
             generate_encrypted_ini_data(npw);
@@ -211,7 +257,7 @@ int qt_main(int argc, char* argv[])
         // Bitstamp exchange details
         // ---------------------------------------
         app_ini->networks_.push_back(bitstamp_network::get_bitstamp_instance());
-        auto &bitstamp = bitstamp_network::get_bitstamp_instance()->account();
+        auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
         bitstamp.network_ = bitstamp_network::get_bitstamp_instance();
 
         QByteArray API_user =
@@ -223,7 +269,8 @@ int qt_main(int argc, char* argv[])
             base64_decode(settings.value("EncryptedData/API_key", "").toByteArray());
         bitstamp.API_key =
             encryptor.decrypt(secure_string(API_key.data(), API_key.size()));
-        if (std::getenv("Rand2")) {
+        if (std::getenv("Rand2"))
+        {
             bitstamp.API_key = std::getenv("Rand2");
             app_dbg<5>.debug(str<>("Using ENV key"));
         }
@@ -232,7 +279,8 @@ int qt_main(int argc, char* argv[])
             base64_decode(settings.value("EncryptedData/API_secret", "").toByteArray());
         bitstamp.API_secret =
             encryptor.decrypt(secure_string(API_secret.data(), API_secret.size()));
-        if (std::getenv("Rand3")) {
+        if (std::getenv("Rand3"))
+        {
             bitstamp.API_secret = std::getenv("Rand3");
             app_dbg<5>.debug(str<>("Using ENV sec"));
         }
@@ -243,8 +291,8 @@ int qt_main(int argc, char* argv[])
             encryptor.decrypt(secure_string(API_tag_.data(), API_tag_.size())).c_str());
 
         //
-        QByteArray API_public_ =
-            base64_decode(settings.value("EncryptedData/API_xrpaddress", "").toByteArray());
+        QByteArray API_public_ = base64_decode(
+            settings.value("EncryptedData/API_xrpaddress", "").toByteArray());
         bitstamp.public_ =
             encryptor.decrypt(secure_string(API_public_.data(), API_public_.size()));
 
@@ -256,38 +304,44 @@ int qt_main(int argc, char* argv[])
         //
         bool present = true;
         int index = 0;
-        while (present) {
+        while (present)
+        {
             QString num = QString::number(index);
-            if (!settings.contains("EncryptedData/XRP_name_" + num)) present = false;
-            else {
+            if (!settings.contains("EncryptedData/XRP_name_" + num))
+                present = false;
+            else
+            {
                 ledger_wallet w;
                 //
-                bool XRP_testnet = settings.value("EncryptedData/XRP_test_" + num, "false").toBool();
-                if (XRP_testnet) {
+                bool XRP_testnet =
+                    settings.value("EncryptedData/XRP_test_" + num, "false").toBool();
+                if (XRP_testnet)
+                {
                     w.network_ = xrpl_network::get_xrpl_instance(true);
                     w.testnet_ = true;
                 }
-                else {
+                else
+                {
                     w.network_ = xrpl_network::get_xrpl_instance(false);
                     w.testnet_ = false;
                 }
-                w.tag_    = 0;
+                w.tag_ = 0;
                 w.widget_ = nullptr;
                 //
-                QByteArray XRP_name =
-                    base64_decode(settings.value("EncryptedData/XRP_name_" + num, "").toByteArray());
+                QByteArray XRP_name = base64_decode(
+                    settings.value("EncryptedData/XRP_name_" + num, "").toByteArray());
                 w.name_ =
                     encryptor.decrypt(secure_string(XRP_name.data(), XRP_name.size()));
                 //
-                QByteArray XRP_public =
-                    base64_decode(settings.value("EncryptedData/XRP_public_" + num, "").toByteArray());
-                w.public_ =
-                    encryptor.decrypt(secure_string(XRP_public.data(), XRP_public.size()));
+                QByteArray XRP_public = base64_decode(
+                    settings.value("EncryptedData/XRP_public_" + num, "").toByteArray());
+                w.public_ = encryptor.decrypt(
+                    secure_string(XRP_public.data(), XRP_public.size()));
                 //
-                QByteArray XRP_secret =
-                    base64_decode(settings.value("EncryptedData/XRP_secret_" + num, "").toByteArray());
-                w.private_ =
-                    encryptor.decrypt(secure_string(XRP_secret.data(), XRP_secret.size()));
+                QByteArray XRP_secret = base64_decode(
+                    settings.value("EncryptedData/XRP_secret_" + num, "").toByteArray());
+                w.private_ = encryptor.decrypt(
+                    secure_string(XRP_secret.data(), XRP_secret.size()));
 
                 std::dynamic_pointer_cast<xrpl_network>(w.network_)->add_wallet(w);
             }
@@ -297,7 +351,7 @@ int qt_main(int argc, char* argv[])
 
     if (argc > 1 && std::string(argv[1]) == std::string("decode"))
     {
-        auto &bitstamp = bitstamp_network::get_bitstamp_instance()->account();
+        auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
         app_dbg<5>.debug("\nDecrypted information\n");
         app_dbg<5>.debug("API_user       : ", bitstamp.API_user);
         app_dbg<5>.debug("API_key        : ", bitstamp.API_key);
@@ -305,16 +359,18 @@ int qt_main(int argc, char* argv[])
         app_dbg<5>.debug("xrp.tag        : ", bitstamp.tag_);
         app_dbg<5>.debug("xrp.public     : ", bitstamp.public_);
         //
-        auto const & x1 = xrpl_network::get_xrpl_instance(false)->wallets();
-        auto const & x2 = xrpl_network::get_xrpl_instance(true)->wallets();
-        for (const auto lw : x1) {
+        auto const& x1 = xrpl_network::get_xrpl_instance(false)->wallets();
+        auto const& x2 = xrpl_network::get_xrpl_instance(true)->wallets();
+        for (const auto lw : x1)
+        {
             auto w = static_cast<ledger_wallet*>(lw);
             app_dbg<5>.debug("XRP_name       : ", w->name_);
             app_dbg<5>.debug("XRP_public     : ", w->public_);
             app_dbg<5>.debug("XRP_secret     : ", w->private_);
             app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
         }
-        for (const auto lw : x2) {
+        for (const auto lw : x2)
+        {
             auto w = static_cast<ledger_wallet*>(lw);
             app_dbg<5>.debug("XRP_name       : ", w->name_);
             app_dbg<5>.debug("XRP_public     : ", w->public_);
@@ -339,17 +395,17 @@ int qt_main(int argc, char* argv[])
 //----------------------------------------------------------------------------
 std::string qt_pool_name = "Qt:pool";
 //----------------------------------------------------------------------------
-int pika_main(int argc, char ** argv)
+int pika_main(int argc, char** argv)
 {
     namespace ex = pika::execution::experimental;
     namespace tt = pika::this_thread::experimental;
 
     // Get a scheduler on the thread pool we have reserved for Qt
-    auto qt_sch = ex::thread_pool_scheduler{
-            &pika::resource::get_thread_pool(qt_pool_name)};
+    auto qt_sch =
+        ex::thread_pool_scheduler{&pika::resource::get_thread_pool(qt_pool_name)};
 
     // create a sender to transfer work to the qt pool scheduler
-    auto snd = ex::transfer_just(qt_sch) | ex::then([argc, argv](){
+    auto snd = ex::transfer_just(qt_sch) | ex::then([argc, argv]() {
         // run the main qt application entry on our thread
         qt_main(argc, argv);
     });
@@ -362,11 +418,12 @@ int pika_main(int argc, char ** argv)
 }
 
 //----------------------------------------------------------------------------
-void init_resource_partitioner_handler(pika::resource::partitioner& rp,
-    pika::program_options::variables_map const& vm)
+void init_resource_partitioner_handler(
+    pika::resource::partitioner& rp, pika::program_options::variables_map const& vm)
 {
     // Don't create the pool if the user disabled it
-    if (vm["no-qt-pool"].as<bool>()) {
+    if (vm["no-qt-pool"].as<bool>())
+    {
         qt_pool_name = "default";
         return;
     }
@@ -379,11 +436,10 @@ void init_resource_partitioner_handler(pika::resource::partitioner& rp,
 #endif
 
     // Create a thread pool with a single core for Qt
-    rp.create_thread_pool(qt_pool_name,
-        pika::resource::scheduling_policy::unspecified, mode);
+    rp.create_thread_pool(
+        qt_pool_name, pika::resource::scheduling_policy::unspecified, mode);
 
-    rp.add_resource(
-        rp.numa_domains()[0].cores()[0].pus()[0], qt_pool_name);
+    rp.add_resource(rp.numa_domains()[0].cores()[0].pus()[0], qt_pool_name);
 }
 
 //----------------------------------------------------------------------------
