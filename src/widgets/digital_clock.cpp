@@ -1,18 +1,25 @@
-#include <QTimer>
-#include <QTime>
 #include <QString>
+#include <QTime>
+#include <QTimer>
 //
 #include "digital_clock.hpp"
 
-DigitalClock::DigitalClock(QWidget *parent) : QLCDNumber(parent)
+DigitalClock::DigitalClock(QWidget* parent, QTimer* timer)
+  : QLCDNumber(parent)
 {
     setSegmentStyle(Flat);
     setDigitCount(8);
 
-    QTimer *timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, &DigitalClock::showTime);
-    timer->start(1000);
-
+    if (timer)
+    {
+        connect(timer, &QTimer::timeout, this, &DigitalClock::showTime);
+    }
+    else
+    {
+        QTimer* local_timer = new QTimer(this);
+        connect(local_timer, &QTimer::timeout, this, &DigitalClock::showTime);
+        local_timer->start(1000);
+    }
     showTime();
 }
 

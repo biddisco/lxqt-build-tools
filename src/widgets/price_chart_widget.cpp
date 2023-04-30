@@ -1,12 +1,13 @@
 #include <QMessageBox>
 //
-#include "ui_price_chart_widget.h"
 #include "src/widgets/price_chart_widget.hpp"
+#include "ui_price_chart_widget.h"
 //
 #include "src/data/ohlc_dataset_manager.hpp"
 #include "src/widgets/digital_clock.hpp"
 //
 #include "src/print.hpp"
+#include "src/settings.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -18,15 +19,14 @@ template <int Level>
 static print_threshold<Level, debug_level> pplot_dbg("PricePlt");
 
 // ----------------------------------------------------------------------------
-price_chart_widget::price_chart_widget(QWidget *parent,
-                                       std::shared_ptr<ohlc_dataset_view> ohlc,
-                                       std::shared_ptr<exchange> ex,
-                                       std::string ticker)
-    : QWidget(parent)
-    , ui(new Ui::price_chart_widget)
-    , exchange_(ex)
-    , hdf5_ohlc_(ohlc)
-    , ticker_string_(ticker)
+price_chart_widget::price_chart_widget(QWidget* parent,
+    std::shared_ptr<ohlc_dataset_view> ohlc, std::shared_ptr<exchange> ex,
+    std::string ticker)
+  : QWidget(parent)
+  , ui(new Ui::price_chart_widget)
+  , exchange_(ex)
+  , hdf5_ohlc_(ohlc)
+  , ticker_string_(ticker)
 {
     ui->setupUi(this);
     ui->ticker->setText(ticker.data());
@@ -50,12 +50,14 @@ price_chart_widget::price_chart_widget(QWidget *parent,
     filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
 
     QStringList slist("Auto");
-    for (const auto &r : ohlc_chart_data::available_resolutions()) {
+    for (const auto& r : ohlc_chart_data::available_resolutions())
+    {
         slist << r.name_;
     }
     ui->candle_res->addItems(slist);
 
-    DigitalClock *clock = new DigitalClock(this);
+    DigitalClock* clock =
+        new DigitalClock(this, global_settings()->get_global_clock_timer());
     ui->controls_layout->addWidget(clock);
     //
     connect_gui();
@@ -74,80 +76,102 @@ price_chart_widget::~price_chart_widget()
 void price_chart_widget::connect_gui()
 {
     // Graph resolution buttons
-    connect(ui->gt_6, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(-2);
-    } , Qt::QueuedConnection);
-    connect(ui->gt_12, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(-1);
-    } , Qt::QueuedConnection);
-    connect(ui->gt_d, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(0);
-    } , Qt::QueuedConnection);
-    connect(ui->gt_w, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(1);
-    } , Qt::QueuedConnection);
-    connect(ui->gt_m, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(2);
-    } , Qt::QueuedConnection);
-    connect(ui->gt_y, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(3);
-    } , Qt::QueuedConnection);
-    connect(ui->gt_a, &QAbstractButton::clicked, this, [this]() {
-        graph_rescale(4);
-    } , Qt::QueuedConnection);
+    connect(
+        ui->gt_6, &QAbstractButton::clicked, this, [this]() { graph_rescale(-2); },
+        Qt::QueuedConnection);
+    connect(
+        ui->gt_12, &QAbstractButton::clicked, this, [this]() { graph_rescale(-1); },
+        Qt::QueuedConnection);
+    connect(
+        ui->gt_d, &QAbstractButton::clicked, this, [this]() { graph_rescale(0); },
+        Qt::QueuedConnection);
+    connect(
+        ui->gt_w, &QAbstractButton::clicked, this, [this]() { graph_rescale(1); },
+        Qt::QueuedConnection);
+    connect(
+        ui->gt_m, &QAbstractButton::clicked, this, [this]() { graph_rescale(2); },
+        Qt::QueuedConnection);
+    connect(
+        ui->gt_y, &QAbstractButton::clicked, this, [this]() { graph_rescale(3); },
+        Qt::QueuedConnection);
+    connect(
+        ui->gt_a, &QAbstractButton::clicked, this, [this]() { graph_rescale(4); },
+        Qt::QueuedConnection);
 
-    connect(ui->candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
-        if (index>0) {
-            double res = ohlc_chart_data::available_resolutions()[index-1];
-            crypto_price_plot_->set_auto_candle_resolution(false);
-            if (crypto_price_plot_->adjust_candle_size(res)) {
-                crypto_price_plot_->adjust_data_scaling();
+    connect(
+        ui->candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+        [this](int index) {
+            if (index > 0)
+            {
+                double res = ohlc_chart_data::available_resolutions()[index - 1];
+                crypto_price_plot_->set_auto_candle_resolution(false);
+                if (crypto_price_plot_->adjust_candle_size(res))
+                {
+                    crypto_price_plot_->adjust_data_scaling();
+                }
+                crypto_price_plot_->replot();
             }
-            crypto_price_plot_->replot();
-        }
-        else {
-            crypto_price_plot_->set_auto_candle_resolution(true);
-            if (crypto_price_plot_->adjust_candle_size(0)) {
-                crypto_price_plot_->adjust_data_scaling();
+            else
+            {
+                crypto_price_plot_->set_auto_candle_resolution(true);
+                if (crypto_price_plot_->adjust_candle_size(0))
+                {
+                    crypto_price_plot_->adjust_data_scaling();
+                }
+                crypto_price_plot_->replot();
             }
-            crypto_price_plot_->replot();
-        }
-    } , Qt::QueuedConnection);
+        },
+        Qt::QueuedConnection);
 
-    connect(ui->heikin, QOverload<int>::of(&QCheckBox::stateChanged), this, [this](int state){
-        if (state) {
-            crypto_price_plot_->setMode(ohlc_chart_curve::HeikinAshi);
-        }
-        else {
-            crypto_price_plot_->setMode(QwtPlotTradingCurve::SymbolStyle::CandleStick);
-        }
-    } , Qt::QueuedConnection);
+    connect(
+        ui->heikin, QOverload<int>::of(&QCheckBox::stateChanged), this,
+        [this](int state) {
+            if (state)
+            {
+                crypto_price_plot_->setMode(ohlc_chart_curve::HeikinAshi);
+            }
+            else
+            {
+                crypto_price_plot_->setMode(
+                    QwtPlotTradingCurve::SymbolStyle::CandleStick);
+            }
+        },
+        Qt::QueuedConnection);
 
-    connect(crypto_price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this, [this](QPointF p) {
-        auto crosshairs = crypto_price_plot_->get_crosshairs();
-        double msecs = crosshairs->quantize_x_coord(p.x());
-        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msecs);
-        QString s = QLocale::system().toString(dt, "dd-MM-yy hh:mm");
+    connect(
+        crypto_price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this,
+        [this](QPointF p) {
+            auto crosshairs = crypto_price_plot_->get_crosshairs();
+            double msecs = crosshairs->quantize_x_coord(p.x());
+            const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msecs);
+            QString s = QLocale::system().toString(dt, "dd-MM-yy hh:mm");
 
-        QMessageBox::StandardButton reply;
-        reply = QMessageBox::question(this, "Confirm", "Delete from " + s,
-                                      QMessageBox::Yes|QMessageBox::No);
-        if (reply == QMessageBox::Yes) {
-            hdf5_ohlc_->truncate_from_time(msecs);
-            pplot_dbg<0>.error(str<>("emit update_candlestick_data"));
-            // update_candlestick_data();
-        } else {
-            pplot_dbg<0>.debug(str<>("Yes *not* clicked"));
-        }
-    } , Qt::QueuedConnection);
+            QMessageBox::StandardButton reply;
+            reply = QMessageBox::question(
+                this, "Confirm", "Delete from " + s, QMessageBox::Yes | QMessageBox::No);
+            if (reply == QMessageBox::Yes)
+            {
+                hdf5_ohlc_->truncate_from_time(msecs);
+                pplot_dbg<0>.error(str<>("emit update_candlestick_data"));
+                // update_candlestick_data();
+            }
+            else
+            {
+                pplot_dbg<0>.debug(str<>("Yes *not* clicked"));
+            }
+        },
+        Qt::QueuedConnection);
 
-    connect(crypto_price_plot_, &ohlc_price_plot::plotScaleChanged, this, [this](double t1, double t2) {
-        filters_plot_->update_time_axis(t1, t2);
-        assets_plot_->update_time_axis(t1, t2);
+    connect(
+        crypto_price_plot_, &ohlc_price_plot::plotScaleChanged, this,
+        [this](double t1, double t2) {
+            filters_plot_->update_time_axis(t1, t2);
+            assets_plot_->update_time_axis(t1, t2);
 
-//                axisScaleDraw(QwtPlot::xBottom)->, crypto_price_plot_->axisScaleDraw(QwtPlot::xBottom));
-        //    filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
-    } , Qt::QueuedConnection);
+            //                axisScaleDraw(QwtPlot::xBottom)->, crypto_price_plot_->axisScaleDraw(QwtPlot::xBottom));
+            //    filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
+        },
+        Qt::QueuedConnection);
 
     filters_plot_->hide();
     assets_plot_->hide();
@@ -158,37 +182,45 @@ void price_chart_widget::connect_gui()
 void price_chart_widget::graph_rescale(int range)
 {
     auto last_time = hdf5_ohlc_->get_last_sample_time(true);
-    double t1=0, t2 = last_time;
-    if (range==-2) {
-        t1 = last_time - 0.25*ohlc_chart_data::day;
+    double t1 = 0, t2 = last_time;
+    if (range == -2)
+    {
+        t1 = last_time - 0.25 * ohlc_chart_data::day;
     }
-    else if (range==-1) {
-        t1 = last_time - 0.5*ohlc_chart_data::day;
+    else if (range == -1)
+    {
+        t1 = last_time - 0.5 * ohlc_chart_data::day;
     }
-    else if (range==0) {
-        t1 = last_time - 1.0*ohlc_chart_data::day;
+    else if (range == 0)
+    {
+        t1 = last_time - 1.0 * ohlc_chart_data::day;
     }
-    else if (range==1) {
-        t1 = last_time - 7*ohlc_chart_data::day;
+    else if (range == 1)
+    {
+        t1 = last_time - 7 * ohlc_chart_data::day;
     }
-    else if (range==2) {
-        t1 = last_time - 31*ohlc_chart_data::day;
+    else if (range == 2)
+    {
+        t1 = last_time - 31 * ohlc_chart_data::day;
     }
-    else if (range==3) {
-        t1 = last_time - 365*ohlc_chart_data::day;
+    else if (range == 3)
+    {
+        t1 = last_time - 365 * ohlc_chart_data::day;
     }
     // special case, to extend current view with new data
-    else if (range==100) {
-        t1 = last_time - 365*ohlc_chart_data::day;
+    else if (range == 100)
+    {
+        t1 = last_time - 365 * ohlc_chart_data::day;
     }
-    else {
+    else
+    {
         t1 = hdf5_ohlc_->get_first_sample_time();
     }
     crypto_price_plot_->update_time_axis(t1, t2);
 }
 
 // ----------------------------------------------------------------------------
-void price_chart_widget::resizeEvent(QResizeEvent *event)
+void price_chart_widget::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
     bool changed = crypto_price_plot_->update_candle_size();
@@ -196,7 +228,7 @@ void price_chart_widget::resizeEvent(QResizeEvent *event)
 }
 
 // ----------------------------------------------------------------------------
-void price_chart_widget::showEvent(QShowEvent *event)
+void price_chart_widget::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
     bool changed = crypto_price_plot_->update_candle_size();

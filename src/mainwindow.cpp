@@ -1,8 +1,8 @@
 // STL
-#include <iostream>
-#include <iomanip>
 #include <ctime>
 #include <filesystem>
+#include <iomanip>
+#include <iostream>
 // Qt
 #include <QAction>
 #include <QApplication>
@@ -10,15 +10,15 @@
 #include <QFrame>
 #include <QKeySequence>
 #ifdef QT6
-# include <QKeyCombination>
+#include <QKeyCombination>
 #endif
-#include <QInputDialog>
-#include <QShortcut>
-#include <QMessageBox>
-#include <QDockWidget>
-#include <QScrollBar>
 #include <QCheckBox>
+#include <QDockWidget>
+#include <QInputDialog>
 #include <QListView>
+#include <QMessageBox>
+#include <QScrollBar>
+#include <QShortcut>
 #include <QStandardItemModel>
 // Qwt
 #include <QwtAxis>
@@ -27,18 +27,18 @@
 #include <QwtScaleEngine>
 // Grox
 #include "mainwindow.hpp"
-#include "src/widgets/password_dialog.hpp"
-#include "src/widgets/wallet_widget.hpp"
-#include "src/widgets/currency_widget.hpp"
-#include "src/widgets/trade_widget.hpp"
 #include "src/widgets/check_trades_dialog.hpp"
-#include "src/widgets/trade_algorithm.hpp"
 #include "src/widgets/connection_widget.hpp"
+#include "src/widgets/currency_widget.hpp"
+#include "src/widgets/password_dialog.hpp"
+#include "src/widgets/trade_algorithm.hpp"
+#include "src/widgets/trade_widget.hpp"
+#include "src/widgets/wallet_widget.hpp"
 //
 #include "src/demangle_helper.hpp"
-#include "src/print.hpp"
 #include "src/network/evp-encrypt.hpp"
 #include "src/network/https-async.hpp"
+#include "src/print.hpp"
 //
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
@@ -46,15 +46,15 @@
 #include "json_types.hpp"
 #include "settings.hpp"
 //
-#include "src/stream/trade_filter.hpp"
 #include "src/data/ohlc_heikin_ashi.hpp"
+#include "src/stream/trade_filter.hpp"
 
-#include "DockManager.h"
-#include "DockAreaWidget.h"
-#include "DockAreaTitleBar.h"
 #include "DockAreaTabBar.h"
-#include "FloatingDockContainer.h"
+#include "DockAreaTitleBar.h"
+#include "DockAreaWidget.h"
 #include "DockComponentsFactory.h"
+#include "DockManager.h"
+#include "FloatingDockContainer.h"
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
@@ -69,6 +69,22 @@ template <int Level>
 static print_threshold<Level, debug_level> main_dbg("Main-win");
 
 using namespace ads;
+
+QTimer* app_settings::get_global_clock_timer()
+{
+    static QTimer* timer_ = nullptr;
+    if (!timer_)
+    {
+        timer_ = new QTimer(nullptr);
+        timer_->start(1000);
+    }
+    return timer_;
+}
+
+void app_settings::delete_global_clock_timer(QTimer* timer_)
+{
+    delete timer_;
+}
 
 // ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)
@@ -118,26 +134,29 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
     // ----------------------------------
     // Create dockwidget for network connections
-    QFrame *netbox = new QFrame(this);
+    QFrame* netbox = new QFrame(this);
     net_layout_ = new QVBoxLayout();
     netbox->setLayout(net_layout_);
     //
     CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
     NetworkDockWidget->setWidget(netbox);
     NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    auto RightArea = app_ini->dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
+    auto RightArea = app_ini->dock_manager_->addDockWidget(
+        DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
     app_ini->dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
 
     // ----------------------------------
     // Create dockwidget for algorithmic trading
-    QWidget *algowidget_ = new QWidget(this);
+    QWidget* algowidget_ = new QWidget(this);
     algo_form_ = new Ui::TabbedForm();
     algo_form_->setupUi(algowidget_);
 
     CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
     AlgorithmsDockWidget->setWidget(algowidget_);
-    AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    app_ini->dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
+    AlgorithmsDockWidget->setMinimumSizeHintMode(
+        CDockWidget::MinimumSizeHintFromDockWidget);
+    app_ini->dock_manager_->addDockWidget(
+        DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
     app_ini->dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
     // ----------------------------------
@@ -147,8 +166,10 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     //
     CDockWidget* AccountsDockWidget = new CDockWidget("Accounts");
     AccountsDockWidget->setWidget(accounts_frame_);
-    AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    app_ini->dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, AccountsDockWidget, RightArea, 2);
+    AccountsDockWidget->setMinimumSizeHintMode(
+        CDockWidget::MinimumSizeHintFromDockWidget);
+    app_ini->dock_manager_->addDockWidget(
+        DockWidgetArea::RightDockWidgetArea, AccountsDockWidget, RightArea, 2);
     app_ini->dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
 
     // ----------------------------------
@@ -159,23 +180,29 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     CDockWidget* OrdersDockWidget = new CDockWidget("Trades");
     OrdersDockWidget->setWidget(orders_frame_);
     OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-    app_ini->dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, OrdersDockWidget, RightArea, 3);
+    app_ini->dock_manager_->addDockWidget(
+        DockWidgetArea::RightDockWidgetArea, OrdersDockWidget, RightArea, 3);
     app_ini->dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
 
     // for each wallet on each network
-    for (auto network : app_ini->networks_) {
-        for (auto w : network->wallets()) {
+    for (auto network : app_ini->networks_)
+    {
+        for (auto w : network->wallets())
+        {
             // create a gui widget for the wallet
             w->widget_ = new wallet_widget(this);
             w->widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-            if (network->name()=="Bitstamp") w->widget_->set_data(*static_cast<bitstamp_account*>(w));
-            if (network->name()=="XRPL")     w->widget_->set_data(*static_cast<ledger_wallet*>(w));
+            if (network->name() == "Bitstamp")
+                w->widget_->set_data(*static_cast<bitstamp_account*>(w));
+            if (network->name() == "XRPL")
+                w->widget_->set_data(*static_cast<ledger_wallet*>(w));
             accounts_frame_->layout()->addWidget(w->widget_);
             // update wallet combo with name
             algo_form_->all_acct_combo->addItem(QString(w->name_.c_str()));
         }
     }
-    accounts_frame_->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Expanding, QSizePolicy::Preferred));
+    accounts_frame_->layout()->addItem(
+        new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Preferred));
 
     // ----------------------------------
     // setup Qt actions/connections between controls
@@ -204,20 +231,20 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     // setup connections tab
     loadConnectionSetups();
 
-
     // @TODO get rid of this
     // ----------------------------------
     // Resize order book to fit monospace text (add 1 chars - scrollbars/etc)
     //
     QString txt = "X";
-    int char_size = QFontMetrics(algo_form_->order_book_xrpl->font()).horizontalAdvance(txt);
-    int calcWidth = char_size*85 + 8;
+    int char_size =
+        QFontMetrics(algo_form_->order_book_xrpl->font()).horizontalAdvance(txt);
+    int calcWidth = char_size * 85 + 8;
     //std::cout << "width", algo_form_->order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
     algo_form_->order_book_xrpl->setMinimumWidth(calcWidth);
     //algo_form_->order_book_xrpl->setMaximumWidth(calcWidth);
     //algo_form_->order_book_bitstamp->setMaximumWidth(calcWidth);
     //
-    calcWidth = char_size*140 + 8;
+    calcWidth = char_size * 140 + 8;
     algo_form_->arbitrage_orders->setMinimumWidth(calcWidth);
     //algo_form_->arbitrage_orders->setMaximumWidth(calcWidth);
 
@@ -227,7 +254,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     QPixmap pix(":/images/xrp.jpg");
     // pix = pix.scaled(algo_form_->image_label->size(), Qt::KeepAspectRatio);
     // algo_form_->image_label->setPixmap(pix);
-
 }
 
 // ----------------------------------------------------------------------------
@@ -237,10 +263,13 @@ GroxMainWindow::~GroxMainWindow()
     delete qs_darkmode_;
     //
     app_settings* app_ini = global_settings();
+    app_ini->delete_global_clock_timer(app_ini->get_global_clock_timer());
+
     // release dockmanager
     app_ini->dock_manager_.reset();
     // release all networks
-    for (auto & n: app_ini->networks_) n.reset();
+    for (auto& n : app_ini->networks_)
+        n.reset();
     // release datamanager
     app_ini->data_manager_.reset();
 }
@@ -268,8 +297,10 @@ void GroxMainWindow::appExitCleanupHandler()
 
     // stop boost::asio io_service
     io_contexts_.ioc.stop();
-    for (auto &t : ioc_threads_) {
-        if (t.joinable()) t.join();
+    for (auto& t : ioc_threads_)
+    {
+        if (t.joinable())
+            t.join();
     }
     main_dbg<0>.debug(str<>("boost::asio"), "shutdown complete");
 }
@@ -284,8 +315,7 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
         {
             //do what you need
             main_dbg<6>.debug("Shift click pressed");
-            std::array<std::string, 5> strings{
-                bitstamp_network_->account().API_user,
+            std::array<std::string, 5> strings{bitstamp_network_->account().API_user,
                 bitstamp_network_->account().API_key,
                 bitstamp_network_->account().API_secret,
                 std::to_string(bitstamp_network_->account().tag_),
@@ -296,11 +326,11 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
             std::vector<ledger_wallet> wallets;
             auto x1 = xrpl_network::get_xrpl_instance(false)->wallets();
             auto x2 = xrpl_network::get_xrpl_instance(true)->wallets();
-            ranges::for_each(x1, [&](basic_account* b){
+            ranges::for_each(x1, [&](basic_account* b) {
                 ledger_wallet w = *static_cast<ledger_wallet*>(b);
                 wallets.push_back(w);
             });
-            ranges::for_each(x2, [&](basic_account* b){
+            ranges::for_each(x2, [&](basic_account* b) {
                 ledger_wallet w = *static_cast<ledger_wallet*>(b);
                 wallets.push_back(w);
             });
@@ -334,73 +364,86 @@ void GroxMainWindow::connect_gui_controls()
 
     // orderbook updates from bitstamp network connection
     // 1 Priority, arbitrage, 2 plot update, 3 text update
-    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
-            this, SLOT(perform_arbitrage()), Qt::QueuedConnection);
-//    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
-//            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
-//    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
-//            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
+    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()), this,
+        SLOT(perform_arbitrage()), Qt::QueuedConnection);
+    //    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
+    //            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
+    //    connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()),
+    //            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
 
     // when a transaction takes place we might need to update wallet/records
-    connect(bitstamp_network_.get(), &bitstamp_network::transaction_event, this, [this]() {
-        transaction_event();
-        display_offers();
-    } , Qt::QueuedConnection);
+    connect(
+        bitstamp_network_.get(), &bitstamp_network::transaction_event, this,
+        [this]() {
+            transaction_event();
+            display_offers();
+        },
+        Qt::QueuedConnection);
 
-    connect(bitstamp_network_.get(), &bitstamp_network::update_wallet_widget, this, [this](bitstamp_account *acct) {
-        acct->widget_->set_data(*acct);
-        display_offers();
-    } , Qt::QueuedConnection);
+    connect(
+        bitstamp_network_.get(), &bitstamp_network::update_wallet_widget, this,
+        [this](bitstamp_account* acct) {
+            acct->widget_->set_data(*acct);
+            display_offers();
+        },
+        Qt::QueuedConnection);
 
-    connect(bitstamp_network_.get(), &bitstamp_network::network_initialized, this, [this](exchange* ex) {
-        build_connection_gui(ex);
-    }, Qt::QueuedConnection);
+    connect(
+        bitstamp_network_.get(), &bitstamp_network::network_initialized, this,
+        [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
 
-    connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)),
-            this, SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
-    connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)),
-            this, SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
-    connect(xrpl_network_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)),
-            this, SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
-    connect(xrpl_testnet_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)),
-            this, SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
-//    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
-//            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
-//    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
-//            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
+    connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)), this,
+        SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
+    connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)), this,
+        SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
+    connect(xrpl_network_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this,
+        SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
+    connect(xrpl_testnet_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this,
+        SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
+    //    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
+    //            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
+    //    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
+    //            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
 
     // when a transaction takes place we might need to update wallet/records
-    connect(xrpl_network_.get(), SIGNAL(transaction_event()),
-            this, SLOT(transaction_event()), Qt::QueuedConnection);
+    connect(xrpl_network_.get(), SIGNAL(transaction_event()), this,
+        SLOT(transaction_event()), Qt::QueuedConnection);
 
-    connect(xrpl_network_.get(), &xrpl_network::network_initialized, this, [this](exchange* ex) {
-        build_connection_gui(ex);
-    }, Qt::QueuedConnection);
+    connect(
+        xrpl_network_.get(), &xrpl_network::network_initialized, this,
+        [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
 
-    connect(xrpl_testnet_.get(), &xrpl_network::network_initialized, this, [this](exchange* ex) {
-        build_connection_gui(ex);
-    }, Qt::QueuedConnection);
+    connect(
+        xrpl_testnet_.get(), &xrpl_network::network_initialized, this,
+        [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
 
+    connect(
+        algo_form_->exec_algo, &QAbstractButton::clicked, this,
+        [this]() {
+            // execute_filter();
+        },
+        Qt::QueuedConnection);
 
-    connect(algo_form_->exec_algo, &QAbstractButton::clicked, this, [this]() {
-        // execute_filter();
-    } , Qt::QueuedConnection);
+    connect(
+        algo_form_->run_filter, &QPushButton::clicked, this,
+        [this]() {
+            // pplot_dbg<0>.error(str<>("emit execute_filter"));
+            // execute_filter();
+        },
+        Qt::QueuedConnection);
 
-    connect(algo_form_->run_filter, &QPushButton::clicked, this, [this]() {
-        // pplot_dbg<0>.error(str<>("emit execute_filter"));
-        // execute_filter();
-    } , Qt::QueuedConnection);
-
-    qs_shutdown_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
-    qs_darkmode_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_D)), this, [this](){
-        dark_mode_ = (dark_mode_ + 1) % 3;
-        LoadStyleSheet(dark_mode_);
-    });
+    qs_shutdown_ =
+        new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
+    qs_darkmode_ =
+        new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_D)), this, [this]() {
+            dark_mode_ = (dark_mode_ + 1) % 3;
+            LoadStyleSheet(dark_mode_);
+        });
 }
 
 // ----------------------------------------------------------------------------
 // slot to ensure widget updates on GUI thread
-void GroxMainWindow::update_currency_widget(currency *c)
+void GroxMainWindow::update_currency_widget(currency* c)
 {
     assert(c->widget_);
     c->widget_->set_data(c);
@@ -408,7 +451,7 @@ void GroxMainWindow::update_currency_widget(currency *c)
 
 // ----------------------------------------------------------------------------
 // slot to ensure widget updates on GUI thread
-void GroxMainWindow::update_wallet_widget(ledger_wallet *w)
+void GroxMainWindow::update_wallet_widget(ledger_wallet* w)
 {
     assert(w->widget_);
     w->widget_->set_data(*w);
@@ -419,20 +462,23 @@ void GroxMainWindow::update_wallet_widget(ledger_wallet *w)
 void GroxMainWindow::execute_xrp()
 {
     QMessageBox::StandardButton reply;
-    reply = QMessageBox::question(this, "Confirm", "Execute transaction?",
-                                  QMessageBox::Yes|QMessageBox::No);
-    if (reply == QMessageBox::Yes) {
+    reply = QMessageBox::question(
+        this, "Confirm", "Execute transaction?", QMessageBox::Yes | QMessageBox::No);
+    if (reply == QMessageBox::Yes)
+    {
         main_dbg<0>.debug(str<>("Yes clicked"));
-//        app_settings* app_ini = global_settings();
+        //        app_settings* app_ini = global_settings();
 
-//        std::uint32_t tag = bitstamp_network_->account().tag_;
-//        bool test = make_xrp_payment(ripple::KeyType::secp256k1,
-//            app_ini->xrpl_wallets[app_ini->active_wallet].private_,
-//            app_ini->xrpl_wallets[app_ini->active_wallet].public_,
-//            bitstamp_network_->account().public_, tag, 10);
+        //        std::uint32_t tag = bitstamp_network_->account().tag_;
+        //        bool test = make_xrp_payment(ripple::KeyType::secp256k1,
+        //            app_ini->xrpl_wallets[app_ini->active_wallet].private_,
+        //            app_ini->xrpl_wallets[app_ini->active_wallet].public_,
+        //            bitstamp_network_->account().public_, tag, 10);
 
         QApplication::quit();
-    } else {
+    }
+    else
+    {
         main_dbg<0>.debug(str<>("Yes *not* clicked"));
     }
 }
@@ -441,12 +487,15 @@ void GroxMainWindow::execute_xrp()
 void GroxMainWindow::execute_usd()
 {
     QMessageBox::StandardButton reply;
-    reply = QMessageBox::question(this, "Confirm", "Execute transaction?",
-                                  QMessageBox::Yes|QMessageBox::No);
-    if (reply == QMessageBox::Yes) {
+    reply = QMessageBox::question(
+        this, "Confirm", "Execute transaction?", QMessageBox::Yes | QMessageBox::No);
+    if (reply == QMessageBox::Yes)
+    {
         main_dbg<0>.debug(str<>("Yes clicked"));
         QApplication::quit();
-    } else {
+    }
+    else
+    {
         main_dbg<0>.debug(str<>("Yes *not* clicked"));
     }
 }
@@ -455,21 +504,24 @@ void GroxMainWindow::execute_usd()
 void GroxMainWindow::capture_image()
 {
     return;
-//    auto image = algo_form_->tabWidget->grab();
-//    algo_form_->imagelabel->setPixmap(image);
-//    algo_form_->imagelabel->setScaledContents(true);
+    //    auto image = algo_form_->tabWidget->grab();
+    //    algo_form_->imagelabel->setPixmap(image);
+    //    algo_form_->imagelabel->setScaledContents(true);
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::start_io_threads(int nthreads)
 {
     static bool initialized = false;
-    if (!initialized) {
+    if (!initialized)
+    {
         ioc_threads_.reserve(nthreads);
         // Run the I/O service on some threads.
-        for (int i=0; i<nthreads; ++i) {
+        for (int i = 0; i < nthreads; ++i)
+        {
             ioc_threads_.emplace_back([&]() {
-                main_dbg<5>.debug(str<>("io_contexts"), "run : thread", std::this_thread::get_id());
+                main_dbg<5>.debug(
+                    str<>("io_contexts"), "run : thread", std::this_thread::get_id());
                 // The call will return when the socket is closed.
                 io_contexts_.ioc.run();
             });
@@ -484,11 +536,15 @@ void GroxMainWindow::perform_arbitrage()
     double budget = 100000;
     std::string arbitrage_string;
     double test_offset = 0.00;
-    if (algo_form_->arbitrage_test_mode->isChecked()) {
-        try {
-            test_offset = std::stod(algo_form_->arbitrage_test_offset->text().toStdString());
+    if (algo_form_->arbitrage_test_mode->isChecked())
+    {
+        try
+        {
+            test_offset =
+                std::stod(algo_form_->arbitrage_test_offset->text().toStdString());
         }
-        catch (...) {
+        catch (...)
+        {
             test_offset = 0.00;
         }
     }
@@ -499,14 +555,17 @@ void GroxMainWindow::perform_arbitrage()
     //
     if (algo_form_->enable_arbitrage->isChecked())
     {
-        xrpl_network_->get_orderbook().compute_arbitrage(bitstamp_network_->get_orderbook(),
-            budget, buy_fee, sell_fee, test_offset, arbitrage_string);
+        xrpl_network_->get_orderbook().compute_arbitrage(
+            bitstamp_network_->get_orderbook(), budget, buy_fee, sell_fee, test_offset,
+            arbitrage_string);
 
-        if (arbitrage_string.size()>0) {
+        if (arbitrage_string.size() > 0)
+        {
             QString arb_string = QString::fromStdString(arbitrage_string);
             algo_form_->arbitrage_orders->setPlainText(arb_string);
         }
-        else {
+        else
+        {
             algo_form_->arbitrage_orders->setPlainText("");
         }
     }
@@ -521,7 +580,8 @@ void GroxMainWindow::transaction_event()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::orderbook_text_update()
 {
-    QString datastring = QString::fromStdString(xrpl_network_->get_orderbook().order_text);
+    QString datastring =
+        QString::fromStdString(xrpl_network_->get_orderbook().order_text);
     algo_form_->order_book_xrpl->setPlainText(datastring);
 }
 
@@ -529,9 +589,11 @@ void GroxMainWindow::orderbook_text_update()
 void GroxMainWindow::display_offers()
 {
     // Delete previous space in offer window
-    for (int i = 0; i < orders_frame_->layout()->count(); ++i) {
-        QLayoutItem *layoutItem = orders_frame_->layout()->itemAt(i);
-        if (layoutItem->spacerItem()) {
+    for (int i = 0; i < orders_frame_->layout()->count(); ++i)
+    {
+        QLayoutItem* layoutItem = orders_frame_->layout()->itemAt(i);
+        if (layoutItem->spacerItem())
+        {
             orders_frame_->layout()->removeItem(layoutItem);
             delete layoutItem;
             --i;
@@ -540,19 +602,23 @@ void GroxMainWindow::display_offers()
 
     app_settings* app_ini = global_settings();
     // for each wallet on each network
-    for (auto network : app_ini->networks_) {
-        for (auto w : network->wallets()) {
-            check_trades_dialog::create_trade_widgets(orders_frame_, w->name_, w->offers_);
+    for (auto network : app_ini->networks_)
+    {
+        for (auto w : network->wallets())
+        {
+            check_trades_dialog::create_trade_widgets(
+                orders_frame_, w->name_, w->offers_);
         }
     }
     // absorb any extra space in the parent by adding a spacer
-    orders_frame_->layout()->addItem(new QSpacerItem(1,1, QSizePolicy::Minimum, QSizePolicy::Expanding));
+    orders_frame_->layout()->addItem(
+        new QSpacerItem(1, 1, QSizePolicy::Minimum, QSizePolicy::Expanding));
 }
 
 // ----------------------------------------------------------------------------
 // Load/Save of ini configuration/settings for main Qt application
 // ----------------------------------------------------------------------------
-void GroxMainWindow::closeEvent(QCloseEvent *event)
+void GroxMainWindow::closeEvent(QCloseEvent* event)
 {
     saveWindowSettings();
     saveTrustlines();
@@ -561,17 +627,19 @@ void GroxMainWindow::closeEvent(QCloseEvent *event)
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::showEvent(QShowEvent *event )
+void GroxMainWindow::showEvent(QShowEvent* event)
 {
     QMainWindow::showEvent(event);
     // load settings on startup window display only
     static bool only_once = true;
-    if (only_once) {
+    if (only_once)
+    {
         loadWindowSettings();
         only_once = false;
     }
     // start timers on networks that need them
-    for (const auto &e : exchange_list_) {
+    for (const auto& e : exchange_list_)
+    {
         e->start_timer();
     }
 }
@@ -582,7 +650,8 @@ void GroxMainWindow::saveTrustlines()
     QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
     // Start Grox MainWindow section
     settings.beginGroup("Trustlines");
-    for (auto const &t : currency::trustlines) {
+    for (auto const& t : currency::trustlines)
+    {
         std::string key = hex_to_currency(t.code_);
         settings.setValue(key.c_str(), t.issuer_.c_str());
     }
@@ -597,7 +666,8 @@ void GroxMainWindow::loadTrustlines()
     // Start "Trustlines" section
     settings.beginGroup("Trustlines");
     QStringList childKeys = settings.childKeys();
-    for (auto const &k : childKeys) {
+    for (auto const& k : childKeys)
+    {
         std::string code = k.toStdString();
         std::string issuer = settings.value(k).toString().toStdString();
         currency::trustlines.push_back({issuer, currency_to_hex(code)});
@@ -613,9 +683,12 @@ void GroxMainWindow::saveConnectionSetups()
     // Start "Tickers" section and remove all existing values
     settings.beginGroup("Tickers");
     settings.remove("");
-    for (const auto &e : exchange_list_) {
-        for (const auto &t : e->tickers_subscribed()) {
-            std::string key = std::string(e->name()) + "/" + currency_pair_string(t.first);
+    for (const auto& e : exchange_list_)
+    {
+        for (const auto& t : e->tickers_subscribed())
+        {
+            std::string key =
+                std::string(e->name()) + "/" + currency_pair_string(t.first);
             settings.setValue(key.c_str(), true);
         }
     }
@@ -623,8 +696,10 @@ void GroxMainWindow::saveConnectionSetups()
     // Start "Streams" section and remove all existing values
     settings.beginGroup("Streams");
     settings.remove("");
-    for (const auto &e : exchange_list_) {
-        for (const auto &s : e->websocket_streams()) {
+    for (const auto& e : exchange_list_)
+    {
+        for (const auto& s : e->websocket_streams())
+        {
             std::string key = std::string(e->name()) + "/" + stream_text(s);
             settings.setValue(key.c_str(), e->websocket_enabled(s));
         }
@@ -638,13 +713,16 @@ void GroxMainWindow::loadConnectionSetups()
 {
     QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
     settings.beginGroup("Tickers");
-    for (const auto &e : exchange_list_) {
+    for (const auto& e : exchange_list_)
+    {
         settings.beginGroup(QString(e->name().data()));
         QStringList childKeys = settings.childKeys();
-        for (auto const &k : childKeys) {
+        for (auto const& k : childKeys)
+        {
             std::string currencypair = k.toStdString();
             bool enabled = settings.value(k).toBool();
-            if (enabled) {
+            if (enabled)
+            {
                 main_dbg<0>.debug(str<>("Enable Ticker"), currencypair);
                 auto cp = string_to_pair(currencypair, "-");
                 e->ticker_subscribe(std::get<0>(cp), std::get<1>(cp));
@@ -655,10 +733,12 @@ void GroxMainWindow::loadConnectionSetups()
     settings.endGroup();
 
     settings.beginGroup("Streams");
-    for (const auto &e : exchange_list_) {
+    for (const auto& e : exchange_list_)
+    {
         settings.beginGroup(QString(e->name().data()));
         auto streams = e->websocket_streams();
-        for (const auto &s : streams) {
+        for (const auto& s : streams)
+        {
             std::string key = stream_text(s);
             bool enabled = settings.value(key.c_str()).toBool();
             e->websocket_enable(s, io_contexts_, enabled);
@@ -715,7 +795,8 @@ void GroxMainWindow::loadWindowSettings()
     settings.beginGroup("DockWindow_Perspectives");
     app_ini->dock_manager_->loadPerspectives(settings);
     createPerspectives_Ui();
-    if (settings.contains("active")) {
+    if (settings.contains("active"))
+    {
         openPerspective(settings.value("active", "Default").toString());
     }
     settings.endGroup();
@@ -724,17 +805,16 @@ void GroxMainWindow::loadWindowSettings()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::stream_process(const QwtOHLCSample &ohlc)
+void GroxMainWindow::stream_process(const QwtOHLCSample& ohlc)
 {
     main_dbg<0>.debug(str<>("New data"), msecs_unix_to_calendar_time(ohlc.time), ohlc);
-//    df_.process(ohlc);
+    //    df_.process(ohlc);
 }
 
 // ----------------------------------------------------------------------------
-QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"),
-                      QColor("darkRed"), QColor("darkCyan"), QColor("darkMagenta"),
-                      QColor("green"), QColor("darkGreen"), QColor("yellow"),
-                      QColor("blue")};
+QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QColor("darkRed"),
+    QColor("darkCyan"), QColor("darkMagenta"), QColor("green"), QColor("darkGreen"),
+    QColor("yellow"), QColor("blue")};
 /*
 // ----------------------------------------------------------------------------
 void GroxMainWindow::execute_filter()
@@ -958,10 +1038,10 @@ void GroxMainWindow::execute_filter()
 */
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::build_connection_gui(exchange *ex)
+void GroxMainWindow::build_connection_gui(exchange* ex)
 {
     // widget with panels for tickers/selected/streams
-    connection_widget *conwidget = new connection_widget(this, io_contexts_, ex);
+    connection_widget* conwidget = new connection_widget(this, io_contexts_, ex);
     conwidget->setup_gui();
     net_layout_->insertWidget(0, conwidget);
 }
@@ -971,7 +1051,8 @@ void GroxMainWindow::createPerspectives_Ui()
 {
     app_settings* app_ini = global_settings();
     // create one time setup menu items
-    if (!app_ini->dockwindows_menu_) {
+    if (!app_ini->dockwindows_menu_)
+    {
         // main window menu entry
         QMenu* docking_menu_ = new QMenu("Window");
         ui.menubar->addMenu(docking_menu_);
@@ -985,17 +1066,19 @@ void GroxMainWindow::createPerspectives_Ui()
         menuentry2_->setMenu(perspectives_menu_);
         // action to create a new perspective
         QAction* SavePerspectiveAction = new QAction("Save Perspective");
-        connect(SavePerspectiveAction, SIGNAL(triggered()), this, SLOT(savePerspective()));
+        connect(
+            SavePerspectiveAction, SIGNAL(triggered()), this, SLOT(savePerspective()));
         docking_menu_->addAction(SavePerspectiveAction);
     }
     //
     perspectives_menu_->clear();
-    for (const QString &name : app_ini->dock_manager_->perspectiveNames()) {
+    for (const QString& name : app_ini->dock_manager_->perspectiveNames())
+    {
         QAction* LoadPerspectiveAction = new QAction(name);
         LoadPerspectiveAction->setCheckable(true);
-        connect(LoadPerspectiveAction, &QAction::triggered, this, [this,name](){
-            openPerspective(name);
-        }, Qt::QueuedConnection);
+        connect(
+            LoadPerspectiveAction, &QAction::triggered, this,
+            [this, name]() { openPerspective(name); }, Qt::QueuedConnection);
         perspectives_menu_->addAction(LoadPerspectiveAction);
     }
 }
@@ -1005,8 +1088,7 @@ void GroxMainWindow::savePerspective()
 {
     app_settings* app_ini = global_settings();
     QString Name = QInputDialog::getText(
-                this, "Save Perspective", "Enter name:",
-                QLineEdit::Normal, active_perspective_);
+        this, "Save Perspective", "Enter name:", QLineEdit::Normal, active_perspective_);
     if (!Name.isEmpty())
     {
         app_ini->dock_manager_->addPerspective(Name);
@@ -1015,15 +1097,18 @@ void GroxMainWindow::savePerspective()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::openPerspective(const QString &name)
+void GroxMainWindow::openPerspective(const QString& name)
 {
     app_settings* app_ini = global_settings();
     active_perspective_ = name;
-    for (auto *action : perspectives_menu_->actions()) {
-        if (action->text()==name) {
+    for (auto* action : perspectives_menu_->actions())
+    {
+        if (action->text() == name)
+        {
             action->setChecked(true);
         }
-        else {
+        else
+        {
             action->setChecked(false);
         }
     }
@@ -1035,27 +1120,34 @@ void GroxMainWindow::LoadStyleSheet(int dark)
 {
 #ifdef GROX_DEBUG_RESOURCES
     QDirIterator it(":", QDirIterator::Subdirectories);
-    while (it.hasNext()) {
+    while (it.hasNext())
+    {
         qDebug() << it.next();
     }
 #endif
     QString name;
-    if (dark==0) {
+    if (dark == 0)
+    {
         global_settings()->dock_manager_->setStyleSheet("");
         qApp->setStyleSheet("");
         return;
     }
-    else if (dark==1) {
+    else if (dark == 1)
+    {
         name = ":qdarkstyle/dark/darkstyle.qss";
     }
-    else if (dark==2) {
+    else if (dark == 2)
+    {
         name = ":qdarkstyle/light/lightstyle.qss";
     }
     QFile f(name);
-    if (!f.exists()) {
-        main_dbg<0>.error(str<>("Stylesheet"), "Unable to set stylesheet, file not found");
+    if (!f.exists())
+    {
+        main_dbg<0>.error(
+            str<>("Stylesheet"), "Unable to set stylesheet, file not found");
     }
-    else {
+    else
+    {
         f.open(QFile::ReadOnly | QFile::Text);
         QTextStream ts(&f);
         global_settings()->dock_manager_->setStyleSheet("");

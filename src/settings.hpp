@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QString>
+#include <QTimer>
 //
 #include <string>
 //
@@ -157,6 +158,9 @@ struct app_settings
     QMenu* dockwindows_menu_;
     //
     std::shared_ptr<ohlc_dataset_manager> data_manager_;
+    //
+    static QTimer *get_global_clock_timer();
+    static void delete_global_clock_timer(QTimer* timer_);
 };
 
 app_settings* global_settings();
