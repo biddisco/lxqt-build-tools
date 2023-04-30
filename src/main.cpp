@@ -198,11 +198,11 @@ int qt_main(int argc, char* argv[])
         app_ini->grox_password = base64_decode(raw).toStdString();
         app_ini->grox_password = app_ini->grox_password.substr(8, 13);
         authenticated = true;
+        app_dbg<5>.debug(str<>("authentication"), "getenv", "ok");
     }
-    else
+    if (!authenticated)
     {
         std::string commandLine = "ssh pi@192.168.1.15 cat /home/pi/.ssh/.skey.sh";
-        std::cout << "Executing command: " << commandLine << std::endl;
         auto result = exec(commandLine.c_str());
         std::regex rgx(".*rand3=\"(.*)\".*");
         std::smatch match;
@@ -211,6 +211,7 @@ int qt_main(int argc, char* argv[])
             app_ini->grox_password = base64_decode(match[1]).toStdString();
             app_ini->grox_password = app_ini->grox_password.substr(8, 13);
             authenticated = true;
+            app_dbg<5>.debug(str<>("authentication"), "pi", "ok");
         }
     }
     if (!authenticated)
@@ -220,6 +221,7 @@ int qt_main(int argc, char* argv[])
         {
             app_ini->grox_password = npw.getPassword().toStdString();
             authenticated = true;
+            app_dbg<5>.debug(str<>("authentication"), "password", "ok");
         }
     }
     if (!authenticated)
