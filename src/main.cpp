@@ -202,7 +202,8 @@ int qt_main(int argc, char* argv[])
     }
     if (!authenticated)
     {
-        std::string commandLine = "ssh pi@192.168.1.15 cat /home/pi/.ssh/.skey.sh";
+        std::string commandLine =
+            "timeout 5 ssh pi@192.168.1.15 cat /home/pi/.ssh/.skey.sh";
         auto result = exec(commandLine.c_str());
         std::regex rgx(".*rand3=\"(.*)\".*");
         std::smatch match;
@@ -212,6 +213,10 @@ int qt_main(int argc, char* argv[])
             app_ini->grox_password = app_ini->grox_password.substr(8, 13);
             authenticated = true;
             app_dbg<5>.debug(str<>("authentication"), "pi", "ok");
+        }
+        else
+        {
+            app_dbg<5>.error(str<>("Authentication"), "pi", "fail");
         }
     }
     if (!authenticated)
