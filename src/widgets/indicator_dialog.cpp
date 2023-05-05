@@ -87,8 +87,9 @@ void indicator_dialog::refresh_gui(int index)
     for (int i = 0; i < std::visit([](const auto& obj) { return obj.num_datasets; }, alg);
          ++i)
     {
-        QLabel* const label =
-            new QLabel(QString("Data %1").arg(i, 2, 3, QLatin1Char('0')));
+        const std::string& str = std::visit(
+            [i](const auto& obj) { return std::get<0>(obj.datasets[i]); }, alg);
+        QLabel* const label = new QLabel(QString(str.c_str()));
         label->setMinimumWidth(100);
         label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         layout->addWidget(label, i, 0);

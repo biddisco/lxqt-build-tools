@@ -365,7 +365,6 @@ set(GROX_SRC
     src/widgets/wallet_widget.cpp
     src/widgets/xrp_functions.cpp
     src/widgets/price_chart_widget.cpp
-    src/widgets/indicator_label.hpp
 
     # plotting
     src/plot/OrderBookPlot.cpp

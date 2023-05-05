@@ -58,8 +58,9 @@ price_chart_widget::price_chart_widget(QWidget* parent,
     }
     ui->candle_res->addItems(slist);
 
-    indicators_ = new indicator_label(this);
+    indicators_ = new QPushButton(this);
     indicators_->setText("Indicators");
+    indicators_->setFlat(true);
     ui->controls_layout->addWidget(indicators_);
 
     DigitalClock* clock =
@@ -179,16 +180,15 @@ void price_chart_widget::connect_gui()
         },
         Qt::QueuedConnection);
 
+    //    QAction* pAction1 = new QAction("Moving average", indicators_);
+    //    QAction* pAction2 = new QAction("bar", indicators_);
+    //    QAction* pAction3 = new QAction("test", indicators_);
+    //    indicators_->addAction(pAction1);
+    //    indicators_->addAction(pAction2);
+    //    indicators_->addAction(pAction3);
 
-    QAction* pAction1 = new QAction("Moving average", indicators_);
-    QAction* pAction2 = new QAction("bar", indicators_);
-    QAction* pAction3 = new QAction("test", indicators_);
-    indicators_->addAction(pAction1);
-    indicators_->addAction(pAction2);
-    indicators_->addAction(pAction3);
-
-    connect(pAction1, &QAction::triggered, this, [this](bool b) {
-        pplot_dbg<0>.debug(str<>("Moving Average"), exchange_->name(), ticker_string_);
+    connect(indicators_, &QPushButton::clicked, this, [this](bool b) {
+        pplot_dbg<0>.debug(str<>("Indicators"), exchange_->name(), ticker_string_);
 
         indicator_dialog in_dialog = indicator_dialog();
         auto result = in_dialog.exec();
@@ -210,8 +210,8 @@ void price_chart_widget::connect_gui()
         indicator_moving_average ma{};
         ma.generate(hdf5_ohlc_);
     });
-//    connect(pAction2, SIGNAL(triggered()), this, SLOT(onAction2()));
-//    connect(pAction3, SIGNAL(triggered()), this, SLOT(onAction3()));
+    //    connect(pAction2, SIGNAL(triggered()), this, SLOT(onAction2()));
+    //    connect(pAction3, SIGNAL(triggered()), this, SLOT(onAction3()));
 
     filters_plot_->hide();
     assets_plot_->hide();

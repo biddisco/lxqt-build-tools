@@ -2,12 +2,12 @@
 #define PRICE_CHART_WIDGET_H
 
 #include <QWidget>
+#include <QPushButton>
 //
 #include "src/plot/ohlc_price_plot.hpp"
 #include "src/plot/ohlc_picker.hpp"
 #include "src/plot/filter_plot.hpp"
 #include "src/exchange/exchange.hpp"
-#include "src/widgets/indicator_label.hpp"
 
 class ohlc_dataset_view;
 
@@ -25,7 +25,7 @@ private:
     ohlc_price_plot* crypto_price_plot_;
     filter_plot *filters_plot_;
     filter_plot *assets_plot_;
-    indicator_label *indicators_;
+    QPushButton *indicators_;
     //
     std::shared_ptr<exchange> exchange_;
     std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;
