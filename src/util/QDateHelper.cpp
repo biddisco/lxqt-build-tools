@@ -1,12 +1,11 @@
 #include "QDateHelper.h"
 
-namespace QDateHelper
-{
+namespace QDateHelper {
 
-QDateTime boostToQDateTime(const boost::posix_time::ptime &boostTime)
-{
+  QDateTime boostToQDateTime(const boost::posix_time::ptime& boostTime)
+  {
     using namespace boost::posix_time;
-    ptime epoch(boost::gregorian::date(1970,1,1));
+    ptime epoch(boost::gregorian::date(1970, 1, 1));
 
     time_duration::sec_type secsSince1970Dur = (boostTime - epoch).total_seconds();
 
@@ -15,6 +14,6 @@ QDateTime boostToQDateTime(const boost::posix_time::ptime &boostTime)
 
     QDateTime convertedDateTime = QDateTime::fromSecsSinceEpoch(secsSince1970, Qt::UTC);
     return convertedDateTime;
-}
+  }
 
-}
+}    // namespace QDateHelper

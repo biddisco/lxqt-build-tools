@@ -1,14 +1,15 @@
 // to pass structs as params we must declare metatypes to Qt
 #include <QtCore>
 //
-#include <vector>
-#include <string>
 #include <iostream>
+#include <string>
+#include <vector>
 //
-#include "nlohmann/json.hpp"
 #include "json_types.hpp"
+#include "nlohmann/json.hpp"
 
-std::ostream& operator<<(std::ostream& os, const QwtOHLCSample &x) {
+std::ostream& operator<<(std::ostream& os, const QwtOHLCSample& x)
+{
 #if 0
     os << "Time: "   << x.time << " "
        << "Open: "   << x.open << " "
@@ -17,34 +18,42 @@ std::ostream& operator<<(std::ostream& os, const QwtOHLCSample &x) {
        << "Close: "  << x.close << " "
        << "Volume: " << x.volume;
 #else
-    os << "T: " << x.time  << " "
-       << "O: " << x.open  << " "
-       << "H: " << x.high  << " "
-       << "L: " << x.low   << " "
-       << "C: " << x.close << " "
-       << "V: " << x.volume;
+  os << "T: " << x.time << " "
+     << "O: " << x.open << " "
+     << "H: " << x.high << " "
+     << "L: " << x.low << " "
+     << "C: " << x.close << " "
+     << "V: " << x.volume;
 #endif
-    return os;
+  return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const xrp_amount &x) {
-    os << "Value: " << x.value << " " << "Currency: ";
-    if (x.currency==currency_type::xrp) os << "xrp";
-    else if (x.currency==currency_type::usd_bitstamp) os << "usd_bitstamp";
-    else if (x.currency==currency_type::eur_bitstamp) os << "eur_bitstamp";
-    else if (x.currency==currency_type::usd_gatehub) os << "usd_gatehub";
-    else os << "other";
-    return os;
+std::ostream& operator<<(std::ostream& os, const xrp_amount& x)
+{
+  os << "Value: " << x.value << " "
+     << "Currency: ";
+  if (x.currency == currency_type::xrp)
+    os << "xrp";
+  else if (x.currency == currency_type::usd_bitstamp)
+    os << "usd_bitstamp";
+  else if (x.currency == currency_type::eur_bitstamp)
+    os << "eur_bitstamp";
+  else if (x.currency == currency_type::usd_gatehub)
+    os << "usd_gatehub";
+  else
+    os << "other";
+  return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const xrpl_offer &x) {
-    os << "Account: " << x.Account << " "
-       << "BookDirectory: " << x.BookDirectory << " "
-       << "TakerPays: " << x.TakerPays << " "
-       << "TakerGets: " << x.TakerGets << " "
-       << "Rate: " << x.rate() << " "
-       << "Funds: " << x.owner_funds;
-    return os;
+std::ostream& operator<<(std::ostream& os, const xrpl_offer& x)
+{
+  os << "Account: " << x.Account << " "
+     << "BookDirectory: " << x.BookDirectory << " "
+     << "TakerPays: " << x.TakerPays << " "
+     << "TakerGets: " << x.TakerGets << " "
+     << "Rate: " << x.rate() << " "
+     << "Funds: " << x.owner_funds;
+  return os;
 }
 
 // ----------------------------------------------------------------------------
@@ -61,7 +70,6 @@ using nlohmann::json;
 //Q_DECLARE_METATYPE(std::vector<ohlc>*)
 //NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ohlc,
 //    close, high, low, open, timestamp, volume);
-
 
 // ----------------------------------------------------------------------------
 // bitstamp websocket ticker data
@@ -93,7 +101,6 @@ using nlohmann::json;
 //    }
 //}
 
-
 /* New style using RPC json API
     "account": "rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY",
     "balance": "63.8354397",
@@ -111,73 +118,80 @@ using nlohmann::json;
     "value": "63.8354397"
 */
 
-void from_json(const nlohmann::json &j, xrp_amount &p)
+void from_json(const nlohmann::json& j, xrp_amount& p)
 {
-    // if this is a simple value (just plain XRP amount)
-    if (j.size() == 1) {
-        p.value = std::stod(j.get< std::string >());
-        p.currency = currency_type::xrp;
+  // if this is a simple value (just plain XRP amount)
+  if (j.size() == 1)
+  {
+    p.value = std::stod(j.get<std::string>());
+    p.currency = currency_type::xrp;
+  }
+  else
+  {
+    // allow balance OR value string id
+    if (j.count("balance") != 0)
+    {
+      p.value = std::stod(j.at("balance").get<std::string>());
     }
-    else {
-        // allow balance OR value string id
-        if (j.count("balance") != 0)
-        {
-            p.value = std::stod(j.at("balance").get< std::string >());
-        }
-        else if (j.count("value") != 0)
-        {
-            p.value = std::stod(j.at("value").get< std::string >());
-        }
-        else throw std::runtime_error("No value in currency amount");
-        //
-        std::string currency = j.at("currency").get< std::string >();
-        //
-        std::string issuer;
-        // allow account/issuer/counterparty string id
-        if (j.count("account") != 0)
-        {
-            issuer = j.at("account").get< std::string >();
-        }
-        else if (j.count("counterparty") != 0)
-        {
-            issuer = j.at("counterparty").get< std::string >();
-        }
-        else if (j.count("issuer") != 0)
-        {
-            issuer = j.at("issuer").get< std::string >();
-        }
-        //
-        p.trustline = {issuer, currency};
-        p.currency = get_currency_type({issuer, currency});
+    else if (j.count("value") != 0)
+    {
+      p.value = std::stod(j.at("value").get<std::string>());
     }
+    else
+      throw std::runtime_error("No value in currency amount");
+    //
+    std::string currency = j.at("currency").get<std::string>();
+    //
+    std::string issuer;
+    // allow account/issuer/counterparty string id
+    if (j.count("account") != 0)
+    {
+      issuer = j.at("account").get<std::string>();
+    }
+    else if (j.count("counterparty") != 0)
+    {
+      issuer = j.at("counterparty").get<std::string>();
+    }
+    else if (j.count("issuer") != 0)
+    {
+      issuer = j.at("issuer").get<std::string>();
+    }
+    //
+    p.trustline = {issuer, currency};
+    p.currency = get_currency_type({issuer, currency});
+  }
 }
 
-void from_json(const nlohmann::json &j, xrpl_offer &p)
+void from_json(const nlohmann::json& j, xrpl_offer& p)
 {
-    bool ok = true;
-    p.funded_offer  = -1;
-    p.Account       = j.at("Account").get< std::string >();
-    p.BookDirectory = j.at("BookDirectory").get< std::string >();
-    p.TakerGets     = j.at("TakerGets").get< xrp_amount >();
-    p.TakerPays     = j.at("TakerPays").get< xrp_amount >();
+  bool ok = true;
+  p.funded_offer = -1;
+  p.Account = j.at("Account").get<std::string>();
+  p.BookDirectory = j.at("BookDirectory").get<std::string>();
+  p.TakerGets = j.at("TakerGets").get<xrp_amount>();
+  p.TakerPays = j.at("TakerPays").get<xrp_amount>();
 
-    // we track unfunded offers using owner funds - this code is obsolete
+  // we track unfunded offers using owner funds - this code is obsolete
 #ifdef OLD_TAKER_PAYS_FUNDED
-    if (j.contains("taker_gets_funded")) {
-        xrpl_offer temp = p;
-        temp.TakerGets = j.at("taker_gets_funded").get< xrp_amount >();
-        temp.TakerPays = j.at("taker_pays_funded").get< xrp_amount >();
-        if (temp.TakerGets.value>0 && temp.TakerPays.value>0) {
-            p = temp;
-        }
+  if (j.contains("taker_gets_funded"))
+  {
+    xrpl_offer temp = p;
+    temp.TakerGets = j.at("taker_gets_funded").get<xrp_amount>();
+    temp.TakerPays = j.at("taker_pays_funded").get<xrp_amount>();
+    if (temp.TakerGets.value > 0 && temp.TakerPays.value > 0)
+    {
+      p = temp;
     }
+  }
 #endif
-    // The offer might be for more than the account actually holds
-    // so we must track actual funds when building order book later
-    if (j.contains("owner_funds")) {
-        p.owner_funds = std::stod(j.at("owner_funds").get< std::string >());
-    }
-    else {
-        p.owner_funds = -1;
-    }
+  // The offer might be for more than the account actually holds
+  // so we must track actual funds when building order book later
+  if (j.contains("owner_funds"))
+  {
+    p.owner_funds = std::stod(j.at("owner_funds").get<std::string>());
+  }
+  else
+  {
+    p.owner_funds = -1;
+  }
 }

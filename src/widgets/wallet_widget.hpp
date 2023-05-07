@@ -6,26 +6,26 @@
 #include "settings.hpp"
 
 namespace Ui {
-class wallet_widget;
+  class wallet_widget;
 }
 
 class wallet_widget : public QWidget
 {
-    Q_OBJECT
-    std::shared_ptr<exchange> network_;
-    basic_account *account_;
+  Q_OBJECT
+  std::shared_ptr<exchange> network_;
+  basic_account* account_;
 
-public:
-    explicit wallet_widget(QWidget *parent = nullptr);
-    ~wallet_widget();
+  public:
+  explicit wallet_widget(QWidget* parent = nullptr);
+  ~wallet_widget();
 
-    void set_data(ledger_wallet &w, int decimals=6);
-    void set_data(bitstamp_account &w);
+  void set_data(ledger_wallet& w, int decimals = 6);
+  void set_data(bitstamp_account& w);
 
-public slots:
+  public slots:
 
-private:
-    Ui::wallet_widget *ui;
+  private:
+  Ui::wallet_widget* ui;
 };
 
-#endif // wallet_widget_H
+#endif    // wallet_widget_H

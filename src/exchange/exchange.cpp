@@ -1,8 +1,8 @@
 #include <QObject>
 //
-#include "print.hpp"
-#include "exchange/exchange.hpp"
 #include <range/v3/algorithm.hpp>
+#include "exchange/exchange.hpp"
+#include "print.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -15,71 +15,78 @@ static print_threshold<Level, debug_level> exchange_dbg("Exchange");
 // ----------------------------------------------------------------------------
 bool exchange::websocket_enabled(network::streams s)
 {
-    if (enabled_streams_.find(s)!=enabled_streams_.end()) {
-        return enabled_streams_[s];
-    }
-    return false;
+  if (enabled_streams_.find(s) != enabled_streams_.end())
+  {
+    return enabled_streams_[s];
+  }
+  return false;
 }
 
 // ----------------------------------------------------------------------------
-void exchange::websocket_enable(network::streams s, net::contexts &io_contexts, bool enable)
+void exchange::websocket_enable(network::streams s, net::contexts& io_contexts, bool enable)
 {
-    if (enable) {
-        if (!websocket_enabled(s)) {
-            enabled_streams_[s] = websocket_connect(io_contexts, {s});
-        }
+  if (enable)
+  {
+    if (!websocket_enabled(s))
+    {
+      enabled_streams_[s] = websocket_connect(io_contexts, {s});
     }
-    else {
-        if (websocket_enabled(s)) {
-            enabled_streams_[s] = !websocket_disconnect(io_contexts, {s});
-        }
+  }
+  else
+  {
+    if (websocket_enabled(s))
+    {
+      enabled_streams_[s] = !websocket_disconnect(io_contexts, {s});
     }
+  }
 }
 
 // ----------------------------------------------------------------------------
-const currency_pairlist & exchange::get_currency_pairs() {
-    return tickers_available_;
-}
-
-// ----------------------------------------------------------------------------
-const exchange::exchange_map & exchange::tickers_subscribed()
+const currency_pairlist& exchange::get_currency_pairs()
 {
-    return tickers_subscribed_;
+  return tickers_available_;
 }
 
 // ----------------------------------------------------------------------------
-bool exchange::ticker_subscribed(const currency &c1, const currency &c2)
+const exchange::exchange_map& exchange::tickers_subscribed()
 {
-    auto present = (tickers_subscribed_.contains(currency_pair{c1,c2}));
-    return present;
+  return tickers_subscribed_;
+}
+
+// ----------------------------------------------------------------------------
+bool exchange::ticker_subscribed(const currency& c1, const currency& c2)
+{
+  auto present = (tickers_subscribed_.contains(currency_pair{c1, c2}));
+  return present;
 }
 
 // ----------------------------------------------------------------------------
 bool exchange::ticker_subscribed(std::string_view p1, std::string_view p2)
 {
-    currency c1 = ::get_currency(p1);
-    currency c2 = ::get_currency(p2);
-    return ticker_subscribed(c1,c2);
+  currency c1 = ::get_currency(p1);
+  currency c2 = ::get_currency(p2);
+  return ticker_subscribed(c1, c2);
 }
 
 // ----------------------------------------------------------------------------
-void exchange::ticker_subscribe(const currency &c1, const currency &c2)
+void exchange::ticker_subscribe(const currency& c1, const currency& c2)
 {
-    throw std::runtime_error("Exchange classes must implement this function");
+  throw std::runtime_error("Exchange classes must implement this function");
 }
 
 // ----------------------------------------------------------------------------
 void exchange::ticker_subscribe(std::string_view p1, std::string_view p2)
 {
-    currency c1 = ::get_currency(p1);
-    currency c2 = ::get_currency(p2);
-    ticker_subscribe(c1,c2);
+  currency c1 = ::get_currency(p1);
+  currency c2 = ::get_currency(p2);
+  ticker_subscribe(c1, c2);
 }
 
 // ----------------------------------------------------------------------------
-void exchange::ticker_unsubscribe(const currency &c1, const currency &c2)
+void exchange::ticker_unsubscribe(const currency& c1, const currency& c2)
 {
-    if (ticker_subscribed(c1, c2)) {
-        tickers_subscribed_.erase(currency_pair{c1,c2});
-    }
+  if (ticker_subscribed(c1, c2))
+  {
+    tickers_subscribed_.erase(currency_pair{c1, c2});
+  }
 }

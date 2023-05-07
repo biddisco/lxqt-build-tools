@@ -6,24 +6,24 @@
 class xrpl_network;
 
 namespace Ui {
-class xrp_functions;
+  class xrp_functions;
 }
 
 class xrp_functions : public QWidget
 {
-    Q_OBJECT
+  Q_OBJECT
 
-private:
-    Ui::xrp_functions *ui;
-    currency       currency_;
-    basic_account *account_;
-    xrpl_network  *network_;
-    double         amount_;
+  private:
+  Ui::xrp_functions* ui;
+  currency currency_;
+  basic_account* account_;
+  xrpl_network* network_;
+  double amount_;
 
-public:
-    xrp_functions(xrpl_network * network, basic_account *account, QWidget *parent = nullptr);
-    ~xrp_functions();
+  public:
+  xrp_functions(xrpl_network* network, basic_account* account, QWidget* parent = nullptr);
+  ~xrp_functions();
 
-public slots:
-    // ----------------------------------
+  public slots:
+  // ----------------------------------
 };

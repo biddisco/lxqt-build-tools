@@ -33,24 +33,24 @@
 
 namespace net {
 
-    // Report a failure
-    void msg_fail(boost::beast::error_code ec, char const* what)
+  // Report a failure
+  void msg_fail(boost::beast::error_code ec, char const* what)
+  {
+    std::cerr << what << ": " << ec.message() << "\n";
+  }
+
+  namespace ws {
+
+    std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
+      std::string host, std::string port, std::string channel,
+      std::function<void(std::string&&)>&& callback)
     {
-        std::cerr << what << ": " << ec.message() << "\n";
+      // Launch the asynchronous operation
+      auto session_ptr = std::make_shared<session>(ioc, ctx, std::move(callback));
+
+      session_ptr->run(host.c_str(), port.c_str(), channel.c_str());
+
+      return session_ptr;
     }
-
-    namespace ws {
-
-        std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
-            std::string host, std::string port, std::string channel,
-            std::function<void(std::string&&)>&& callback)
-        {
-            // Launch the asynchronous operation
-            auto session_ptr = std::make_shared<session>(ioc, ctx, std::move(callback));
-
-            session_ptr->run(host.c_str(), port.c_str(), channel.c_str());
-
-            return session_ptr;
-        }
-    }    // namespace ws
+  }    // namespace ws
 }    // namespace net

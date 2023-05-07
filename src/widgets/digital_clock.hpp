@@ -1,14 +1,14 @@
-#include <QWidget>
-#include <QTimer>
 #include <QLCDNumber>
+#include <QTimer>
+#include <QWidget>
 //
 class DigitalClock : public QLCDNumber
 {
-    Q_OBJECT
+  Q_OBJECT
 
-public:
-    DigitalClock(QWidget *parent, QTimer *timer);
+  public:
+  DigitalClock(QWidget* parent, QTimer* timer);
 
-private slots:
-    void showTime();
+  private slots:
+  void showTime();
 };

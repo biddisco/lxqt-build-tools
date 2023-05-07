@@ -20,22 +20,21 @@ class QwtPlotTextLabel;
 class QwtTextLabel;
 
 // ----------------------------------------------------------------------------
-class filter_plot: public QwtPlot
+class filter_plot : public QwtPlot
 {
-    Q_OBJECT
+  Q_OBJECT
 
-private:
-    QwtDateScaleDraw   *timescaleDraw_;
-    QwtDateScaleEngine *timescaleEngine_;
+  private:
+  QwtDateScaleDraw* timescaleDraw_;
+  QwtDateScaleEngine* timescaleEngine_;
 
-public:
-    filter_plot(QWidget *);
-    ~filter_plot();
-    //
-    void update_time_axis(double t1, double t2);
-    void add_asset_curve(const QString& title,
-        const QVector<QPointF>& samples, const QColor& color);
+  public:
+  filter_plot(QWidget*);
+  ~filter_plot();
+  //
+  void update_time_axis(double t1, double t2);
+  void add_asset_curve(const QString& title, const QVector<QPointF>& samples, const QColor& color);
 
-private Q_SLOTS:
-    void showItem(QwtPlotItem *, bool on );
+  private Q_SLOTS:
+  void showItem(QwtPlotItem*, bool on);
 };

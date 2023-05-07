@@ -30,21 +30,21 @@
 // Report a failure
 void fail(boost::beast::error_code ec, char const* what)
 {
-    std::cerr << what << ": " << ec.message() << "\n";
+  std::cerr << what << ": " << ec.message() << "\n";
 }
 
 namespace net { namespace https {
 
-    std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
-        std::string host, std::string port, std::function<void(std::string&&)>&& callback)
-    {
-        // Launch the asynchronous operation
-        auto session_ptr = std::make_shared<session>(ioc, ctx);
+  std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
+    std::string host, std::string port, std::function<void(std::string&&)>&& callback)
+  {
+    // Launch the asynchronous operation
+    auto session_ptr = std::make_shared<session>(ioc, ctx);
 
-        session_ptr->set_callback(std::move(callback));
+    session_ptr->set_callback(std::move(callback));
 
-        session_ptr->run(host.c_str(), port.c_str());
+    session_ptr->run(host.c_str(), port.c_str());
 
-        return session_ptr;
-    }
+    return session_ptr;
+  }
 }}    // namespace net::https

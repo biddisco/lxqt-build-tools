@@ -32,208 +32,207 @@
 //------------------------------------------------------------------------------
 namespace net { namespace https {
 
-    // Performs an HTTP GET and prints the response
-    class session : public std::enable_shared_from_this<session>
+  // Performs an HTTP GET and prints the response
+  class session : public std::enable_shared_from_this<session>
+  {
+    tcp::resolver resolver_;
+    boost::beast::ssl_stream<boost::beast::tcp_stream> stream_;
+    boost::beast::flat_buffer buffer_;    // (Must persist between reads)
+    http::request<http::empty_body> req_;
+    http::response<http::string_body> res_;
+
+    std::string host_;
+    std::string port_;
+    std::string target_;
+
+public:
+    //
+    using callback_type = std::function<void(std::string&&)>;
+    callback_type read_callback_;
+    std::atomic<bool> ready_;
+
+    void set_callback(callback_type cb)
     {
-        tcp::resolver resolver_;
-        boost::beast::ssl_stream<boost::beast::tcp_stream> stream_;
-        boost::beast::flat_buffer buffer_;    // (Must persist between reads)
-        http::request<http::empty_body> req_;
-        http::response<http::string_body> res_;
+      read_callback_ = cb;
+    }
 
-        std::string host_;
-        std::string port_;
-        std::string target_;
+public:
+    explicit session(asio::io_context& ioc, ssl::context& ctx)
+      : resolver_(ioc)
+      , stream_(ioc, ctx)
+      , ready_(false)
+    {
+    }
 
-    public:
-        //
-        using callback_type = std::function<void(std::string&&)>;
-        callback_type read_callback_;
-        std::atomic<bool> ready_;
+    // Start the asynchronous operation
+    void run(char const* host, char const* port)
+    {
+      // Set SNI Hostname (many hosts need this to handshake successfully)
+      if (!SSL_set_tlsext_host_name(stream_.native_handle(), host))
+      {
+        boost::beast::error_code ec{
+          static_cast<int>(::ERR_get_error()), asio::error::get_ssl_category()};
+        std::cerr << ec.message() << "\n";
+        return;
+      }
+      host_ = host;
+      port_ = port;
 
-        void set_callback(callback_type cb)
-        {
-            read_callback_ = cb;
-        }
+      // these params don't change so set them here at startup
+      req_.version(11);
+      req_.method(http::verb::get);
+      req_.set(http::field::host, host);
+      req_.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
-    public:
-        explicit session(asio::io_context& ioc, ssl::context& ctx)
-          : resolver_(ioc)
-          , stream_(ioc, ctx)
-          , ready_(false)
-        {
-        }
+      // Look up the domain name
+      resolver_.async_resolve(
+        host, port, boost::beast::bind_front_handler(&session::on_resolve, shared_from_this()));
+    }
 
-        // Start the asynchronous operation
-        void run(char const* host, char const* port)
-        {
-            // Set SNI Hostname (many hosts need this to handshake successfully)
-            if (!SSL_set_tlsext_host_name(stream_.native_handle(), host))
-            {
-                boost::beast::error_code ec{
-                    static_cast<int>(::ERR_get_error()), asio::error::get_ssl_category()};
-                std::cerr << ec.message() << "\n";
-                return;
-            }
-            host_ = host;
-            port_ = port;
+    void on_resolve(boost::beast::error_code ec, tcp::resolver::results_type results)
+    {
+      if (ec)
+        return msg_fail(ec, "resolve");
 
-            // these params don't change so set them here at startup
-            req_.version(11);
-            req_.method(http::verb::get);
-            req_.set(http::field::host, host);
-            req_.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+      std::cout << "Resolve ok" << std::endl;
 
-            // Look up the domain name
-            resolver_.async_resolve(host, port,
-                boost::beast::bind_front_handler(&session::on_resolve, shared_from_this()));
-        }
+      // Set a timeout on the operation
+      boost::beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
 
-        void on_resolve(boost::beast::error_code ec, tcp::resolver::results_type results)
-        {
-            if (ec)
-                return msg_fail(ec, "resolve");
+      // Make the connection on the IP address we get from a lookup
+      boost::beast::get_lowest_layer(stream_).async_connect(
+        results, boost::beast::bind_front_handler(&session::on_connect, shared_from_this()));
+    }
 
-            std::cout << "Resolve ok" << std::endl;
+    void on_connect(boost::beast::error_code ec, tcp::resolver::results_type::endpoint_type)
+    {
+      if (ec)
+        return msg_fail(ec, "connect");
 
-            // Set a timeout on the operation
-            boost::beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
+      std::cout << "Connect ok" << std::endl;
 
-            // Make the connection on the IP address we get from a lookup
-            boost::beast::get_lowest_layer(stream_).async_connect(results,
-                boost::beast::bind_front_handler(&session::on_connect, shared_from_this()));
-        }
+      // Perform the SSL handshake
+      stream_.async_handshake(ssl::stream_base::client,
+        boost::beast::bind_front_handler(&session::on_handshake, shared_from_this()));
+    }
 
-        void on_connect(boost::beast::error_code ec, tcp::resolver::results_type::endpoint_type)
-        {
-            if (ec)
-                return msg_fail(ec, "connect");
+    void on_handshake(boost::beast::error_code ec)
+    {
+      if (ec)
+        return msg_fail(ec, "handshake");
 
-            std::cout << "Connect ok" << std::endl;
+      std::cout << "Handshake ok" << std::endl;
 
-            // Perform the SSL handshake
-            stream_.async_handshake(ssl::stream_base::client,
-                boost::beast::bind_front_handler(&session::on_handshake, shared_from_this()));
-        }
+      ready_ = true;
+    }
 
-        void on_handshake(boost::beast::error_code ec)
-        {
-            if (ec)
-                return msg_fail(ec, "handshake");
+    void write(std::string target, unsigned version = 11)
+    {
+      if (!ready_)
+      {
+        throw std::runtime_error("Still processing last request");
+      }
 
-            std::cout << "Handshake ok" << std::endl;
+      ready_ = false;
+      // Set a timeout on the operation
+      boost::beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
 
-            ready_ = true;
-        }
+      // Set up HTTP GET request, hold onto the request string (async=ownership)
+      target_ = std::move(target);
+      std::cout << "https: writing: " << host_ << ":" << target_ << std::endl;
+      req_.target(target_);
 
-        void write(std::string target, unsigned version = 11)
-        {
-            if (!ready_)
-            {
-                throw std::runtime_error("Still processing last request");
-            }
+      // Send the HTTP request to the remote host
+      http::async_write(
+        stream_, req_, boost::beast::bind_front_handler(&session::on_write, shared_from_this()));
+    }
 
-            ready_ = false;
-            // Set a timeout on the operation
-            boost::beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
+    void write(http::request<http::string_body>& request)
+    {
+      if (!ready_)
+      {
+        throw std::runtime_error("Still processing last request");
+      }
 
-            // Set up HTTP GET request, hold onto the request string (async=ownership)
-            target_ = std::move(target);
-            std::cout << "https: writing: " << host_ << ":" << target_ << std::endl;
-            req_.target(target_);
+      ready_ = false;
+      // Set a timeout on the operation
+      boost::beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
 
-            // Send the HTTP request to the remote host
-            http::async_write(stream_, req_,
-                boost::beast::bind_front_handler(&session::on_write, shared_from_this()));
-        }
+      std::cout << "https: writing: " << host_ << ":" << request << std::endl;
 
-        void write(http::request<http::string_body>& request)
-        {
-            if (!ready_)
-            {
-                throw std::runtime_error("Still processing last request");
-            }
+      // Send the HTTP request to the remote host
+      http::async_write(
+        stream_, request, boost::beast::bind_front_handler(&session::on_write, shared_from_this()));
+    }
 
-            ready_ = false;
-            // Set a timeout on the operation
-            boost::beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
+    void on_write(boost::beast::error_code ec, std::size_t bytes_transferred)
+    {
+      boost::ignore_unused(bytes_transferred);
 
-            std::cout << "https: writing: " << host_ << ":" << request << std::endl;
+      if (ec)
+        return msg_fail(ec, "write");
 
-            // Send the HTTP request to the remote host
-            http::async_write(stream_, request,
-                boost::beast::bind_front_handler(&session::on_write, shared_from_this()));
-        }
+      std::cout << "Write ok" << std::endl;
 
-        void on_write(boost::beast::error_code ec, std::size_t bytes_transferred)
-        {
-            boost::ignore_unused(bytes_transferred);
+      // Receive the HTTP response
+      http::async_read(stream_, buffer_, res_,
+        boost::beast::bind_front_handler(&session::on_read, shared_from_this()));
+    }
 
-            if (ec)
-                return msg_fail(ec, "write");
+    void on_read(boost::beast::error_code ec, std::size_t bytes_transferred)
+    {
+      boost::ignore_unused(bytes_transferred);
 
-            std::cout << "Write ok" << std::endl;
+      if (ec)
+        return msg_fail(ec, "read");
 
-            // Receive the HTTP response
-            http::async_read(stream_, buffer_, res_,
-                boost::beast::bind_front_handler(&session::on_read, shared_from_this()));
-        }
+      std::cout << "Read ok" << std::endl;
 
-        void on_read(boost::beast::error_code ec, std::size_t bytes_transferred)
-        {
-            boost::ignore_unused(bytes_transferred);
+      // The make_printable() function helps print a ConstBufferSequence
+      // std::cout << boost::beast::make_printable(res_.data()) << std::endl;
+      std::string str_buffer = res_.body();
+      res_.body().clear();
+      buffer_.clear();
 
-            if (ec)
-                return msg_fail(ec, "read");
+      // safe to process the next request
+      ready_ = true;
 
-            std::cout << "Read ok" << std::endl;
+      // trigger the user callback
+      if (read_callback_)
+      {
+        read_callback_(std::move(str_buffer));
+      }
+    }
 
-            // The make_printable() function helps print a ConstBufferSequence
-            // std::cout << boost::beast::make_printable(res_.data()) << std::endl;
-            std::string str_buffer = res_.body();
-            res_.body().clear();
-            buffer_.clear();
+    void shutdown()
+    {
+      // Gracefully close the stream
+      stream_.async_shutdown(
+        boost::beast::bind_front_handler(&session::on_shutdown, shared_from_this()));
+    }
 
-            // safe to process the next request
-            ready_ = true;
+    void shutdown_blocking()
+    {
+      // Close the htttps connection
+      stream_.shutdown();
+    }
 
-            // trigger the user callback
-            if (read_callback_)
-            {
-                read_callback_(std::move(str_buffer));
-            }
-        }
+    void on_shutdown(boost::beast::error_code ec)
+    {
+      if (ec == asio::error::eof)
+      {
+        // Rationale:
+        // http://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
+        ec = {};
+      }
+      if (ec)
+        return msg_fail(ec, "shutdown");
 
-        void shutdown()
-        {
-            // Gracefully close the stream
-            stream_.async_shutdown(
-                boost::beast::bind_front_handler(&session::on_shutdown, shared_from_this()));
-        }
+      std::cout << "https: shutdown complete" << std::endl;
+    }
+  };
 
-        void shutdown_blocking()
-        {
-            // Close the htttps connection
-            stream_.shutdown();
-        }
-
-        void on_shutdown(boost::beast::error_code ec)
-        {
-            if (ec == asio::error::eof)
-            {
-                // Rationale:
-                // http://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
-                ec = {};
-            }
-            if (ec)
-                return msg_fail(ec, "shutdown");
-
-            std::cout << "https: shutdown complete" << std::endl;
-        }
-    };
-
-    std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
-        std::string host, std::string port,
-        std::function<void(std::string&&)>&& callback);
+  std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
+    std::string host, std::string port, std::function<void(std::string&&)>&& callback);
 
 }}    // namespace net::https
