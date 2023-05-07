@@ -1,12 +1,12 @@
 #include <QMessageBox>
 //
 #include "ui_price_chart_widget.h"
-#include "widgets/price_chart_widget.hpp"
 //
 #include "data/ohlc_dataset_manager.hpp"
 #include "indicators/indicator_definitions.hpp"
 #include "widgets/digital_clock.hpp"
 #include "widgets/indicator_dialog.hpp"
+#include "widgets/price_chart_widget.hpp"
 //
 #include "print.hpp"
 #include "settings.hpp"

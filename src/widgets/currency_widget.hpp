@@ -1,5 +1,4 @@
-#ifndef CURRENCY_WIDGET_H
-#define CURRENCY_WIDGET_H
+#pragma once
 
 #include <QWidget>
 //
@@ -43,5 +42,3 @@ class currency_widget : public QWidget
   void execute_payment();
   void execute_trade();
 };
-
-#endif    // CURRENCY_WIDGET_H

@@ -33,8 +33,8 @@
 #include "plot/ohlc_price_plot.hpp"
 #include "print.hpp"
 //
-#include <fmt/format.h>
 #include <range/v3/view.hpp>
+#include <fmt/format.h>
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

@@ -1,5 +1,4 @@
-#ifndef wallet_widget_H
-#define wallet_widget_H
+#pragma once
 
 #include <QWidget>
 //
@@ -27,5 +26,3 @@ class wallet_widget : public QWidget
   private:
   Ui::wallet_widget* ui;
 };
-
-#endif    // wallet_widget_H

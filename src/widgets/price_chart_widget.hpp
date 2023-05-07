@@ -1,5 +1,4 @@
-#ifndef PRICE_CHART_WIDGET_H
-#define PRICE_CHART_WIDGET_H
+#pragma once
 
 #include <QPushButton>
 #include <QWidget>
@@ -51,5 +50,3 @@ class price_chart_widget : public QWidget
   void resizeEvent(QResizeEvent* event) override;
   void showEvent(QShowEvent* event) override;
 };
-
-#endif    // PRICE_CHART_WIDGET_H
