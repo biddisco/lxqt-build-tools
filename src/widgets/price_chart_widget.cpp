@@ -4,7 +4,7 @@
 #include "widgets/price_chart_widget.hpp"
 //
 #include "data/ohlc_dataset_manager.hpp"
-#include "indicators/indicator_definitiions.hpp"
+#include "indicators/indicator_definitions.hpp"
 #include "widgets/digital_clock.hpp"
 #include "widgets/indicator_dialog.hpp"
 //
