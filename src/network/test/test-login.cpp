@@ -11,8 +11,8 @@
 #include <curl/curl.h>
 #include <uuid/uuid.h>
 //
-#include "src/network/evp-encrypt.hpp"
-#include "src/network/https-async.hpp"
+#include "network/evp-encrypt.hpp"
+#include "network/https-async.hpp"
 
 namespace beast = boost::beast;
 namespace http = beast::http;

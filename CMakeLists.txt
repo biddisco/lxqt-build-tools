@@ -393,19 +393,20 @@ set(GROX_QRC_SRC
 )
 
 add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC})
+# c++ properties
 set_property(TARGET grox PROPERTY CXX_STANDARD 20)
-
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
+# Qt properties
 set_property(TARGET grox PROPERTY AUTOMOC ON)
 set_property(TARGET grox PROPERTY AUTOUIC ON)
 set_property(TARGET grox PROPERTY AUTORCC ON)
-set_property(TARGET grox PROPERTY CXX_STANDARD 20)
 
 target_include_directories(
   grox
   PUBLIC ${Boost_INCLUDE_DIRS}
          ${HDF5_INCLUDE_DIRS}
+         ${CMAKE_CURRENT_BINARY_DIR}
+         ${CMAKE_CURRENT_SOURCE_DIR}
+         ${CMAKE_CURRENT_SOURCE_DIR}/src
          ${CMAKE_CURRENT_SOURCE_DIR}/extern # nlohmann/json
 )
 
@@ -450,6 +451,7 @@ target_link_libraries(
 # ---------------------------------------------------
 set(TEST_INC_DIRS
     ${Boost_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/extern # nlohmann/json
 )
 
@@ -518,7 +520,7 @@ target_compile_definitions(
 set(BITSTAMP_SRC src/network/test/test-bitstamp.cpp src/network/evp-encrypt.cpp)
 add_executable(test-bitstamp ${BITSTAMP_SRC})
 
-target_include_directories(test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS})
+target_include_directories(test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS} ${TEST_INC_DIRS})
 
 target_link_libraries(
   test-bitstamp PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL curl uuid pthread
@@ -530,7 +532,7 @@ target_link_libraries(
 set(AES256_SRC src/network/evp-encrypt.cpp src/network/test/test-aes256.cpp)
 
 add_executable(test-aes256 ${AES256_SRC})
-
+target_include_directories(test-aes256 PUBLIC ${TEST_INC_DIRS})
 target_link_libraries(test-aes256 PUBLIC OpenSSL::SSL pthread)
 
 # ---------------------------------------------------

@@ -11,9 +11,9 @@
 #include <string>
 #include <boost/format.hpp>
 //
-#include "src/currency.hpp"
-#include "src/exchange/exchange.hpp"
-#include "src/exchange/xrpl_network.hpp"
+#include "currency.hpp"
+#include "exchange/exchange.hpp"
+#include "exchange/xrpl_network.hpp"
 // ----------------------------------------------------------------------------
 xrp_functions::xrp_functions(xrpl_network *network, basic_account *account, QWidget *parent)
     : QWidget(parent)

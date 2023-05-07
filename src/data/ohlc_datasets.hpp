@@ -6,8 +6,8 @@
 // Qt
 #include <QVector>
 // Grox
-#include "src/plot/ohlc_chart_data.hpp"
-#include "src/plot/ohlc_chart_curve.hpp"
+#include "plot/ohlc_chart_data.hpp"
+#include "plot/ohlc_chart_curve.hpp"
 
 std::string msecs_unix_to_calendar_time(uint64_t unixmsecs);
 void update_QwtOHLCSample(QwtOHLCSample &ohlc, QwtOHLCSample const &other);

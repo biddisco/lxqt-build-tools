@@ -7,7 +7,7 @@
 #include <QwtSeriesData>
 #include <QwtTradingChartData>
 //
-#include "src/data/ohlc_data_resolutions.hpp"
+#include "data/ohlc_data_resolutions.hpp"
 
 // ----------------------------------------------------------------------------
 struct ohlcv_minmax {

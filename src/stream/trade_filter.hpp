@@ -3,8 +3,8 @@
 #include <iostream>
 #include <optional>
 //
-#include "src/data/ohlc_heikin_ashi.hpp"
-#include "src/data/ohlc_datasets.hpp"
+#include "data/ohlc_heikin_ashi.hpp"
+#include "data/ohlc_datasets.hpp"
 #include "pipeline.hpp"
 //
 // Boost Accumulators

@@ -3,7 +3,7 @@
 // Qwt
 #include <QwtPlot>
 // Grox
-#include "src/plot/ohlc_interactor.hpp"
+#include "plot/ohlc_interactor.hpp"
 //
 class ohlc_dataset_view;
 class ohlc_chart_curve;

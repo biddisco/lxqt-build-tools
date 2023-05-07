@@ -5,12 +5,12 @@
 //
 #include <QObject>
 //
-#include "src/currency.hpp"
+#include "currency.hpp"
 //
-#include "src/network/https-async.hpp"
-#include "src/network/websocket-ssl.hpp"
-#include "src/data/ohlc_dataset_view.hpp"
-#include "src/trade_data.hpp"
+#include "network/https-async.hpp"
+#include "network/websocket-ssl.hpp"
+#include "data/ohlc_dataset_view.hpp"
+#include "trade_data.hpp"
 
 class basic_account;
 

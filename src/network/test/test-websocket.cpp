@@ -19,7 +19,7 @@
 #include <string>
 #include <thread>
 //
-#include "src/network/websocket-ssl.hpp"
+#include "network/websocket-ssl.hpp"
 
 //------------------------------------------------------------------------------
 void new_trade_data(std::string&& data)

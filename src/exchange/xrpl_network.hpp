@@ -4,17 +4,17 @@
 //
 #include <string>
 //
-#include "src/network/https-async.hpp"
-#include "src/network/websocket-ssl.hpp"
-#include "src/network/evp-encrypt.hpp"
-#include "src/exchange/exchange.hpp"
-#include "src/order_book.hpp"
-#include "src/settings.hpp"
-#include "src/widgets/currency_widget.hpp"
+#include "network/https-async.hpp"
+#include "network/websocket-ssl.hpp"
+#include "network/evp-encrypt.hpp"
+#include "exchange/exchange.hpp"
+#include "order_book.hpp"
+#include "settings.hpp"
+#include "widgets/currency_widget.hpp"
 //
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
-# include "extern/belle/include/belle.hh"
+# include "belle/include/belle.hh"
 #endif
 
 //#define GROX_USE_LOCAL_SERVER

@@ -3,9 +3,9 @@
 #include <QWidget>
 #include <string_view>
 
-#include "src/exchange/exchange.hpp"
-#include "src/currency.hpp"
-#include "src/trade_data.hpp"
+#include "exchange/exchange.hpp"
+#include "currency.hpp"
+#include "trade_data.hpp"
 
 namespace Ui {
 class trade_widget;

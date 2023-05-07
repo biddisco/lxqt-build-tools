@@ -22,8 +22,8 @@
 #include "nlohmann/json.hpp"
 #include "json_types.hpp"
 //
-#include "src/plot/OrderBookCurve.h"
-#include "src/plot/OrderBookPlot.h"
+#include "plot/OrderBookCurve.h"
+#include "plot/OrderBookPlot.h"
 
 //
 constexpr static int bid_index = 0;

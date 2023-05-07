@@ -8,10 +8,10 @@
 #include <regex>
 
 #include "mainwindow.hpp"
-#include "src/network/evp-encrypt.hpp"
-#include "src/print.hpp"
-#include "src/settings.hpp"
-#include "src/widgets/password_dialog.hpp"
+#include "network/evp-encrypt.hpp"
+#include "print.hpp"
+#include "settings.hpp"
+#include "widgets/password_dialog.hpp"
 //
 #include <pika/init.hpp>
 #include <pika/modules/execution.hpp>

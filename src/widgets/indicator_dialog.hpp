@@ -7,8 +7,8 @@
 #include <vector>
 #include <string>
 //
-#include "src/data/ohlc_data_resolutions.hpp"
-#include "src/indicators/indicator_definitiions.hpp"
+#include "data/ohlc_data_resolutions.hpp"
+#include "indicators/indicator_definitiions.hpp"
 #include "ui_indicator_dialog.h"
 
 class indicator_dialog : public QDialog

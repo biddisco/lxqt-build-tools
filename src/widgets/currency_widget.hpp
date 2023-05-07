@@ -3,7 +3,7 @@
 
 #include <QWidget>
 //
-#include "src/settings.hpp"
+#include "settings.hpp"
 
 namespace Ui {
 class currency_widget;

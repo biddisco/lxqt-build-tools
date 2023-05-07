@@ -5,9 +5,9 @@
 #include <QDateTime>
 #include <QLocale>
 // Grox
-#include "src/print.hpp"
-#include "src/plot/ohlc_chart_data.hpp"
-#include "src/data/ohlc_datasets.hpp"
+#include "print.hpp"
+#include "plot/ohlc_chart_data.hpp"
+#include "data/ohlc_datasets.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

@@ -25,13 +25,13 @@
 #include <QwtPlotCurve>
 #include <QwtSymbol>
 // Grox
-#include "src/plot/ohlc_chart_data.hpp"
-#include "src/plot/ohlc_price_plot.hpp"
-#include "src/plot/ohlc_date_scaledraw.hpp"
-#include "src/plot/ohlc_interactor.hpp"
-#include "src/plot/ohlc_picker.hpp"
-#include "src/plot/ohlc_chart_curve.hpp"
-#include "src/print.hpp"
+#include "plot/ohlc_chart_data.hpp"
+#include "plot/ohlc_price_plot.hpp"
+#include "plot/ohlc_date_scaledraw.hpp"
+#include "plot/ohlc_interactor.hpp"
+#include "plot/ohlc_picker.hpp"
+#include "plot/ohlc_chart_curve.hpp"
+#include "print.hpp"
 //
 #include <range/v3/view.hpp>
 #include <fmt/format.h>

@@ -1,15 +1,15 @@
 #include <QMessageBox>
 //
-#include "src/widgets/price_chart_widget.hpp"
+#include "widgets/price_chart_widget.hpp"
 #include "ui_price_chart_widget.h"
 //
-#include "src/data/ohlc_dataset_manager.hpp"
-#include "src/indicators/indicator_definitiions.hpp"
-#include "src/widgets/digital_clock.hpp"
-#include "src/widgets/indicator_dialog.hpp"
+#include "data/ohlc_dataset_manager.hpp"
+#include "indicators/indicator_definitiions.hpp"
+#include "widgets/digital_clock.hpp"
+#include "widgets/indicator_dialog.hpp"
 //
-#include "src/print.hpp"
-#include "src/settings.hpp"
+#include "print.hpp"
+#include "settings.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

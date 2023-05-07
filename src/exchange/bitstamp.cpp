@@ -4,17 +4,17 @@
 //
 #include <string>
 //
-#include "src/print.hpp"
-#include "src/settings.hpp"
-//#include "src/util/stringutils.hpp"
-#include "src/network/https-async.hpp"
-#include "src/network/websocket-ssl.hpp"
-#include "src/network/evp-encrypt.hpp"
-#include "src/exchange/xrpl_network.hpp"
-#include "src/exchange/bitstamp.hpp"
-#include "src/widgets/wallet_widget.hpp"
-#include "src/util/stringutils.hpp"
-#include "src/widgets/price_chart_widget.hpp"
+#include "print.hpp"
+#include "settings.hpp"
+//#include "util/stringutils.hpp"
+#include "network/https-async.hpp"
+#include "network/websocket-ssl.hpp"
+#include "network/evp-encrypt.hpp"
+#include "exchange/xrpl_network.hpp"
+#include "exchange/bitstamp.hpp"
+#include "widgets/wallet_widget.hpp"
+#include "util/stringutils.hpp"
+#include "widgets/price_chart_widget.hpp"
 //
 #include "DockManager.h"
 #include "DockWidget.h"

@@ -5,7 +5,7 @@
 #include <QwtScaleDraw>
 #include <QwtText>
 // Grox
-#include "src/plot/ohlc_interactor.hpp"
+#include "plot/ohlc_interactor.hpp"
 //
 class ohlc_chart_curve;
 //class ohlc_price_scaledraw;

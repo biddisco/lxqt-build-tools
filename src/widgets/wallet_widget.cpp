@@ -4,7 +4,7 @@
 //
 #include <boost/format.hpp>
 //
-#include "src/settings.hpp"
+#include "settings.hpp"
 //
 // ----------------------------------------------------------------------------
 wallet_widget::wallet_widget(QWidget *parent) :

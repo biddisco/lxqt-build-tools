@@ -1,4 +1,4 @@
-#include "src/network/evp-encrypt.hpp"
+#include "network/evp-encrypt.hpp"
 
 int main(int argc, char* argv[])
 {

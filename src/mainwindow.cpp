@@ -27,18 +27,18 @@
 #include <QwtScaleEngine>
 // Grox
 #include "mainwindow.hpp"
-#include "src/widgets/check_trades_dialog.hpp"
-#include "src/widgets/connection_widget.hpp"
-#include "src/widgets/currency_widget.hpp"
-#include "src/widgets/password_dialog.hpp"
-#include "src/widgets/indicator_dialog.hpp"
-#include "src/widgets/trade_widget.hpp"
-#include "src/widgets/wallet_widget.hpp"
+#include "widgets/check_trades_dialog.hpp"
+#include "widgets/connection_widget.hpp"
+#include "widgets/currency_widget.hpp"
+#include "widgets/password_dialog.hpp"
+#include "widgets/indicator_dialog.hpp"
+#include "widgets/trade_widget.hpp"
+#include "widgets/wallet_widget.hpp"
 //
-#include "src/demangle_helper.hpp"
-#include "src/network/evp-encrypt.hpp"
-#include "src/network/https-async.hpp"
-#include "src/print.hpp"
+#include "demangle_helper.hpp"
+#include "network/evp-encrypt.hpp"
+#include "network/https-async.hpp"
+#include "print.hpp"
 //
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
@@ -46,8 +46,8 @@
 #include "json_types.hpp"
 #include "settings.hpp"
 //
-#include "src/data/ohlc_heikin_ashi.hpp"
-#include "src/stream/trade_filter.hpp"
+#include "data/ohlc_heikin_ashi.hpp"
+#include "stream/trade_filter.hpp"
 
 #include "DockAreaTabBar.h"
 #include "DockAreaTitleBar.h"

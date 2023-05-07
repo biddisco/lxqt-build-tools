@@ -6,7 +6,7 @@
 #include <QLabel>
 #include <QScrollArea>
 //
-#include "src/widgets/trade_widget.hpp"
+#include "widgets/trade_widget.hpp"
 
 // ----------------------------------------------------------------------------
 class check_trades_dialog : public QDialog

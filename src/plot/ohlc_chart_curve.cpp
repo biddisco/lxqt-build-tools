@@ -9,8 +9,8 @@
 #include <QwtMath>
 #include <QwtPlot>
 // Grox
-#include "src/plot/ohlc_chart_curve.hpp"
-#include "src/data/ohlc_heikin_ashi.hpp"
+#include "plot/ohlc_chart_curve.hpp"
+#include "data/ohlc_heikin_ashi.hpp"
 
 constexpr double volume_reduction = 0.25;
 

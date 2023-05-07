@@ -11,11 +11,11 @@
 // Qt
 #include <QtCore>
 // Grox
-#include "src/print.hpp"
+#include "print.hpp"
 #include "json_types.hpp"
 //
-#include "src/plot/OrderBookCurve.h"
-#include "src/plot/OrderBookPlot.h"
+#include "plot/OrderBookCurve.h"
+#include "plot/OrderBookPlot.h"
 #include "util/stringutils.hpp"
 //
 #include "order_book.hpp"

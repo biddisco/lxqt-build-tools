@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 // Grox
-#include "src/data/ohlc_datasets.hpp"
-#include "src/indicators/indicator_definitiions.hpp"
-#include "src/stream/trade_filter.hpp"
-#include "src/widgets/indicator_dialog.hpp"
+#include "data/ohlc_datasets.hpp"
+#include "indicators/indicator_definitiions.hpp"
+#include "stream/trade_filter.hpp"
+#include "widgets/indicator_dialog.hpp"
 
 // ----------------------------------------------------------------------------
 indicator_dialog::indicator_dialog()

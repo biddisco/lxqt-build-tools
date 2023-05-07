@@ -8,9 +8,9 @@
 // Qwt
 #include <QwtOHLCSample>
 // Grox
-#include "src/currency.hpp"
-#include "src/data/ohlc_datasets.hpp"
-#include "src/plot/ohlc_chart_data.hpp"
+#include "currency.hpp"
+#include "data/ohlc_datasets.hpp"
+#include "plot/ohlc_chart_data.hpp"
 
 class ohlc_dataset_view;
 

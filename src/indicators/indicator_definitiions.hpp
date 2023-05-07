@@ -5,8 +5,8 @@
 #include <variant>
 #include <vector>
 //
-#include "src/data/ohlc_data_resolutions.hpp"
-#include "src/data/ohlc_dataset_view.hpp"
+#include "data/ohlc_data_resolutions.hpp"
+#include "data/ohlc_dataset_view.hpp"
 
 namespace indicator {
 

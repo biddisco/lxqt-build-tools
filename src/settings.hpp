@@ -6,15 +6,15 @@
 //
 #include <string>
 //
-#include "src/network/https-async.hpp"
-#include "src/network/websocket-ssl.hpp"
-#include "src/network/evp-encrypt.hpp"
+#include "network/https-async.hpp"
+#include "network/websocket-ssl.hpp"
+#include "network/evp-encrypt.hpp"
 //
 #include "order_book.hpp"
 #include "json_types.hpp"
 #include "currency.hpp"
-#include "src/exchange/exchange.hpp"
-#include "src/data/ohlc_dataset_manager.hpp"
+#include "exchange/exchange.hpp"
+#include "data/ohlc_dataset_manager.hpp"
 //
 class wallet_widget;
 class QMenu;

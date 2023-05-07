@@ -4,8 +4,8 @@
 #include <string_view>
 #include <iostream>
 // Grox
-#include "src/print.hpp"
-#include "src/currency.hpp"
+#include "print.hpp"
+#include "currency.hpp"
 // extern
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/strHex.h>

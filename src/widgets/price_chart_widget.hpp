@@ -4,10 +4,10 @@
 #include <QWidget>
 #include <QPushButton>
 //
-#include "src/plot/ohlc_price_plot.hpp"
-#include "src/plot/ohlc_picker.hpp"
-#include "src/plot/filter_plot.hpp"
-#include "src/exchange/exchange.hpp"
+#include "plot/ohlc_price_plot.hpp"
+#include "plot/ohlc_picker.hpp"
+#include "plot/filter_plot.hpp"
+#include "exchange/exchange.hpp"
 
 class ohlc_dataset_view;
 

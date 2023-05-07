@@ -9,27 +9,27 @@
 //
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
-# include "extern/belle/include/belle.hh"
+# include "belle/include/belle.hh"
 #endif
 //
-#include "src/network/https-async.hpp"
-#include "src/network/websocket-ssl.hpp"
+#include "network/https-async.hpp"
+#include "network/websocket-ssl.hpp"
 //
-#include "src/plot/ohlc_price_plot.hpp"
-#include "src/plot/ohlc_picker.hpp"
-#include "src/plot/OrderBookPlot.h"
-#include "src/plot/filter_plot.hpp"
+#include "plot/ohlc_price_plot.hpp"
+#include "plot/ohlc_picker.hpp"
+#include "plot/OrderBookPlot.h"
+#include "plot/filter_plot.hpp"
 //
-#include "src/data/ohlc_dataset_manager.hpp"
+#include "data/ohlc_dataset_manager.hpp"
 //
 #include "ui_mainwindow.h"
 //
 #include "exchange/bitstamp.hpp"
-#include "src/exchange/xrpl_network.hpp"
-#include "src/settings.hpp"
-#include "src/order_book.hpp"
-#include "src/stream/trade_filter.hpp"
-#include "src/widgets/connection_widget.hpp"
+#include "exchange/xrpl_network.hpp"
+#include "settings.hpp"
+#include "order_book.hpp"
+#include "stream/trade_filter.hpp"
+#include "widgets/connection_widget.hpp"
 // generated
 #include "ui_tabbed_form.h"
 

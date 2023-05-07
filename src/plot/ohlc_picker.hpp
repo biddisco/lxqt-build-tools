@@ -16,7 +16,7 @@
 #include <QwtText>
 #include <QwtTextLabel>
 //
-#include "src/plot/ohlc_price_plot.hpp"
+#include "plot/ohlc_price_plot.hpp"
 
 class ohlc_picker : public QwtPlotPicker
 {

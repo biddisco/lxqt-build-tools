@@ -2,9 +2,9 @@
 //
 #include <QInputDialog>
 //
-#include "src/print.hpp"
-#include "src/settings.hpp"
-#include "src/data/ohlc_dataset_view.hpp"
+#include "print.hpp"
+#include "settings.hpp"
+#include "data/ohlc_dataset_view.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

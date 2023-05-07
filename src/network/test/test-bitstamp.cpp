@@ -8,7 +8,7 @@
 #include <iostream>
 #include <string>
 //
-#include "src/network/evp-encrypt.hpp"
+#include "network/evp-encrypt.hpp"
 
 using uuid_string_t = char[256];
 

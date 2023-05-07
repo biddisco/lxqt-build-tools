@@ -4,21 +4,21 @@
 #include <QObject>
 #include <QString>
 //
-#include "src/print.hpp"
-#include "src/network/https-async.hpp"
-#include "src/network/websocket-ssl.hpp"
-#include "src/network/evp-encrypt.hpp"
-#include "src/util/stringutils.hpp"
+#include "print.hpp"
+#include "network/https-async.hpp"
+#include "network/websocket-ssl.hpp"
+#include "network/evp-encrypt.hpp"
+#include "util/stringutils.hpp"
 //
-#include "src/order_book.hpp"
-#include "src/settings.hpp"
+#include "order_book.hpp"
+#include "settings.hpp"
 //
-#include "src/widgets/currency_widget.hpp"
-#include "src/widgets/xrp_functions.hpp"
+#include "widgets/currency_widget.hpp"
+#include "widgets/xrp_functions.hpp"
 //
-#include "src/exchange/xrpl_network.hpp"
-#include "src/exchange/bitstamp.hpp"
-#include "src/exchange/xrpl.hpp"
+#include "exchange/xrpl_network.hpp"
+#include "exchange/bitstamp.hpp"
+#include "exchange/xrpl.hpp"
 // extern
 #include <ripple/protocol/Issue.h>
 #include <ripple/protocol/Sign.h>

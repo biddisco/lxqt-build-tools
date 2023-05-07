@@ -7,8 +7,8 @@
 #include <QwtAxisId>
 #include <QwtScaleDiv>
 // Grox
-#include "src/plot/ohlc_interactor.hpp"
-#include "src/data/ohlc_dataset_view.hpp"
+#include "plot/ohlc_interactor.hpp"
+#include "data/ohlc_dataset_view.hpp"
 
 class ohlc_price_plot;
 class QCursor;

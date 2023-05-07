@@ -1,7 +1,7 @@
 #include <QObject>
 //
-#include "src/print.hpp"
-#include "src/exchange/exchange.hpp"
+#include "print.hpp"
+#include "exchange/exchange.hpp"
 #include <range/v3/algorithm.hpp>
 
 // ----------------------------------------------------------------------------

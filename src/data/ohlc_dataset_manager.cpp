@@ -4,9 +4,9 @@
 //
 #include <highfive/H5File.hpp>
 //
-#include "src/print.hpp"
-#include "src/data/ohlc_dataset_manager.hpp"
-#include "src/data/ohlc_dataset_view.hpp"
+#include "print.hpp"
+#include "data/ohlc_dataset_manager.hpp"
+#include "data/ohlc_dataset_view.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

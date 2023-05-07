@@ -7,7 +7,7 @@
 // Qwt
 #include <QwtPlotTradingCurve>
 // Grox
-#include "src/plot/ohlc_chart_data.hpp"
+#include "plot/ohlc_chart_data.hpp"
 
 class ohlc_chart_curve : public QwtPlotTradingCurve
 {

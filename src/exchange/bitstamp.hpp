@@ -10,16 +10,16 @@
 //
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
-# include "extern/belle/include/belle.hh"
+# include "belle/include/belle.hh"
 #endif
 //
-#include "src/network/https-async.hpp"
-#include "src/network/websocket-ssl.hpp"
-#include "src/network/evp-encrypt.hpp"
-#include "src/exchange/exchange.hpp"
-#include "src/order_book.hpp"
-#include "src/trade_data.hpp"
-#include "src/settings.hpp"
+#include "network/https-async.hpp"
+#include "network/websocket-ssl.hpp"
+#include "network/evp-encrypt.hpp"
+#include "exchange/exchange.hpp"
+#include "order_book.hpp"
+#include "trade_data.hpp"
+#include "settings.hpp"
 
 // ----------------------------------------------------------------------------
 class bitstamp_network : public exchange

@@ -5,7 +5,7 @@
 // Qwt
 #include <QwtText>
 //
-#include "src/plot/ohlc_date_scaledraw.hpp"
+#include "plot/ohlc_date_scaledraw.hpp"
 
 // ----------------------------------------------------------------------------
 ohlc_date_scaledraw::ohlc_date_scaledraw(Qt::TimeSpec timeSpec)
