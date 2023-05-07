@@ -31,6 +31,15 @@ password_dialog::password_dialog(bool simple)
     connect(ui.remove_wallet, SIGNAL(clicked()), this, SLOT(remove_wallet()));
     connect(ui.wallets_combo, SIGNAL(currentIndexChanged(int)), this, SLOT(refresh_gui(int)));
   // clang-format on
+  if (simple_mode_)
+  {
+    ui.box_1->setVisible(false);
+    ui.box_2->setVisible(false);
+    ui.confirm->setVisible(false);
+    ui.c_label->setVisible(false);
+    adjustSize();
+    resize(minimumSizeHint());
+  }
 }
 
 password_dialog::password_dialog(
@@ -154,7 +163,7 @@ void password_dialog::enable_ok_button()
       return;
     }
   }
-  if (ui.password->text() != ui.confirm->text())
+  if (!simple_mode_ && ui.password->text() != ui.confirm->text())
   {
     ui.ok_button->setEnabled(false);
     return;
