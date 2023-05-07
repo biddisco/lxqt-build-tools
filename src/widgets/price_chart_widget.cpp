@@ -207,7 +207,7 @@ void price_chart_widget::connect_gui()
             return;
         }
 
-        indicator_moving_average ma{};
+        indicator::moving_average ma{};
         ma.generate(hdf5_ohlc_);
     });
     //    connect(pAction2, SIGNAL(triggered()), this, SLOT(onAction2()));

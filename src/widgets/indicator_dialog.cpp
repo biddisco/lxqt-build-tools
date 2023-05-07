@@ -1,4 +1,5 @@
 // Qt
+#include <QCheckBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QLineEdit>
@@ -17,7 +18,7 @@ indicator_dialog::indicator_dialog()
   : QDialog()
 {
     ui.setupUi(this);
-    this->setWindowTitle("Algorithm");
+    this->setWindowTitle("Indicator");
 
     // add ok, cancel buttons
     QDialogButtonBox* buttonBox = new QDialogButtonBox(
@@ -34,14 +35,16 @@ indicator_dialog::indicator_dialog()
     ui.buttons_layout->addWidget(buttonBox);
 
     // setup algorithms combobox
-    for (const auto& a : available_indicators)
+    for (const auto& a : indicator::available_indicators)
     {
         QString s = std::visit([](const auto& obj) { return obj.name; }, a).c_str();
         ui.algorithm->addItem(s);
     }
+    // when algorithm is changed, rebuild gui
     connect(
         ui.algorithm, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
         [this](int index) { refresh_gui(index); }, Qt::QueuedConnection);
+    // build gui for first algorithm
     refresh_gui(0);
 }
 
@@ -66,56 +69,147 @@ void clearLayout(QLayout* layout, bool deleteWidgets = true)
 }
 
 // ----------------------------------------------------------------------------
-void indicator_dialog::refresh_gui(int index)
+// we must provide one overload for each type in indicator::param_types
+QWidget* get_widget(const double& param)
 {
-    // prepare list of datasets for combobox options
-    QStringList slist;
+    QLineEdit* const widget = new QLineEdit();
+    widget->setValidator(new QDoubleValidator(0, 100E9, 1, widget));
+    widget->setText(QString::number(param));
+    return widget;
+}
+
+QWidget* get_widget(const int& param)
+{
+    QLineEdit* const widget = new QLineEdit();
+    widget->setValidator(new QIntValidator(0, 65535, widget));
+    widget->setText(QString::number(param));
+    return widget;
+}
+
+QWidget* get_widget(const bool& param)
+{
+    QCheckBox* const widget = new QCheckBox();
+    widget->setChecked(param);
+    return widget;
+}
+
+QWidget* get_widget(const candle_res& param)
+{
+    QStringList res_list;
     for (const auto& r : ohlc_data_resolutions::available_resolutions())
     {
-        slist << r.name_;
+        res_list << r.name_;
     }
     //
-    auto alg = available_indicators[index];
+    QComboBox* const widget = new QComboBox();
+    widget->addItems(res_list);
+    widget->setCurrentText(param.name_);
+    return widget;
+}
 
+template <typename P>
+int get_column(const P& param)
+{
+    return 1;
+}
+
+template <>
+int get_column(const candle_res& param)
+{
+    return 0;
+}
+
+void set_param(QWidget* widget, double& param)
+{
+    QLineEdit* w = dynamic_cast<QLineEdit*>(widget);
+    param = QLocale().toDouble(w->text(), nullptr);
+}
+
+void set_param(QWidget* widget, int& param)
+{
+    QLineEdit* w = dynamic_cast<QLineEdit*>(widget);
+    param = QLocale().toInt(w->text(), nullptr);
+}
+
+void set_param(QWidget* widget, bool& param)
+{
+    QCheckBox* w = dynamic_cast<QCheckBox*>(widget);
+    param = w->isChecked();
+}
+
+void set_param(QWidget* widget, candle_res& param)
+{
+    QComboBox* w = dynamic_cast<QComboBox*>(widget);
+    int index = w->currentIndex();
+    param = ohlc_data_resolutions::available_resolutions()[index];
+}
+
+// ----------------------------------------------------------------------------
+void indicator_dialog::refresh_gui(int index)
+{
+    // wipe the contents of the dialog
     QLayout* oldlayout = ui.algo_params->layout();
     if (oldlayout)
         clearLayout(oldlayout, true);
-    combos.clear();
     params.clear();
+    std::array<int, 2> counts = {0, 0};
 
+    auto alg = indicator::available_indicators[index];
     QGridLayout* layout = new QGridLayout;
-    for (int i = 0; i < std::visit([](const auto& obj) { return obj.num_datasets; }, alg);
-         ++i)
+    int nparams = std::visit([](const auto& obj) { return obj.params.size(); }, alg);
+    for (int i = 0; i < nparams; ++i)
     {
-        const std::string& str = std::visit(
-            [i](const auto& obj) { return std::get<0>(obj.datasets[i]); }, alg);
-        QLabel* const label = new QLabel(QString(str.c_str()));
-        label->setMinimumWidth(100);
-        label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        layout->addWidget(label, i, 0);
-        QComboBox* const box = new QComboBox();
-        box->setMinimumWidth(50);
-        layout->addWidget(box, i, 1);
-        combos << box;
-        box->addItems(slist);
-    }
-    for (int i = 0; i < std::visit([](const auto& obj) { return obj.num_params; }, alg);
-         ++i)
-    {
-        using namespace std::placeholders;
-        auto t = std::visit([=](const auto& obj) { return obj.params[i]; }, alg);
-        QLabel* const label = new QLabel(QString(std::get<0>(t).c_str()));
-        label->setMinimumWidth(100);
-        label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        layout->addWidget(label, i, 2);
-        QLineEdit* const edit = new QLineEdit();
-        edit->setValidator(new QDoubleValidator(0, 100E9, 1, this));
-        edit->setMinimumWidth(50);
-        edit->setText(QString::number(std::get<1>(t)));
-        layout->addWidget(edit, i, 3);
-        params << edit;
+        // get the i-th param from the variant algorithm list
+        auto p = std::visit([=](const auto& obj) { return obj.params[i]; }, alg);
+        // draw datasets in left column, params in right
+        int column =
+            std::visit([&](const auto& v) { return get_column(v); }, std::get<1>(p));
+
+        // get label for parameter
+        QLabel* const label = new QLabel(QString(std::get<0>(p).c_str()));
+        layout->addWidget(label, counts[column], column * 2);
+
+        // get a widget to represent the parameter (based on param type)
+        QWidget* widget =
+            std::visit([&](const auto& v) { return get_widget(v); }, std::get<1>(p));
+        layout->addWidget(widget, counts[column], column * 2 + 1);
+        params << widget;
+        //
+        counts[column]++;
     }
     ui.algo_params->setLayout(layout);
+    // compute the new best guess size
     adjustSize();
+    // force a resize to fit best guess
     resize(minimumSizeHint());
+}
+
+// ----------------------------------------------------------------------------
+// copy user params from dialog into default indicator param object
+// so that they are there again next time the dialog is opened
+void indicator_dialog::update_parameters()
+{
+    int index = ui.algorithm->currentIndex();
+    auto& alg = indicator::available_indicators[index];
+    int nparams = std::visit([](const auto& obj) { return obj.params.size(); }, alg);
+    for (int i = 0; i < nparams; ++i)
+    {
+        // get a reference to the i-th param from the variant algorithm list
+        auto& p = std::visit(
+            [=](auto& obj) -> auto& { return obj.params[i]; }, alg);
+        // get the widget that represents the param
+        QWidget* widget = params[i];
+        // update the param value from thee widget
+        std::visit([&](auto& v) { set_param(widget, v); }, std::get<1>(p));
+    }
+}
+
+// ----------------------------------------------------------------------------
+void indicator_dialog::done(int r)
+{
+    if (QDialog::Accepted == r)    // ok was pressed
+    {
+        update_parameters();
+    }
+    QDialog::done(r);
 }
