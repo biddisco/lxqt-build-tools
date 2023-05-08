@@ -7,31 +7,33 @@
 //
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_dataset_view.hpp"
+#include "indicators/moving_average.hpp"
 
-namespace indicator {
+namespace indicators {
 
   using param_types = std::variant<double, int, bool, candle_res>;
 
-  // ----------------------------------------------------------------------------
-  struct moving_average
-  {
-    const std::string name = "Moving Average";
-    //
-    std::vector<std::tuple<std::string, param_types>> params = {
-      std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<std::string, param_types>("Window length", 15.0),
-      std::make_tuple<std::string, param_types>("Weighted", true)};
-
-    void generate(std::shared_ptr<ohlc_dataset_view> data) {}
-  };
-
   using types = std::variant<moving_average>;
 
-  static /*const */ std::vector<types> available_indicators = {
+  static std::vector<types> available_indicators = {
     moving_average{},
     //    {"Heikin Ashi", 1, 0, {}},
     //    {"MA gradient", 1, 0, {}},
     //    {"MA cross",    2, 0, {}},
     //    {"MACD",        1, 3, {12, 26, 9}},
   };
-}    // namespace indicator
+
+  static std::vector<ohlc_datasets*> get_datasets(const param_list& params, ohlc_dataset_view* view)
+  {
+    std::vector<ohlc_datasets*> result;
+    for (const auto& p : params)
+    {
+      if (const candle_res* c = std::get_if<candle_res>(&std::get<1>(p)))
+      {
+        result.push_back(view->get_dataset(*c));
+      }
+    }
+    return result;
+  }
+
+}    // namespace indicators

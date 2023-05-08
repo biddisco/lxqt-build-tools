@@ -35,7 +35,7 @@ indicator_dialog::indicator_dialog()
   ui.buttons_layout->addWidget(buttonBox);
 
   // setup algorithms combobox
-  for (const auto& a : indicator::available_indicators)
+  for (const auto& a : indicators::available_indicators)
   {
     QString s = std::visit([](const auto& obj) { return obj.name; }, a).c_str();
     ui.algorithm->addItem(s);
@@ -69,7 +69,7 @@ void clearLayout(QLayout* layout, bool deleteWidgets = true)
 }
 
 // ----------------------------------------------------------------------------
-// we must provide one overload for each type in indicator::param_types
+// we must provide one overload for each type in indicators::param_types
 QWidget* get_widget(const double& param)
 {
   QLineEdit* const widget = new QLineEdit();
@@ -154,7 +154,10 @@ void indicator_dialog::refresh_gui(int index)
   params.clear();
   std::array<int, 2> counts = {0, 0};
 
-  auto alg = indicator::available_indicators[index];
+  auto alg = indicators::available_indicators[index];
+  std::string desc = std::visit([](const auto& obj) { return obj.description; }, alg);
+  ui.description->setText(QString(desc.c_str()));
+
   QGridLayout* layout = new QGridLayout;
   int nparams = std::visit([](const auto& obj) { return obj.params.size(); }, alg);
   for (int i = 0; i < nparams; ++i)
@@ -179,7 +182,7 @@ void indicator_dialog::refresh_gui(int index)
   // compute the new best guess size
   adjustSize();
   // force a resize to fit best guess
-  resize(minimumSizeHint());
+  resize(sizeHint());
 }
 
 // ----------------------------------------------------------------------------
@@ -188,7 +191,7 @@ void indicator_dialog::refresh_gui(int index)
 void indicator_dialog::update_parameters()
 {
   int index = ui.algorithm->currentIndex();
-  auto& alg = indicator::available_indicators[index];
+  auto& alg = indicators::available_indicators[index];
   int nparams = std::visit([](const auto& obj) { return obj.params.size(); }, alg);
   for (int i = 0; i < nparams; ++i)
   {

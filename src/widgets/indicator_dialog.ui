@@ -47,16 +47,6 @@
       <number>3</number>
      </property>
      <layout class="QGridLayout" name="gridLayout_5">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Algorithm</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="algorithm"/>
-      </item>
       <item row="0" column="2">
        <widget class="QToolButton" name="exec_trustline">
         <property name="text">
@@ -67,15 +57,35 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="0" colspan="3">
+      <item row="2" column="0" colspan="3">
        <widget class="QGroupBox" name="algo_params">
         <property name="title">
          <string>Parameters</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="0" colspan="3">
+      <item row="0" column="1">
+       <widget class="QComboBox" name="algorithm"/>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Algorithm</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="3">
        <layout class="QHBoxLayout" name="buttons_layout"/>
+      </item>
+      <item row="1" column="0" colspan="3">
+       <widget class="QLabel" name="description">
+        <property name="text">
+         <string>Description</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>

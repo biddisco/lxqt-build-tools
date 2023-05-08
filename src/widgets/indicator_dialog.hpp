@@ -19,12 +19,12 @@ class indicator_dialog : public QDialog
   indicator_dialog();
   ~indicator_dialog();
 
-  // return a copy of the selected algorithm
-  // inclusing all parameters set by the user
-  indicator::types get_algorithm()
+  // return a variant containing a copy of the selected algorithm
+  // including all parameters set by the user in the dialog
+  indicators::types get_algorithm()
   {
     int index = ui.algorithm->currentIndex();
-    return indicator::available_indicators[index];
+    return indicators::available_indicators[index];
   }
 
   protected:

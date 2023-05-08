@@ -172,28 +172,45 @@ void price_chart_widget::connect_gui()
       filters_plot_->update_time_axis(t1, t2);
       assets_plot_->update_time_axis(t1, t2);
 
-      //                axisScaleDraw(QwtPlot::xBottom)->, crypto_price_plot_->axisScaleDraw(QwtPlot::xBottom));
-      //    filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
+      // axisScaleDraw(QwtPlot::xBottom)->, crypto_price_plot_->axisScaleDraw(QwtPlot::xBottom));
+      // filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
     },
     Qt::QueuedConnection);
-
-  //    QAction* pAction1 = new QAction("Moving average", indicators_);
-  //    QAction* pAction2 = new QAction("bar", indicators_);
-  //    QAction* pAction3 = new QAction("test", indicators_);
-  //    indicators_->addAction(pAction1);
-  //    indicators_->addAction(pAction2);
-  //    indicators_->addAction(pAction3);
 
   connect(indicators_, &QPushButton::clicked, this, [this](bool b) {
     pplot_dbg<0>.debug(str<>("Indicators"), exchange_->name(), ticker_string_);
 
     indicator_dialog in_dialog = indicator_dialog();
     auto result = in_dialog.exec();
-    if (result == QDialog::Rejected)
-      return;
-    if (result != QDialog::Accepted)
+    if (result == QDialog::Accepted)
     {
-      int col = 0;
+      auto indicator = std::visit(
+        [](const auto& alg) { return alg.construct(alg.params); }, in_dialog.get_algorithm());
+      //
+      std::cout << indicator.name << std::endl;
+      std::vector<ohlc_datasets*> data =
+        indicators::get_datasets(indicator.params, hdf5_ohlc_.get());
+
+      const auto& input_dataset = data[0]->ohlc_samples_;
+
+      using plot_array = QVector<QPointF>;
+      plot_array indicator_plot;
+      indicator_plot.reserve(input_dataset->size());
+
+      // initialize with the first dataset value
+      QwtOHLCSample ohlc_in(input_dataset->data().front());
+      for (auto const& ohlc : input_dataset->data())
+      {
+        double val = indicator.operator()(ohlc.close);
+        QPointF xyval(ohlc.time, val);
+        indicator_plot.push_back(xyval);
+      }
+
+      crypto_price_plot_->add_price_curve(
+        QString(indicator.name.c_str()), indicator_plot, QColor("#26a69a"));
+
+      //indicators::generate(indicator, hdf5_ohlc_->)
+
       //            price_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
 
       //            filters_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
@@ -201,11 +218,10 @@ void price_chart_widget::connect_gui()
 
       //            assets_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
       //            assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
-      return;
     }
 
-    indicator::moving_average ma{};
-    ma.generate(hdf5_ohlc_);
+    //    indicators::moving_average ma{};
+    //    ma.generate(hdf5_ohlc_);
   });
   //    connect(pAction2, SIGNAL(triggered()), this, SLOT(onAction2()));
   //    connect(pAction3, SIGNAL(triggered()), this, SLOT(onAction3()));
