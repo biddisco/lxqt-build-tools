@@ -1,4 +1,5 @@
 #include <QDialog>
+#include <QDialogButtonBox>
 #include <QFileInfo>
 #include <QSettings>
 #include <QString>
@@ -12,25 +13,25 @@ password_dialog::password_dialog(bool simple)
   , simple_mode_(simple)
 {
   ui.setupUi(this);
-  ui.ok_button->setEnabled(false);
+  ui.button_box->button(QDialogButtonBox::Ok)->setEnabled(false);
   setWindowTitle("Wallet/Exchange Details");
-  // clang-format off
-    connect(ui.api_user, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
-    connect(ui.api_key, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
-    connect(ui.api_secret, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
-    connect(ui.api_tag, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
-    connect(ui.api_address, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
-    connect(ui.xrp_nickname, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
-    connect(ui.xrp_public, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
-    connect(ui.xrp_private, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
-    connect(ui.password, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
-    connect(ui.confirm, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
-    connect(ui.ok_button, SIGNAL(clicked()), this, SLOT(accept()));
+  connect(ui.api_user, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
+  connect(ui.api_key, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
+  connect(ui.api_secret, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
+  connect(ui.api_tag, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
+  connect(ui.api_address, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
+  connect(ui.xrp_nickname, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
+  connect(ui.xrp_public, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
+  connect(ui.xrp_private, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
+  connect(ui.password, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
+  connect(ui.confirm, SIGNAL(textChanged(QString)), this, SLOT(enable_ok_button()));
+  connect(ui.button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
+  connect(ui.button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
-    connect(ui.add_wallet, SIGNAL(clicked()), this, SLOT(add_wallet()));
-    connect(ui.remove_wallet, SIGNAL(clicked()), this, SLOT(remove_wallet()));
-    connect(ui.wallets_combo, SIGNAL(currentIndexChanged(int)), this, SLOT(refresh_gui(int)));
-  // clang-format on
+  connect(ui.add_wallet, SIGNAL(clicked()), this, SLOT(add_wallet()));
+  connect(ui.remove_wallet, SIGNAL(clicked()), this, SLOT(remove_wallet()));
+  connect(ui.wallets_combo, SIGNAL(currentIndexChanged(int)), this, SLOT(refresh_gui(int)));
+
   if (simple_mode_)
   {
     ui.box_1->setVisible(false);
@@ -159,14 +160,16 @@ void password_dialog::enable_ok_button()
       ui.api_secret->text().isEmpty() || ui.api_tag->text().isEmpty() ||
       ui.api_address->text().isEmpty() || ui.password->text().isEmpty())
     {
-      ui.ok_button->setEnabled(false);
+      ui.button_box->button(QDialogButtonBox::Ok)->setEnabled(false);
       return;
     }
   }
   if (!simple_mode_ && ui.password->text() != ui.confirm->text())
   {
-    ui.ok_button->setEnabled(false);
+    ui.button_box->button(QDialogButtonBox::Ok)->setEnabled(false);
     return;
   }
-  ui.ok_button->setEnabled(true);
+  //  ui.button_box->setEnabled(true);
+  //  ui.button_box->button(QDialogButtonBox.Ok).setEnabled(true);
+  ui.button_box->button(QDialogButtonBox::Ok)->setEnabled(true);
 }
