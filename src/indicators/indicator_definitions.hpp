@@ -12,10 +12,9 @@
 namespace indicators {
 
   using param_types = std::variant<double, int, bool, candle_res>;
-
   using types = std::variant<moving_average>;
 
-  static std::vector<types> available_indicators = {
+  inline std::vector<types> available_indicators = {
     moving_average{},
     //    {"Heikin Ashi", 1, 0, {}},
     //    {"MA gradient", 1, 0, {}},

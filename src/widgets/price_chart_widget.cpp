@@ -188,10 +188,10 @@ void price_chart_widget::connect_gui()
         [](const auto& alg) { return alg.construct(alg.params); }, in_dialog.get_algorithm());
       //
       std::cout << indicator.name << std::endl;
-      std::vector<ohlc_datasets*> data =
+      std::vector<ohlc_datasets*> datasets =
         indicators::get_datasets(indicator.params, hdf5_ohlc_.get());
 
-      const auto& input_dataset = data[0]->ohlc_samples_;
+      const auto& input_dataset = datasets[0]->ohlc_samples_;
 
       using plot_array = QVector<QPointF>;
       plot_array indicator_plot;

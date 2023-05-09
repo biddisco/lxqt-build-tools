@@ -191,16 +191,19 @@ void indicator_dialog::refresh_gui(int index)
 void indicator_dialog::update_parameters()
 {
   int index = ui.algorithm->currentIndex();
+  // get a reference to indicator in the global indicators list
   auto& alg = indicators::available_indicators[index];
+  // get the number of params it has
   int nparams = std::visit([](const auto& obj) { return obj.params.size(); }, alg);
   for (int i = 0; i < nparams; ++i)
   {
     // get a reference to the i-th param from the variant algorithm list
     auto& p = std::visit(
       [=](auto& obj) -> auto& { return obj.params[i]; }, alg);
+
     // get the widget that represents the param
     QWidget* widget = params[i];
-    // update the param value from thee widget
+    // update the param value from the widget
     std::visit([&](auto& v) { set_param(widget, v); }, std::get<1>(p));
   }
 }
