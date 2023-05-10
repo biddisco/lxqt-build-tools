@@ -410,15 +410,16 @@ void init_resource_partitioner_handler(
   }
 
   using pika::threads::scheduler_mode;
-  auto mode = scheduler_mode::default_mode;
 #ifdef GROX_DISABLE_IDLE_BACKOFF
-  // Disable idle backoff on the Qt pool
-  mode = scheduler_mode(mode & ~scheduler_mode::enable_idle_backoff);
+  auto mode = scheduler_mode::default_mode;
+#else
+  auto mode = scheduler_mode::default_mode | scheduler_mode::enable_idle_backoff;
 #endif
 
   // Create a thread pool with a single core for Qt
   rp.create_thread_pool(qt_pool_name, pika::resource::scheduling_policy::unspecified, mode);
-
+  // set the schedule mode for the default pool
+  rp.create_thread_pool("default", pika::resource::scheduling_policy::shared_priority, mode);
   rp.add_resource(rp.numa_domains()[0].cores()[0].pus()[0], qt_pool_name);
 }
 
@@ -451,6 +452,8 @@ int main(int argc, char* argv[])
   init_args.desc_cmdline = cmdline;
   // Set the callback to init thread_pools
   init_args.rp_callback = &init_resource_partitioner_handler;
+  // tell the scheduler to sleep quickly when there are no tasks to work on
+  init_args.cfg = {"pika.max_idle_loop_count=10"};
 
   auto result = pika::init(pika_main, argc, argv, init_args);
   return result;
