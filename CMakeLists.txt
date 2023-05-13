@@ -18,7 +18,8 @@
 # cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Debug ~/src/xrp/grox/
 
 # ------------------------------------------------------------------------------
-# @TODO : add acknowledgement to https://github.com/sroehling/ChartPatternFinderDesktop
+# @TODO : add acknowledgement to
+# https://github.com/sroehling/ChartPatternFinderDesktop
 # ------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.16)
 cmake_policy(SET CMP0048 NEW)
@@ -77,18 +78,18 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
 # Utility function to print all vars
 # ------------------------------------------------------------------------------
 function(dump_cmake_variables)
-    get_cmake_property(_variableNames VARIABLES)
-    list (SORT _variableNames)
-    foreach (_variableName ${_variableNames})
-        if (ARGV0)
-            unset(MATCHED)
-            string(REGEX MATCH ${ARGV0} MATCHED ${_variableName})
-            if (NOT MATCHED)
-                continue()
-            endif()
-        endif()
-        message(STATUS "${_variableName}=${${_variableName}}")
-    endforeach()
+  get_cmake_property(_variableNames VARIABLES)
+  list(SORT _variableNames)
+  foreach(_variableName ${_variableNames})
+    if(ARGV0)
+      unset(MATCHED)
+      string(REGEX MATCH ${ARGV0} MATCHED ${_variableName})
+      if(NOT MATCHED)
+        continue()
+      endif()
+    endif()
+    message(STATUS "${_variableName}=${${_variableName}}")
+  endforeach()
 endfunction()
 
 # ------------------------------------------------------------------------------
@@ -100,26 +101,48 @@ include(FindPkgConfig)
 # Find Qt, first 6, then 5 if not found
 # ------------------------------------------------------------------------------
 # this line to force correct var so that Qt-AdvancedDocking uses Qt6 by default
-find_package(QT NAMES Qt6 COMPONENTS Core REQUIRED)
+find_package(
+  QT NAMES Qt6
+  COMPONENTS Core
+  REQUIRED
+)
 #
 find_package(Qt6 COMPONENTS Core)
-if (NOT Qt6_FOUND)
-    find_package(Qt5 5.15 REQUIRED COMPONENTS Core)
+if(NOT Qt6_FOUND)
+  find_package(Qt5 5.15 REQUIRED COMPONENTS Core)
 endif()
 message(STATUS "Grox Using Qt${QT_DEFAULT_MAJOR_VERSION}")
 
-if (${QT_DEFAULT_MAJOR_VERSION} EQUAL 6)
-    set(qtcomponents Core Widgets Gui OpenGL OpenGLWidgets PrintSupport Svg Concurrent)
+if(${QT_DEFAULT_MAJOR_VERSION} EQUAL 6)
+  set(qtcomponents
+      Core
+      Widgets
+      Gui
+      OpenGL
+      OpenGLWidgets
+      PrintSupport
+      Svg
+      Concurrent
+  )
 else()
-    set(qtcomponents Core Widgets Gui OpenGL PrintSupport Svg Concurrent)
+  set(qtcomponents
+      Core
+      Widgets
+      Gui
+      OpenGL
+      PrintSupport
+      Svg
+      Concurrent
+  )
 endif()
 
 find_package(Qt${QT_DEFAULT_MAJOR_VERSION} REQUIRED COMPONENTS ${qtcomponents})
 
-find_package(Boost   NO_MODULE REQUIRED system unit_test_framework)
+find_package(Boost NO_MODULE REQUIRED system unit_test_framework)
 find_package(OpenSSL REQUIRED)
-# find_package(MPI     REQUIRED COMPONENTS CXX) # needed by hdf5 if compiled with defaults
-find_package(HDF5    REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
+# find_package(MPI     REQUIRED COMPONENTS CXX) # needed by hdf5 if compiled
+# with defaults
+find_package(HDF5 REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
 find_package(ZLIB)
 find_package(pika)
 find_package(fmt)
@@ -155,7 +178,9 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/Qt-Advanced-Docking-System)
   message(STATUS "Using Qt-Advanced-Docking-System in source tree")
   # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_QTADS ${CMAKE_CURRENT_SOURCE_DIR}/extern/Qt-Advanced-Docking-System)
+  set(FETCHCONTENT_SOURCE_DIR_QTADS
+      ${CMAKE_CURRENT_SOURCE_DIR}/extern/Qt-Advanced-Docking-System
+  )
   # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_QTADS ON)
 endif()
@@ -180,7 +205,9 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/QDarkStyleSheet)
   message(STATUS "Using QDarkStyleSheet in source tree")
   # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_QDARKSTYLESHEET ${CMAKE_CURRENT_SOURCE_DIR}/extern/QDarkStyleSheet)
+  set(FETCHCONTENT_SOURCE_DIR_QDARKSTYLESHEET
+      ${CMAKE_CURRENT_SOURCE_DIR}/extern/QDarkStyleSheet
+  )
   # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_QDARKSTYLESHEET ON)
 endif()
@@ -204,7 +231,9 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/range-v3)
   message(STATUS "Using Range-v3 in source tree")
   # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_RANGE-V3 ${CMAKE_CURRENT_SOURCE_DIR}/extern/range-v3)
+  set(FETCHCONTENT_SOURCE_DIR_RANGE-V3
+      ${CMAKE_CURRENT_SOURCE_DIR}/extern/range-v3
+  )
   # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_RANGE-V3 ON)
 endif()
@@ -226,12 +255,17 @@ endif()
 # ------------------------------------------------------------------------------
 # Build/Download HighFive hdf5 c++ library
 # ------------------------------------------------------------------------------
-set(HIGHFIVE_UNIT_TESTS OFF CACHE STRING "HighFive unit testing")
+set(HIGHFIVE_UNIT_TESTS
+    OFF
+    CACHE STRING "HighFive unit testing"
+)
 set(HIGHFIVE_BUILD_DOCS OFF)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/HighFive)
   message(STATUS "Using HighFive in source tree")
   # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_HIGHFIVE ${CMAKE_CURRENT_SOURCE_DIR}/extern/HighFive)
+  set(FETCHCONTENT_SOURCE_DIR_HIGHFIVE
+      ${CMAKE_CURRENT_SOURCE_DIR}/extern/HighFive
+  )
   # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_HIGHFIVE ON)
 endif()
@@ -261,9 +295,14 @@ if(NOT Ripple_FOUND)
   set(static FALSE)
   # look in the current source tree
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled/.git)
-    message(STATUS "Using rippled in source tree (${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled)")
+    message(
+      STATUS
+        "Using rippled in source tree (${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled)"
+    )
     # use the source in this directory
-    set(FETCHCONTENT_SOURCE_DIR_RIPPLED ${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled)
+    set(FETCHCONTENT_SOURCE_DIR_RIPPLED
+        ${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled
+    )
     # don't change branches, or pull
     set(FETCHCONTENT_UPDATES_DISCONNECTED_RIPPLED ON)
     # To setup where Rippled puts its extern projects
@@ -293,7 +332,10 @@ find_package(pika QUIET)
 if(NOT pika_FOUND)
   # look in the current source tree
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/pika/.git)
-    message(STATUS "Using pika in source tree (${CMAKE_CURRENT_SOURCE_DIR}/extern/pika)")
+    message(
+      STATUS
+        "Using pika in source tree (${CMAKE_CURRENT_SOURCE_DIR}/extern/pika)"
+    )
     # use the source in this directory
     set(FETCHCONTENT_SOURCE_DIR_PIKA ${CMAKE_CURRENT_SOURCE_DIR}/extern/pika)
     # don't change branches, or pull
@@ -325,35 +367,27 @@ endif()
 # ------------------------------------------------------------------------------
 
 set(GROX_SRC
-
     # main application
     src/main.cpp
     src/mainwindow.cpp
-#    src/tabbed_form.cpp
-
-    # application utility
+    # src/tabbed_form.cpp application utility
     src/currency.cpp
     src/json_types.cpp
     src/order_book.cpp
-
     # cryptography
     src/network/evp-encrypt.cpp
-
     # networking asio etc
     src/network/websocket-ssl.cpp
     src/network/https-async.cpp
-
     # data, hdf5
     src/data/ohlc_dataset_manager.cpp
     src/data/ohlc_dataset_view.cpp
     src/data/ohlc_datasets.cpp
-
     # exchange APIs
     src/exchange/xrpl.cpp
     src/exchange/exchange.cpp
     src/exchange/xrpl_network.cpp
     src/exchange/bitstamp.cpp
-
     # widgets and dialogs
     src/widgets/check_trades_dialog.cpp
     src/widgets/connection_widget.cpp
@@ -365,7 +399,6 @@ set(GROX_SRC
     src/widgets/wallet_widget.cpp
     src/widgets/xrp_functions.cpp
     src/widgets/price_chart_widget.cpp
-
     # plotting
     src/plot/OrderBookPlot.cpp
     src/plot/OrderBookCurve.cpp
@@ -374,11 +407,9 @@ set(GROX_SRC
     src/plot/ohlc_interactor.cpp
     src/plot/ohlc_price_plot.cpp
     src/plot/filter_plot.cpp
-
     # utils
     src/util/QDateHelper.cpp
-
-    src/stream/trade_filter.cpp
+    # src/stream/trade_filter.cpp
 )
 
 qt_wrap_ui(GROX_SRC src/tabbed_form.ui)
@@ -387,8 +418,7 @@ qt_wrap_ui(GROX_SRC src/tabbed_form.ui)
 # Qt resource files
 # -----------------------------------------------------------------------------
 set(GROX_QRC_SRC
-    src/grox.qrc
-    ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
+    src/grox.qrc ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
     ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc
 )
 
@@ -402,11 +432,8 @@ set_property(TARGET grox PROPERTY AUTORCC ON)
 
 target_include_directories(
   grox
-  PUBLIC ${Boost_INCLUDE_DIRS}
-         ${HDF5_INCLUDE_DIRS}
-         ${CMAKE_CURRENT_BINARY_DIR}
-         ${CMAKE_CURRENT_SOURCE_DIR}
-         ${CMAKE_CURRENT_SOURCE_DIR}/src
+  PUBLIC ${Boost_INCLUDE_DIRS} ${HDF5_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}
+         ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
          ${CMAKE_CURRENT_SOURCE_DIR}/extern # nlohmann/json
 )
 
@@ -414,12 +441,12 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
   set(STD_FILESYSTEM_LIB "stdc++fs")
 endif()
 
-target_compile_definitions(grox
-  PRIVATE
-    # needed for UUID generation in web requests
-    GROX_HAVE_UUID_ENCODING
-    # disable support for belle websocket server
-    OB_BELLE_CONFIG_SERVER_OFF
+target_compile_definitions(
+  grox
+  PRIVATE # needed for UUID generation in web requests
+          GROX_HAVE_UUID_ENCODING
+          # disable support for belle websocket server
+          OB_BELLE_CONFIG_SERVER_OFF
 )
 
 target_link_libraries(
@@ -449,21 +476,15 @@ target_link_libraries(
 # ---------------------------------------------------
 # Convenience var for test setup
 # ---------------------------------------------------
-set(TEST_INC_DIRS
-    ${Boost_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern # nlohmann/json
+set(TEST_INC_DIRS ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src
+                  ${CMAKE_CURRENT_SOURCE_DIR}/extern # nlohmann/json
 )
 
 # ---------------------------------------------------
 # Vanity address generator
 # ---------------------------------------------------
 add_executable(vanity vanity/vanity.cpp)
-target_link_libraries(vanity
-    range-v3
-    Ripple::xrpl_core
-    pika::pika
-)
+target_link_libraries(vanity range-v3 Ripple::xrpl_core pika::pika)
 # enable optimizations for vanity generator regardless of build type setting
 target_compile_options(vanity PRIVATE -O3)
 
@@ -520,7 +541,9 @@ target_compile_definitions(
 set(BITSTAMP_SRC src/network/test/test-bitstamp.cpp src/network/evp-encrypt.cpp)
 add_executable(test-bitstamp ${BITSTAMP_SRC})
 
-target_include_directories(test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS} ${TEST_INC_DIRS})
+target_include_directories(
+  test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS} ${TEST_INC_DIRS}
+)
 
 target_link_libraries(
   test-bitstamp PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL curl uuid pthread
@@ -550,36 +573,60 @@ endif()
 # belle - client test against bitstamp API
 # ---------------------------------------------------
 add_executable(test-belle-client src/network/test/test-belle-client.cpp)
-target_include_directories(test-belle-client PUBLIC extern/belle/include ${TEST_INC_DIRS})
-target_link_libraries(test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
+target_include_directories(
+  test-belle-client PUBLIC extern/belle/include ${TEST_INC_DIRS}
+)
+target_link_libraries(
+  test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
+)
 
 # ---------------------------------------------------
 # belle - client test against bitstamp API
 # ---------------------------------------------------
-add_executable(test-belle-client-request src/network/test/test-belle-client-request.cpp)
-target_include_directories(test-belle-client-request PUBLIC extern/belle/include ${TEST_INC_DIRS})
-target_link_libraries(test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
+add_executable(
+  test-belle-client-request src/network/test/test-belle-client-request.cpp
+)
+target_include_directories(
+  test-belle-client-request PUBLIC extern/belle/include ${TEST_INC_DIRS}
+)
+target_link_libraries(
+  test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
+)
 
 # ---------------------------------------------------
 # belle - websocket test against ripple API
 # ---------------------------------------------------
 add_executable(test-belle-websocket src/network/test/test-belle-websocket.cpp)
-target_include_directories(test-belle-websocket PUBLIC extern/belle/include ${TEST_INC_DIRS})
-target_link_libraries(test-belle-websocket PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
+target_include_directories(
+  test-belle-websocket PUBLIC extern/belle/include ${TEST_INC_DIRS}
+)
+target_link_libraries(
+  test-belle-websocket PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
+)
 
 # ---------------------------------------------------
 # belle - example original https test client/server
 # ---------------------------------------------------
-add_executable(test-belle-https-client ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/client/https/src/main.cc)
-target_include_directories(test-belle-https-client PUBLIC extern/belle/include ${TEST_INC_DIRS})
-target_link_libraries(test-belle-https-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
-target_compile_definitions(test-belle-https-client
-    PRIVATE BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
+add_executable(
+  test-belle-https-client
+  ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/client/https/src/main.cc
+)
+target_include_directories(
+  test-belle-https-client PUBLIC extern/belle/include ${TEST_INC_DIRS}
+)
+target_link_libraries(
+  test-belle-https-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
+)
+target_compile_definitions(
+  test-belle-https-client
+  PRIVATE
+    BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
 )
 
-#add_executable(test-belle-https-server ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/server/https/src/main.cc)
-#target_include_directories(test-belle-https-server PUBLIC extern/belle/include ${TEST_INC_DIRS})
-#target_link_libraries(test-belle-https-server PUBLIC ssl crypto pthread ${Boost_LIBRARIES})
-#target_compile_definitions(test-belle-https-server
-#    PRIVATE BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
-#)
+# add_executable(test-belle-https-server
+# ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/server/https/src/main.cc)
+# target_include_directories(test-belle-https-server PUBLIC extern/belle/include
+# ${TEST_INC_DIRS}) target_link_libraries(test-belle-https-server PUBLIC ssl
+# crypto pthread ${Boost_LIBRARIES})
+# target_compile_definitions(test-belle-https-server PRIVATE
+# BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert" )

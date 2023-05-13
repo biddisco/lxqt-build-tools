@@ -184,30 +184,47 @@ void price_chart_widget::connect_gui()
     auto result = in_dialog.exec();
     if (result == QDialog::Accepted)
     {
-      auto indicator = std::visit(
-        [](const auto& alg) { return alg.construct(alg.params); }, in_dialog.get_algorithm());
-      //
-      std::cout << indicator.name << std::endl;
-      std::vector<ohlc_datasets*> datasets =
-        indicators::get_datasets(indicator.params, hdf5_ohlc_.get());
+      static int colour_count = 0;
+      // copy the algorithm out of the dialog
+      auto indicator = in_dialog.get_algorithm();
+      // now execute the algorithm
+      std::visit(
+        [this](auto& alg) {
+          // first - initialize algorithm with parameters (set by dialog)
+          alg.initialize();
 
-      const auto& input_dataset = datasets[0]->ohlc_samples_;
+          // convert the dataset name selections in the dialog into actual datasets
+          std::vector<ohlc_datasets*> datasets = indicators::get_datasets(alg.params, hdf5_ohlc_);
 
-      using plot_array = QVector<QPointF>;
-      plot_array indicator_plot;
-      indicator_plot.reserve(input_dataset->size());
+          QVector<QPointF> indicator_plot;
+          // if the algorithm operates on a single input dataset
+          if (datasets.size() == 1)
+          {
+            const auto& input_dataset = datasets[0]->ohlc_samples_;
+            indicator_plot.reserve(input_dataset->size());
 
-      // initialize with the first dataset value
-      QwtOHLCSample ohlc_in(input_dataset->data().front());
-      for (auto const& ohlc : input_dataset->data())
-      {
-        double val = indicator.operator()(ohlc.close);
-        QPointF xyval(ohlc.time, val);
-        indicator_plot.push_back(xyval);
-      }
+            // iterate over the dataset, executing the algorithm for each point
+            for (auto const& ohlc : input_dataset->data())
+            {
+              double val = alg.operator()(ohlc);
+              QPointF xyval(ohlc.time, val);
+              indicator_plot.push_back(xyval);
+            }
+          }
+          else
+          {
+            pplot_dbg<0>.error(str<>("Indicator"), alg.name, "Not yet implemented");
+          }
 
-      crypto_price_plot_->add_price_curve(
-        QString(indicator.name.c_str()), indicator_plot, QColor("#26a69a"));
+          QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QColor("darkRed"),
+            QColor("darkCyan"), QColor("darkMagenta"), QColor("green"), QColor("darkGreen"),
+            QColor("yellow"), QColor("blue")};
+          auto colour = colours[colour_count++ % 10];
+
+          crypto_price_plot_->add_price_curve(QString(alg.name.c_str()), indicator_plot, colour);
+          this->replot();
+        },
+        indicator);
 
       //indicators::generate(indicator, hdf5_ohlc_->)
 

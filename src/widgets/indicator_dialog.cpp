@@ -10,7 +10,6 @@
 // Grox
 #include "data/ohlc_datasets.hpp"
 #include "indicators/indicator_definitions.hpp"
-#include "stream/trade_filter.hpp"
 #include "widgets/indicator_dialog.hpp"
 
 // ----------------------------------------------------------------------------

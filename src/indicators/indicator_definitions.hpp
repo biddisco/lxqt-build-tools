@@ -7,22 +7,24 @@
 //
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_dataset_view.hpp"
+#include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
+#include "indicators/moving_average_volume_weighted.hpp"
 
 namespace indicators {
 
-  using param_types = std::variant<double, int, bool, candle_res>;
-  using types = std::variant<moving_average>;
+  using types = std::variant<moving_average, moving_average_volume_weighted>;
 
   inline std::vector<types> available_indicators = {
-    moving_average{},
+    moving_average{}, moving_average_volume_weighted{},
     //    {"Heikin Ashi", 1, 0, {}},
     //    {"MA gradient", 1, 0, {}},
     //    {"MA cross",    2, 0, {}},
     //    {"MACD",        1, 3, {12, 26, 9}},
   };
 
-  static std::vector<ohlc_datasets*> get_datasets(const param_list& params, ohlc_dataset_view* view)
+  static std::vector<ohlc_datasets*> get_datasets(
+    const param_list& params, std::shared_ptr<ohlc_dataset_view> view)
   {
     std::vector<ohlc_datasets*> result;
     for (const auto& p : params)

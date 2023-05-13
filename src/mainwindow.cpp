@@ -47,7 +47,6 @@
 #include "settings.hpp"
 //
 #include "data/ohlc_heikin_ashi.hpp"
-#include "stream/trade_filter.hpp"
 
 #include "DockAreaTabBar.h"
 #include "DockAreaTitleBar.h"

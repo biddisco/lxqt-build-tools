@@ -28,7 +28,6 @@
 #include "exchange/xrpl_network.hpp"
 #include "order_book.hpp"
 #include "settings.hpp"
-#include "stream/trade_filter.hpp"
 #include "widgets/connection_widget.hpp"
 // generated
 #include "ui_tabbed_form.h"

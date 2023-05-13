@@ -1,25 +1,24 @@
 #pragma once
 
+#include <boost/circular_buffer.hpp>
+//
 #include "data/ohlc_data_resolutions.hpp"
 #include "indicators/indicator_types.hpp"
 
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/mean.hpp>
-#include <boost/accumulators/statistics/median.hpp>
-#include <boost/accumulators/statistics/moment.hpp>
-#include <boost/accumulators/statistics/rolling_mean.hpp>
-#include <boost/accumulators/statistics/stats.hpp>
-
 namespace indicators {
 
-  namespace ba = boost::accumulators;
+  struct mvwv_data
+  {
+    double price_;
+    double weight_;
+  };
 
   //----------------------------------------------------------------------------
-  struct moving_average
+  struct moving_average_volume_weighted
   {
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string name = "Moving Average";
+    const std::string name = "Moving Average (Volume Weighted)";
     const std::string description =
       "mode : 0=open, 1=close, 2=mid(open,close), 3=high, 4=low, 5=mid(high,low)";
 
@@ -29,9 +28,9 @@ namespace indicators {
       std::make_tuple<std::string, param_types>("mode", 2)};
 
     // ---------------------------------------
-    // Default constructor required by indicator algorithms
-    moving_average()
-      : decay_acc_(ba::tag::rolling_window::window_size = 7)
+    // Default constructor (optional)
+    moving_average_volume_weighted()
+      : buffer_(7)
       , rolling_mean_(0)
       , mode_(2)
     {
@@ -44,10 +43,21 @@ namespace indicators {
       auto window_size = std::get<int>(std::get<1>(params[1]));
       auto mode = std::get<int>(std::get<1>(params[2]));
       //
-      decay_acc_ = ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>>(
-        ba::tag::rolling_window::window_size = window_size);
+      buffer_ = boost::circular_buffer<mvwv_data>(window_size);
       rolling_mean_ = 0;
       mode_ = mode;
+    }
+
+    double compute()
+    {
+      double ptot = 0;
+      double wtot = 0;
+      for (const auto& val : buffer_)
+      {
+        ptot += val.price_ * val.weight_;
+        wtot += val.weight_;
+      }
+      return ptot / wtot;
     }
 
     double operator()(const QwtOHLCSample& val)
@@ -57,9 +67,9 @@ namespace indicators {
       {
         price = 0.5 * (val.open + val.close);
       }
-      // insert data into boost accumulator
-      decay_acc_(price);
-      rolling_mean_ = ba::rolling_mean(decay_acc_);
+      // insert data into buffer
+      buffer_.push_back({price, val.volume});
+      rolling_mean_ = compute();
       return rolling_mean_;
     }
 
@@ -68,11 +78,11 @@ namespace indicators {
       return rolling_mean_;
     }
 
-    void generate(std::shared_ptr<ohlc_dataset_view>&) {}
-
 private:
-    ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>> decay_acc_;
+    boost::circular_buffer<mvwv_data> buffer_;
+    //
     double rolling_mean_;
     int mode_;
   };
+
 }    // namespace indicators
