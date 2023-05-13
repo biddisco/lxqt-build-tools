@@ -62,11 +62,7 @@ namespace indicators {
 
     double operator()(const QwtOHLCSample& val)
     {
-      double price;
-      if (mode_ == 2)
-      {
-        price = 0.5 * (val.open + val.close);
-      }
+      double price = ohlc_mode_extract(mode_, val);
       // insert data into buffer
       buffer_.push_back({price, val.volume});
       rolling_mean_ = compute();
