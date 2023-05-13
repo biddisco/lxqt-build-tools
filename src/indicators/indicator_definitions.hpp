@@ -9,14 +9,16 @@
 #include "data/ohlc_dataset_view.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
+#include "indicators/moving_average_exponential.hpp"
 #include "indicators/moving_average_volume_weighted.hpp"
 
 namespace indicators {
 
-  using types = std::variant<moving_average, moving_average_volume_weighted>;
+  using types =
+    std::variant<moving_average, moving_average_volume_weighted, moving_average_exponential>;
 
   inline std::vector<types> available_indicators = {
-    moving_average{}, moving_average_volume_weighted{},
+    moving_average{}, moving_average_volume_weighted{}, moving_average_exponential{},
     //    {"Heikin Ashi", 1, 0, {}},
     //    {"MA gradient", 1, 0, {}},
     //    {"MA cross",    2, 0, {}},

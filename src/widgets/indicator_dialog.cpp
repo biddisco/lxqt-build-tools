@@ -72,7 +72,7 @@ void clearLayout(QLayout* layout, bool deleteWidgets = true)
 QWidget* get_widget(const double& param)
 {
   QLineEdit* const widget = new QLineEdit();
-  widget->setValidator(new QDoubleValidator(0, 100E9, 1, widget));
+  widget->setValidator(new QDoubleValidator(-10.0E9, 10.0E9, 5, widget));
   widget->setText(QString::number(param));
   return widget;
 }
