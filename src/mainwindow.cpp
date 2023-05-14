@@ -26,7 +26,17 @@
 #include <QwtScaleDraw>
 #include <QwtScaleEngine>
 // Grox
+#include "data/ohlc_heikin_ashi.hpp"
+#include "debug/demangle_helper.hpp"
+#include "debug/print.hpp"
+#include "exchange/xrpl.hpp"
+#include "exchange/xrpl_network.hpp"
+#include "json_types.hpp"
 #include "mainwindow.hpp"
+#include "network/evp-encrypt.hpp"
+#include "network/https-async.hpp"
+#include "settings.hpp"
+#include "util/datetime_utils.hpp"
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/connection_widget.hpp"
 #include "widgets/currency_widget.hpp"
@@ -34,21 +44,7 @@
 #include "widgets/password_dialog.hpp"
 #include "widgets/trade_widget.hpp"
 #include "widgets/wallet_widget.hpp"
-//
-#include "demangle_helper.hpp"
-#include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
-#include "print.hpp"
-#include "util/datetime_utils.hpp"
-//
-#include "exchange/xrpl.hpp"
-#include "exchange/xrpl_network.hpp"
-//
-#include "json_types.hpp"
-#include "settings.hpp"
-//
-#include "data/ohlc_heikin_ashi.hpp"
-
+// Qt Advanced Docking System
 #include "DockAreaTabBar.h"
 #include "DockAreaTitleBar.h"
 #include "DockAreaWidget.h"
@@ -70,6 +66,9 @@ static print_threshold<Level, debug_level> main_dbg("Main-win");
 
 using namespace ads;
 
+// ----------------------------------------------------------------------------
+// we do not use a unique_ptr with automatic delete because ...
+// QObject::killTimer: Timers cannot be stopped from another thread
 QTimer* app_settings::get_global_clock_timer()
 {
   static QTimer* timer_ = nullptr;

@@ -8,7 +8,7 @@
 #include "widgets/indicator_dialog.hpp"
 #include "widgets/price_chart_widget.hpp"
 //
-#include "print.hpp"
+#include "debug/print.hpp"
 #include "settings.hpp"
 
 // ----------------------------------------------------------------------------

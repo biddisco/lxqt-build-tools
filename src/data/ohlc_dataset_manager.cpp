@@ -7,7 +7,7 @@
 #include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_dataset_manager.hpp"
 #include "data/ohlc_dataset_view.hpp"
-#include "print.hpp"
+#include "debug/print.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

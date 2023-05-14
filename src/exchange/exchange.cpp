@@ -1,8 +1,8 @@
 #include <QObject>
 //
 #include <range/v3/algorithm.hpp>
+#include "debug/print.hpp"
 #include "exchange/exchange.hpp"
-#include "print.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

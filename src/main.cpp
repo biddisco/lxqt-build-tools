@@ -7,9 +7,9 @@
 #include <memory>
 #include <regex>
 
+#include "debug/print.hpp"
 #include "mainwindow.hpp"
 #include "network/evp-encrypt.hpp"
-#include "print.hpp"
 #include "settings.hpp"
 #include "widgets/password_dialog.hpp"
 //

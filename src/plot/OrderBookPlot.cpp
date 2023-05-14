@@ -13,9 +13,9 @@
 #include <QwtScaleWidget>
 #include <QwtText>
 // Grox
+#include "debug/print.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
-#include "print.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

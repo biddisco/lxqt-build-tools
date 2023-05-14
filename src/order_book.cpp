@@ -11,8 +11,8 @@
 // Qt
 #include <QtCore>
 // Grox
+#include "debug/print.hpp"
 #include "json_types.hpp"
-#include "print.hpp"
 //
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"

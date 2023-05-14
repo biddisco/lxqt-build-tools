@@ -9,9 +9,9 @@
 #include <QwtScaleEngine>
 #include <QwtScaleMap>
 // Grox
+#include "debug/print.hpp"
 #include "plot/ohlc_interactor.hpp"
 #include "plot/ohlc_price_plot.hpp"
-#include "print.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

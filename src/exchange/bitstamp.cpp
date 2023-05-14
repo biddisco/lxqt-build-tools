@@ -4,12 +4,12 @@
 //
 #include <string>
 //
+#include "debug/print.hpp"
 #include "exchange/bitstamp.hpp"
 #include "exchange/xrpl_network.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/https-async.hpp"
 #include "network/websocket-ssl.hpp"
-#include "print.hpp"
 #include "settings.hpp"
 #include "util/datetime_utils.hpp"
 #include "util/stringutils.hpp"
