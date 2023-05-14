@@ -407,9 +407,6 @@ set(GROX_SRC
     src/plot/ohlc_interactor.cpp
     src/plot/ohlc_price_plot.cpp
     src/plot/filter_plot.cpp
-    # utils
-    src/util/QDateHelper.cpp
-    # src/stream/trade_filter.cpp
 )
 
 qt_wrap_ui(GROX_SRC src/tabbed_form.ui)

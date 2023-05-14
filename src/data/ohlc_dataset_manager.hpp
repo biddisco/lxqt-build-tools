@@ -14,6 +14,11 @@
 
 class ohlc_dataset_view;
 
+/// dataset_manager is the interface between an array and the (hdf5) file
+/// user to hold the underlying dataset on disk.
+/// The API has a minimal set of functions to simply read and write.
+/// More control of the data is provided by the dataset_view
+
 // ----------------------------------------------------------------------------
 class ohlc_dataset_manager
 {
@@ -32,7 +37,7 @@ class ohlc_dataset_manager
     file_name_ = filename;
     //
     create_data_dir();
-  };
+  }
 
   // Make sure that the initial data dir is present
   void create_data_dir();

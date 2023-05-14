@@ -2,9 +2,12 @@
 //
 #include <QInputDialog>
 //
+#include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_dataset_view.hpp"
+#include "data/ohlc_utils.hpp"
 #include "print.hpp"
 #include "settings.hpp"
+#include "util/datetime_utils.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -71,7 +74,7 @@ void ohlc_dataset_view::read_from_disk()
     data_manager_->read_hdf5(
       exchange_, ticker_string_, candles_.begin()->second->ohlc_samples_->data());
   }
-  catch (ohlc_data_integrity_exception& e)
+  catch (ohlc_data_exception& e)
   {
     // QInputDialog requires int and not int64 unfortunately
     int64_t index = e.index();

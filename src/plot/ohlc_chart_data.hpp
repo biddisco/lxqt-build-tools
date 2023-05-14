@@ -8,42 +8,7 @@
 #include <QwtTradingChartData>
 //
 #include "data/ohlc_data_resolutions.hpp"
-
-// ----------------------------------------------------------------------------
-struct ohlcv_minmax
-{
-  double min_price_;
-  double max_price_;
-  double min_volume_;
-  double max_volume_;
-  bool valid_;
-
-  bool isValid() const
-  {
-    return valid_;
-  }
-
-  ohlcv_minmax unite(const ohlcv_minmax& other) const
-  {
-    if (!isValid())
-    {
-      if (!other.isValid())
-        return ohlcv_minmax();
-      else
-        return other;
-    }
-
-    if (!other.isValid())
-      return *this;
-
-    ohlcv_minmax united;
-    united.min_price_ = std::min(min_price_, other.min_price_);
-    united.max_price_ = std::max(max_price_, other.max_price_);
-    united.min_volume_ = std::min(min_volume_, other.min_volume_);
-    united.max_volume_ = std::max(max_volume_, other.max_volume_);
-    return united;
-  }
-};
+#include "data/ohlc_utils.hpp"
 
 // ----------------------------------------------------------------------------
 class ohlc_chart_data : public QwtTradingChartData

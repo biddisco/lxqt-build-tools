@@ -5,7 +5,9 @@
 #include <string>
 #include <variant>
 #include <vector>
-//
+
+/// Definitions of different candlestick data resolutions
+
 // ----------------------------------------------------------------------------
 struct candle_res
 {

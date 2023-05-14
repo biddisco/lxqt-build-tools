@@ -4,6 +4,7 @@
 //
 #include <highfive/H5File.hpp>
 //
+#include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_dataset_manager.hpp"
 #include "data/ohlc_dataset_view.hpp"
 #include "print.hpp"
@@ -88,7 +89,7 @@ void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
   if (valid != data.size())
   {
     man_dbg<0>.error(str<>("Error"), path, "Aborting write");
-    throw ohlc_data_integrity_exception(valid);
+    throw ohlc_data_exception(valid);
     return;
   }
 

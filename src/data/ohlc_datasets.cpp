@@ -1,13 +1,13 @@
 // STL
 #include <vector>
 // Qt
-#include <QDateTime>
-#include <QLocale>
 #include <QVector>
 // Grox
+#include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_datasets.hpp"
 #include "plot/ohlc_chart_data.hpp"
 #include "print.hpp"
+#include "util/datetime_utils.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -92,14 +92,6 @@ uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_sample
 }
 
 // ----------------------------------------------------------------------------
-// unixtime * 1000 is msecs since 1970/1/1
-std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
-{
-  QDateTime dt = QDateTime::fromMSecsSinceEpoch(unixmsecs);
-  return QLocale().toString(dt, "yyyy-MM-dd hh:mm:ss").toStdString();
-}
-
-// ----------------------------------------------------------------------------
 uint64_t sample_index(double init, double time, double res)
 {
   uint64_t i = static_cast<uint64_t>((time - init) / res);
@@ -138,7 +130,7 @@ int64_t ohlc_datasets::validate_ohlc(
       ohlc_dbg<1>.error(str<>("validation"), name, str<3>(res.name_), "index", dec<9>(index),
         "expected", msecs_unix_to_calendar_time(expected_time), "found",
         msecs_unix_to_calendar_time(s1.time));
-      throw ohlc_data_integrity_exception(index);
+      throw ohlc_data_exception(index);
     }
   }
   ohlc_dbg<6>.debug(str<>("validated"), name, dec<9>(samples.size()));

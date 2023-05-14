@@ -39,6 +39,7 @@
 #include "network/evp-encrypt.hpp"
 #include "network/https-async.hpp"
 #include "print.hpp"
+#include "util/datetime_utils.hpp"
 //
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"

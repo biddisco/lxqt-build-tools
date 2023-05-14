@@ -25,6 +25,7 @@
 #include <QwtSymbol>
 #include <QwtTextLabel>
 // Grox
+#include "data/ohlc_utils.hpp"
 #include "plot/ohlc_chart_curve.hpp"
 #include "plot/ohlc_chart_data.hpp"
 #include "plot/ohlc_date_scaledraw.hpp"
@@ -32,6 +33,7 @@
 #include "plot/ohlc_picker.hpp"
 #include "plot/ohlc_price_plot.hpp"
 #include "print.hpp"
+#include "util/datetime_utils.hpp"
 //
 #include <range/v3/view.hpp>
 #include <fmt/format.h>

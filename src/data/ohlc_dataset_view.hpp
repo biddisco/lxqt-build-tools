@@ -10,7 +10,11 @@
 #include "currency.hpp"
 #include "data/ohlc_dataset_manager.hpp"
 #include "data/ohlc_datasets.hpp"
+#include "data/ohlc_utils.hpp"
 #include "plot/ohlc_chart_data.hpp"
+
+/// dataset_view provides functions to access the data array holding a dataset
+/// as well as other resampled arrays that hold the same data at lower resolutions.
 
 // ----------------------------------------------------------------------------
 class ohlc_dataset_view
