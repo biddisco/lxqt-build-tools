@@ -48,6 +48,8 @@ set(CMAKE_CXX_STANDARD 20)
 option(BUILD_SHARED_LIBS "build shared ripple libraries" OFF)
 set(Boost_NO_WARN_NEW_VERSIONS 1)
 
+option(GROX_WITH_SANITIZER "build grox using address sanitzer flags" OFF)
+
 # ------------------------------------------------------------------------------
 # Testing
 # ------------------------------------------------------------------------------
@@ -436,6 +438,30 @@ target_include_directories(
 
 if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
   set(STD_FILESYSTEM_LIB "stdc++fs")
+endif()
+
+if(GROX_WITH_SANITIZER)
+  target_compile_options(
+    grox
+    PRIVATE -fsanitize=address
+            -fsanitize=undefined
+            -fno-sanitize-recover=all
+            -fsanitize=float-divide-by-zero
+            -fsanitize=float-cast-overflow
+            -fno-sanitize=null
+            -fno-sanitize=alignment
+  )
+  target_link_options(
+    grox
+    PRIVATE
+    -fsanitize=address
+    -fsanitize=undefined
+    -fno-sanitize-recover=all
+    -fsanitize=float-divide-by-zero
+    -fsanitize=float-cast-overflow
+    -fno-sanitize=null
+    -fno-sanitize=alignment
+  )
 endif()
 
 target_compile_definitions(
