@@ -545,9 +545,10 @@ void bitstamp_network::handle_open_orders(std::string&& data)
   trades.clear();
   //
   nlohmann::json jdata = json::parse(data);
-  for (auto& [key, val] : jdata.items())
+  for (const auto& [key, val] : jdata.items())
   {
-    const auto& [c1, c2] = get_currency_pair(JCHARP(val["currency_pair"]));
+    const std::string jstring = val[std::string_view("currency_pair")];
+    const auto& [c1, c2] = get_currency_pair(jstring);
 
     double amount = std::stod(JCHARP(val["amount"]));
     double price = std::stod(JCHARP(val["price"]));
@@ -778,10 +779,11 @@ void bitstamp_network::request_tickers_available()
 void bitstamp_network::receive_tickers_available(std::string&& data)
 {
   nlohmann::json jdata = json::parse(data);
-  for (auto& [key, val] : jdata.items())
+  for (const auto& [key, val] : jdata.items())
   {
-    const auto& [c1, c2] = get_currency_pair(JCHARP(val["pair"]));
-    bitstamp_dbg<8>.debug(str<>("Currency pair"), c1, c2, c1, c2);
+    json::string_t jstring = val[std::string_view("pair")];
+    const auto& [c1, c2] = get_currency_pair(jstring);
+    bitstamp_dbg<0>.debug(str<>("Currency pair"), c1, c2, c1, c2);
     add_currency_pair(c1, c2);
   }
 

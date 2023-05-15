@@ -55,24 +55,8 @@ inline auto make_string = [](auto&& r) -> std::string_view {
   return std::string_view{data, size};
 };
 
-inline std::pair<std::string_view, std::string_view> get_currency_pair(const std::string& str)
+inline std::pair<std::string_view, std::string_view> get_currency_pair(std::string_view str)
 {
   const auto range = str | ranges::views::split('/') | ranges::views::transform(make_string);
   return std::make_pair(ranges::front(range), *next(ranges::begin(range)));
 }
-
-//std::pair<std::string, std::string> get_currency_pair(const std::string &cs)
-//{
-//    std::size_t pos = cs.find("/");
-//    std::string c1 = cs.substr(0,pos);
-//    std::string c2 = cs.substr(pos+1);
-//    return std::make_pair(c1, c2);
-//}
-
-//std::pair<std::string, std::string> get_currency_pair(const char *cp)
-//{
-//    std::size_t pos = strpos(cp, "/");
-//    std::string c1 = std::string(cp, pos);
-//    std::string c2 = std::string(cp[pos], .substr(pos+1);
-//    return std::make_pair(c1, c2);
-//}
