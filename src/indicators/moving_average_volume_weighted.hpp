@@ -57,7 +57,7 @@ namespace indicators {
         ptot += val.price_ * val.weight_;
         wtot += val.weight_;
       }
-      return ptot / wtot;
+      return (wtot > 0) ? (ptot / wtot) : 0.0;
     }
 
     double operator()(const QwtOHLCSample& val)
