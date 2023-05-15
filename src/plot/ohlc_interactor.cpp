@@ -202,10 +202,8 @@ bool ohlc_interactor::eventFilter(QObject* object, QEvent* event)
   // 2 finger trackpad movements appear as scroll events
   case QEvent::Wheel:
   {
-    QMouseEvent* evr = static_cast<QMouseEvent*>(event);
-    m_data->initialPos = m_data->pos = evr->pos();
-    //
     QWheelEvent* we = static_cast<QWheelEvent*>(event);
+    m_data->initialPos = m_data->pos = we->position().toPoint();
     auto d = we->angleDelta();
     // sideways swipe
     if (std::abs(d.x()) >= std::abs(d.y()))
