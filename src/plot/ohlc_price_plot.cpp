@@ -427,8 +427,11 @@ void ohlc_price_plot::adjust_data_scaling()
 {
   const double t1 = axisScaleDiv(QwtAxis::XBottom).lowerBound();
   const double t2 = axisScaleDiv(QwtAxis::XBottom).upperBound();
-  auto minmax = ohlc_dataset_view_->get_min_max_window(get_candle_resolution(), t1, t2, 0.05);
-  setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
+  if (t2 > t1)
+  {
+    auto minmax = ohlc_dataset_view_->get_min_max_window(get_candle_resolution(), t1, t2, 0.05);
+    setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
+  }
 }
 
 // ----------------------------------------------------------------------------
