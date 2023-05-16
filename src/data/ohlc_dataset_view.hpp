@@ -1,6 +1,7 @@
 #pragma once
 
 // STL
+#include <mutex>
 #include <vector>
 // Qt
 #include <QVector>
@@ -60,6 +61,7 @@ class ohlc_dataset_view
   void merge_data(double res, const QVector<QwtOHLCSample>& new_ohlc_samples_);
 
   // access the underlying data vector for live samples
+  const ohlc_chart_data* get_live_data() const;
   ohlc_chart_data* get_live_data();
   void delete_live_data_up_to(double msecs);
   // add a new trade sample to build live OHLC candles, returns true when
@@ -96,4 +98,6 @@ class ohlc_dataset_view
   {
     return ticker_string_;
   }
+
+  mutable std::mutex live_mutex_;
 };
