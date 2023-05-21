@@ -64,7 +64,15 @@ namespace indicators {
     {
       double price = ohlc_mode_extract(mode_, val);
       // insert data into buffer
-      buffer_.push_back({price, val.volume});
+      if (val.volume > 0)
+      {
+        buffer_.push_back({price, val.volume});
+      }
+      else
+      {
+        auto last_vol = buffer_.back().weight_;
+        buffer_.push_back({price, last_vol});
+      }
       rolling_mean_ = compute();
       return rolling_mean_;
     }
