@@ -1,3 +1,4 @@
+#include <QColorDialog>
 #include <QCommonStyle>
 #include <QHeaderView>
 #include <QMessageBox>
@@ -70,6 +71,7 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   horizontalHeader->setSectionResizeMode(0, QHeaderView::ResizeMode::Stretch);
   horizontalHeader->setSectionResizeMode(1, QHeaderView::ResizeMode::Interactive);
   horizontalHeader->setSectionResizeMode(2, QHeaderView::ResizeMode::ResizeToContents);
+  horizontalHeader->setSectionResizeMode(3, QHeaderView::ResizeMode::ResizeToContents);
 
   QHeaderView* verticalHeader = ind_vis_->verticalHeader();
   verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
@@ -200,12 +202,26 @@ void price_chart_widget::connect_gui()
   connect(ind_vis_, &QTableView::clicked, this, [this](const QModelIndex& i) {
     int col = i.column();
     int row = i.row();
-    if (col == 2)
+    if (col == 3)
     {
       auto it = std::next(ind_model_.indicators_.begin(), row);
       it->curve->detach();
       delete it->curve;
       ind_model_.indicators_.erase(it);
+      ind_model_.dataAdded();
+      this->replot();
+    }
+    if (col == 2)
+    {
+      auto it = std::next(ind_model_.indicators_.begin(), row);
+      QColor c = it->curve->pen().color();
+      QColor color = QColorDialog::getColor(c, this);
+      if (color.isValid())
+      {
+        QPen new_pen(it->curve->pen());
+        new_pen.setColor(color);
+        it->curve->setPen(new_pen);
+      }
       ind_model_.dataAdded();
       this->replot();
     }
@@ -363,7 +379,7 @@ int indicators_model::rowCount(const QModelIndex& /*parent*/) const
 
 int indicators_model::columnCount(const QModelIndex& /*parent*/) const
 {
-  return 3;
+  return 4;
 }
 
 QVariant indicators_model::data(const QModelIndex& index, int role) const
@@ -374,21 +390,32 @@ QVariant indicators_model::data(const QModelIndex& index, int role) const
     return result;
   }
 
+  auto it = std::next(indicators_.begin(), index.row());
   if (role == Qt::DisplayRole)
   {
     if (index.column() == 0)
     {
-      return (QString(indicators_[index.row()].text));
+      return (QString(it->text));
     }
     else if (index.column() == 1)
     {
-      return (QString(indicators_[index.row()].params));
+      return (QString(it->params));
+    }
+    else if (index.column() == 2)
+    {
+      return (QString(""));
     }
   }
-  else if (role == Qt::DecorationRole && index.column() == 2)
+  else if (role == Qt::BackgroundRole && index.column() == 2)
+  {
+    QColor col = it->curve->pen().color();
+    return col;
+  }
+  else if (role == Qt::DecorationRole && index.column() == 3)
   {
     return (QCommonStyle().standardIcon(QStyle::SP_TrashIcon));
   }
+
   return result;
 }
 
