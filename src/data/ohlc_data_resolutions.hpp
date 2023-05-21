@@ -2,6 +2,7 @@
 
 // STL
 #include <exception>
+#include <iostream>
 #include <string>
 #include <variant>
 #include <vector>
@@ -37,6 +38,11 @@ struct candle_res
   bool operator==(const candle_res& other)
   {
     return res_ == other.res_;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const candle_res& res)
+  {
+    return os << res.name_;
   }
 };
 

@@ -1,7 +1,11 @@
 #pragma once
 
+#include <QAbstractTableModel>
+#include <QComboBox>
 #include <QPushButton>
+#include <QTableView>
 #include <QWidget>
+
 //
 #include "exchange/exchange.hpp"
 #include "plot/filter_plot.hpp"
@@ -14,6 +18,42 @@ namespace Ui {
   class price_chart_widget;
 }
 
+// ----------------------------------------------------------------------------
+struct indicator_data
+{
+  QString text;
+  QString params;
+  QwtPlotCurve* curve;
+};
+Q_DECLARE_METATYPE(indicator_data*)
+
+// ----------------------------------------------------------------------------
+class indicators_model : public QAbstractTableModel
+{
+  Q_OBJECT
+  public:
+  explicit indicators_model(QObject* parent = nullptr);
+
+  int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+  int columnCount(const QModelIndex& parent = QModelIndex()) const override;
+  QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+  //
+  void dataAdded();
+  //    QModelIndex index(int row, int column,
+  //                              const QModelIndex &parent = QModelIndex()) const = 0;
+  //    QModelIndex parent(const QModelIndex &child) const = 0;
+
+  //    QModelIndex sibling(int row, int column, const QModelIndex &idx) const;
+  //    int rowCount(const QModelIndex &parent = QModelIndex()) const = 0;
+  //    int columnCount(const QModelIndex &parent = QModelIndex()) const = 0;
+  //    bool hasChildren(const QModelIndex &parent = QModelIndex()) const;
+
+  //    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const = 0;
+
+  std::vector<indicator_data> indicators_;
+};
+
+// ----------------------------------------------------------------------------
 class price_chart_widget : public QWidget
 {
   Q_OBJECT
@@ -24,11 +64,14 @@ class price_chart_widget : public QWidget
   ohlc_price_plot* crypto_price_plot_;
   filter_plot* filters_plot_;
   filter_plot* assets_plot_;
-  QPushButton* indicators_;
+  QPushButton* btn_indicator_;
   //
   std::shared_ptr<exchange> exchange_;
   std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;
   std::string ticker_string_;
+
+  indicators_model ind_model_;
+  QTableView* ind_vis_;
 
   public:
   price_chart_widget(

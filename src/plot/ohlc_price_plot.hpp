@@ -79,9 +79,10 @@ class ohlc_price_plot : public QwtPlot
     return crosshairs_;
   }
 
-  void add_price_curve(const QString& title, const QVector<QPointF>& samples, const QColor& color);
+  QwtPlotCurve* add_price_curve(
+    const QString& title, const QVector<QPointF>& samples, const QColor& color);
 
-  void add_buy_sell_curve(
+  QwtPlotCurve* add_buy_sell_curve(
     const QString& title, const QVector<QPointF>& samples, const QColor& color);
 
   void updateLayout() override;

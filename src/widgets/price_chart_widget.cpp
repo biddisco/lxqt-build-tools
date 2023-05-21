@@ -1,3 +1,5 @@
+#include <QCommonStyle>
+#include <QHeaderView>
 #include <QMessageBox>
 //
 #include "ui_price_chart_widget.h"
@@ -57,10 +59,28 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   }
   ui->candle_res->addItems(slist);
 
-  indicators_ = new QPushButton(this);
-  indicators_->setText("Indicators");
-  indicators_->setFlat(true);
-  ui->controls_layout->addWidget(indicators_);
+  ind_vis_ = new QTableView(this);
+  ind_vis_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  ind_vis_->setMinimumHeight(24);
+  ind_vis_->setMaximumHeight(24);
+  ind_vis_->setModel(&ind_model_);
+
+  QHeaderView* horizontalHeader = ind_vis_->horizontalHeader();
+  horizontalHeader->setVisible(false);
+  horizontalHeader->setSectionResizeMode(0, QHeaderView::ResizeMode::Stretch);
+  horizontalHeader->setSectionResizeMode(1, QHeaderView::ResizeMode::Interactive);
+  horizontalHeader->setSectionResizeMode(2, QHeaderView::ResizeMode::ResizeToContents);
+
+  QHeaderView* verticalHeader = ind_vis_->verticalHeader();
+  verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
+  verticalHeader->setDefaultSectionSize(24);
+  verticalHeader->setVisible(false);
+  ui->controls_layout->addWidget(ind_vis_);
+
+  btn_indicator_ = new QPushButton(this);
+  btn_indicator_->setText("Indicators");
+  btn_indicator_->setFlat(true);
+  ui->controls_layout->addWidget(btn_indicator_);
 
   DigitalClock* clock = new DigitalClock(this, global_settings()->get_global_clock_timer());
   ui->controls_layout->addWidget(clock);
@@ -177,7 +197,21 @@ void price_chart_widget::connect_gui()
     },
     Qt::QueuedConnection);
 
-  connect(indicators_, &QPushButton::clicked, this, [this](bool b) {
+  connect(ind_vis_, &QTableView::clicked, this, [this](const QModelIndex& i) {
+    int col = i.column();
+    int row = i.row();
+    if (col == 2)
+    {
+      auto it = std::next(ind_model_.indicators_.begin(), row);
+      it->curve->detach();
+      delete it->curve;
+      ind_model_.indicators_.erase(it);
+      ind_model_.dataAdded();
+      this->replot();
+    }
+  });
+
+  connect(btn_indicator_, &QPushButton::clicked, this, [this](bool b) {
     pplot_dbg<0>.debug(str<>("Indicators"), exchange_->name(), ticker_string_);
 
     indicator_dialog in_dialog = indicator_dialog();
@@ -221,7 +255,18 @@ void price_chart_widget::connect_gui()
             QColor("yellow"), QColor("blue")};
           auto colour = colours[colour_count++ % 10];
 
-          crypto_price_plot_->add_price_curve(QString(alg.name.c_str()), indicator_plot, colour);
+          QString name = QString(alg.name.c_str());
+          auto curve = crypto_price_plot_->add_price_curve(name, indicator_plot, colour);
+
+          QString params = QString(indicators::param_string(alg.params).c_str());
+          ind_model_.indicators_.push_back({name, params, curve});
+          ind_model_.dataAdded();
+          //          QStandardItem* item = new QStandardItem();
+          //          item->setText(name);
+          //          item->setCheckable(true);
+          //          item->setCheckState(Qt::Checked);
+          //          item->setIcon(QCommonStyle().standardIcon(QStyle::SP_TrashIcon));
+          //          ind_model_.appendRow(item);
           this->replot();
         },
         indicator);
@@ -303,4 +348,55 @@ void price_chart_widget::showEvent(QShowEvent* event)
   QWidget::showEvent(event);
   bool changed = crypto_price_plot_->update_candle_size();
   pplot_dbg<5>.debug(str<>("Show"), "res changed", changed);
+}
+
+// ----------------------------------------------------------------------------
+indicators_model::indicators_model(QObject* parent)
+  : QAbstractTableModel(parent)
+{
+}
+
+int indicators_model::rowCount(const QModelIndex& /*parent*/) const
+{
+  return indicators_.size();
+}
+
+int indicators_model::columnCount(const QModelIndex& /*parent*/) const
+{
+  return 3;
+}
+
+QVariant indicators_model::data(const QModelIndex& index, int role) const
+{
+  QVariant result;
+  if (!index.isValid())
+  {
+    return result;
+  }
+
+  if (role == Qt::DisplayRole)
+  {
+    if (index.column() == 0)
+    {
+      return (QString(indicators_[index.row()].text));
+    }
+    else if (index.column() == 1)
+    {
+      return (QString(indicators_[index.row()].params));
+    }
+  }
+  else if (role == Qt::DecorationRole && index.column() == 2)
+  {
+    return (QCommonStyle().standardIcon(QStyle::SP_TrashIcon));
+  }
+  return result;
+}
+
+void indicators_model::dataAdded()
+{
+  beginResetModel();
+  QModelIndex topLeft = createIndex(0, 0);
+  QModelIndex bottomRight = createIndex(indicators_.size(), 2);
+  emit QAbstractTableModel::dataChanged(topLeft, bottomRight);
+  endResetModel();
 }

@@ -473,7 +473,7 @@ void ohlc_price_plot::display_candle_status(double time)
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::add_buy_sell_curve(
+QwtPlotCurve* ohlc_price_plot::add_buy_sell_curve(
   const QString& title, const QVector<QPointF>& samples, const QColor& color)
 {
   auto m_curve = new QwtPlotCurve(title);
@@ -489,10 +489,11 @@ void ohlc_price_plot::add_buy_sell_curve(
 
   m_curve->setSamples(samples);
   m_curve->attach(this);
+  return m_curve;
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::add_price_curve(
+QwtPlotCurve* ohlc_price_plot::add_price_curve(
   const QString& title, const QVector<QPointF>& samples, const QColor& color)
 {
   auto m_curve = new QwtPlotCurve(title);
@@ -509,6 +510,7 @@ void ohlc_price_plot::add_price_curve(
 
   m_curve->setSamples(samples);
   m_curve->attach(this);
+  return m_curve;
 }
 
 // ----------------------------------------------------------------------------
