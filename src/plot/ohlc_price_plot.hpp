@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 // Qwt
 #include <QwtPlot>
 // Grox
@@ -9,6 +10,7 @@ class ohlc_dataset_view;
 class ohlc_chart_curve;
 class ohlc_price_scaledraw;
 class ohlc_picker;
+class ohlc_interactor;
 //
 class QwtDateScaleDraw;
 class QwtDateScaleEngine;
@@ -79,7 +81,7 @@ class ohlc_price_plot : public QwtPlot
     return crosshairs_;
   }
 
-  QwtPlotCurve* add_price_curve(
+  QwtPlotCurve* add_overlay_curve(
     const QString& title, const QVector<QPointF>& samples, const QColor& color);
 
   QwtPlotCurve* add_buy_sell_curve(

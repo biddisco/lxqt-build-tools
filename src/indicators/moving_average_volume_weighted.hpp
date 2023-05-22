@@ -7,7 +7,7 @@
 
 namespace indicators {
 
-  struct mvwv_data
+  struct mov_av_vw_data
   {
     double price_;
     double weight_;
@@ -21,6 +21,7 @@ namespace indicators {
     const std::string name = "Moving Average (Volume Weighted)";
     const std::string description =
       "mode : 0=open, 1=close, 2=mid(open,close), 3=high, 4=low, 5=mid(high,low)";
+    const bool price_overlay = true;
 
     param_list params = {
       std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),
@@ -43,7 +44,7 @@ namespace indicators {
       auto window_size = std::get<int>(std::get<1>(params[1]));
       auto mode = std::get<int>(std::get<1>(params[2]));
       //
-      buffer_ = boost::circular_buffer<mvwv_data>(window_size);
+      buffer_ = boost::circular_buffer<mov_av_vw_data>(window_size);
       rolling_mean_ = 0;
       mode_ = mode;
     }
@@ -83,7 +84,7 @@ namespace indicators {
     }
 
 private:
-    boost::circular_buffer<mvwv_data> buffer_;
+    boost::circular_buffer<mov_av_vw_data> buffer_;
     //
     double rolling_mean_;
     int mode_;

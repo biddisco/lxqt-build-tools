@@ -163,6 +163,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   setAxisScaleDraw(QwtPlot::xBottom, timescaleDraw_);
   setAxisScaleEngine(QwtPlot::xBottom, timescaleEngine_);
   setAxisLabelAlignment(QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom);
+  //setAxisVisible(QwtPlot::xBottom, false);
 
   ohlcv_minmax minmax = data->get_min_max(ohlc_data_resolutions::minute,
     data->get_first_sample_time(), data->get_last_sample_time(false));
@@ -493,7 +494,7 @@ QwtPlotCurve* ohlc_price_plot::add_buy_sell_curve(
 }
 
 // ----------------------------------------------------------------------------
-QwtPlotCurve* ohlc_price_plot::add_price_curve(
+QwtPlotCurve* ohlc_price_plot::add_overlay_curve(
   const QString& title, const QVector<QPointF>& samples, const QColor& color)
 {
   auto m_curve = new QwtPlotCurve(title);

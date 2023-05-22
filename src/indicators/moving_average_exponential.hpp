@@ -12,6 +12,7 @@ namespace indicators {
     // fields required for auto gui generation
     const std::string name = "Moving Average (Exponential)";
     const std::string description = "Exponential decay moving average";
+    const bool price_overlay = true;
 
     param_list params = {
       std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),

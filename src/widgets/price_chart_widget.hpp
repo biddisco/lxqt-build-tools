@@ -8,7 +8,7 @@
 
 //
 #include "exchange/exchange.hpp"
-#include "plot/filter_plot.hpp"
+#include "plot/indicator_plot.hpp"
 #include "plot/ohlc_picker.hpp"
 #include "plot/ohlc_price_plot.hpp"
 
@@ -62,8 +62,8 @@ class price_chart_widget : public QWidget
   Ui::price_chart_widget* ui;
   //
   ohlc_price_plot* crypto_price_plot_;
-  filter_plot* filters_plot_;
-  filter_plot* assets_plot_;
+  indicator_plot* filters_plot_;
+  indicator_plot* assets_plot_;
   QPushButton* btn_indicator_;
   //
   std::shared_ptr<exchange> exchange_;
@@ -89,6 +89,9 @@ class price_chart_widget : public QWidget
   {
     crypto_price_plot_->replot();
   }
+
+  QwtPlotCurve* add_indicator_plot(
+    const QString& title, const QVector<QPointF>& samples, const QColor& color);
 
   void resizeEvent(QResizeEvent* event) override;
   void showEvent(QShowEvent* event) override;

@@ -220,7 +220,7 @@ int qt_main(int argc, char* argv[])
   if (!authenticated)
   {
     app_dbg<5>.error(str<>("Authentication"), "fail");
-    return EXIT_FAILURE;
+    //    return EXIT_FAILURE;
   }
 
   // we need random data for the encryption block

@@ -16,7 +16,7 @@
 #include "network/websocket-ssl.hpp"
 //
 #include "plot/OrderBookPlot.h"
-#include "plot/filter_plot.hpp"
+#include "plot/indicator_plot.hpp"
 #include "plot/ohlc_picker.hpp"
 #include "plot/ohlc_price_plot.hpp"
 //

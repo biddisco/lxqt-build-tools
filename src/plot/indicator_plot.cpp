@@ -25,7 +25,7 @@
 #include <QwtTextLabel>
 // Grox
 #include "debug/print.hpp"
-#include "plot/filter_plot.hpp"
+#include "plot/indicator_plot.hpp"
 #include "plot/ohlc_chart_curve.hpp"
 #include "plot/ohlc_chart_data.hpp"
 #include "plot/ohlc_date_scaledraw.hpp"
@@ -35,7 +35,7 @@
 #include <range/v3/view.hpp>
 
 // ----------------------------------------------------------------------------
-filter_plot::filter_plot(QWidget* parent)
+indicator_plot::indicator_plot(QWidget* parent)
   : QwtPlot(parent)
   , timescaleDraw_(nullptr)
   , timescaleEngine_(nullptr)
@@ -107,17 +107,17 @@ filter_plot::filter_plot(QWidget* parent)
 }
 
 // ----------------------------------------------------------------------------
-filter_plot::~filter_plot() {}
+indicator_plot::~indicator_plot() {}
 
 // ----------------------------------------------------------------------------
-void filter_plot::showItem(QwtPlotItem* item, bool on)
+void indicator_plot::showItem(QwtPlotItem* item, bool on)
 {
   item->setVisible(on);
   replot();
 }
 
 // ----------------------------------------------------------------------------
-void filter_plot::update_time_axis(double t1, double t2)
+void indicator_plot::update_time_axis(double t1, double t2)
 {
   const bool doAutoReplot = autoReplot();
   setAutoReplot(false);
@@ -140,7 +140,7 @@ void filter_plot::update_time_axis(double t1, double t2)
 }
 
 // ----------------------------------------------------------------------------
-void filter_plot::add_asset_curve(
+void indicator_plot::add_asset_curve(
   const QString& title, const QVector<QPointF>& samples, const QColor& color)
 {
   auto m_curve = new QwtPlotCurve(title);

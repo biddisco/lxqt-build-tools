@@ -43,13 +43,13 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   //
   // Create stream/filters plot
   //
-  assets_plot_ = new filter_plot(this);
-  ui->filters_layout->addWidget(assets_plot_);
+  assets_plot_ = new indicator_plot(this);
+  ui->indicators_layout->addWidget(assets_plot_);
   assets_plot_->setMinimumHeight(128);
   assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
 
-  filters_plot_ = new filter_plot(this);
-  ui->filters_layout->addWidget(filters_plot_);
+  filters_plot_ = new indicator_plot(this);
+  ui->indicators_layout->addWidget(filters_plot_);
   filters_plot_->setMinimumHeight(128);
   filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
 
@@ -202,15 +202,6 @@ void price_chart_widget::connect_gui()
   connect(ind_vis_, &QTableView::clicked, this, [this](const QModelIndex& i) {
     int col = i.column();
     int row = i.row();
-    if (col == 3)
-    {
-      auto it = std::next(ind_model_.indicators_.begin(), row);
-      it->curve->detach();
-      delete it->curve;
-      ind_model_.indicators_.erase(it);
-      ind_model_.dataAdded();
-      this->replot();
-    }
     if (col == 2)
     {
       auto it = std::next(ind_model_.indicators_.begin(), row);
@@ -222,6 +213,15 @@ void price_chart_widget::connect_gui()
         new_pen.setColor(color);
         it->curve->setPen(new_pen);
       }
+      ind_model_.dataAdded();
+      this->replot();
+    }
+    else if (col == 3)
+    {
+      auto it = std::next(ind_model_.indicators_.begin(), row);
+      it->curve->detach();
+      delete it->curve;
+      ind_model_.indicators_.erase(it);
       ind_model_.dataAdded();
       this->replot();
     }
@@ -272,7 +272,15 @@ void price_chart_widget::connect_gui()
           auto colour = colours[colour_count++ % 10];
 
           QString name = QString(alg.name.c_str());
-          auto curve = crypto_price_plot_->add_price_curve(name, indicator_plot, colour);
+          QwtPlotCurve* curve;
+          if (alg.price_overlay)
+          {
+            curve = crypto_price_plot_->add_overlay_curve(name, indicator_plot, colour);
+          }
+          else
+          {
+            curve = add_indicator_plot(name, indicator_plot, colour);
+          }
 
           QString params = QString(indicators::param_string(alg.params).c_str());
           ind_model_.indicators_.push_back({name, params, curve});
@@ -426,4 +434,27 @@ void indicators_model::dataAdded()
   QModelIndex bottomRight = createIndex(indicators_.size(), 2);
   emit QAbstractTableModel::dataChanged(topLeft, bottomRight);
   endResetModel();
+}
+
+// ----------------------------------------------------------------------------
+QwtPlotCurve* price_chart_widget::add_indicator_plot(
+  const QString& title, const QVector<QPointF>& samples, const QColor& color)
+{
+  auto m_curve = new QwtPlotCurve(title);
+  m_curve->setYAxis(QwtPlot::yRight);
+  m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
+  m_curve->setStyle(QwtPlotCurve::Lines);
+  m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
+  m_curve->setPen(color, 2);
+  m_curve->setSamples(samples);
+  m_curve->attach(filters_plot_);
+
+  // Align the right axis of the indicator with the main price plot
+  auto* scaleWidget = crypto_price_plot_->axisWidget(QwtPlot::yRight);
+  double extent = scaleWidget->scaleDraw()->extent(scaleWidget->font());
+  filters_plot_->axisWidget(QwtPlot::yRight)->scaleDraw()->setMinimumExtent(extent);
+  //filters_plot_->updateLayout();
+  //filters_plot_->replot();
+  filters_plot_->show();
+  return m_curve;
 }

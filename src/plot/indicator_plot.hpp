@@ -20,7 +20,7 @@ class QwtPlotTextLabel;
 class QwtTextLabel;
 
 // ----------------------------------------------------------------------------
-class filter_plot : public QwtPlot
+class indicator_plot : public QwtPlot
 {
   Q_OBJECT
 
@@ -29,8 +29,8 @@ class filter_plot : public QwtPlot
   QwtDateScaleEngine* timescaleEngine_;
 
   public:
-  filter_plot(QWidget*);
-  ~filter_plot();
+  indicator_plot(QWidget*);
+  ~indicator_plot();
   //
   void update_time_axis(double t1, double t2);
   void add_asset_curve(const QString& title, const QVector<QPointF>& samples, const QColor& color);

@@ -22,6 +22,7 @@ namespace indicators {
     const std::string name = "Moving Average";
     const std::string description =
       "mode : 0=open, 1=close, 2=mid(open,close), 3=high, 4=low, 5=mid(high,low)";
+    const bool price_overlay = true;
 
     param_list params = {
       std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),

@@ -124,7 +124,7 @@
       <layout class="QHBoxLayout" name="candlestick_layout"/>
      </widget>
      <widget class="QWidget" name="verticalLayoutWidget">
-      <layout class="QVBoxLayout" name="filters_layout"/>
+      <layout class="QVBoxLayout" name="indicators_layout"/>
      </widget>
     </widget>
    </item>
