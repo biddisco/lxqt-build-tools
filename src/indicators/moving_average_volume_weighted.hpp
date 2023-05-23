@@ -29,7 +29,7 @@ namespace indicators {
       std::make_tuple<std::string, param_types>("mode", 2)};
 
     // ---------------------------------------
-    // Default constructor (optional)
+    // Default constructor
     moving_average_volume_weighted()
       : buffer_(7)
       , rolling_mean_(0)

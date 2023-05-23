@@ -7,11 +7,6 @@
 
 namespace indicators {
 
-  struct rsi_data
-  {
-    double diff_;
-  };
-
   //----------------------------------------------------------------------------
   struct relative_strength_indicator
   {
@@ -26,7 +21,7 @@ namespace indicators {
       std::make_tuple<std::string, param_types>("Window size", 14)};
 
     // ---------------------------------------
-    // Default constructor (optional)
+    // Default constructor
     relative_strength_indicator()
       : pos_diff{0}
       , neg_diff{0}
@@ -45,7 +40,6 @@ namespace indicators {
     void initialize()
     {
       auto window_size = std::get<int>(std::get<1>(params[1]));
-      buffer_ = boost::circular_buffer<rsi_data>(window_size);
       //auto mode = std::get<int>(std::get<1>(params[2]));
       //
       period_ = window_size;
@@ -97,7 +91,6 @@ namespace indicators {
     }
 
 private:
-    boost::circular_buffer<rsi_data> buffer_;
     double pos_diff;
     double neg_diff;
     double count;
