@@ -30,4 +30,9 @@ namespace indicators {
     }
   }
 
+  struct y_limits
+  {
+    double min;
+    double max;
+  };
 }    // namespace indicators

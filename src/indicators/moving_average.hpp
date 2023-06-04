@@ -51,13 +51,18 @@ namespace indicators {
       mode_ = mode;
     }
 
-    double operator()(const QwtOHLCSample& val)
+    double operator()(const double price)
     {
-      double price = ohlc_mode_extract(mode_, val);
       // insert data into boost accumulator
       decay_acc_(price);
       rolling_mean_ = ba::rolling_mean(decay_acc_);
       return rolling_mean_;
+    }
+
+    double operator()(const QwtOHLCSample& val)
+    {
+      double price = ohlc_mode_extract(mode_, val);
+      return operator()(price);
     }
 
     inline double getLastResult()

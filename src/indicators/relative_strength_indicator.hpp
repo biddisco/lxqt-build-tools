@@ -50,10 +50,8 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    double operator()(const QwtOHLCSample& val)
+    double operator()(double price)
     {
-      // closing price
-      double price = ohlc_mode_extract(1, val);
       double diff = price - last_price;
       last_price = price;
       //
@@ -82,6 +80,14 @@ namespace indicators {
       rsi_ = 1.0 - (1.0 / (1.0 + rs));
 
       return rsi_;
+    }
+
+    // ---------------------------------------
+    double operator()(const QwtOHLCSample& val)
+    {
+      // closing price
+      double price = ohlc_mode_extract(1, val);
+      return operator()(price);
     }
 
     // ---------------------------------------
