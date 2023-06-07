@@ -62,7 +62,7 @@ class price_chart_widget : public QWidget
   Ui::price_chart_widget* ui;
   //
   ohlc_price_plot* crypto_price_plot_;
-  indicator_plot* filters_plot_;
+  std::vector<indicator_plot*> filter_plots_;
   indicator_plot* assets_plot_;
   QPushButton* btn_indicator_;
   //

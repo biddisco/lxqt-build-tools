@@ -2,6 +2,7 @@
 #include <QCommonStyle>
 #include <QHeaderView>
 #include <QMessageBox>
+#include <QSplitter>
 //
 #include "ui_price_chart_widget.h"
 //
@@ -43,15 +44,10 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   //
   // Create stream/filters plot
   //
-  assets_plot_ = new indicator_plot(this);
-  ui->indicators_layout->addWidget(assets_plot_);
-  assets_plot_->setMinimumHeight(128);
-  assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
-
-  filters_plot_ = new indicator_plot(this);
-  ui->indicators_layout->addWidget(filters_plot_);
-  filters_plot_->setMinimumHeight(128);
-  filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
+  //  assets_plot_ = new indicator_plot(this);
+  //  ui->indicators_layout->addWidget(assets_plot_);
+  //  assets_plot_->setMinimumHeight(128);
+  //  assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
 
   QStringList slist("Auto");
   for (const auto& r : ohlc_data_resolutions::available_resolutions())
@@ -95,8 +91,11 @@ price_chart_widget::~price_chart_widget()
 {
   delete ui;
   delete crypto_price_plot_;
-  delete filters_plot_;
-  delete assets_plot_;
+  for (auto p : filter_plots_)
+  {
+    delete p;
+  }
+  //  delete assets_plot_;
 }
 
 // ----------------------------------------------------------------------------
@@ -191,8 +190,11 @@ void price_chart_widget::connect_gui()
   connect(
     crypto_price_plot_, &ohlc_price_plot::plotScaleChanged, this,
     [this](double t1, double t2) {
-      filters_plot_->update_time_axis(t1, t2);
-      assets_plot_->update_time_axis(t1, t2);
+      for (auto p : filter_plots_)
+      {
+        p->update_time_axis(t1, t2);
+      }
+      //      assets_plot_->update_time_axis(t1, t2);
 
       // axisScaleDraw(QwtPlot::xBottom)->, crypto_price_plot_->axisScaleDraw(QwtPlot::xBottom));
       // filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
@@ -312,8 +314,7 @@ void price_chart_widget::connect_gui()
   //    connect(pAction2, SIGNAL(triggered()), this, SLOT(onAction2()));
   //    connect(pAction3, SIGNAL(triggered()), this, SLOT(onAction3()));
 
-  filters_plot_->hide();
-  assets_plot_->hide();
+  //  assets_plot_->hide();
 }
 
 // ----------------------------------------------------------------------------
@@ -375,6 +376,62 @@ void price_chart_widget::showEvent(QShowEvent* event)
 }
 
 // ----------------------------------------------------------------------------
+QwtPlotCurve* price_chart_widget::add_indicator_plot(
+  const QString& title, const QVector<QPointF>& samples, const QColor& color)
+{
+  auto filter_plot = new indicator_plot(this);
+  //  QHBoxLayout* indicator_layout = new QHBoxLayout(this);
+  //  indicator_layout->addWidget(filter_plot);
+  filter_plot->setMinimumHeight(128);
+  filter_plot->setAxisScale(QwtAxis::YRight, 0, 1);
+
+  auto m_curve = new QwtPlotCurve(title);
+  m_curve->setYAxis(QwtPlot::yRight);
+  m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
+  m_curve->setStyle(QwtPlotCurve::Lines);
+  m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
+  m_curve->setPen(color, 2);
+  m_curve->setSamples(samples);
+  m_curve->attach(filter_plot);
+
+  // Align the right axis of the indicator with the main price plot
+  auto* scaleWidget = crypto_price_plot_->axisWidget(QwtPlot::yRight);
+  double extent = scaleWidget->scaleDraw()->extent(scaleWidget->font());
+  filter_plot->axisWidget(QwtPlot::yRight)->scaleDraw()->setMinimumExtent(extent);
+  //filters_plot_->updateLayout();
+  //filters_plot_->replot();
+
+  auto interval = crypto_price_plot_->axisInterval(QwtPlot::xBottom);
+  filter_plot->update_time_axis(interval.minValue(), interval.maxValue());
+  filter_plots_.push_back(filter_plot);
+
+  ui->graph_splitter->addWidget(filter_plot);
+  filter_plot->show();
+
+  if (filter_plots_.size() == 0)
+  {
+    crypto_price_plot_->enableAxis(QwtPlot::xBottom, true);
+  }
+  else
+  {
+    crypto_price_plot_->enableAxis(QwtPlot::xBottom, false);
+    // get the last indicator plot
+    auto it = filter_plots_.rbegin();
+    // make it's xaxis visible
+    (*it)->enableAxis(QwtPlot::xBottom, true);
+    // hide the xaxis for other indicators
+    for (it++; it != filter_plots_.rend(); ++it)
+    {
+      (*it)->enableAxis(QwtPlot::xBottom, false);
+    }
+  }
+
+  return m_curve;
+}
+
+// ----------------------------------------------------------------------------
+// model/view indicator implementation
+// ----------------------------------------------------------------------------
 indicators_model::indicators_model(QObject* parent)
   : QAbstractTableModel(parent)
 {
@@ -427,6 +484,7 @@ QVariant indicators_model::data(const QModelIndex& index, int role) const
   return result;
 }
 
+// ----------------------------------------------------------------------------
 void indicators_model::dataAdded()
 {
   beginResetModel();
@@ -434,27 +492,4 @@ void indicators_model::dataAdded()
   QModelIndex bottomRight = createIndex(indicators_.size(), 2);
   emit QAbstractTableModel::dataChanged(topLeft, bottomRight);
   endResetModel();
-}
-
-// ----------------------------------------------------------------------------
-QwtPlotCurve* price_chart_widget::add_indicator_plot(
-  const QString& title, const QVector<QPointF>& samples, const QColor& color)
-{
-  auto m_curve = new QwtPlotCurve(title);
-  m_curve->setYAxis(QwtPlot::yRight);
-  m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
-  m_curve->setStyle(QwtPlotCurve::Lines);
-  m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
-  m_curve->setPen(color, 2);
-  m_curve->setSamples(samples);
-  m_curve->attach(filters_plot_);
-
-  // Align the right axis of the indicator with the main price plot
-  auto* scaleWidget = crypto_price_plot_->axisWidget(QwtPlot::yRight);
-  double extent = scaleWidget->scaleDraw()->extent(scaleWidget->font());
-  filters_plot_->axisWidget(QwtPlot::yRight)->scaleDraw()->setMinimumExtent(extent);
-  //filters_plot_->updateLayout();
-  //filters_plot_->replot();
-  filters_plot_->show();
-  return m_curve;
 }

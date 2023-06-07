@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1038</width>
-    <height>379</height>
+    <width>1021</width>
+    <height>603</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -122,9 +122,6 @@
      </property>
      <widget class="QWidget" name="horizontalLayoutWidget">
       <layout class="QHBoxLayout" name="candlestick_layout"/>
-     </widget>
-     <widget class="QWidget" name="verticalLayoutWidget">
-      <layout class="QVBoxLayout" name="indicators_layout"/>
      </widget>
     </widget>
    </item>
