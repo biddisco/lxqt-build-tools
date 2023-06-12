@@ -104,6 +104,10 @@ indicator_plot::indicator_plot(QWidget* parent)
   // the desired dimensions from the grid layout.
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   setMinimumSize(0, 0);
+
+  // A custom interactor for zooming/panning
+  //  std::shared_ptr<ohlc_dataset_view> testdata;
+  //  auto plot_interactor_ = new ohlc_interactor(this, testdata);
 }
 
 // ----------------------------------------------------------------------------

@@ -14,6 +14,10 @@
 #include "data/ohlc_utils.hpp"
 #include "plot/ohlc_chart_data.hpp"
 
+class generic_dataset_view
+{
+};
+
 /// dataset_view provides functions to access the data array holding a dataset
 /// as well as other resampled arrays that hold the same data at lower resolutions.
 

@@ -17,6 +17,39 @@
 
 namespace indicators {
 
+  //template<typename...> struct type_list;
+
+  //template <typename ... Ts>
+  //using indicator_typelist = type_list<Ts...>;
+
+  ////    moving_average,
+  ////    moving_average_volume_weighted,
+  ////    moving_average_exponential,
+  ////    relative_strength_indicator
+  ////>;
+
+  //template <template <typename... Ts> typename T>
+  //using variant_from_typelist = std::variant<Ts...>;
+
+  //    using the_typelist = indicator_typelist<
+  //      moving_average,
+  //      moving_average_volume_weighted,
+  //      moving_average_exponential,
+  //      relative_strength_indicator
+  //    >;
+
+  //inline variant_from_typelist<the_typelist> test;
+
+  //variant_from_typelist<indicator_typelist> types2;
+
+  //    // define a typelist
+  //    template <typename...> struct type_list;
+
+  //    template <template <typename...> class T, typename... Ts>
+  //    using variant_from_typelist = std::variant<Ts...>;
+
+  //    using variant_type = variant_from_typelist<indicator_typelist::template type_list>;
+
   // add each new indicator to types and variant
   using types = std::variant<moving_average, moving_average_volume_weighted,
     moving_average_exponential, relative_strength_indicator,

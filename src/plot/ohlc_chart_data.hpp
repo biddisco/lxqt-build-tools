@@ -4,43 +4,43 @@
 #include <vector>
 // Qwt
 #include <QwtInterval>
+#include <QwtOHLCSample>
 #include <QwtSeriesData>
-#include <QwtTradingChartData>
 //
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_utils.hpp"
 
 // ----------------------------------------------------------------------------
-class ohlc_chart_data : public QwtTradingChartData
+template <typename DataType>
+class timebased_chart_data : public QwtArraySeriesData<DataType>
 {
   protected:
   double resolution_;
 
+  using QwtArraySeriesData<DataType>::m_samples;
+  using QwtArraySeriesData<DataType>::cachedBoundingRect;
+
   public:
-  ohlc_chart_data(double resolution)
-    : QwtTradingChartData()
+  timebased_chart_data(double resolution)
+    : QwtArraySeriesData<DataType>()
     , resolution_(resolution)
   {
   }
 
-  ~ohlc_chart_data() {}
+  ~timebased_chart_data() {}
 
-  ohlcv_minmax minmax_limits(size_t from, size_t to) const
+  minmax_data<DataType> minmax_limits(size_t from, size_t to) const
   {
     auto const& init = m_samples[from];
-    ohlcv_minmax result{init.low, init.high, init.volume, init.volume, true};
+    minmax_data<DataType> result(init);
     for (size_t i = from; i <= to; ++i)
     {
-      auto const& ohlc = m_samples[i];
-      result.min_price_ = std::min(result.min_price_, ohlc.low);
-      result.max_price_ = std::max(result.max_price_, ohlc.high);
-      result.min_volume_ = std::min(result.min_volume_, ohlc.volume);
-      result.max_volume_ = std::max(result.max_volume_, ohlc.volume);
+      result.update(m_samples[i]);
     }
     return result;
   }
 
-  inline void append(const QwtOHLCSample& data)
+  inline void append(const DataType& data)
   {
     m_samples += data;
   }
@@ -60,23 +60,25 @@ class ohlc_chart_data : public QwtTradingChartData
   // return the index of the sample at time t
   inline int64_t sample_index(double time) const
   {
-    int64_t i = static_cast<int64_t>((time - m_samples[0].time) / resolution_);
+    int64_t i = static_cast<int64_t>((time - get_time(m_samples[0])) / resolution_);
     return std::max(int64_t(0), i);
   }
 
   // return the time stamp for the sample at index i
   inline double sample_time(int64_t i) const
   {
-    double t = (i * resolution_) + m_samples[0].time;
+    double t = (i * resolution_) + get_time(m_samples[0]);
     return t;
   }
 
-  inline QVector<QwtOHLCSample> const& data() const
+  inline QVector<DataType> const& data() const
   {
     return m_samples;
   }
-  inline QVector<QwtOHLCSample>& data()
+  inline QVector<DataType>& data()
   {
     return m_samples;
   }
 };
+
+using ohlc_chart_data = timebased_chart_data<QwtOHLCSample>;

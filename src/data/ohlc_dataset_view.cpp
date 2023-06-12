@@ -174,7 +174,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max(
   ohlc_chart_data const* dataset, double res, double start_time, double end_time) const
 {
   if (dataset->data().empty())
-    return ohlcv_minmax{0, 0, 0, 0, false};
+    return ohlcv_minmax();
   //
   double init_time = dataset->data().front().time;
   double last_time = dataset->data().back().time;
@@ -219,7 +219,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max(double res, double start_time, doubl
   {
     return mm1;
   }
-  return mm1.unite(mm2);
+  return mm1.update(mm2);
 }
 
 // ----------------------------------------------------------------------------

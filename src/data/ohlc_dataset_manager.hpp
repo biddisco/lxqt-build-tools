@@ -10,7 +10,6 @@
 // Grox
 #include "currency.hpp"
 #include "data/ohlc_datasets.hpp"
-#include "plot/ohlc_chart_data.hpp"
 
 class ohlc_dataset_view;
 

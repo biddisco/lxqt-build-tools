@@ -8,6 +8,15 @@
 
 void update_QwtOHLCSample(QwtOHLCSample& ohlc, QwtOHLCSample const& other);
 
+inline double get_time(const QwtOHLCSample& val)
+{
+  return val.time;
+}
+inline double get_time(const QPointF& val)
+{
+  return val.x();
+}
+
 struct ohlc_resample
 {
   QwtOHLCSample ohlc_;
@@ -24,8 +33,46 @@ struct ohlc_resample
   }
 };
 
-// ----------------------------------------------------------------------------
-struct ohlcv_minmax
+template <typename DataType>
+struct minmax_data;
+
+template <>
+struct minmax_data<QPointF>
+{
+  double min_;
+  double max_;
+  bool valid_;
+
+  minmax_data()
+    : valid_{false}
+  {
+  }
+
+  minmax_data<QPointF>& update(const minmax_data<QPointF>& other)
+  {
+    if (!isValid())
+    {
+      if (other.isValid())
+        *this = other;
+      return *this;
+    }
+
+    if (!other.isValid())
+      return *this;
+
+    min_ = std::min(min_, other.min_);
+    max_ = std::min(max_, other.max_);
+    return *this;
+  }
+
+  bool isValid() const
+  {
+    return valid_;
+  }
+};
+
+template <>
+struct minmax_data<QwtOHLCSample>
 {
   double min_price_;
   double max_price_;
@@ -33,32 +80,51 @@ struct ohlcv_minmax
   double max_volume_;
   bool valid_;
 
+  minmax_data()
+    : min_price_{0}
+    , max_price_{0}
+    , min_volume_{0}
+    , max_volume_{0}
+    , valid_{false}
+  {
+  }
+
+  minmax_data(const QwtOHLCSample& init)
+    : min_price_{init.low}
+    , max_price_{init.high}
+    , min_volume_{init.volume}
+    , max_volume_{init.volume}
+    , valid_(true)
+  {
+  }
+
   bool isValid() const
   {
     return valid_;
   }
 
-  ohlcv_minmax unite(const ohlcv_minmax& other) const
+  minmax_data<QwtOHLCSample>& update(const minmax_data<QwtOHLCSample>& other)
   {
     if (!isValid())
     {
-      if (!other.isValid())
-        return ohlcv_minmax();
-      else
-        return other;
+      if (other.isValid())
+        *this = other;
+      return *this;
     }
 
     if (!other.isValid())
       return *this;
 
-    ohlcv_minmax united;
-    united.min_price_ = std::min(min_price_, other.min_price_);
-    united.max_price_ = std::max(max_price_, other.max_price_);
-    united.min_volume_ = std::min(min_volume_, other.min_volume_);
-    united.max_volume_ = std::max(max_volume_, other.max_volume_);
-    return united;
+    min_price_ = std::min(min_price_, other.min_price_);
+    max_price_ = std::max(max_price_, other.max_price_);
+    min_volume_ = std::min(min_volume_, other.min_volume_);
+    max_volume_ = std::max(max_volume_, other.max_volume_);
+    return *this;
   }
 };
+
+// ----------------------------------------------------------------------------
+using ohlcv_minmax = minmax_data<QwtOHLCSample>;
 
 // ----------------------------------------------------------------------------
 struct ohlc_candlemaker
