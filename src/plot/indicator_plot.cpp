@@ -100,10 +100,11 @@ indicator_plot::indicator_plot(QWidget* parent)
   grid->setPen(QColor(Qt::darkGray), 0.0, Qt::PenStyle::DotLine);
   grid->attach(this);
 
-  // Override the Qt size policy. Otherwise, the plot may not scale to
-  // the desired dimensions from the grid layout.
-  setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-  setMinimumSize(0, 0);
+  // bring the graph slightly inside the borders to leave a small outer margin
+  setContentsMargins(2, 2, 2, 2);
+
+  // reclaim the top margin by removing the title
+  setTitle("");
 
   // A custom interactor for zooming/panning
   //  std::shared_ptr<ohlc_dataset_view> testdata;

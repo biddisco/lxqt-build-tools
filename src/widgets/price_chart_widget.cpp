@@ -127,25 +127,17 @@ void price_chart_widget::connect_gui()
   connect(
     ui->candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
     [this](int index) {
+      double res = 0;
+      crypto_price_plot_->set_auto_candle_resolution(index == 0);
       if (index > 0)
       {
-        double res = ohlc_data_resolutions::available_resolutions()[index - 1];
-        crypto_price_plot_->set_auto_candle_resolution(false);
-        if (crypto_price_plot_->adjust_candle_size(res))
-        {
-          crypto_price_plot_->adjust_data_scaling();
-        }
-        crypto_price_plot_->replot();
+        res = ohlc_data_resolutions::available_resolutions()[index - 1];
       }
-      else
-      {
-        crypto_price_plot_->set_auto_candle_resolution(true);
-        if (crypto_price_plot_->adjust_candle_size(0))
-        {
-          crypto_price_plot_->adjust_data_scaling();
-        }
-        crypto_price_plot_->replot();
+      if (crypto_price_plot_->adjust_candle_size(res))
+      {    // candles changed, so recompute volume range {min,max}
+        crypto_price_plot_->adjust_data_scaling();
       }
+      crypto_price_plot_->replot();
     },
     Qt::QueuedConnection);
 
@@ -380,8 +372,6 @@ QwtPlotCurve* price_chart_widget::add_indicator_plot(
   const QString& title, const QVector<QPointF>& samples, const QColor& color)
 {
   auto filter_plot = new indicator_plot(this);
-  //  QHBoxLayout* indicator_layout = new QHBoxLayout(this);
-  //  indicator_layout->addWidget(filter_plot);
   filter_plot->setMinimumHeight(128);
   filter_plot->setAxisScale(QwtAxis::YRight, 0, 1);
 
@@ -398,16 +388,19 @@ QwtPlotCurve* price_chart_widget::add_indicator_plot(
   auto* scaleWidget = crypto_price_plot_->axisWidget(QwtPlot::yRight);
   double extent = scaleWidget->scaleDraw()->extent(scaleWidget->font());
   filter_plot->axisWidget(QwtPlot::yRight)->scaleDraw()->setMinimumExtent(extent);
-  //filters_plot_->updateLayout();
-  //filters_plot_->replot();
 
+  // set the initial x min/max rang to tbe the same as the price plot
   auto interval = crypto_price_plot_->axisInterval(QwtPlot::xBottom);
   filter_plot->update_time_axis(interval.minValue(), interval.maxValue());
   filter_plots_.push_back(filter_plot);
 
+  // add the plot to the splitter
   ui->graph_splitter->addWidget(filter_plot);
+  //  ui->graph_splitter->setPalette(QPalette(QColor("#18191b")));
+  ui->graph_splitter->setStyleSheet("QSplitter::handle{background: #18191b;}");
   filter_plot->show();
 
+  // turn on x axis lables for bottom graph (all graphs have same time axis)
   if (filter_plots_.size() == 0)
   {
     crypto_price_plot_->enableAxis(QwtPlot::xBottom, true);

@@ -127,22 +127,22 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   const int indent = 4;                              // text offset in x direction
   const int label_xtext = 3 * fixed_char_size_x_;    // "15d", "30m" etc
   const int label_xsize = 2 * indent + 2 * margin + label_xtext;
-  // Small label we use to show current candle resolution
+
+  // setup small label we use to show current candle resolution
   candle_label_ = new QwtTextLabel(this);
   candle_label_->setIndent(indent);
   candle_label_->setMargin(margin);
   candle_label_->setFont(label_font);
   candle_label_->setGeometry(0, 0, label_xsize, 2 * margin + 2 * fixed_char_size_y_);
-  // candle_label_->setFrameStyle(QFrame::Panel | QFrame::Raised);
 
+  // setup label that shows candle stats as crosshairs move around
   candle_status_ = new QwtTextLabel(this);
   candle_status_->setIndent(indent);
   candle_status_->setMargin(margin);
   candle_status_->setFont(label_font);
-  // OHLCV format string : "O:<num>" = 5(OHLCV)*2 + 4(OHLC)*9 + 1(V)*14 = 61
+  // OHLCV format string : "O:<num>" = 5(OHLCV)*2 + 4(OHLC)*9 + 1(V)*14 = 61chars
   candle_status_->setGeometry(
     label_xsize, 0, 61 * fixed_char_size_x_, 2 * margin + 2 * fixed_char_size_y_);
-  // candle_status_->setFrameStyle(QFrame::Panel | QFrame::Raised);
 
   // default start up resolution
   candle_resolution_ = ohlc_data_resolutions::minute;
@@ -163,13 +163,12 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   setAxisScaleDraw(QwtPlot::xBottom, timescaleDraw_);
   setAxisScaleEngine(QwtPlot::xBottom, timescaleEngine_);
   setAxisLabelAlignment(QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom);
-  //setAxisVisible(QwtPlot::xBottom, false);
 
   ohlcv_minmax minmax = data->get_min_max(ohlc_data_resolutions::minute,
     data->get_first_sample_time(), data->get_last_sample_time(false));
 
   // Y axis : setup price axis scaling and tick draw
-  // NB : We do not need to explicitly set a left Y axis
+  // NB : We do not need to explicitly set a left Y axis (volume)
   // the default axis can be used even when not visible
   pricescaleDraw_ = new ohlc_price_scaledraw(minmax.max_price_ - minmax.min_price_);
   setAxisScaleDraw(QwtPlot::yRight, pricescaleDraw_);
@@ -178,7 +177,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   setAxisAutoScale(QwtPlot::yLeft, false);
   setAxisAutoScale(QwtPlot::yRight, false);
   setAxisAutoScale(QwtPlot::xBottom, false);
-  //
+  // right axis shows price, left volume axis is hidden
   setAxisVisible(QwtAxis::YLeft, false);
   setAxisVisible(QwtAxis::YRight, true);
 
