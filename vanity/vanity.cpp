@@ -27,7 +27,7 @@ namespace bt = ba::tag;
 using rolling_mean = ba::accumulator_set<double, ba::stats<bt::rolling_mean>>;
 rolling_mean computation_rate_(ba::tag::rolling_window::window_size = 10);
 
-typedef pika::spinlock mutex_type;
+typedef pika::detail::spinlock mutex_type;
 typedef std::lock_guard<mutex_type> scoped_lock;
 //
 using namespace std::chrono;
