@@ -122,26 +122,18 @@ void indicator_plot::showItem(QwtPlotItem* item, bool on)
 }
 
 // ----------------------------------------------------------------------------
-void indicator_plot::update_time_axis(double t1, double t2)
+void indicator_plot::update_time_axis(double t1, double t2, bool emit_signal)
 {
   const bool doAutoReplot = autoReplot();
   setAutoReplot(false);
 
   // update the X axis with new min max
   setAxisScale(QwtAxis::XBottom, t1, t2);
-  /*
-    // find the min/max price for this new range
-    auto minmax = ohlc_dataset_view_->get_min_max_window(
-                get_candle_resolution(), t1, t2, 0.05);
 
-    // update the Y price axis with min max
-    setAxisScale(QwtAxis::YRight, minmax.min_price_, minmax.max_price_);
-
-    // update the Y volume axis with min max
-    setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
-*/
   setAutoReplot(doAutoReplot);
   replot();
+  if (emit_signal)
+    emit timeAxisChanged(t1, t2, false);
 }
 
 // ----------------------------------------------------------------------------

@@ -31,7 +31,7 @@ class timebased_chart_plot : public QwtPlot
   }
 
   // recomputes min/max for price/volue, recomputes candles sizes etc
-  virtual void update_time_axis(double t1, double t2){};
+  virtual void update_time_axis(double t1, double t2, bool emit_signal = false){};
 
   // clamps the x/time axis value to the valid sample point resolution
   virtual double quantize_x_coord(double x)
@@ -49,4 +49,7 @@ class timebased_chart_plot : public QwtPlot
   {
     return crosshairs_;
   }
+
+  signals:
+  void timeAxisChanged(double, double, bool);
 };

@@ -348,7 +348,7 @@ void ohlc_price_plot::exportPlot()
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::update_time_axis(double t1, double t2)
+void ohlc_price_plot::update_time_axis(double t1, double t2, bool emit_signal)
 {
   const bool doAutoReplot = autoReplot();
   setAutoReplot(false);
@@ -397,7 +397,8 @@ void ohlc_price_plot::update_time_axis(double t1, double t2)
 
   setAutoReplot(doAutoReplot);
   replot();
-  emit plotScaleChanged(t1, t2);
+  if (emit_signal)
+    emit timeAxisChanged(t1, t2, false);
 }
 
 // ----------------------------------------------------------------------------

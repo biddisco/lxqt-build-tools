@@ -62,7 +62,7 @@ class ohlc_price_plot : public timebased_chart_plot
   }
 
   // recomputes min/max for price/volue, recomputes candles sizes etc
-  void update_time_axis(double t1, double t2) override;
+  void update_time_axis(double t1, double t2, bool emit_signal = false) override;
   double quantize_x_coord(double x) override;
   // when the picker moves, we find the current candle and display info
   void display_picker_info(const QPointF pos) override;
@@ -78,9 +78,6 @@ class ohlc_price_plot : public timebased_chart_plot
     const QString& title, const QVector<QPointF>& samples, const QColor& color);
 
   void updateLayout() override;
-
-  signals:
-  void plotScaleChanged(double t1, double t2);
 
   public Q_SLOTS:
   void setMode(int);

@@ -180,16 +180,12 @@ void price_chart_widget::connect_gui()
     Qt::QueuedConnection);
 
   connect(
-    crypto_price_plot_, &ohlc_price_plot::plotScaleChanged, this,
+    crypto_price_plot_, &ohlc_price_plot::timeAxisChanged, this,
     [this](double t1, double t2) {
       for (auto p : filter_plots_)
       {
-        p->update_time_axis(t1, t2);
+        p->update_time_axis(t1, t2, false);
       }
-      //      assets_plot_->update_time_axis(t1, t2);
-
-      // axisScaleDraw(QwtPlot::xBottom)->, crypto_price_plot_->axisScaleDraw(QwtPlot::xBottom));
-      // filters_plot_->setAxisScaleEngine(QwtPlot::xBottom, crypto_price_plot_->axisScaleEngine(QwtPlot::xBottom));
     },
     Qt::QueuedConnection);
 
@@ -348,7 +344,7 @@ void price_chart_widget::graph_rescale(int range)
   {
     t1 = hdf5_ohlc_->get_first_sample_time();
   }
-  crypto_price_plot_->update_time_axis(t1, t2);
+  crypto_price_plot_->update_time_axis(t1, t2, true);
 }
 
 // ----------------------------------------------------------------------------
@@ -391,7 +387,7 @@ QwtPlotCurve* price_chart_widget::add_indicator_plot(
 
   // set the initial x min/max rang to tbe the same as the price plot
   auto interval = crypto_price_plot_->axisInterval(QwtPlot::xBottom);
-  filter_plot->update_time_axis(interval.minValue(), interval.maxValue());
+  filter_plot->update_time_axis(interval.minValue(), interval.maxValue(), false);
   filter_plots_.push_back(filter_plot);
 
   // add the plot to the splitter
@@ -418,6 +414,11 @@ QwtPlotCurve* price_chart_widget::add_indicator_plot(
       (*it)->enableAxis(QwtPlot::xBottom, false);
     }
   }
+
+  connect(
+    filter_plot, &indicator_plot::timeAxisChanged, this,
+    [this](double t1, double t2) { crypto_price_plot_->update_time_axis(t1, t2, false); },
+    Qt::QueuedConnection);
 
   return m_curve;
 }
