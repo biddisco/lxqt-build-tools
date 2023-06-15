@@ -11,7 +11,7 @@
 // Grox
 #include "debug/print.hpp"
 #include "plot/ohlc_interactor.hpp"
-#include "plot/ohlc_price_plot.hpp"
+#include "plot/timebased_chart_plot.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -52,12 +52,12 @@ class ohlc_interactor::PrivateData
 
   bool isEnabled;
 
-  ohlc_price_plot* plot;
+  timebased_chart_plot* plot;
 };
 
-ohlc_interactor::ohlc_interactor(ohlc_price_plot* parent, std::shared_ptr<ohlc_dataset_view> data)
+// ----------------------------------------------------------------------------
+ohlc_interactor::ohlc_interactor(timebased_chart_plot* parent)
   : QObject(parent)
-  , ohlc_dataset_view_(data)
 {
   m_data = new PrivateData();
 
@@ -87,18 +87,18 @@ const QWidget* ohlc_interactor::parentWidget() const
 
 // ----------------------------------------------------------------------------
 //! Return plot widget, containing the observed plot canvas
-ohlc_price_plot* ohlc_interactor::plot()
+timebased_chart_plot* ohlc_interactor::plot()
 {
   QWidget* w = parentWidget();
-  return qobject_cast<ohlc_price_plot*>(w);
+  return qobject_cast<timebased_chart_plot*>(w);
 }
 
 // ----------------------------------------------------------------------------
 //! Return plot widget, containing the observed plot canvas
-const ohlc_price_plot* ohlc_interactor::plot() const
+const timebased_chart_plot* ohlc_interactor::plot() const
 {
   const QWidget* w = parentWidget();
-  return qobject_cast<const ohlc_price_plot*>(w);
+  return qobject_cast<const timebased_chart_plot*>(w);
 }
 
 // ----------------------------------------------------------------------------
@@ -141,7 +141,7 @@ void ohlc_interactor::panCanvas(int dx, int dy)
 {
   if (dx == 0 && dy == 0)
     return;
-  ohlc_price_plot* plot = this->plot();
+  timebased_chart_plot* plot = this->plot();
   if (plot == NULL)
     return;
 
@@ -163,7 +163,7 @@ void ohlc_interactor::zoomCanvas(int dx, int dy)
 {
   if (dx == 0 && dy == 0)
     return;
-  ohlc_price_plot* plot = this->plot();
+  timebased_chart_plot* plot = this->plot();
   if (plot == NULL)
     return;
 
@@ -407,7 +407,7 @@ void ohlc_interactor::widgetKeyPressEvent(QKeyEvent* keyEvent)
   }
   if (keyEvent->key() == Qt::Key_R)
   {
-    ohlc_price_plot* plot = this->plot();
+    timebased_chart_plot* plot = this->plot();
     if (plot == NULL)
       return;
 

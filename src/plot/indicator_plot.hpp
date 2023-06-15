@@ -6,33 +6,27 @@
 #include <QwtText>
 // Grox
 #include "plot/ohlc_interactor.hpp"
-//
-class ohlc_chart_curve;
-//class ohlc_price_scaledraw;
-class ohlc_picker;
+#include "plot/timebased_chart_plot.hpp"
 //
 class QwtDateScaleDraw;
 class QwtDateScaleEngine;
-class QwtPlotDirectPainter;
-class QwtPlotCurve;
 class QwtPlotItem;
-class QwtPlotTextLabel;
-class QwtTextLabel;
 
 // ----------------------------------------------------------------------------
-class indicator_plot : public QwtPlot
+class indicator_plot : public timebased_chart_plot
 {
   Q_OBJECT
 
-  private:
-  QwtDateScaleDraw* timescaleDraw_;
-  QwtDateScaleEngine* timescaleEngine_;
-
   public:
+  using timebased_chart_plot::crosshairs_;
+  using timebased_chart_plot::plot_interactor_;
+  using timebased_chart_plot::timescaleDraw_;
+  using timebased_chart_plot::timescaleEngine_;
+
   indicator_plot(QWidget*);
   ~indicator_plot();
   //
-  void update_time_axis(double t1, double t2);
+  void update_time_axis(double t1, double t2) override;
   void add_asset_curve(const QString& title, const QVector<QPointF>& samples, const QColor& color);
 
   private Q_SLOTS:

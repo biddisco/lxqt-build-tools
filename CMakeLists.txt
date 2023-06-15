@@ -4,7 +4,7 @@
 # sudo apt install build-essential libqt5charts5-dev libqt5opengl5-dev libqt5svg5-dev libcurl4-openssl-dev
 # QPlatformNativeInterface requires base-private-dev
 # qt6 : sudo apt install qt6-base-dev qt6-base-private-dev libqt6opengl6-dev libqt6svg6-dev
-# Assumes hdf5, boost, installed using space environment
+# Assumes hdf5, boost, installed using spack environment
 #
 # Rippled needs
 # sudo apt install liblz4-dev libarchive-dev libsoci-dev
@@ -49,6 +49,7 @@ option(BUILD_SHARED_LIBS "build shared ripple libraries" OFF)
 set(Boost_NO_WARN_NEW_VERSIONS 1)
 
 option(GROX_WITH_SANITIZER "build grox using address sanitzer flags" OFF)
+option(GROX_WITH_IWYU "add include-what-you-use support to grox build" OFF)
 
 # ------------------------------------------------------------------------------
 # Testing
@@ -409,6 +410,8 @@ set(GROX_SRC
     src/plot/ohlc_interactor.cpp
     src/plot/ohlc_price_plot.cpp
     src/plot/indicator_plot.cpp
+    src/plot/timebased_chart_data.cpp
+    src/plot/timebased_chart_plot.cpp
 )
 
 qt_wrap_ui(GROX_SRC src/tabbed_form.ui)
@@ -461,6 +464,14 @@ if(GROX_WITH_SANITIZER)
     -fsanitize=float-cast-overflow
     -fno-sanitize=null
     -fno-sanitize=alignment
+  )
+endif()
+
+if(GROX_WITH_IWYU)
+  find_program(iwyu_path NAMES include-what-you-use iwyu REQUIRED)
+  message(STATUS "iwyu PATH ${iwyu_path}")
+  set_property(
+    TARGET grox PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path} -Xiwyu --verbose
   )
 endif()
 

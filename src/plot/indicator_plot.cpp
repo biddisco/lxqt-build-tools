@@ -36,9 +36,7 @@
 
 // ----------------------------------------------------------------------------
 indicator_plot::indicator_plot(QWidget* parent)
-  : QwtPlot(parent)
-  , timescaleDraw_(nullptr)
-  , timescaleEngine_(nullptr)
+  : timebased_chart_plot(parent)
 {
   QwtText text(" ");
   text.setColor(Qt::lightGray);
@@ -107,8 +105,10 @@ indicator_plot::indicator_plot(QWidget* parent)
   setTitle("");
 
   // A custom interactor for zooming/panning
-  //  std::shared_ptr<ohlc_dataset_view> testdata;
-  //  auto plot_interactor_ = new ohlc_interactor(this, testdata);
+  plot_interactor_ = new ohlc_interactor(this);
+
+  // Custom crosshairs to show current cursor pos
+  crosshairs_ = new ohlc_picker(canvas());
 }
 
 // ----------------------------------------------------------------------------

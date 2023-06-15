@@ -4,10 +4,9 @@
 // Qwt
 #include <QwtPlot>
 // Grox
-#include "plot/ohlc_interactor.hpp"
+#include "plot/timebased_chart_plot.hpp"
 //
 class ohlc_dataset_view;
-class ohlc_chart_curve;
 class ohlc_price_scaledraw;
 class ohlc_picker;
 class ohlc_interactor;
@@ -17,20 +16,15 @@ class QwtDateScaleEngine;
 class QwtPlotDirectPainter;
 class QwtPlotCurve;
 class QwtPlotItem;
-class QwtPlotTextLabel;
 class QwtTextLabel;
 
-class ohlc_price_plot : public QwtPlot
+class ohlc_price_plot : public timebased_chart_plot
 {
   Q_OBJECT
 
   private:
-  ohlc_interactor* plot_interactor_;
   ohlc_price_scaledraw* pricescaleDraw_;
-  QwtDateScaleDraw* timescaleDraw_;
-  QwtDateScaleEngine* timescaleEngine_;
   QwtPlotDirectPainter* direct_painter_;
-  ohlc_picker* crosshairs_;
   std::shared_ptr<ohlc_dataset_view> ohlc_dataset_view_;
   QwtTextLabel* candle_label_;
   QwtTextLabel* candle_status_;
@@ -40,6 +34,11 @@ class ohlc_price_plot : public QwtPlot
   int fixed_char_size_y_;
   bool first_update_;
   double last_auto_res_;
+
+  using timebased_chart_plot::crosshairs_;
+  using timebased_chart_plot::plot_interactor_;
+  using timebased_chart_plot::timescaleDraw_;
+  using timebased_chart_plot::timescaleEngine_;
 
   public:
   ohlc_price_plot(QWidget*, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_);
@@ -63,23 +62,14 @@ class ohlc_price_plot : public QwtPlot
   }
 
   // recomputes min/max for price/volue, recomputes candles sizes etc
-  void update_time_axis(double t1, double t2);
+  void update_time_axis(double t1, double t2) override;
+  double quantize_x_coord(double x) override;
+  // when the picker moves, we find the current candle and display info
+  void display_picker_info(const QPointF pos) override;
 
   // when candle resolution changes, the volume bar min/max must be updated
   void adjust_data_scaling();
   bool update_candle_size();
-
-  // when the picker moves, we find the current candle and display info
-  void display_candle_status(double time);
-
-  ohlc_interactor* get_interactor()
-  {
-    return plot_interactor_;
-  }
-  ohlc_picker* get_crosshairs()
-  {
-    return crosshairs_;
-  }
 
   QwtPlotCurve* add_overlay_curve(
     const QString& title, const QVector<QPointF>& samples, const QColor& color);

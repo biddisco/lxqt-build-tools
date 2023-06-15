@@ -108,10 +108,7 @@ class ohlc_price_scaledraw : public QwtScaleDraw
 
 // ----------------------------------------------------------------------------
 ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_view> data)
-  : QwtPlot(parent)
-  , plot_interactor_(nullptr)
-  , timescaleDraw_(nullptr)
-  , timescaleEngine_(nullptr)
+  : timebased_chart_plot(parent)
   , direct_painter_(nullptr)
   , ohlc_dataset_view_(data)
   , auto_candle_resolution_(true)
@@ -185,10 +182,10 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   setContentsMargins(2, 2, 2, 2);
 
   // A custom interactor for zooming/panning
-  plot_interactor_ = new ohlc_interactor(this, ohlc_dataset_view_);
+  plot_interactor_ = new ohlc_interactor(this);
 
   // Custom crosshairs to show current cursor pos
-  crosshairs_ = new ohlc_picker(canvas());
+  timebased_chart_plot::crosshairs_ = new ohlc_picker(canvas());
 
   // Attach a dotted-line grid to the plot
   QwtPlotGrid* grid = new QwtPlotGrid();
@@ -404,6 +401,14 @@ void ohlc_price_plot::update_time_axis(double t1, double t2)
 }
 
 // ----------------------------------------------------------------------------
+double ohlc_price_plot::quantize_x_coord(double x)
+{
+  double res = get_candle_resolution();
+  double p1 = res * static_cast<uint64_t>((x + res / 2.0) / res);
+  return p1;
+}
+
+// ----------------------------------------------------------------------------
 bool ohlc_price_plot::update_candle_size()
 {
   bool changed = false;
@@ -435,8 +440,9 @@ void ohlc_price_plot::adjust_data_scaling()
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::display_candle_status(double time)
+void ohlc_price_plot::display_picker_info(const QPointF pos)
 {
+  const double time = pos.x();
   int64_t index = -1;
   auto* dataset = ohlc_dataset_view_->get_dataset(get_candle_resolution());
   if (dataset->ohlc_samples_->size() > 0)

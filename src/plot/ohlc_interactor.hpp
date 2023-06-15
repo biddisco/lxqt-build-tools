@@ -10,7 +10,7 @@
 #include "data/ohlc_dataset_view.hpp"
 #include "plot/ohlc_interactor.hpp"
 
-class ohlc_price_plot;
+class timebased_chart_plot;
 class QCursor;
 class QPixmap;
 
@@ -19,14 +19,14 @@ class QWT_EXPORT ohlc_interactor : public QObject
   Q_OBJECT
 
   public:
-  ohlc_interactor(ohlc_price_plot* plot, std::shared_ptr<ohlc_dataset_view> data);
+  ohlc_interactor(timebased_chart_plot* plot);
   virtual ~ohlc_interactor();
 
   QWidget* parentWidget();
   const QWidget* parentWidget() const;
   //
-  ohlc_price_plot* plot();
-  const ohlc_price_plot* plot() const;
+  timebased_chart_plot* plot();
+  const timebased_chart_plot* plot() const;
 
   void setAxisEnabled(QwtAxisId axisId, bool on);
   bool isAxisEnabled(QwtAxisId) const;
@@ -87,7 +87,4 @@ class QWT_EXPORT ohlc_interactor : public QObject
   private:
   class PrivateData;
   PrivateData* m_data;
-
-  protected:
-  std::shared_ptr<ohlc_dataset_view> ohlc_dataset_view_;
 };

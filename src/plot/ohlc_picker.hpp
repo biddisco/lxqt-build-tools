@@ -16,23 +16,23 @@
 #include <QwtText>
 #include <QwtTextLabel>
 //
-#include "plot/ohlc_price_plot.hpp"
+#include "plot/timebased_chart_plot.hpp"
 
 class ohlc_picker : public QwtPlotPicker
 {
   public:
   mutable QPointF last_coord_;
-  QwtTextLabel* price_label_;
+  QwtTextLabel* yaxis_label_;
   QwtTextLabel* date_label_;
 
   ohlc_picker(QWidget* canvas)
     : QwtPlotPicker(QwtAxis::XBottom, QwtAxis::YRight, canvas)
     , last_coord_(0, 0)
-    , price_label_(new QwtTextLabel(canvas->parentWidget()))
+    , yaxis_label_(new QwtTextLabel(canvas->parentWidget()))
     , date_label_(new QwtTextLabel(canvas->parentWidget()))
   {
-    ohlc_price_plot* plot_ = dynamic_cast<ohlc_price_plot*>(canvas->parentWidget());
-    QwtScaleWidget* aw = plot_->axisWidget(QwtAxis::YRight);
+    timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas->parentWidget());
+    //    QwtScaleWidget* aw = plot_->axisWidget(QwtAxis::YRight);
 
     setTrackerMode(QwtPlotPicker::ActiveOnly);
     setRubberBand(
@@ -52,26 +52,23 @@ class ohlc_picker : public QwtPlotPicker
   double quantize_x_coord(const double pos) const
   {
     // get the pixel/plot coordinate transform
-    ohlc_price_plot* plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
+    timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas()->parentWidget());
     if (!plot_)
       return pos;
     //
-    double res = plot_->get_candle_resolution();
-    double p1 = res * static_cast<uint64_t>((pos + res / 2.0) / res);
-    return p1;
+    return plot_->quantize_x_coord(pos);
   }
 
   QPointF quantize_x_screencoord(const QPointF& pos) const
   {
     // get the pixel/plot coordinate transform
-    ohlc_price_plot* plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
+    timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas()->parentWidget());
     if (!plot_)
       return pos;
     //
     const QwtScaleMap map = plot_->canvasMap(QwtAxis::XBottom);
     double p1 = map.invTransform(pos.x());
-    double res = plot_->get_candle_resolution();
-    p1 = res * static_cast<uint64_t>((p1 + res / 2.0) / res);
+    p1 = plot_->quantize_x_coord(p1);
     p1 = map.transform(p1);
     return QPointF(p1, pos.y());
   }
@@ -101,13 +98,13 @@ class ohlc_picker : public QwtPlotPicker
   {
     QwtPlotPicker::updateDisplay();
 
-    if (!price_label_)
+    if (!yaxis_label_)
       return;
 
     // -------------------------------------------------
     // Right Y axis widget (price)
     //
-    ohlc_price_plot* plot_ = dynamic_cast<ohlc_price_plot*>(canvas()->parentWidget());
+    timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas()->parentWidget());
     QwtScaleWidget* yaw = plot_->axisWidget(QwtAxis::YRight);
     auto yawg = yaw->geometry();
 
@@ -119,24 +116,24 @@ class ohlc_picker : public QwtPlotPicker
     //
     // display price inside price axis
     //
-    QwtText price_text = ydraw->label(last_coord_.y());
+    QwtText yaxis_text = ydraw->label(last_coord_.y());
     QColor c("#555555");
     c.setAlpha(200);
-    price_text.setColor(Qt::white);
-    price_text.setBorderPen(QPen(c, 1));
-    price_text.setBackgroundBrush(c);
-    price_text.setLayoutAttribute(QwtText::LayoutAttribute::MinimumLayout, true);
-    price_text.setRenderFlags(Qt::AlignLeft | Qt::AlignVCenter);
+    yaxis_text.setColor(Qt::white);
+    yaxis_text.setBorderPen(QPen(c, 1));
+    yaxis_text.setBackgroundBrush(c);
+    yaxis_text.setLayoutAttribute(QwtText::LayoutAttribute::MinimumLayout, true);
+    yaxis_text.setRenderFlags(Qt::AlignLeft | Qt::AlignVCenter);
 
     // get size of text that will be drawn
-    auto s = price_text.textSize();
+    auto s = yaxis_text.textSize();
     // position the label
-    price_label_->setText(price_text);
-    auto g = price_label_->geometry();
+    yaxis_label_->setText(yaxis_text);
+    auto g = yaxis_label_->geometry();
 
     g.moveTo(
       yawg.x() + ydraw->maxTickLength() + ydraw->spacing() - 1, yawg.y() + y - s.height() - 8 / 2);
-    price_label_->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
+    yaxis_label_->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
 
     // -------------------------------------------------
     // Bottom X axis widget (date)
@@ -175,6 +172,6 @@ class ohlc_picker : public QwtPlotPicker
     //
     // display the stats of the candle under the cursor
     //
-    plot_->display_candle_status(last_coord_.x());
+    plot_->display_picker_info(last_coord_);
   }
 };
