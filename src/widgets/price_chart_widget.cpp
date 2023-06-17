@@ -189,6 +189,18 @@ void price_chart_widget::connect_gui()
     },
     Qt::QueuedConnection);
 
+  connect(
+    crypto_price_plot_->get_crosshairs(), &ohlc_picker::moved, this,
+    [this](const QPointF& pos) {
+      // coordinates received are in time/price(other) units
+      // so no need to remap the time axis before sending
+      for (auto p : filter_plots_)
+      {
+        p->onCrossHairsMoved(pos);
+      }
+    },
+    Qt::QueuedConnection);
+
   connect(ind_vis_, &QTableView::clicked, this, [this](const QModelIndex& i) {
     int col = i.column();
     int row = i.row();

@@ -32,7 +32,6 @@ class ohlc_picker : public QwtPlotPicker
     , date_label_(new QwtTextLabel(canvas->parentWidget()))
   {
     timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas->parentWidget());
-    //    QwtScaleWidget* aw = plot_->axisWidget(QwtAxis::YRight);
 
     setTrackerMode(QwtPlotPicker::ActiveOnly);
     setRubberBand(
@@ -102,7 +101,7 @@ class ohlc_picker : public QwtPlotPicker
       return;
 
     // -------------------------------------------------
-    // Right Y axis widget (price)
+    // Right Y axis widget (such as price)
     //
     timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas()->parentWidget());
     QwtScaleWidget* yaw = plot_->axisWidget(QwtAxis::YRight);
@@ -110,12 +109,13 @@ class ohlc_picker : public QwtPlotPicker
 
     // Right Y axis scaling mapper
     const QwtScaleMap ymap = plot_->canvasMap(QwtAxis::YRight);
+    // plot coords -> pixel coords
     auto y = ymap.transform(last_coord_.y());
 
-    const QwtScaleDraw* ydraw = plot_->axisScaleDraw(QwtAxis::YRight);
     //
     // display price inside price axis
     //
+    const QwtScaleDraw* ydraw = plot_->axisScaleDraw(QwtAxis::YRight);
     QwtText yaxis_text = ydraw->label(last_coord_.y());
     QColor c("#555555");
     c.setAlpha(200);
@@ -146,10 +146,10 @@ class ohlc_picker : public QwtPlotPicker
     double px = quantize_x_coord(last_coord_.x());
     auto x = xmap.transform(px);
 
-    const QwtScaleDraw* xdraw = plot_->axisScaleDraw(QwtAxis::XBottom);
     //
     // display date inside date axis
     //
+    const QwtScaleDraw* xdraw = plot_->axisScaleDraw(QwtAxis::XBottom);
     const QDateTime dt = QDateTime::fromMSecsSinceEpoch(px);
     QString str2 = QLocale().toString(dt, "dd-MM-yy hh:mm");
     QwtText date_text(str2);
@@ -173,5 +173,18 @@ class ohlc_picker : public QwtPlotPicker
     // display the stats of the candle under the cursor
     //
     plot_->display_picker_info(last_coord_);
+  }
+
+  void widgetMouseMoveEvent(QMouseEvent* mouseEvent) override
+  {
+    setRubberBand(
+      QwtPicker::RubberBand(int(QwtPicker::HLineRubberBand) + int(QwtPicker::VLineRubberBand)));
+    QwtPicker::widgetMouseMoveEvent(mouseEvent);
+  }
+
+  void injectMouseMoveEvent(QMouseEvent* mouseEvent)
+  {
+    setRubberBand(QwtPicker::RubberBand(int(QwtPicker::VLineRubberBand)));
+    QwtPicker::widgetMouseMoveEvent(mouseEvent);
   }
 };

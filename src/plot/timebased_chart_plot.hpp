@@ -52,4 +52,7 @@ class timebased_chart_plot : public QwtPlot
 
   signals:
   void timeAxisChanged(double, double, bool);
+
+  public slots:
+  void onCrossHairsMoved(const QPointF&);
 };
