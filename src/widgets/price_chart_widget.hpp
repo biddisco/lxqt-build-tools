@@ -23,6 +23,7 @@ struct indicator_data
 {
   QString text;
   QString params;
+  indicator_plot* plot;
   QwtPlotCurve* curve;
 };
 Q_DECLARE_METATYPE(indicator_data*)
@@ -90,8 +91,10 @@ class price_chart_widget : public QWidget
     crypto_price_plot_->replot();
   }
 
-  QwtPlotCurve* add_indicator_plot(
+  std::tuple<indicator_plot*, QwtPlotCurve*> add_indicator_plot(
     const QString& title, const QVector<QPointF>& samples, const QColor& color);
+
+  void remove_indicator_plot(indicator_plot* filter_plot, QwtPlotCurve* curve);
 
   void resizeEvent(QResizeEvent* event) override;
   void showEvent(QShowEvent* event) override;

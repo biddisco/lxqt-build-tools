@@ -4,6 +4,9 @@
 #include <QMessageBox>
 #include <QSplitter>
 //
+#include <QwtPlotCurve>
+#include <QwtPlotItem>
+//
 #include "ui_price_chart_widget.h"
 //
 #include "data/ohlc_dataset_manager.hpp"
@@ -221,8 +224,7 @@ void price_chart_widget::connect_gui()
     else if (col == 3)
     {
       auto it = std::next(ind_model_.indicators_.begin(), row);
-      it->curve->detach();
-      delete it->curve;
+      remove_indicator_plot(it->plot, it->curve);
       ind_model_.indicators_.erase(it);
       ind_model_.dataAdded();
       this->replot();
@@ -248,19 +250,19 @@ void price_chart_widget::connect_gui()
           // convert the dataset name selections in the dialog into actual datasets
           std::vector<ohlc_datasets*> datasets = indicators::get_datasets(alg.params, hdf5_ohlc_);
 
-          QVector<QPointF> indicator_plot;
+          QVector<QPointF> indicator_data;
           // if the algorithm operates on a single input dataset
           if (datasets.size() == 1)
           {
             const auto& input_dataset = datasets[0]->ohlc_samples_;
-            indicator_plot.reserve(input_dataset->size());
+            indicator_data.reserve(input_dataset->size());
 
             // iterate over the dataset, executing the algorithm for each point
             for (auto const& ohlc : input_dataset->data())
             {
               double val = alg.operator()(ohlc);
               QPointF xyval(ohlc.time, val);
-              indicator_plot.push_back(xyval);
+              indicator_data.push_back(xyval);
             }
           }
           else
@@ -275,17 +277,18 @@ void price_chart_widget::connect_gui()
 
           QString name = QString(alg.name.c_str());
           QwtPlotCurve* curve;
+          indicator_plot* plot = nullptr;
           if (alg.price_overlay)
           {
-            curve = crypto_price_plot_->add_overlay_curve(name, indicator_plot, colour);
+            curve = crypto_price_plot_->add_overlay_curve(name, indicator_data, colour);
           }
           else
           {
-            curve = add_indicator_plot(name, indicator_plot, colour);
+            std::tie(plot, curve) = add_indicator_plot(name, indicator_data, colour);
           }
 
           QString params = QString(indicators::param_string(alg.params).c_str());
-          ind_model_.indicators_.push_back({name, params, curve});
+          ind_model_.indicators_.push_back({name, params, plot, curve});
           ind_model_.dataAdded();
           //          QStandardItem* item = new QStandardItem();
           //          item->setText(name);
@@ -376,7 +379,7 @@ void price_chart_widget::showEvent(QShowEvent* event)
 }
 
 // ----------------------------------------------------------------------------
-QwtPlotCurve* price_chart_widget::add_indicator_plot(
+std::tuple<indicator_plot*, QwtPlotCurve*> price_chart_widget::add_indicator_plot(
   const QString& title, const QVector<QPointF>& samples, const QColor& color)
 {
   auto filter_plot = new indicator_plot(this);
@@ -405,7 +408,7 @@ QwtPlotCurve* price_chart_widget::add_indicator_plot(
   // add the plot to the splitter
   ui->graph_splitter->addWidget(filter_plot);
   //  ui->graph_splitter->setPalette(QPalette(QColor("#18191b")));
-  ui->graph_splitter->setStyleSheet("QSplitter::handle{background: #18191b;}");
+  ui->graph_splitter->setStyleSheet("QSplitter::handle{background: #18191b; image: none; }");
   filter_plot->show();
 
   // turn on x axis lables for bottom graph (all graphs have same time axis)
@@ -432,7 +435,31 @@ QwtPlotCurve* price_chart_widget::add_indicator_plot(
     [this](double t1, double t2) { crypto_price_plot_->update_time_axis(t1, t2, false); },
     Qt::QueuedConnection);
 
-  return m_curve;
+  return std::make_tuple(filter_plot, m_curve);
+}
+
+// ----------------------------------------------------------------------------
+void price_chart_widget::remove_indicator_plot(indicator_plot* filter_plot, QwtPlotCurve* curve)
+{
+  // detach curves and autodelete them
+  curve->detach();
+  delete curve;
+  //
+  filter_plots_.erase(
+    std::remove(filter_plots_.begin(), filter_plots_.end(), filter_plot), filter_plots_.end());
+
+  // overlay curves don't have their own filter plot
+  if (filter_plot)
+  {
+    // if there are no curves left, delete the plot and widget, the parent splitter will adjust
+    const QwtPlotItemList& items = filter_plot->itemList();
+    int num_curves = std::count_if(items.constBegin(), items.constEnd(),
+      [](const auto it) { return (it->rtti() == QwtPlotItem::Rtti_PlotCurve); });
+    if (num_curves == 0)
+    {
+      delete filter_plot;
+    }
+  }
 }
 
 // ----------------------------------------------------------------------------
