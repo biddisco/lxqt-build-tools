@@ -37,7 +37,7 @@ class timebased_chart_plot : public QwtPlot
   virtual double quantize_x_coord(double x)
   {
     return x;
-  };
+  }
 
   virtual void display_picker_info(const QPointF pos){};
 

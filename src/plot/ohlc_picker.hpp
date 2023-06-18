@@ -5,6 +5,7 @@
 #include <QLocale>
 #include <QPen>
 #include <QPoint>
+#include <QwtPlotCurve>
 // Qwt
 #include <QwtAxis>
 #include <QwtPickerMachine>
@@ -24,6 +25,9 @@ class ohlc_picker : public QwtPlotPicker
   mutable QPointF last_coord_;
   QwtTextLabel* yaxis_label_;
   QwtTextLabel* date_label_;
+
+  // declare this inherited function as public
+  using QwtPlotPicker::transform;
 
   ohlc_picker(QWidget* canvas)
     : QwtPlotPicker(QwtAxis::XBottom, QwtAxis::YRight, canvas)
@@ -177,14 +181,54 @@ class ohlc_picker : public QwtPlotPicker
 
   void widgetMouseMoveEvent(QMouseEvent* mouseEvent) override
   {
-    setRubberBand(
-      QwtPicker::RubberBand(int(QwtPicker::HLineRubberBand) + int(QwtPicker::VLineRubberBand)));
+    //    setRubberBand(
+    //      QwtPicker::RubberBand(int(QwtPicker::HLineRubberBand) + int(QwtPicker::VLineRubberBand)));
     QwtPicker::widgetMouseMoveEvent(mouseEvent);
   }
 
   void injectMouseMoveEvent(QMouseEvent* mouseEvent)
   {
-    setRubberBand(QwtPicker::RubberBand(int(QwtPicker::VLineRubberBand)));
+    //    setRubberBand(QwtPicker::RubberBand(int(QwtPicker::VLineRubberBand)));
     QwtPicker::widgetMouseMoveEvent(mouseEvent);
+  }
+
+  struct compareX
+  {
+    inline bool operator()(const double x, const QPointF& pos) const
+    {
+      return (x < pos.x());
+    }
+  };
+
+  QLineF curveLineAt(const QwtPlotCurve* curve, double x) const
+  {
+    // need datatype if we want to use this method
+    //timebased_chart_data *data = dynamic_cast<timebased_chart_data>(curve->data());
+    //auto index = data->sample_index(x);
+
+    QLineF line;
+    if (curve->dataSize() >= 2)
+    {
+      const QRectF br = curve->boundingRect();
+      if ((br.width() > 0) && (x >= br.left()) && (x <= br.right()))
+      {
+        // binary search for point at given X
+        int index = qwtUpperSampleIndex<QPointF>(*curve->data(), x, compareX());
+
+        if (index == -1 && x == curve->sample(curve->dataSize() - 1).x())
+        {
+          // the last sample is excluded from qwtUpperSampleIndex
+          index = curve->dataSize() - 1;
+        }
+
+        if (index > 0)
+        {
+          line.setP1(curve->sample(index - 1));
+          line.setP2(curve->sample(index));
+        }
+      }
+    }
+
+    return line;
   }
 };
