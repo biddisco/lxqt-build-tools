@@ -3,8 +3,15 @@
 # ------------------------------------------------------------------------------
 # sudo apt install build-essential libqt5charts5-dev libqt5opengl5-dev libqt5svg5-dev libcurl4-openssl-dev
 # QPlatformNativeInterface requires base-private-dev
+#
 # qt6 : sudo apt install qt6-base-dev qt6-base-private-dev libqt6opengl6-dev libqt6svg6-dev
+# Advanced docking system needs
+# sudo apt install qml6-module-qtquick qt6-declarative-dev
+#
 # Assumes hdf5, boost, installed using spack environment
+# Qt6 GUI needs opengl,
+# sudo apt install libgl1-mesa-dev
+# SSL : sudo apt-get install libssl-dev libcurl4-openssl-dev
 #
 # Rippled needs
 # sudo apt install liblz4-dev libarchive-dev libsoci-dev
@@ -494,7 +501,7 @@ target_link_libraries(
          Qt::PrintSupport
          Qt::Svg
          Qt::Concurrent
-         qtadvanceddocking
+         qt${QT_VERSION_MAJOR}advanceddocking
          ${Boost_LIBRARIES}
          fmt::fmt
          range-v3
