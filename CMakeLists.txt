@@ -210,6 +210,33 @@ if(NOT QtADS_POPULATED)
 endif()
 
 # ------------------------------------------------------------------------------
+# Build/Download nlohmann/json
+# ------------------------------------------------------------------------------
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/json)
+  message(STATUS "Using json in source tree")
+  # use the source in this directory
+  set(FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON
+      ${CMAKE_CURRENT_SOURCE_DIR}/extern/json
+  )
+  # don't change branches, or pull
+  set(FETCHCONTENT_UPDATES_DISCONNECTED_NLOHMANN_JSON ON)
+endif()
+
+# If we must pull a fresh copy, setup git location/branch and set shallow flag
+fetchcontent_declare(
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json
+  GIT_TAG develop
+  GIT_SHALLOW TRUE
+)
+fetchcontent_getproperties(nlohmann_json)
+if(NOT nlohmann_json_POPULATED)
+  message(STATUS "Downloading nlohmann_json source...")
+  fetchcontent_populate(nlohmann_json)
+  add_subdirectory(${nlohmann_json_SOURCE_DIR} ${nlohmann_json_BINARY_DIR})
+endif()
+
+# ------------------------------------------------------------------------------
 # Build/Download QDarkStyleSheet
 # ------------------------------------------------------------------------------
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/QDarkStyleSheet)
@@ -443,7 +470,7 @@ target_include_directories(
   grox
   PUBLIC ${Boost_INCLUDE_DIRS} ${HDF5_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}
          ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
-         ${CMAKE_CURRENT_SOURCE_DIR}/extern # nlohmann/json
+         ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle
 )
 
 if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
@@ -503,6 +530,7 @@ target_link_libraries(
          Qt::Concurrent
          qt${QT_VERSION_MAJOR}advanceddocking
          ${Boost_LIBRARIES}
+         nlohmann_json
          fmt::fmt
          range-v3
          ${STD_FILESYSTEM_LIB}
@@ -517,9 +545,7 @@ target_link_libraries(
 # ---------------------------------------------------
 # Convenience var for test setup
 # ---------------------------------------------------
-set(TEST_INC_DIRS ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src
-                  ${CMAKE_CURRENT_SOURCE_DIR}/extern # nlohmann/json
-)
+set(TEST_INC_DIRS ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # ---------------------------------------------------
 # Vanity address generator
@@ -544,7 +570,7 @@ add_executable(test-websocket ${WS_SRC})
 target_include_directories(test-websocket PUBLIC ${TEST_INC_DIRS})
 
 target_link_libraries(
-  test-websocket PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL pthread
+  test-websocket PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL pthread
 )
 
 # ---------------------------------------------------
@@ -556,7 +582,9 @@ add_executable(test-https ${HTTPS_SRC})
 
 target_include_directories(test-https PUBLIC ${TEST_INC_DIRS})
 
-target_link_libraries(test-https PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL pthread)
+target_link_libraries(
+  test-https PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL pthread
+)
 
 # ---------------------------------------------------
 # test Token authentication
@@ -569,7 +597,8 @@ add_executable(test-login ${LOGIN_SRC})
 target_include_directories(test-login PUBLIC ${TEST_INC_DIRS})
 
 target_link_libraries(
-  test-login PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL curl uuid pthread
+  test-login PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL curl uuid
+                    pthread
 )
 
 target_compile_definitions(
@@ -587,7 +616,8 @@ target_include_directories(
 )
 
 target_link_libraries(
-  test-bitstamp PUBLIC ${Boost_LIBRARIES} OpenSSL::SSL curl uuid pthread
+  test-bitstamp PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL curl uuid
+                       pthread
 )
 
 # ---------------------------------------------------
@@ -618,7 +648,7 @@ target_include_directories(
   test-belle-client PUBLIC extern/belle/include ${TEST_INC_DIRS}
 )
 target_link_libraries(
-  test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
+  test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json
 )
 
 # ---------------------------------------------------
@@ -632,6 +662,7 @@ target_include_directories(
 )
 target_link_libraries(
   test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
+                                   nlohmann_json
 )
 
 # ---------------------------------------------------
@@ -643,6 +674,7 @@ target_include_directories(
 )
 target_link_libraries(
   test-belle-websocket PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
+                              nlohmann_json
 )
 
 # ---------------------------------------------------
@@ -657,6 +689,7 @@ target_include_directories(
 )
 target_link_libraries(
   test-belle-https-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
+                                 nlohmann_json
 )
 target_compile_definitions(
   test-belle-https-client

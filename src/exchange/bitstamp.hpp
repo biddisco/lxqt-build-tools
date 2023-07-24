@@ -10,7 +10,7 @@
 //
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
-# include "belle/include/belle.hh"
+# include "include/belle.hh"
 #endif
 //
 #include "exchange/exchange.hpp"
