@@ -180,6 +180,7 @@ int qt_main(int argc, char* argv[])
   QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
   //
   bool authenticated = false;
+  const char* tempfs_dir = std::getenv("XDG_RUNTIME_DIR");
   if (std::getenv("rand3") != nullptr)
   {
     // generate a base64 encoded pw : bash commmand : echo "password" | base64
@@ -207,6 +208,24 @@ int qt_main(int argc, char* argv[])
       app_dbg<5>.error(str<>("Authentication"), "pi", "fail");
     }
   }
+  // do we have a ram filesystem mounted? (ubuntu specific env var)
+  if (!authenticated && tempfs_dir)
+  {
+    std::string filepath = {std::string(tempfs_dir) + "/grox.txt"};
+    if (std::filesystem::exists(filepath))
+    {
+      std::ifstream file(filepath);
+      std::stringstream buffer;
+      buffer << file.rdbuf();
+      app_ini->grox_password = base64_decode(buffer.str()).toStdString();
+      authenticated = true;
+      app_dbg<5>.debug(str<>("authentication"), "tempfs", "ok");
+    }
+    else
+    {
+      app_dbg<5>.error(str<>("Authentication"), "tempfs", "fail");
+    }
+  }
   if (!authenticated)
   {
     password_dialog npw(true);
@@ -215,12 +234,19 @@ int qt_main(int argc, char* argv[])
       app_ini->grox_password = npw.getPassword().toStdString();
       authenticated = true;
       app_dbg<5>.debug(str<>("authentication"), "password", "ok");
+      if (tempfs_dir)
+      {
+        std::string filepath = {std::string(tempfs_dir) + "/grox.txt"};
+        std::ofstream file(filepath);
+        file << base64_encode(app_ini->grox_password).toStdString();
+        app_dbg<5>.debug(str<>("authentication"), "tempfs", "write");
+      }
     }
   }
   if (!authenticated)
   {
     app_dbg<5>.error(str<>("Authentication"), "fail");
-    //    return EXIT_FAILURE;
+    // return EXIT_FAILURE;
   }
 
   // we need random data for the encryption block
@@ -432,19 +458,20 @@ int main(int argc, char* argv[])
   namespace po = pika::program_options;
 
   // Configure application-specific options.
-  po::options_description cmdline("usage: " PIKA_APPLICATION_STRING " [options]");
+  po::options_description cmdline("usage: grox [options]");
 
   // clang-format off
-    cmdline.add_options()("no-qt-pool", pika::program_options::bool_switch(),
-        "Disable the Qt pool.");
+  cmdline.add_options()("no-qt-pool",
+    pika::program_options::bool_switch(),
+    "Disable the Qt pool.");
 
-    cmdline.add_options()("decode",
-        po::value<std::string>()->default_value(""),
-        "shortcut");
+  cmdline.add_options()("decode",
+    po::value<std::string>()->default_value(""),
+    "shortcut");
 
-    cmdline.add_options()("disable something",
-        po::value<bool>()->default_value(false),
-        "placeholder for disabling some functionality");
+  cmdline.add_options()("disable something",
+    po::value<bool>()->default_value(false),
+    "placeholder for disabling some functionality");
   // clang-format on
 
   // Initialize and run pika.
