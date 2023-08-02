@@ -1,1 +1,4 @@
+Build Qt-Creator
+https://wiki.qt.io/Building_Qt_Creator_from_Git_on_Ubuntu_22.04
+
 curl https://raw.githubusercontent.com/nlohmann/json/develop/single_include/nlohmann/json.hpp -o ./extern/nlohmann/json.hpp
