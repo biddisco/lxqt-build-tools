@@ -13,7 +13,7 @@ template <int Level>
 static print_threshold<Level, debug_level> exchange_dbg("Exchange");
 
 // ----------------------------------------------------------------------------
-bool exchange::websocket_enabled(network::streams s)
+bool exchange::stream_subscribed(std::string const& s)
 {
   if (enabled_streams_.find(s) != enabled_streams_.end())
   {
@@ -23,23 +23,29 @@ bool exchange::websocket_enabled(network::streams s)
 }
 
 // ----------------------------------------------------------------------------
-void exchange::websocket_enable(network::streams s, net::contexts& io_contexts, bool enable)
+void exchange::mark_stream_subscribed(std::string const& s, bool enabled)
 {
-  if (enable)
-  {
-    if (!websocket_enabled(s))
-    {
-      enabled_streams_[s] = websocket_connect(io_contexts, {s});
-    }
-  }
-  else
-  {
-    if (websocket_enabled(s))
-    {
-      enabled_streams_[s] = !websocket_disconnect(io_contexts, {s});
-    }
-  }
+  enabled_streams_[s] = enabled;
 }
+
+//bool exchange::stream_subscribe(net::contexts& io_contexts, currency_pair const &cp, network::streams const& stream, bool enable)
+//{
+//  std::string full_stream = currency_pair_string(cp) + "/" + stream_to_text(stream);
+//  if (enable)
+//  {
+//    if (!stream_subscribed(full_stream))
+//    {
+//      enabled_streams_[full_stream] = websocket_connect(io_contexts, {stream});
+//    }
+//  }
+//  else
+//  {
+//    if (websocket_enabled(s))
+//    {
+//      //      enabled_streams_[s] = !websocket_disconnect(io_contexts, {s});
+//    }
+//  }
+//}
 
 // ----------------------------------------------------------------------------
 const currency_pairlist& exchange::get_currency_pairs()

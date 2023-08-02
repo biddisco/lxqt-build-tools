@@ -47,6 +47,23 @@ inline void lowercase_i(std::string& data)
 }
 
 // ----------------------------------------------------------------------------
+// returns a uppercase copy of the input string
+inline std::string uppercase(std::string data)
+{
+  std::transform(
+    data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::toupper(c); });
+  return data;
+}
+
+// ----------------------------------------------------------------------------
+// in place conversion of string to uppercase
+inline void uppercase_i(std::string& data)
+{
+  std::transform(
+    data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::toupper(c); });
+}
+
+// ----------------------------------------------------------------------------
 // Function to transform a range into a std::string
 // Replace this with 'std::string_view' to make it a view instead.
 inline auto make_string = [](auto&& r) -> std::string_view {

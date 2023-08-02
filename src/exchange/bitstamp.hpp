@@ -28,13 +28,13 @@ class bitstamp_network : public exchange
 
   private:
   // websocket for private trades
-  std::shared_ptr<net::ws::session> ws_mytrades;
+  //  std::shared_ptr<net::ws::session> ws_mytrades;
   // websocket for private orders
-  std::shared_ptr<net::ws::session> ws_myorders;
+  //  std::shared_ptr<net::ws::session> ws_myorders;
   // websocket for public trade feed
-  std::shared_ptr<net::ws::session> ws_trades;
+  // std::shared_ptr<net::ws::session> ws_trades;
   // websocket for public bid/ask order book
-  std::shared_ptr<net::ws::session> ws_bidask;
+  // std::shared_ptr<net::ws::session> ws_bidask;
 
   // websocket token / user id valid for N seconds
   std::string websocket_token_;
@@ -42,9 +42,6 @@ class bitstamp_network : public exchange
   std::string websocket_user_id_;
   // token expiry time
   std::chrono::time_point<std::chrono::steady_clock> token_expiry_;
-
-  // orderbook from bitstamp
-  bitstamp_order_book* orderbook_;
 
   // usually only one present, but allow for more
   std::vector<bitstamp_account> accounts_;
@@ -122,19 +119,16 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // return the order book for this exchange
-  const bitstamp_order_book& get_orderbook() const;
-
-  // set the plot object for this exchange's orderbook
-  void set_plot(OrderBookPlot* obp);
+  const bitstamp_order_book& get_orderbook(currency_pair const& cp) const;
 
   // ---------------------------------------
   // init connections/websockets etc
-  bool subscribe_live_trades(const currency_pair& cp, net::contexts& io_contexts);
-  bool subscribe_order_book(const currency_pair& cp, net::contexts& io_contexts);
-  bool subscribe_my_trades(const currency_pair& cp, net::contexts& io_contexts);
-  bool subscribe_my_orders(const currency_pair& cp, net::contexts& io_contexts);
-  bool unsubscribe_my_trades(const currency_pair& cp);
-  bool unsubscribe_my_orders(const currency_pair& cp);
+  bool subscribe_live_trades(const currency_pair& cp, net::contexts& io_contexts, bool enable);
+  bool subscribe_order_book(const currency_pair& cp, net::contexts& io_contexts, bool enable);
+  bool subscribe_my_trades(const currency_pair& cp, net::contexts& io_contexts, bool enable);
+  bool subscribe_my_orders(const currency_pair& cp, net::contexts& io_contexts, bool enable);
+  //  bool unsubscribe_my_trades(const currency_pair& cp);
+  //  bool unsubscribe_my_orders(const currency_pair& cp);
 
   streams_vector websocket_streams() override
   {
@@ -142,9 +136,13 @@ class bitstamp_network : public exchange
       network::streams::order_book};
   }
 
+  // connect to a single stream
+  bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
+    network::streams const& stream, bool enabled) override;
+
   // connect to (multiple) streams
-  bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) override;
-  bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) override;
+  //  bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) override;
+  //  bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) override;
 
   // shut down sockets/connections
   void shut_down() override;

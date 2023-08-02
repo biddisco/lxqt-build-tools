@@ -159,10 +159,16 @@ std::string currency_pair_lowercase_string(const currency_pair& p)
 // ----------------------------------------------------------------------------
 currency_pair string_to_pair(std::string_view s, std::string_view delim)
 {
-  auto temp = s.find(delim);
-  std::string_view p1 = s.substr(0, temp);
-  std::string_view p2 = s.substr(temp + 1, s.back());
-  return {get_currency(p1), ::get_currency(p2)};
+  auto e0 = s.find(delim);
+  auto e1 = e0 + 1;
+  if (delim.length() == 0)
+  {
+    e0 = (s.length() / 2);
+    e1 = e0;
+  }
+  std::string_view p1 = s.substr(0, e0);
+  std::string_view p2 = s.substr(e1, s.back());
+  return {::get_currency(p1), ::get_currency(p2)};
 }
 
 // ----------------------------------------------------------------------------

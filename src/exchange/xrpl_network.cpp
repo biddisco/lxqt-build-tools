@@ -131,39 +131,39 @@ bool xrpl_network::can_send(currency& c, exchange* dest)
 }
 
 // ----------------------------------------------------------------------------
-const xrpl_order_book& xrpl_network::get_orderbook() const
+const xrpl_order_book& xrpl_network::get_orderbook(currency_pair const& cp) const
 {
   return *orderbook_;
 }
 
-// ----------------------------------------------------------------------------
-bool xrpl_network::websocket_connect(net::contexts& io_contexts, streams_vector const& streams)
-{
-  bool ok = true;
-  for (const auto& s : streams)
-  {
-    if (s == network::streams::order_book)
-      ok &= subscribe_orderbook(io_contexts);
-    if (s == network::streams::accounts)
-      ok &= subscribe_accounts(io_contexts);
-  }
-  return ok;
-}
+//// ----------------------------------------------------------------------------
+//bool xrpl_network::websocket_connect(net::contexts& io_contexts, streams_vector const& streams)
+//{
+//  bool ok = true;
+//  for (const auto& s : streams)
+//  {
+//    if (s == network::streams::order_book)
+//      ok &= subscribe_orderbook(io_contexts);
+//    if (s == network::streams::accounts)
+//      ok &= subscribe_accounts(io_contexts);
+//  }
+//  return ok;
+//}
 
-// ----------------------------------------------------------------------------
-bool xrpl_network::websocket_disconnect(
-  net::contexts& /*io_contexts*/, streams_vector const& streams)
-{
-  bool ok = true;
-  for (const auto& s : streams)
-  {
-    if (s == network::streams::order_book)
-      ws_orderbook->shutdown_blocking();
-    if (s == network::streams::accounts)
-      ws_accounts->shutdown_blocking();
-  }
-  return ok;
-}
+//// ----------------------------------------------------------------------------
+//bool xrpl_network::websocket_disconnect(
+//  net::contexts& /*io_contexts*/, streams_vector const& streams)
+//{
+//  bool ok = true;
+//  for (const auto& s : streams)
+//  {
+//    if (s == network::streams::order_book)
+//      ws_orderbook->shutdown_blocking();
+//    if (s == network::streams::accounts)
+//      ws_accounts->shutdown_blocking();
+//  }
+//  return ok;
+//}
 
 // ----------------------------------------------------------------------------
 void xrpl_network::shut_down()

@@ -35,17 +35,24 @@ void connection_widget::setup_gui()
   // display available streams in a Vertical box
   QVBoxLayout* sbl = new QVBoxLayout(ui->stream_box);
   const auto streams = exchange_->websocket_streams();
-  for (const auto& s : streams)
+  // for each ticker we are subscribed to
+  for (const auto& t : exchange_->tickers_subscribed())
   {
-    QString name = QString(stream_text(s).c_str());
-    QCheckBox* bx = new QCheckBox(name, ui->stream_box);
-    bx->setChecked(exchange_->websocket_enabled(s));
-    connect(
-      bx, &QCheckBox::stateChanged, this,
-      [this, s](bool checked) { exchange_->websocket_enable(s, io_contexts_, checked); },
-      Qt::QueuedConnection);
+    for (const auto& s : streams)
+    {
+      std::string key = currency_pair_string(t.first) + "/" + stream_to_text(s);
+      QCheckBox* bx = new QCheckBox(QString(key.c_str()), ui->stream_box);
+      bx->setChecked(exchange_->stream_subscribed(key));
+      connect(
+        bx, &QCheckBox::stateChanged, this,
+        [this, t, s](bool checked) {
+          //
+          exchange_->stream_subscribe(io_contexts_, t.first, s, checked);
+        },
+        Qt::QueuedConnection);
 
-    sbl->addWidget(bx);
+      sbl->addWidget(bx);
+    }
   }
   sbl->addItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding));
   ui->stream_box->setLayout(sbl);
