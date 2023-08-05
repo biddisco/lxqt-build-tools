@@ -213,7 +213,7 @@ bool xrpl_network::subscribe_orderbook(net::contexts& io_contexts)
 
   ws_orderbook = net::ws::create_session(io_contexts.ioc, io_contexts.ctx, websocket_address(),
     std::to_string(websocket_port()), subscription,
-    std::bind(xrpl_network::new_orderbook_data, this, _1));
+    std::bind(xrpl_network::new_orderbook_data, this, currency_pair{}, _1));
 
   return true;
 }
@@ -240,7 +240,8 @@ bool xrpl_network::subscribe_accounts(net::contexts& io_contexts)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::new_orderbook_data(xrpl_network* nw, std::string_view data)
+void xrpl_network::new_orderbook_data(
+  xrpl_network* nw, currency_pair const cp, std::string_view data)
 {
   if (startswith(data, "{\"result\":"))
   {

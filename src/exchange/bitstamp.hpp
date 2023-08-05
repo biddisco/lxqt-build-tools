@@ -27,15 +27,6 @@ class bitstamp_network : public exchange
   Q_OBJECT
 
   private:
-  // websocket for private trades
-  //  std::shared_ptr<net::ws::session> ws_mytrades;
-  // websocket for private orders
-  //  std::shared_ptr<net::ws::session> ws_myorders;
-  // websocket for public trade feed
-  // std::shared_ptr<net::ws::session> ws_trades;
-  // websocket for public bid/ask order book
-  // std::shared_ptr<net::ws::session> ws_bidask;
-
   // websocket token / user id valid for N seconds
   std::string websocket_token_;
   // websocket token userid
@@ -132,13 +123,17 @@ class bitstamp_network : public exchange
 
   streams_vector websocket_streams() override
   {
-    return {network::streams::my_orders, network::streams::my_trades, network::streams::trades,
-      network::streams::order_book};
+    return {
+      network::streams::my_orders,      // private orders
+      network::streams::my_trades,      // private trades
+      network::streams::order_book,     // all orders
+      network::streams::live_trades,    // all trades
+    };
   }
 
   // connect to a single stream
   bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
-    network::streams const& stream, bool enabled) override;
+    network::streams const stream, bool enabled) override;
 
   // connect to (multiple) streams
   //  bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) override;
@@ -182,10 +177,10 @@ class bitstamp_network : public exchange
   bool request_new_candlestick_data(std::string ticker, uint64_t start_t, fn_on_http_2 fn);
 
   // function called from websocket subscription to live trade data
-  static void new_trade_data(bitstamp_network*, ticker_data, std::string_view);
+  static void new_trade_data(bitstamp_network*, currency_pair cp, std::string_view);
 
   // function called from websocket subscription to live orderbook data
-  static void new_orderbook_data(bitstamp_network*, std::string_view);
+  static void new_orderbook_data(bitstamp_network*, currency_pair const cp, std::string_view);
 
   double get_fee_percent(const currency_type& c1, const currency_type& c2) override;
   double get_fee_fixed(const currency_type& c1, const currency_type& c2) override;
@@ -216,7 +211,7 @@ class bitstamp_network : public exchange
   void orderbook_changed();
 
   // emitted when data for new trades is ready
-  void new_trade_data_ui(ticker_data, live_trades);
+  void new_trade_data_ui(currency_pair, live_trades);
 
   // when the wallet widget needs to be updated with new data/currencies
   void update_wallet_widget(bitstamp_account*);

@@ -28,25 +28,6 @@ void exchange::mark_stream_subscribed(std::string const& s, bool enabled)
   enabled_streams_[s] = enabled;
 }
 
-//bool exchange::stream_subscribe(net::contexts& io_contexts, currency_pair const &cp, network::streams const& stream, bool enable)
-//{
-//  std::string full_stream = currency_pair_string(cp) + "/" + stream_to_text(stream);
-//  if (enable)
-//  {
-//    if (!stream_subscribed(full_stream))
-//    {
-//      enabled_streams_[full_stream] = websocket_connect(io_contexts, {stream});
-//    }
-//  }
-//  else
-//  {
-//    if (websocket_enabled(s))
-//    {
-//      //      enabled_streams_[s] = !websocket_disconnect(io_contexts, {s});
-//    }
-//  }
-//}
-
 // ----------------------------------------------------------------------------
 const currency_pairlist& exchange::get_currency_pairs()
 {

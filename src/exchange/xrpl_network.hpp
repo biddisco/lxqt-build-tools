@@ -141,7 +141,7 @@ class xrpl_network : public exchange
 
   // connect to an individual stream
   bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
-    network::streams const& stream, bool enabled) override
+    network::streams const stream, bool enabled) override
   {
     return false;
   }
@@ -178,7 +178,7 @@ class xrpl_network : public exchange
   bool add_currency_pair(std::string_view p1, std::string_view p2) override;
 
   // ----------------------------------------------------------------------------
-  static void new_orderbook_data(xrpl_network* nw, std::string_view);
+  static void new_orderbook_data(xrpl_network* nw, currency_pair const cp, std::string_view);
   // ----------------------------------------------------------------------------
   static void new_account_data(xrpl_network* nw, std::string_view);
 

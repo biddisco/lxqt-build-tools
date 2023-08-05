@@ -14,12 +14,13 @@
 
 class basic_account;
 
+// ----------------------------------------------------------------------------
 namespace network {
   enum streams : int
   {
     my_trades,
     my_orders,
-    trades,
+    live_trades,
     order_book,
     accounts,
     invalid,
@@ -27,16 +28,18 @@ namespace network {
 }
 using streams_vector = std::vector<network::streams>;
 
+// ----------------------------------------------------------------------------
 static std::string stream_to_text(network::streams stype)
 {
+  // always change stream_to_text and stream_from_text together
   switch (stype)
   {
   case network::streams::my_trades:
     return "My Trades";
   case network::streams::my_orders:
     return "My Orders";
-  case network::streams::trades:
-    return "Trades";
+  case network::streams::live_trades:
+    return "Live Trades";
   case network::streams::order_book:
     return "Order Book";
   case network::streams::accounts:
@@ -47,12 +50,13 @@ static std::string stream_to_text(network::streams stype)
 
 static network::streams stream_from_text(std::string_view txt)
 {
+  // always change stream_to_text and stream_from_text together
   if (txt == "My Trades")
     return network::streams::my_trades;
   if (txt == "My Orders")
     return network::streams::my_orders;
-  if (txt == "Trades")
-    return network::streams::trades;
+  if (txt == "Live Trades")
+    return network::streams::live_trades;
   if (txt == "Order Book")
     return network::streams::order_book;
   if (txt == "Account Changes")
@@ -60,6 +64,7 @@ static network::streams stream_from_text(std::string_view txt)
   return network::streams::invalid;
 }
 
+// ----------------------------------------------------------------------------
 class price_chart_widget;
 class order_book_base;
 class OrderBookPlot;
@@ -72,7 +77,8 @@ struct ticker_data
   order_book_base* orderbook_;
   QPlainTextEdit* orderbook_text_;
   OrderBookPlot* orderbook_plot_;
-  std::shared_ptr<net::ws::session> websocket_;
+  // each ticker may subscribe to multiple streams
+  std::map<network::streams, std::shared_ptr<net::ws::session>> websockets_;
 };
 
 // To ensure Qt can emit signals of this type
@@ -137,7 +143,7 @@ class exchange
   void mark_stream_subscribed(std::string const& s, bool enabled);
   // un/subscribe to an individual ticker stream
   virtual bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
-    network::streams const& stream, bool enabled) = 0;
+    network::streams const stream, bool enabled) = 0;
   //  virtual bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) = 0;
   //  virtual bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) = 0;
 

@@ -706,7 +706,7 @@ void GroxMainWindow::saveConnectionSetups()
       for (const auto& s : streams)
       {
         std::string key = stream_to_text(s);
-        main_dbg<0>.debug(str<>("Stream subscribed?"), settings.group().toStdString(), key);
+        main_dbg<6>.debug(str<>("Stream subscribed?"), settings.group().toStdString(), key);
         bool subscribed = e->stream_subscribed(currency_pair_string(t.first) + "/" + key);
         settings.setValue(key.c_str(), subscribed);
         if (subscribed)
@@ -770,8 +770,8 @@ void GroxMainWindow::loadConnectionSetups()
         std::string key = stream_to_text(s);
         bool subscribed = settings.value(key.c_str()).toBool();
 
-        main_dbg<0>.debug(str<>("Stream check"), settings.group().toStdString(), key);
-        if (1 || subscribed)
+        main_dbg<6>.debug(str<>("Stream check"), settings.group().toStdString(), key);
+        if (subscribed)
         {
           main_dbg<0>.debug(str<>("Stream"), "subscribing", settings.group().toStdString(), key);
           e->stream_subscribe(io_contexts_, t.first, s, true);
