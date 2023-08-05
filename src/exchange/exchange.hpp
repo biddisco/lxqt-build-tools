@@ -14,28 +14,32 @@
 
 class basic_account;
 
+// ----------------------------------------------------------------------------
 namespace network {
   enum streams : int
   {
     my_trades,
     my_orders,
-    trades,
+    live_trades,
     order_book,
     accounts,
+    invalid,
   };
 }
 using streams_vector = std::vector<network::streams>;
 
-static std::string stream_text(network::streams stype)
+// ----------------------------------------------------------------------------
+static std::string stream_to_text(network::streams stype)
 {
+  // always change stream_to_text and stream_from_text together
   switch (stype)
   {
   case network::streams::my_trades:
     return "My Trades";
   case network::streams::my_orders:
     return "My Orders";
-  case network::streams::trades:
-    return "Trades";
+  case network::streams::live_trades:
+    return "Live Trades";
   case network::streams::order_book:
     return "Order Book";
   case network::streams::accounts:
@@ -44,12 +48,37 @@ static std::string stream_text(network::streams stype)
   return "Unknown";
 }
 
+static network::streams stream_from_text(std::string_view txt)
+{
+  // always change stream_to_text and stream_from_text together
+  if (txt == "My Trades")
+    return network::streams::my_trades;
+  if (txt == "My Orders")
+    return network::streams::my_orders;
+  if (txt == "Live Trades")
+    return network::streams::live_trades;
+  if (txt == "Order Book")
+    return network::streams::order_book;
+  if (txt == "Account Changes")
+    return network::streams::accounts;
+  return network::streams::invalid;
+}
+
+// ----------------------------------------------------------------------------
 class price_chart_widget;
+class order_book_base;
+class OrderBookPlot;
+class QPlainTextEdit;
 
 struct ticker_data
 {
   std::shared_ptr<ohlc_dataset_view> view_;
   price_chart_widget* chart_widget_;
+  order_book_base* orderbook_;
+  QPlainTextEdit* orderbook_text_;
+  OrderBookPlot* orderbook_plot_;
+  // each ticker may subscribe to multiple streams
+  std::map<network::streams, std::shared_ptr<net::ws::session>> websockets_;
 };
 
 // To ensure Qt can emit signals of this type
@@ -66,8 +95,8 @@ class exchange
   using exchange_vector = std::vector<std::shared_ptr<exchange>>;
   using exchange_map = std::map<currency_pair, ticker_data>;
 
-  // websocket streams subscribed to
-  std::map<network::streams, bool> enabled_streams_;
+  // websocket streams subscribed to format = ticker/stream_name
+  std::map<std::string, bool> enabled_streams_;
 
   // ticker pairs available
   currency_pairlist tickers_available_;
@@ -87,15 +116,37 @@ class exchange
   virtual void initialize() = 0;
 
   // ---------------------------------------
-  // websocket/stream connection management
+  // subscription to tickers
+  // a ticker may be monitored via http get requests for candles
+  // withut subscribing to any streams for live trades/other
   // ---------------------------------------
+  // query which tickers (currency pairs) are subscribed
+  virtual bool ticker_subscribed(const currency& c1, const currency& c2);
+  virtual bool ticker_subscribed(std::string_view p1, std::string_view p2);
+  // un/subscribe to a ticker
+  virtual void ticker_subscribe(const currency& c1, const currency& c2);
+  virtual void ticker_subscribe(std::string_view p1, std::string_view p2);
+  virtual void ticker_unsubscribe(const currency& c1, const currency& c2);
+  // return list of subscribed tickers
+  const exchange_map& tickers_subscribed();
+
+  // ---------------------------------------
+  // websocket/stream connection management
+  // a ticker may provide streams of dat which are subscribed to individually
+  // ---------------------------------------
+  // return a list of all streams available at the exchange level
   virtual streams_vector websocket_streams() = 0;
 
-  virtual bool websocket_enabled(network::streams s);
-  virtual void websocket_enable(network::streams s, net::contexts& io_contexts, bool enable);
-  //
-  virtual bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) = 0;
-  virtual bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) = 0;
+  // check if a particular ticker/stream is subscribed to
+  virtual bool stream_subscribed(std::string const& s);
+  // puts an entry into the stream map
+  void mark_stream_subscribed(std::string const& s, bool enabled);
+  // un/subscribe to an individual ticker stream
+  virtual bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
+    network::streams const stream, bool enabled) = 0;
+  //  virtual bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) = 0;
+  //  virtual bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) = 0;
+
   //
   virtual void shut_down() = 0;
 
@@ -114,19 +165,6 @@ class exchange
   // ---------------------------------------
   virtual bool add_currency_pair(std::string_view p1, std::string_view p2) = 0;
   virtual const currency_pairlist& get_currency_pairs();
-
-  // ---------------------------------------
-  // subscription to tickers
-  // ---------------------------------------
-  // query which tickers are subscribed
-  virtual bool ticker_subscribed(const currency& c1, const currency& c2);
-  virtual bool ticker_subscribed(std::string_view p1, std::string_view p2);
-  // subscribe to a ticker
-  virtual void ticker_subscribe(const currency& c1, const currency& c2);
-  virtual void ticker_subscribe(std::string_view p1, std::string_view p2);
-  virtual void ticker_unsubscribe(const currency& c1, const currency& c2);
-  // return list of subscribed tickers
-  const exchange_map& tickers_subscribed();
 
   // ---------------------------------------
   // fees

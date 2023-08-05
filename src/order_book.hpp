@@ -90,7 +90,7 @@ struct order_book_base
   order_book_base(OrderBookPlot* obp, bool secondaxis);
 
   // clean up
-  ~order_book_base();
+  virtual ~order_book_base();
 
   void update_graph_limits(bool primary);
 

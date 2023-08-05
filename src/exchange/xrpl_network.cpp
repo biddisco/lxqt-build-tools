@@ -131,39 +131,39 @@ bool xrpl_network::can_send(currency& c, exchange* dest)
 }
 
 // ----------------------------------------------------------------------------
-const xrpl_order_book& xrpl_network::get_orderbook() const
+const xrpl_order_book& xrpl_network::get_orderbook(currency_pair const& cp) const
 {
   return *orderbook_;
 }
 
-// ----------------------------------------------------------------------------
-bool xrpl_network::websocket_connect(net::contexts& io_contexts, streams_vector const& streams)
-{
-  bool ok = true;
-  for (const auto& s : streams)
-  {
-    if (s == network::streams::order_book)
-      ok &= subscribe_orderbook(io_contexts);
-    if (s == network::streams::accounts)
-      ok &= subscribe_accounts(io_contexts);
-  }
-  return ok;
-}
+//// ----------------------------------------------------------------------------
+//bool xrpl_network::websocket_connect(net::contexts& io_contexts, streams_vector const& streams)
+//{
+//  bool ok = true;
+//  for (const auto& s : streams)
+//  {
+//    if (s == network::streams::order_book)
+//      ok &= subscribe_orderbook(io_contexts);
+//    if (s == network::streams::accounts)
+//      ok &= subscribe_accounts(io_contexts);
+//  }
+//  return ok;
+//}
 
-// ----------------------------------------------------------------------------
-bool xrpl_network::websocket_disconnect(
-  net::contexts& /*io_contexts*/, streams_vector const& streams)
-{
-  bool ok = true;
-  for (const auto& s : streams)
-  {
-    if (s == network::streams::order_book)
-      ws_orderbook->shutdown_blocking();
-    if (s == network::streams::accounts)
-      ws_accounts->shutdown_blocking();
-  }
-  return ok;
-}
+//// ----------------------------------------------------------------------------
+//bool xrpl_network::websocket_disconnect(
+//  net::contexts& /*io_contexts*/, streams_vector const& streams)
+//{
+//  bool ok = true;
+//  for (const auto& s : streams)
+//  {
+//    if (s == network::streams::order_book)
+//      ws_orderbook->shutdown_blocking();
+//    if (s == network::streams::accounts)
+//      ws_accounts->shutdown_blocking();
+//  }
+//  return ok;
+//}
 
 // ----------------------------------------------------------------------------
 void xrpl_network::shut_down()
@@ -213,7 +213,7 @@ bool xrpl_network::subscribe_orderbook(net::contexts& io_contexts)
 
   ws_orderbook = net::ws::create_session(io_contexts.ioc, io_contexts.ctx, websocket_address(),
     std::to_string(websocket_port()), subscription,
-    std::bind(xrpl_network::new_orderbook_data, this, _1));
+    std::bind(xrpl_network::new_orderbook_data, this, currency_pair{}, _1));
 
   return true;
 }
@@ -240,7 +240,8 @@ bool xrpl_network::subscribe_accounts(net::contexts& io_contexts)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::new_orderbook_data(xrpl_network* nw, std::string_view data)
+void xrpl_network::new_orderbook_data(
+  xrpl_network* nw, currency_pair const cp, std::string_view data)
 {
   if (startswith(data, "{\"result\":"))
   {

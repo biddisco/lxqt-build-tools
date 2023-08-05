@@ -132,16 +132,23 @@ class xrpl_network : public exchange
   //
   bool can_send(currency& /*c*/, exchange* dest) override;
   //
-  const xrpl_order_book& get_orderbook() const;
+  const xrpl_order_book& get_orderbook(currency_pair const& cp) const;
   //
   streams_vector websocket_streams() override
   {
     return {network::streams::order_book, network::streams::accounts};
   }
 
+  // connect to an individual stream
+  bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
+    network::streams const stream, bool enabled) override
+  {
+    return false;
+  }
+
   // connect to (multiple) streams
-  bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) override;
-  bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) override;
+  //  bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) override;
+  //  bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) override;
 
   // shut down sockets/connections
   void shut_down() override;
@@ -171,7 +178,7 @@ class xrpl_network : public exchange
   bool add_currency_pair(std::string_view p1, std::string_view p2) override;
 
   // ----------------------------------------------------------------------------
-  static void new_orderbook_data(xrpl_network* nw, std::string_view);
+  static void new_orderbook_data(xrpl_network* nw, currency_pair const cp, std::string_view);
   // ----------------------------------------------------------------------------
   static void new_account_data(xrpl_network* nw, std::string_view);
 

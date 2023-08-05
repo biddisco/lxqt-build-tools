@@ -545,8 +545,9 @@ void GroxMainWindow::perform_arbitrage()
   //
   if (algo_form_->enable_arbitrage->isChecked())
   {
-    xrpl_network_->get_orderbook().compute_arbitrage(
-      bitstamp_network_->get_orderbook(), budget, buy_fee, sell_fee, test_offset, arbitrage_string);
+    // @TODO fix arbitrage for CP
+    //    xrpl_network_->get_orderbook().compute_arbitrage(
+    //      bitstamp_network_->get_orderbook(), budget, buy_fee, sell_fee, test_offset, arbitrage_string);
 
     if (arbitrage_string.size() > 0)
     {
@@ -569,8 +570,8 @@ void GroxMainWindow::transaction_event()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::orderbook_text_update()
 {
-  QString datastring = QString::fromStdString(xrpl_network_->get_orderbook().order_text);
-  algo_form_->order_book_xrpl->setPlainText(datastring);
+  //  QString datastring = QString::fromStdString(xrpl_network_->get_orderbook().order_text);
+  //  algo_form_->order_book_xrpl->setPlainText(datastring);
 }
 
 // ----------------------------------------------------------------------------
@@ -667,6 +668,8 @@ void GroxMainWindow::loadTrustlines()
 void GroxMainWindow::saveConnectionSetups()
 {
   QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+
+  // ------------------------------------
   // Start "Tickers" section and remove all existing values
   settings.beginGroup("Tickers");
   settings.remove("");
@@ -679,18 +682,41 @@ void GroxMainWindow::saveConnectionSetups()
     }
   }
   settings.endGroup();
+
+  // ------------------------------------
   // Start "Streams" section and remove all existing values
   settings.beginGroup("Streams");
   settings.remove("");
   for (const auto& e : exchange_list_)
   {
-    for (const auto& s : e->websocket_streams())
+    // begin exchange group
+    settings.beginGroup(QString(e->name().data()));
+
+    // streams supported by this exchange
+    auto streams = e->websocket_streams();
+
+    // for each ticker we are subscribed to
+    for (const auto& t : e->tickers_subscribed())
     {
-      std::string key = std::string(e->name()) + "/" + stream_text(s);
-      settings.setValue(key.c_str(), e->websocket_enabled(s));
+      // begin ticker group
+      std::string key = currency_pair_string(t.first);
+      settings.beginGroup(QString(key.data()));
+
+      // for each stream available
+      for (const auto& s : streams)
+      {
+        std::string key = stream_to_text(s);
+        main_dbg<6>.debug(str<>("Stream subscribed?"), settings.group().toStdString(), key);
+        bool subscribed = e->stream_subscribed(currency_pair_string(t.first) + "/" + key);
+        settings.setValue(key.c_str(), subscribed);
+        if (subscribed)
+          main_dbg<0>.debug(str<>("Stream subscribed"), settings.group().toStdString(), key);
+      }
+      settings.endGroup();    // ticker
     }
+    settings.endGroup();    // exchange
   }
-  settings.endGroup();
+  settings.endGroup();    // streams
   main_dbg<0>.debug(str<>("Connections saved"), settings.fileName().toStdString());
 }
 
@@ -698,6 +724,8 @@ void GroxMainWindow::saveConnectionSetups()
 void GroxMainWindow::loadConnectionSetups()
 {
   QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+
+  // ------------------------------------
   settings.beginGroup("Tickers");
   for (const auto& e : exchange_list_)
   {
@@ -718,20 +746,42 @@ void GroxMainWindow::loadConnectionSetups()
   }
   settings.endGroup();
 
+  // ------------------------------------
   settings.beginGroup("Streams");
   for (const auto& e : exchange_list_)
   {
+    // begin exchange group
     settings.beginGroup(QString(e->name().data()));
+
+    // streams supported by this exchange
     auto streams = e->websocket_streams();
-    for (const auto& s : streams)
+
+    // for each ticker we are subscribed to
+    for (const auto& t : e->tickers_subscribed())
     {
-      std::string key = stream_text(s);
-      bool enabled = settings.value(key.c_str()).toBool();
-      e->websocket_enable(s, io_contexts_, enabled);
+      // begin ticker group
+      std::string key = currency_pair_string(t.first);
+      settings.beginGroup(QString(key.data()));
+
+      // for each available stream
+      for (const auto& s : streams)
+      {
+        // begin stream group
+        std::string key = stream_to_text(s);
+        bool subscribed = settings.value(key.c_str()).toBool();
+
+        main_dbg<6>.debug(str<>("Stream check"), settings.group().toStdString(), key);
+        if (subscribed)
+        {
+          main_dbg<0>.debug(str<>("Stream"), "subscribing", settings.group().toStdString(), key);
+          e->stream_subscribe(io_contexts_, t.first, s, true);
+        }
+      }
+      settings.endGroup();    // ticker
     }
-    settings.endGroup();
+    settings.endGroup();    // exchange
   }
-  settings.endGroup();
+  settings.endGroup();    // streams
   main_dbg<0>.debug(str<>("Connections loaded"), settings.fileName().toStdString());
 }
 
