@@ -23,7 +23,7 @@
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 4;
+constexpr int debug_level = 1;
 //
 template <int Level>
 static print_threshold<Level, debug_level> bitstamp_dbg("Bitstamp");
@@ -86,11 +86,10 @@ bool bitstamp_network::subscribe_live_trades(
   command["event"] = enable ? "bts:subscribe" : "bts:unsubscribe";
   command["data"]["channel"] = string_join("live_trades_", ticker);
 
-  // get the ticker data
   ticker_data& tdata = tickers_subscribed_.at(cp);
-
-  bitstamp_dbg<0>.debug(str<>("websocket trades"), command["event"],
+  bitstamp_dbg<2>.debug(str<>("websocket trades"), command["event"],
     string_join("live_trades_", ticker), command.dump(4));
+
   if (enable)
   {
     using namespace std::placeholders;
@@ -115,11 +114,10 @@ bool bitstamp_network::subscribe_order_book(
   command["event"] = enable ? "bts:subscribe" : "bts:unsubscribe";
   command["data"]["channel"] = string_join("order_book_", ticker);
 
-  // get the ticker data
   ticker_data& tdata = tickers_subscribed_.at(cp);
-
-  bitstamp_dbg<0>.debug(str<>("websocket orders"), command["event"],
+  bitstamp_dbg<2>.debug(str<>("websocket orders"), command["event"],
     string_join("order_book_", ticker), command.dump(4));
+
   if (enable)
   {
     using namespace std::placeholders;
@@ -146,8 +144,9 @@ bool bitstamp_network::subscribe_my_trades(
   command["data"]["auth"] = websocket_token_;
 
   ticker_data& tdata = tickers_subscribed_.at(cp);
-  bitstamp_dbg<0>.debug(str<>("websocket mytrades"), command["event"],
+  bitstamp_dbg<2>.debug(str<>("websocket mytrades"), command["event"],
     string_join("private-my_trades_", ticker), command.dump(4));
+
   if (enable)
   {
     tdata.websockets_[network::streams::my_trades] =
@@ -176,8 +175,9 @@ bool bitstamp_network::subscribe_my_orders(
   command["data"]["auth"] = websocket_token_;
 
   ticker_data& tdata = tickers_subscribed_.at(cp);
-  bitstamp_dbg<0>.debug(str<>("websocket myorders"), command["event"],
+  bitstamp_dbg<2>.debug(str<>("websocket myorders"), command["event"],
     string_join("private-my_orders_", ticker), command.dump(4));
+
   if (enable)
   {
     tdata.websockets_[network::streams::my_orders] =
@@ -674,7 +674,7 @@ void bitstamp_network::new_orderbook_data(
 void bitstamp_network::new_trade_data(bitstamp_network* n, currency_pair cp, std::string_view data)
 {
   bitstamp_dbg<2>.debug(str<>("Live Trade"), "Ticker", currency_pair_string(cp));
-  bitstamp_dbg<0>.debug(str<>("Trade data"), data);
+  bitstamp_dbg<5>.debug(str<>("Trade data"), data);
   if (!startswith(data, "{\"data\":"))
     return;
   //
@@ -788,7 +788,7 @@ void bitstamp_network::receive_tickers_available(std::string&& data)
   {
     json::string_t jstring = val[std::string_view("pair")];
     const auto& [c1, c2] = get_currency_pair(jstring);
-    bitstamp_dbg<0>.debug(str<>("Currency pair"), c1, c2, c1, c2);
+    bitstamp_dbg<1>.debug(str<>("Currency pair"), jstring, c1, c2);
     add_currency_pair(c1, c2);
   }
 
@@ -903,7 +903,7 @@ void bitstamp_network::ticker_subscribe(const currency& c1, const currency& c2)
 
   // put the price plot into a dock widget
   using namespace ads;
-  std::string title = std::string(name()) + "-" + cps;
+  std::string title = cps + " price " + std::string(name());
   CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
   PlotDockWidget->setWidget(chart_widget);
   PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
@@ -924,7 +924,7 @@ void bitstamp_network::ticker_subscribe(const currency& c1, const currency& c2)
 
   // put the order book into a dock widget
   using namespace ads;
-  std::string obtitle = "OrderBookText-" + std::string(name()) + "-" + cps;
+  std::string obtitle = cps + " text " + std::string(name());
   CDockWidget* obPlotDockWidget = new CDockWidget(QString(obtitle.c_str()));
   obPlotDockWidget->setWidget(orderbook_text);
   obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
@@ -936,7 +936,7 @@ void bitstamp_network::ticker_subscribe(const currency& c1, const currency& c2)
   OrderBookPlot* orderbook_plot = new OrderBookPlot();
   orderbook_plot->setMinimumSize(384, 256);
   //
-  std::string obptitle = "orderbook_plot-" + std::string(name()) + "-" + cps;
+  std::string obptitle = cps + " depth " + std::string(name());
   CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
   obpDockWidget->setWidget(orderbook_plot);
   obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
