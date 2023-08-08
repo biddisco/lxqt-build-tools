@@ -72,13 +72,21 @@ class ohlc_price_scaledraw : public QwtScaleDraw
   {
     form_ = 'f';
     dec_ = 4;
-
-    int exponent = range > 0 ? (int) floor(log10(fabs(range))) : 0;
+    int exponent = 0;
+    if (range < 0)
+    {
+      throw std::logic_error("invalid range in graph axes");
+    }
+    else
+    {
+      exponent = static_cast<int>(std::floor(std::log10(range)));
+    }
 
     // if negative we need decimal places
     if (exponent < 0)
     {
-      dec_ = 1 - exponent;
+      dec_ = 2 - exponent;
+      dig_ = dec_ + 2;
       if (dec_ > 4)
       {
         form_ = 'e';
@@ -97,7 +105,7 @@ class ohlc_price_scaledraw : public QwtScaleDraw
       dig_ = dec_ + 2;
     }
     fstr = fmt::format("%{}.{}{}", dig_, dec_, form_);
-    plot_dbg<5>.debug(str<>("Format string"), fstr);
+    plot_dbg<0>.debug(str<>("Format string"), range, exponent, dig_, dec_, form_, fstr);
   }
 
   QwtText label(double value) const QWT_OVERRIDE
