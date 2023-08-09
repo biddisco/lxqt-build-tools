@@ -173,6 +173,7 @@ void price_chart_widget::connect_gui()
       {
         hdf5_ohlc_->truncate_from_time(msecs);
         pplot_dbg<0>.error(str<>("emit update_candlestick_data"));
+        this->replot();
         // update_candlestick_data();
       }
       else

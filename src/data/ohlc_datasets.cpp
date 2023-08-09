@@ -13,7 +13,7 @@
 using namespace grox::debug;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 5;
+constexpr int debug_level = 1;
 //
 template <int Level>
 static print_threshold<Level, debug_level> ohlc_dbg("Datasets");
@@ -127,13 +127,14 @@ int64_t ohlc_datasets::validate_ohlc(
     double expected_time = origin_time + (res * index);
     if (expected_time != s1.time)
     {
-      ohlc_dbg<1>.error(str<>("validation"), name, str<3>(res.name_), "index", dec<9>(index),
+      ohlc_dbg<0>.error(str<>("validation"), name, str<3>(res.name_), "index", dec<9>(index),
         "expected", msecs_unix_to_calendar_time(expected_time), "found",
         msecs_unix_to_calendar_time(s1.time));
       throw ohlc_data_exception(index);
     }
   }
-  ohlc_dbg<6>.debug(str<>("validated"), name, dec<9>(samples.size()));
+  ohlc_dbg<1>.debug(str<>("validated"), name, str<3>(res.name_), "from",
+    msecs_unix_to_calendar_time(init_time), "index", dec<9>(init_index));
   return samples.size();
 }
 
@@ -217,7 +218,7 @@ ohlc_datasets* ohlc_datasets::resample_update(
       ohlc_samples_->append(current_ohlc);
     }
   }
-  ohlc_dbg<0>.debug(str<>("resampled"), ticker_str_, str<3>(res1.name_), "from",
+  ohlc_dbg<1>.debug(str<>("resampled"), ticker_str_, str<3>(res1.name_), "from",
     msecs_unix_to_calendar_time(current_ohlc.time), "index", dec<9>(orig_size), "of",
     ohlc_samples_->size());
   validate_ohlc(ohlc_samples_->data(), res1, orig_T, ticker_str_);

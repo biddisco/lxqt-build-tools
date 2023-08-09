@@ -172,12 +172,13 @@ class bitstamp_network : public exchange
   void account_request(std::string&& url_path, std::string&& url_query, request_callback&& cb);
   //
 
-  using fn_on_http_2 = std::function<void(OB::Belle::Client::Http_Ctx&, bool)>;
+  using fn_on_http = std::function<void(OB::Belle::Client::Http_Ctx&)>;
 
-  bool request_new_candlestick_data(std::string ticker, uint64_t start_t, fn_on_http_2 fn);
+  void request_new_candlestick_data(
+    currency_pair cp, uint64_t start_t, uint64_t samples, fn_on_http fn);
 
   // function called from websocket subscription to live trade data
-  static void new_trade_data(bitstamp_network*, currency_pair cp, std::string_view);
+  static void new_live_trade_data(bitstamp_network*, currency_pair cp, std::string_view);
 
   // function called from websocket subscription to live orderbook data
   static void new_orderbook_data(bitstamp_network*, currency_pair const cp, std::string_view);
@@ -201,8 +202,6 @@ class bitstamp_network : public exchange
   void update_ticker_data(currency_pair cp, ticker_data* data);
   void update_candlestick_data();
 
-  void start_timer() override;
-
   signals:
   // Signals are emitted so that the Qt appication/GUI thread can perform
   // procesing operations that affect Qt/GUI managed items in a thread safe way
@@ -211,7 +210,7 @@ class bitstamp_network : public exchange
   void orderbook_changed();
 
   // emitted when data for new trades is ready
-  void new_trade_data_ui(currency_pair, live_trades);
+  void new_live_trade_data_ui(currency_pair, live_trades);
 
   // when the wallet widget needs to be updated with new data/currencies
   void update_wallet_widget(bitstamp_account*);
@@ -224,6 +223,5 @@ class bitstamp_network : public exchange
 
   public slots:
   void candlestick_timer_event();
-  void restart_candlestick_timer_event();
   void new_ohlc_data_event(ticker_data*, double);
 };

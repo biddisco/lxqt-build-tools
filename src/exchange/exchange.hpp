@@ -104,9 +104,6 @@ class exchange
   // ticker pairs subscribed to
   exchange_map tickers_subscribed_;
 
-  // timer for data updates
-  QTimer* timer_;
-
   // obligatory virtual destructor
   virtual ~exchange() {}
 
@@ -173,8 +170,6 @@ class exchange
   virtual double get_fee_fixed(const currency_type& c1, const currency_type& c2) = 0;
   virtual double get_transfer_fee(const currency& c1) = 0;
   virtual void custom_functions(basic_account* acct) = 0;
-
-  virtual void start_timer() {}
 
   signals:
   // emitted when a transaction might cause a change in data
