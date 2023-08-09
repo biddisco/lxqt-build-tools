@@ -117,7 +117,7 @@ void ohlc_dataset_view::delete_live_data_up_to(double msecs)
   if (live_data.size() > 0)
   {
     auto index = live_samples->sample_index(msecs);
-    live_data.erase(live_data.begin(), live_data.begin() + index + 1);
+    live_data.erase(live_data.begin(), live_data.begin() + index);
   }
 }
 

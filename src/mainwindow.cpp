@@ -625,11 +625,6 @@ void GroxMainWindow::showEvent(QShowEvent* event)
     loadWindowSettings();
     only_once = false;
   }
-  // start timers on networks that need them
-  for (const auto& e : exchange_list_)
-  {
-    e->start_timer();
-  }
 }
 
 // ----------------------------------------------------------------------------
