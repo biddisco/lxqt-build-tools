@@ -53,7 +53,7 @@ namespace indicators {
     {
       double ptot = 0;
       double wtot = 0;
-      for (const auto& val : buffer_)
+      for (auto const& val : buffer_)
       {
         ptot += val.price_ * val.weight_;
         wtot += val.weight_;
@@ -61,7 +61,7 @@ namespace indicators {
       return (wtot > 0) ? (ptot / wtot) : 0.0;
     }
 
-    double operator()(const QwtOHLCSample& val)
+    double operator()(QwtOHLCSample const& val)
     {
       double price = ohlc_mode_extract(mode_, val);
       // insert data into buffer

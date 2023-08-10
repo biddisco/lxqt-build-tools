@@ -33,7 +33,7 @@ struct ohlc_heikin_ashi
   {
   }
 
-  ohlc_heikin_ashi(const QwtOHLCSample& ohlc)
+  ohlc_heikin_ashi(QwtOHLCSample const& ohlc)
     : first_(false)
     , prev_(ohlc)
   {
@@ -49,7 +49,7 @@ struct ohlc_heikin_ashi
     // exit or get the value
     if (!ohlc_o.has_value())
       return std::nullopt;
-    const QwtOHLCSample& ohlc = ohlc_o.value();
+    QwtOHLCSample const& ohlc = ohlc_o.value();
 
     // first point in plot needs a prev open/close
     if (first_)
@@ -85,7 +85,7 @@ struct heikin_ashi_transition
     // exit or get the value
     if (!ha_o.has_value())
       return buy_sell_type::no_event;
-    const QwtOHLCSample& ha = ha_o.value();
+    QwtOHLCSample const& ha = ha_o.value();
 
     // first point in plot needs a prev open/close
     if (first_)

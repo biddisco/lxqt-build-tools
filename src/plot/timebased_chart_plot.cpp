@@ -7,7 +7,7 @@
 #include "plot/ohlc_picker.hpp"
 #include "plot/timebased_chart_plot.hpp"
 
-void timebased_chart_plot::onCrossHairsMoved(const QPointF& pos)
+void timebased_chart_plot::onCrossHairsMoved(QPointF const& pos)
 {
   // use provided x (time) value, insert y midpoint from our yaxis
   // to make sure selected point is onscreen

@@ -54,12 +54,12 @@ void init_settings(app_settings* settings)
   app_dbg<5>.debug(str<>("Ini"), settings->iniFileName.toLatin1().data());
 }
 
-QByteArray base64_encode(const QByteArray& ba)
+QByteArray base64_encode(QByteArray const& ba)
 {
   return ba.toBase64();
 }
 
-QByteArray base64_encode(const secure_string& s)
+QByteArray base64_encode(secure_string const& s)
 {
   QByteArray ba(s.data(), s.size());
   return ba.toBase64();
@@ -70,7 +70,7 @@ QByteArray base64_decode(QByteArray ba)
   return QByteArray::fromBase64(ba);
 }
 
-QByteArray base64_decode(const secure_string& s)
+QByteArray base64_decode(secure_string const& s)
 {
   return QByteArray::fromBase64(QByteArray::fromStdString(s));
 }
@@ -126,7 +126,7 @@ void generate_encrypted_ini_data(password_dialog& npw)
   xrpl_network::get_xrpl_instance(true)->clear_wallets();
   xrpl_network::get_xrpl_instance(false)->clear_wallets();
   int index = 0;
-  for (const auto& w : npw.get_wallets())
+  for (auto const& w : npw.get_wallets())
   {
     std::dynamic_pointer_cast<xrpl_network>(w.network_)->add_wallet(w);
     secure_string name_ = encryptor.encrypt(w.name_);

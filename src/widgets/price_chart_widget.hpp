@@ -35,9 +35,9 @@ class indicators_model : public QAbstractTableModel
   public:
   explicit indicators_model(QObject* parent = nullptr);
 
-  int rowCount(const QModelIndex& parent = QModelIndex()) const override;
-  int columnCount(const QModelIndex& parent = QModelIndex()) const override;
-  QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+  int rowCount(QModelIndex const& parent = QModelIndex()) const override;
+  int columnCount(QModelIndex const& parent = QModelIndex()) const override;
+  QVariant data(QModelIndex const& index, int role = Qt::DisplayRole) const override;
   //
   void dataAdded();
   //    QModelIndex index(int row, int column,
@@ -92,7 +92,7 @@ class price_chart_widget : public QWidget
   }
 
   std::tuple<indicator_plot*, QwtPlotCurve*> add_indicator_plot(
-    const QString& title, const QVector<QPointF>& samples, const QColor& color);
+    QString const& title, QVector<QPointF> const& samples, QColor const& color);
 
   void remove_indicator_plot(indicator_plot* filter_plot, QwtPlotCurve* curve);
 

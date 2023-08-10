@@ -112,7 +112,7 @@ class GroxMainWindow : public QMainWindow
   void saveConnectionSetups();
   void loadConnectionSetups();
 
-  void stream_process(const QwtOHLCSample& data);
+  void stream_process(QwtOHLCSample const& data);
   void start_io_threads(int nthreads);
 
   void execute_filter();
@@ -120,7 +120,7 @@ class GroxMainWindow : public QMainWindow
   void build_connection_gui(exchange* ex);
 
   void createPerspectives_Ui();
-  void openPerspective(const QString& name);
+  void openPerspective(QString const& name);
   void LoadStyleSheet(int dark);
 
   private slots:

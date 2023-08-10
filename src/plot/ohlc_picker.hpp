@@ -62,7 +62,7 @@ class ohlc_picker : public QwtPlotPicker
     return plot_->quantize_x_coord(pos);
   }
 
-  QPointF quantize_x_screencoord(const QPointF& pos) const
+  QPointF quantize_x_screencoord(QPointF const& pos) const
   {
     // get the pixel/plot coordinate transform
     timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas()->parentWidget());
@@ -76,7 +76,7 @@ class ohlc_picker : public QwtPlotPicker
     return QPointF(p1, pos.y());
   }
 
-  virtual QwtText trackerTextF(const QPointF& pos) const QWT_OVERRIDE
+  virtual QwtText trackerTextF(QPointF const& pos) const QWT_OVERRIDE
   {
     double p1 = quantize_x_coord(pos.x());
     last_coord_ = QPointF(p1, pos.y());
@@ -84,7 +84,7 @@ class ohlc_picker : public QwtPlotPicker
     return QwtText();
   }
 
-  QPolygon adjustedPoints(const QPolygon& points) const QWT_OVERRIDE
+  QPolygon adjustedPoints(QPolygon const& points) const QWT_OVERRIDE
   {
     QPolygon adjusted;
     // we only handle hLine so far
@@ -194,7 +194,7 @@ class ohlc_picker : public QwtPlotPicker
 
   struct compareX
   {
-    inline bool operator()(const double x, const QPointF& pos) const
+    inline bool operator()(const double x, QPointF const& pos) const
     {
       return (x < pos.x());
     }

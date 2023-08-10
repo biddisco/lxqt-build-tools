@@ -35,7 +35,7 @@ void update_QwtOHLCSample(QwtOHLCSample& ohlc, QwtOHLCSample const& other)
 }
 
 // ----------------------------------------------------------------------------
-ohlc_datasets::ohlc_datasets(double res, const std::string& name)
+ohlc_datasets::ohlc_datasets(double res, std::string const& name)
   : ticker_str_(name)
 {
   // we do not destroy these in the destructor because they are given to the
@@ -62,7 +62,7 @@ ohlc_datasets::~ohlc_datasets()
 }
 
 // ----------------------------------------------------------------------------
-uint64_t ohlc_datasets::merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples_)
+uint64_t ohlc_datasets::merge_data(QVector<QwtOHLCSample> const& new_ohlc_samples_)
 {
   uint64_t update = 0;
   // initial data may be empty, so just copy without merge/update
@@ -122,7 +122,7 @@ int64_t ohlc_datasets::validate_ohlc(
 
   for (int64_t index = init_index; index < samples.size(); ++index)
   {
-    const QwtOHLCSample& s1 = samples.at(index);
+    QwtOHLCSample const& s1 = samples.at(index);
     //
     double expected_time = origin_time + (res * index);
     if (expected_time != s1.time)

@@ -53,7 +53,7 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   //  assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
 
   QStringList slist("Auto");
-  for (const auto& r : ohlc_data_resolutions::available_resolutions())
+  for (auto const& r : ohlc_data_resolutions::available_resolutions())
   {
     slist << r.name_;
   }
@@ -195,7 +195,7 @@ void price_chart_widget::connect_gui()
 
   connect(
     crypto_price_plot_->get_crosshairs(), &ohlc_picker::moved, this,
-    [this](const QPointF& pos) {
+    [this](QPointF const& pos) {
       // coordinates received are in time/price(other) units
       // so no need to remap the time axis before sending
       for (auto p : filter_plots_)
@@ -205,7 +205,7 @@ void price_chart_widget::connect_gui()
     },
     Qt::QueuedConnection);
 
-  connect(ind_vis_, &QTableView::clicked, this, [this](const QModelIndex& i) {
+  connect(ind_vis_, &QTableView::clicked, this, [this](QModelIndex const& i) {
     int col = i.column();
     int row = i.row();
     if (col == 2)
@@ -255,7 +255,7 @@ void price_chart_widget::connect_gui()
           // if the algorithm operates on a single input dataset
           if (datasets.size() == 1)
           {
-            const auto& input_dataset = datasets[0]->ohlc_samples_;
+            auto const& input_dataset = datasets[0]->ohlc_samples_;
             indicator_data.reserve(input_dataset->size());
 
             // iterate over the dataset, executing the algorithm for each point
@@ -381,7 +381,7 @@ void price_chart_widget::showEvent(QShowEvent* event)
 
 // ----------------------------------------------------------------------------
 std::tuple<indicator_plot*, QwtPlotCurve*> price_chart_widget::add_indicator_plot(
-  const QString& title, const QVector<QPointF>& samples, const QColor& color)
+  QString const& title, QVector<QPointF> const& samples, QColor const& color)
 {
   auto filter_plot = new indicator_plot(this);
   filter_plot->setMinimumHeight(128);
@@ -453,7 +453,7 @@ void price_chart_widget::remove_indicator_plot(indicator_plot* filter_plot, QwtP
   if (filter_plot)
   {
     // if there are no curves left, delete the plot and widget, the parent splitter will adjust
-    const QwtPlotItemList& items = filter_plot->itemList();
+    QwtPlotItemList const& items = filter_plot->itemList();
     int num_curves = std::count_if(items.constBegin(), items.constEnd(),
       [](const auto it) { return (it->rtti() == QwtPlotItem::Rtti_PlotCurve); });
     if (num_curves == 0)
@@ -471,17 +471,17 @@ indicators_model::indicators_model(QObject* parent)
 {
 }
 
-int indicators_model::rowCount(const QModelIndex& /*parent*/) const
+int indicators_model::rowCount(QModelIndex const& /*parent*/) const
 {
   return indicators_.size();
 }
 
-int indicators_model::columnCount(const QModelIndex& /*parent*/) const
+int indicators_model::columnCount(QModelIndex const& /*parent*/) const
 {
   return 4;
 }
 
-QVariant indicators_model::data(const QModelIndex& index, int role) const
+QVariant indicators_model::data(QModelIndex const& index, int role) const
 {
   QVariant result;
   if (!index.isValid())

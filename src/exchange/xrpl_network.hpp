@@ -132,7 +132,7 @@ class xrpl_network : public exchange
   //
   bool can_send(currency& /*c*/, exchange* dest) override;
   //
-  const xrpl_order_book& get_orderbook(currency_pair const& cp) const;
+  xrpl_order_book const& get_orderbook(currency_pair const& cp) const;
   //
   streams_vector websocket_streams() override
   {
@@ -157,7 +157,7 @@ class xrpl_network : public exchange
   //
   bool subscribe_accounts(net::contexts& io_contexts);
   //
-  void add_wallet(const ledger_wallet& w);
+  void add_wallet(ledger_wallet const& w);
   void clear_wallets()
   {
     subscribed_wallets_.clear();
@@ -188,7 +188,7 @@ class xrpl_network : public exchange
   // ----------------------------------------------------------------------------
   std::vector<currency>::iterator get_currency(std::string_view addr, currency_type t);
   void update_XRP_balance(std::string_view addr, double oldb, double newb);
-  void update_IOU_balance(std::string_view addr, const currency& curr);
+  void update_IOU_balance(std::string_view addr, currency const& curr);
 
   // query account balance and info
   void get_account_info(std::string addr, fn_on_http on_http);
@@ -214,16 +214,16 @@ class xrpl_network : public exchange
 
   void submit_signed_transaction(std::string&& signed_tx);
 
-  double get_fee_percent(const currency_type& c1, const currency_type& c2) override;
-  double get_fee_fixed(const currency_type& c1, const currency_type& c2) override;
-  double get_transfer_fee(const currency& c1) override;
+  double get_fee_percent(currency_type const& c1, currency_type const& c2) override;
+  double get_fee_fixed(currency_type const& c1, currency_type const& c2) override;
+  double get_transfer_fee(currency const& c1) override;
 
   void trustline(
     basic_account* acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags);
 
   void custom_functions(basic_account* acct) override;
 
-  void query_iou_fee(const issued_currency& c1);
+  void query_iou_fee(issued_currency const& c1);
 
   signals:
   // Signals are emitted so that the Qt appication/GUI thread can perform

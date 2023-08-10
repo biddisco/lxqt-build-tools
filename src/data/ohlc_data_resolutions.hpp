@@ -27,20 +27,20 @@ struct candle_res
   {
     return name_;
   }
-  bool operator<(const candle_res& other)
+  bool operator<(candle_res const& other)
   {
     return res_ < other.res_;
   }
-  bool operator>(const candle_res& other)
+  bool operator>(candle_res const& other)
   {
     return res_ > other.res_;
   }
-  bool operator==(const candle_res& other)
+  bool operator==(candle_res const& other)
   {
     return res_ == other.res_;
   }
 
-  friend std::ostream& operator<<(std::ostream& os, const candle_res& res)
+  friend std::ostream& operator<<(std::ostream& os, candle_res const& res)
   {
     return os << res.name_;
   }
@@ -68,7 +68,7 @@ class ohlc_data_resolutions
   static constexpr candle_res day15 = {day * 15, day3, "15d"};
 
   // for easy access to array of all available resolutions
-  static const std::vector<candle_res>& available_resolutions()
+  static std::vector<candle_res> const& available_resolutions()
   {
     static const std::vector<candle_res> resolutions = {minute, minute3, minute5, minute10,
       minute15, minute30, hour, hour2, hour4, hour6, hour12, day, day2, day3, day7, day15};
@@ -77,7 +77,7 @@ class ohlc_data_resolutions
 
   static candle_res get_resolution(double res)
   {
-    for (const auto& r : available_resolutions())
+    for (auto const& r : available_resolutions())
     {
       if (r.res_ == res)
         return r;

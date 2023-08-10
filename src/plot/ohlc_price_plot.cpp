@@ -286,7 +286,7 @@ bool ohlc_price_plot::adjust_candle_size(double res)
     const QwtScaleMap map = canvasMap(QwtAxis::XBottom);
     // try for candle around ~10 pixels - How big in world coords?
     double xm = map.invTransform(10) - map.invTransform(0);
-    for (const auto& r : ranges::views::reverse(ohlc_data_resolutions::available_resolutions()))
+    for (auto const& r : ranges::views::reverse(ohlc_data_resolutions::available_resolutions()))
     {
       if (r < xm)
       {
@@ -304,7 +304,7 @@ bool ohlc_price_plot::adjust_candle_size(double res)
     last_auto_res_ = 0;
   }
   // user selected resolution
-  for (const auto& r : ohlc_data_resolutions::available_resolutions())
+  for (auto const& r : ohlc_data_resolutions::available_resolutions())
   {
     auto* data = ohlc_dataset_view_->get_dataset(r);
     data->ohlc_curve_->setVisible(r == res);
@@ -464,7 +464,7 @@ void ohlc_price_plot::display_picker_info(const QPointF pos)
     return;
   }
   //
-  const QwtOHLCSample& sample = dataset->ohlc_samples_->data().at(index);
+  QwtOHLCSample const& sample = dataset->ohlc_samples_->data().at(index);
 
   std::string c;
   if (sample.open <= sample.close)
@@ -489,7 +489,7 @@ void ohlc_price_plot::display_picker_info(const QPointF pos)
 
 // ----------------------------------------------------------------------------
 QwtPlotCurve* ohlc_price_plot::add_buy_sell_curve(
-  const QString& title, const QVector<QPointF>& samples, const QColor& color)
+  QString const& title, QVector<QPointF> const& samples, QColor const& color)
 {
   auto m_curve = new QwtPlotCurve(title);
   m_curve->setYAxis(QwtPlot::yRight);
@@ -509,7 +509,7 @@ QwtPlotCurve* ohlc_price_plot::add_buy_sell_curve(
 
 // ----------------------------------------------------------------------------
 QwtPlotCurve* ohlc_price_plot::add_overlay_curve(
-  const QString& title, const QVector<QPointF>& samples, const QColor& color)
+  QString const& title, QVector<QPointF> const& samples, QColor const& color)
 {
   auto m_curve = new QwtPlotCurve(title);
   m_curve->setYAxis(QwtPlot::yRight);

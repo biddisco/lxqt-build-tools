@@ -44,7 +44,7 @@ password_dialog::password_dialog(bool simple)
 }
 
 password_dialog::password_dialog(
-  const std::array<std::string, 5>& strings, const std::vector<ledger_wallet>& wallets)
+  const std::array<std::string, 5>& strings, std::vector<ledger_wallet> const& wallets)
   : password_dialog(false)
 {
   // exchange data
@@ -55,7 +55,7 @@ password_dialog::password_dialog(
   ui.api_address->setText(QString(strings[4].c_str()));
   // wallets
   wallets_ = wallets;
-  for (const auto& w : wallets_)
+  for (auto const& w : wallets_)
   {
     ui.wallets_combo->addItem(QString(w.name_.c_str()));
   }
@@ -103,7 +103,7 @@ QString password_dialog::getAPIXRPAddress()
 // ----------------------------------------------------------------------------
 // Wallet details
 // ----------------------------------------------------------------------------
-const std::vector<ledger_wallet>& password_dialog::get_wallets()
+std::vector<ledger_wallet> const& password_dialog::get_wallets()
 {
   return wallets_;
 }

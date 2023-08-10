@@ -15,7 +15,7 @@ connection_widget::connection_widget(QWidget* parent, net::contexts& io_contexts
 {
   ui->setupUi(this);
   connect(
-    ui->filter, SIGNAL(textChanged(const QString&)), this, SLOT(filter_changed(const QString&)));
+    ui->filter, SIGNAL(textChanged(QString const&)), this, SLOT(filter_changed(QString const&)));
   connect(ui->apply, SIGNAL(clicked()), this, SLOT(apply()));
 }
 
@@ -36,9 +36,9 @@ void connection_widget::setup_gui()
   QVBoxLayout* sbl = new QVBoxLayout(ui->stream_box);
   const auto streams = exchange_->websocket_streams();
   // for each ticker we are subscribed to
-  for (const auto& t : exchange_->tickers_subscribed())
+  for (auto const& t : exchange_->tickers_subscribed())
   {
-    for (const auto& s : streams)
+    for (auto const& s : streams)
     {
       std::string key = currency_pair_string(t.first) + "/" + stream_to_text(s);
       QCheckBox* bx = new QCheckBox(QString(key.c_str()), ui->stream_box);
@@ -116,7 +116,7 @@ void connection_widget::setup_gui()
 }
 
 // ----------------------------------------------------------------------------
-void connection_widget::filter_changed(const QString& s)
+void connection_widget::filter_changed(QString const& s)
 {
   QRegularExpression::PatternOption po = QRegularExpression::PatternOption::CaseInsensitiveOption;
   QRegularExpression regExp(s, po);

@@ -424,7 +424,7 @@ void bitstamp_order_book::bid_ask_string_to_number(nlohmann::json& json, offer_d
   data.total.resize(bid_string.size(), 0);
   //
   std::transform(bid_string.begin(), bid_string.end(),
-    ranges::view::zip(data.rate, data.size).begin(), [](const auto& i) {
+    ranges::view::zip(data.rate, data.size).begin(), [](auto const& i) {
 #ifdef GROX_ARBITRAGE_TEST_MODE
       // increase the price on the exchange to test our buy/sell algorithm
       return std::pair<double, double>{std::stod(i[0]) + GROX_ARBITRAGE_TEST_MODE, std::stod(i[1])};
@@ -530,7 +530,7 @@ void xrpl_order_book::ledger_map_to_order_book()
       clamp_offers_to_funds(acc_bids, currency_type::usd_bitstamp);
     }
     double tiny_offers = 0;
-    for (const auto& o : acc_bids)
+    for (auto const& o : acc_bids)
     {
       auto xrp_amount = o.amount(currency_type::xrp) * 1E-6;
       // skip unfunded or very small offers
@@ -552,7 +552,7 @@ void xrpl_order_book::ledger_map_to_order_book()
       clamp_offers_to_funds(acc_asks, currency_type::xrp);
     }
     tiny_offers = 0;
-    for (const auto& o : acc_asks)
+    for (auto const& o : acc_asks)
     {
       auto xrp_amount = o.amount(currency_type::xrp) * 1E-6;
       // skip unfunded or very small offers
@@ -633,9 +633,9 @@ void xrpl_order_book::accept_json_ledger_transaction(std::string_view data)
 }
 
 bool xrpl_order_book::update_offer(
-  const xrpl_offer& prev_offer, xrpl_offer& final_offer, double owner_funds)
+  xrpl_offer const& prev_offer, xrpl_offer& final_offer, double owner_funds)
 {
-  const std::string& acct = prev_offer.Account;
+  std::string const& acct = prev_offer.Account;
   offer_map::iterator it = orders.find(acct);
   // if not in map
   if (it == orders.end())
@@ -678,9 +678,9 @@ bool xrpl_order_book::update_offer(
   return true;
 }
 
-bool xrpl_order_book::insert_offer(const xrpl_offer& offer)
+bool xrpl_order_book::insert_offer(xrpl_offer const& offer)
 {
-  const std::string& acct = offer.Account;
+  std::string const& acct = offer.Account;
   offer_map::iterator it = orders.find(acct);
   // if not in map, create new entry
   if (it == orders.end())
@@ -711,9 +711,9 @@ bool xrpl_order_book::insert_offer(const xrpl_offer& offer)
   return true;
 }
 
-bool xrpl_order_book::delete_offer(const xrpl_offer& offer)
+bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
 {
-  const std::string& acct = offer.Account;
+  std::string const& acct = offer.Account;
   offer_map::iterator it = orders.find(acct);
   // if not in map
   if (it == orders.end())
@@ -783,7 +783,7 @@ enum node_edit
 };
 
 void xrpl_order_book::handle_offer_change(
-  const nlohmann::json& trans, const nlohmann::json& affected)
+  nlohmann::json const& trans, nlohmann::json const& affected)
 {
   bool ok = true;
   bool fatal = true;

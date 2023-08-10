@@ -23,11 +23,11 @@ struct ohlc_datasets
   // for debugging, show the dataset name
   std::string ticker_str_;
 
-  ohlc_datasets(double res, const std::string& name);
+  ohlc_datasets(double res, std::string const& name);
   ~ohlc_datasets();
 
   // Add new downloaded data to the existing dataset
-  uint64_t merge_data(const QVector<QwtOHLCSample>& new_ohlc_samples);
+  uint64_t merge_data(QVector<QwtOHLCSample> const& new_ohlc_samples);
 
   // Checks that all data from time T (if present) has consecutive time stamps.
   // Important when merging new downloaded data with old to ensure no gaps

@@ -21,21 +21,21 @@ class ohlc_chart_curve : public QwtPlotTradingCurve
   using QwtPlotTradingCurve::QwtPlotTradingCurve;
   explicit ohlc_chart_curve(ohlc_chart_data* chartData);
 
-  void drawSeries(QPainter*, const QwtScaleMap& xMap, const QwtScaleMap& yMap,
-    const QRectF& canvasRect, int from, int to) const QWT_OVERRIDE;
+  void drawSeries(QPainter*, QwtScaleMap const& xMap, QwtScaleMap const& yMap,
+    QRectF const& canvasRect, int from, int to) const QWT_OVERRIDE;
 
-  void drawSymbols(QPainter* painter, const QwtScaleMap& xMap, const QwtScaleMap& yMap,
-    const QRectF& canvasRect, int from, int to) const QWT_OVERRIDE;
+  void drawSymbols(QPainter* painter, QwtScaleMap const& xMap, QwtScaleMap const& yMap,
+    QRectF const& canvasRect, int from, int to) const QWT_OVERRIDE;
 
-  void drawVolume(QPainter* painter, const QwtScaleMap& xMap, const QwtScaleMap& yMap,
-    const QRectF& canvasRect, int from, int to) const;
+  void drawVolume(QPainter* painter, QwtScaleMap const& xMap, QwtScaleMap const& yMap,
+    QRectF const& canvasRect, int from, int to) const;
 
-  void drawVolumeBar(QPainter* painter, const QwtOHLCSample& sample, double width) const;
+  void drawVolumeBar(QPainter* painter, QwtOHLCSample const& sample, double width) const;
 
-  void setSymbolPenHA(Direction, const QPen&);
-  void setSymbolBrushHA(Direction, const QBrush&);
-  void setSymbolPenVolume(Direction, const QPen&);
-  void setSymbolBrushVolume(Direction, const QBrush&);
+  void setSymbolPenHA(Direction, QPen const&);
+  void setSymbolBrushHA(Direction, QBrush const&);
+  void setSymbolPenVolume(Direction, QPen const&);
+  void setSymbolBrushVolume(Direction, QBrush const&);
 
   QPen HAPen[2];
   QBrush HABrush[2];

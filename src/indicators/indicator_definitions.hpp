@@ -66,10 +66,10 @@ namespace indicators {
   };
 
   static std::vector<ohlc_datasets*> get_datasets(
-    const param_list& params, std::shared_ptr<ohlc_dataset_view> view)
+    param_list const& params, std::shared_ptr<ohlc_dataset_view> view)
   {
     std::vector<ohlc_datasets*> result;
-    for (const auto& p : params)
+    for (auto const& p : params)
     {
       if (const candle_res* c = std::get_if<candle_res>(&std::get<1>(p)))
       {
@@ -82,7 +82,7 @@ namespace indicators {
   template <class T>
   struct streamer
   {
-    const T& val;
+    T const& val;
   };
   template <class T>
   streamer(T) -> streamer<T>;
@@ -97,13 +97,13 @@ namespace indicators {
   template <class... Ts>
   std::ostream& operator<<(std::ostream& os, streamer<std::variant<Ts...>> sv)
   {
-    std::visit([&os](const auto& v) { os << streamer{v}; }, sv.val);
+    std::visit([&os](auto const& v) { os << streamer{v}; }, sv.val);
     return os;
   }
-  static std::string param_string(const param_list& params)
+  static std::string param_string(param_list const& params)
   {
     std::stringstream stream;
-    for (const auto& p : params)
+    for (auto const& p : params)
     {
       stream << /*std::get<0>(p) << "," << */ streamer{std::get<1>(p)} << ",";
     }

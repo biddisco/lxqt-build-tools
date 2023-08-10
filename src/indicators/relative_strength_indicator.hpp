@@ -83,7 +83,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    double operator()(const QwtOHLCSample& val)
+    double operator()(QwtOHLCSample const& val)
     {
       // closing price
       double price = ohlc_mode_extract(1, val);

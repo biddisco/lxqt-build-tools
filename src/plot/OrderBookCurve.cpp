@@ -14,7 +14,7 @@
 #include "OrderBookCurve.h"
 
 // ----------------------------------------------------------------------------
-OrderBookCurve::OrderBookCurve(const QString& title)
+OrderBookCurve::OrderBookCurve(QString const& title)
   : QwtPlotCurve(title)
 {
   setRenderHint(QwtPlotItem::RenderAntialiased, true);
@@ -27,8 +27,8 @@ OrderBookCurve::OrderBookCurve(const QString& title)
 }
 
 // ----------------------------------------------------------------------------
-void OrderBookCurve::drawLines(QPainter* p, const QwtScaleMap& xMap, const QwtScaleMap& yMap,
-  const QRectF& canvasRect, int from, int to) const
+void OrderBookCurve::drawLines(QPainter* p, QwtScaleMap const& xMap, QwtScaleMap const& yMap,
+  QRectF const& canvasRect, int from, int to) const
 {
   std::unique_lock<std::mutex> lock(paint_mutex_, std::try_to_lock_t{});
   // if another thread is mdifying data, just exit without repainting
@@ -54,7 +54,7 @@ void OrderBookCurve::drawLines(QPainter* p, const QwtScaleMap& xMap, const QwtSc
 
 // ----------------------------------------------------------------------------
 void OrderBookCurve::setSegmentInfo(
-  int segmentStartIndex, int segmentFinisIndex, const QColor& color, double thickness)
+  int segmentStartIndex, int segmentFinisIndex, QColor const& color, double thickness)
 {
   // when we are changing daya
   std::lock_guard<std::mutex> lock(paint_mutex_);

@@ -18,7 +18,7 @@ class password_dialog : public QDialog
   public:
   password_dialog(bool simple);
   password_dialog(
-    const std::array<std::string, 5>& strings, const std::vector<ledger_wallet>& wallets);
+    const std::array<std::string, 5>& strings, std::vector<ledger_wallet> const& wallets);
   ~password_dialog();
 
   // Exchange details
@@ -29,7 +29,7 @@ class password_dialog : public QDialog
   QString getAPIXRPAddress();
 
   // Wallet details
-  const std::vector<ledger_wallet>& get_wallets();
+  std::vector<ledger_wallet> const& get_wallets();
   //
   QString getPassword();
   //

@@ -50,7 +50,7 @@ namespace indicators {
 
       double min_val = val;
       double max_val = val;
-      for (const auto& r : buffer_)
+      for (auto const& r : buffer_)
       {
         min_val = std::min(min_val, r);
         max_val = std::max(max_val, r);

@@ -59,7 +59,7 @@ namespace indicators {
       return rolling_mean_;
     }
 
-    double operator()(const QwtOHLCSample& val)
+    double operator()(QwtOHLCSample const& val)
     {
       double price = ohlc_mode_extract(mode_, val);
       return operator()(price);
