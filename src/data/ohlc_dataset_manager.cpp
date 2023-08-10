@@ -154,7 +154,7 @@ void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
 
 // ----------------------------------------------------------------------------
 std::shared_ptr<ohlc_dataset_view> ohlc_dataset_manager::create_dataset_view(
-  std::string exchange, const currency& c1, const currency& c2)
+  std::string exchange, currency const& c1, currency const& c2)
 {
   auto view = std::make_shared<ohlc_dataset_view>(exchange, c1, c2);
   return view;

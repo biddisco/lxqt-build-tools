@@ -47,11 +47,11 @@ struct currency
   static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
   static inline std::vector<issued_currency> trustlines = {};
   //
-  bool operator==(const currency& c) const
+  bool operator==(currency const& c) const
   {
     return curr_.code_ == c.curr_.code_ && curr_.issuer_ == c.curr_.issuer_;
   }
-  bool operator<(const currency& c) const
+  bool operator<(currency const& c) const
   {
     return curr_.code_ < c.curr_.code_;
   }
@@ -84,10 +84,10 @@ bool is_xrp(currency_type c);
 
 // ----------------------------------------------------------------------------
 // convert a currency type enum to a string pair, {name, issuer}
-std::pair<std::string, std::string> to_string(const currency_type& t);
-std::pair<std::string, std::string> to_string(const currency& t);
-std::string currency_pair_string(const currency_pair& p, std::string_view sep = "-");
-std::string currency_pair_lowercase_string(const currency_pair& p);
+std::pair<std::string, std::string> to_string(currency_type const& t);
+std::pair<std::string, std::string> to_string(currency const& t);
+std::string currency_pair_string(currency_pair const& p, std::string_view sep = "-");
+std::string currency_pair_lowercase_string(currency_pair const& p);
 currency_pair string_to_pair(std::string_view s, std::string_view delim);
 
 // ----------------------------------------------------------------------------
@@ -106,5 +106,5 @@ std::string to_string_with_precision(const T a_value, const int n = 6)
 
 // ----------------------------------------------------------------------------
 // stream operators
-std::ostream& operator<<(std::ostream& os, const currency_type&);
-std::ostream& operator<<(std::ostream& os, const currency&);
+std::ostream& operator<<(std::ostream& os, currency_type const&);
+std::ostream& operator<<(std::ostream& os, currency const&);

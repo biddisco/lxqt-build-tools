@@ -20,7 +20,7 @@ template <int Level>
 static print_threshold<Level, debug_level> man_dbg("DataView");
 
 // ----------------------------------------------------------------------------
-ohlc_dataset_view::ohlc_dataset_view(std::string exchange, const currency& c1, const currency& c2)
+ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency const& c1, currency const& c2)
   : exchange_(exchange)
   , c1_(c1)
   , c2_(c2)
@@ -33,7 +33,7 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, const currency& c1, c
   // load highest res data
   read_from_disk();
   // generate lower res datasets from loaded data
-  const auto& resolutions = ohlc_data_resolutions::available_resolutions();
+  auto const& resolutions = ohlc_data_resolutions::available_resolutions();
   for (size_t i = 1; i < resolutions.size(); ++i)
   {
     auto const& res = resolutions[i];
@@ -58,7 +58,7 @@ ohlc_dataset_view::~ohlc_dataset_view()
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_view::merge_data(
-  const double res, const QVector<QwtOHLCSample>& new_ohlc_samples_)
+  const double res, QVector<QwtOHLCSample> const& new_ohlc_samples_)
 {
   ohlc_datasets* data = get_dataset(res);
   // returns the number of samples that are 'new'
@@ -358,7 +358,7 @@ QwtOHLCSample ohlc_dataset_view::get_trade_data_by_value(double dollars, double 
   while (val_traded < dollars * safety && index < data.size())
   {
     // current candle
-    const QwtOHLCSample& sample = data[index++];
+    QwtOHLCSample const& sample = data[index++];
     // get the volume for current candle
     val_traded += sample.volume * (sample.open + sample.close) / 2.0;
     // and accumulate data on prices

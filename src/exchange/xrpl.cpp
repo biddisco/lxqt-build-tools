@@ -89,9 +89,9 @@ std::shared_ptr<ripple::STTx const> deserialize(std::string blob)
 // ----------------------------------------------------------------------------
 #define DEBUG_TX_SIGN 1
 
-std::string make_xrp_payment(ripple::KeyType keyType, const std::string& from_seed,
-  const std::string& from_address, int32_t from_sequence, const std::string& dest_address,
-  int32_t dest_tag, double amount, const std::string& currency, const std::string& issuer,
+std::string make_xrp_payment(ripple::KeyType keyType, std::string const& from_seed,
+  std::string const& from_address, int32_t from_sequence, std::string const& dest_address,
+  int32_t dest_tag, double amount, std::string const& currency, std::string const& issuer,
   double transferrate)
 {
   using namespace ripple;
@@ -177,8 +177,8 @@ std::string make_xrp_payment(ripple::KeyType keyType, const std::string& from_se
 }
 
 // ----------------------------------------------------------------------------
-std::string make_xrp_offer(ripple::KeyType keyType, const std::string& from_seed,
-  const std::string& from_address, int32_t from_sequence, ripple::STAmount const& pays,
+std::string make_xrp_offer(ripple::KeyType keyType, std::string const& from_seed,
+  std::string const& from_address, int32_t from_sequence, ripple::STAmount const& pays,
   ripple::STAmount const& gets, std::uint32_t flags)
 {
   using namespace ripple;
@@ -220,8 +220,8 @@ std::string make_xrp_offer(ripple::KeyType keyType, const std::string& from_seed
 }
 
 // ----------------------------------------------------------------------------
-std::string cancel_xrp_offer(ripple::KeyType keyType, const std::string& from_seed,
-  const std::string& from_address, int32_t from_sequence, int32_t offerSeq, std::uint32_t flags)
+std::string cancel_xrp_offer(ripple::KeyType keyType, std::string const& from_seed,
+  std::string const& from_address, int32_t from_sequence, int32_t offerSeq, std::uint32_t flags)
 {
   using namespace ripple;
   //
@@ -260,9 +260,9 @@ std::string cancel_xrp_offer(ripple::KeyType keyType, const std::string& from_se
 }
 
 // ----------------------------------------------------------------------------
-std::string set_trustline(ripple::KeyType keyType, const std::string& from_seed,
-  const std::string& from_address, int32_t from_sequence, int64_t limit,
-  const std::string& currency, const std::string& issuer, std::uint32_t flags)
+std::string set_trustline(ripple::KeyType keyType, std::string const& from_seed,
+  std::string const& from_address, int32_t from_sequence, int64_t limit,
+  std::string const& currency, std::string const& issuer, std::uint32_t flags)
 {
   using namespace ripple;
   //

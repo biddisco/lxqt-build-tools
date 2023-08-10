@@ -118,14 +118,14 @@ class exchange
   // withut subscribing to any streams for live trades/other
   // ---------------------------------------
   // query which tickers (currency pairs) are subscribed
-  virtual bool ticker_subscribed(const currency& c1, const currency& c2);
+  virtual bool ticker_subscribed(currency const& c1, currency const& c2);
   virtual bool ticker_subscribed(std::string_view p1, std::string_view p2);
   // un/subscribe to a ticker
-  virtual void ticker_subscribe(const currency& c1, const currency& c2);
+  virtual void ticker_subscribe(currency const& c1, currency const& c2);
   virtual void ticker_subscribe(std::string_view p1, std::string_view p2);
-  virtual void ticker_unsubscribe(const currency& c1, const currency& c2);
+  virtual void ticker_unsubscribe(currency const& c1, currency const& c2);
   // return list of subscribed tickers
-  const exchange_map& tickers_subscribed();
+  exchange_map const& tickers_subscribed();
 
   // ---------------------------------------
   // websocket/stream connection management
@@ -161,14 +161,14 @@ class exchange
   // setup / query tickers
   // ---------------------------------------
   virtual bool add_currency_pair(std::string_view p1, std::string_view p2) = 0;
-  virtual const currency_pairlist& get_currency_pairs();
+  virtual currency_pairlist const& get_currency_pairs();
 
   // ---------------------------------------
   // fees
   // ---------------------------------------
-  virtual double get_fee_percent(const currency_type& c1, const currency_type& c2) = 0;
-  virtual double get_fee_fixed(const currency_type& c1, const currency_type& c2) = 0;
-  virtual double get_transfer_fee(const currency& c1) = 0;
+  virtual double get_fee_percent(currency_type const& c1, currency_type const& c2) = 0;
+  virtual double get_fee_fixed(currency_type const& c1, currency_type const& c2) = 0;
+  virtual double get_transfer_fee(currency const& c1) = 0;
   virtual void custom_functions(basic_account* acct) = 0;
 
   signals:

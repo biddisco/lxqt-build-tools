@@ -37,7 +37,7 @@ class ohlc_dataset_view
   std::string ticker_string_;
 
   public:
-  ohlc_dataset_view(std::string exchange, const currency& c1, const currency& c2);
+  ohlc_dataset_view(std::string exchange, currency const& c1, currency const& c2);
   ~ohlc_dataset_view();
 
   void read_from_disk();
@@ -62,7 +62,7 @@ class ohlc_dataset_view
   }
 
   // Add new downloaded data to an existing dataset
-  void merge_data(double res, const QVector<QwtOHLCSample>& new_ohlc_samples_);
+  void merge_data(double res, QVector<QwtOHLCSample> const& new_ohlc_samples_);
 
   // access the underlying data vector for live samples
   const ohlc_chart_data* get_live_data() const;
@@ -98,7 +98,7 @@ class ohlc_dataset_view
   double get_estimated_sell_price(double volume, double time, double safety = 10);
   double get_estimated_buy_price(double volume, double time, double safety = 10);
 
-  const std::string& get_ticker_string()
+  std::string const& get_ticker_string()
   {
     return ticker_string_;
   }

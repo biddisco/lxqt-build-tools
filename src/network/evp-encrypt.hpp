@@ -30,7 +30,7 @@ struct zallocator
   typedef value_type* pointer;
   typedef const value_type* const_pointer;
   typedef value_type& reference;
-  typedef const value_type& const_reference;
+  typedef value_type const& const_reference;
   typedef std::size_t size_type;
   typedef std::ptrdiff_t difference_type;
 
@@ -67,7 +67,7 @@ struct zallocator
     typedef zallocator<U> other;
   };
 
-  void construct(pointer ptr, const T& val)
+  void construct(pointer ptr, T const& val)
   {
     new (static_cast<T*>(ptr)) T(val);
   }
@@ -98,9 +98,9 @@ using EVP_CIPHER_CTX_free_ptr = std::unique_ptr<EVP_CIPHER_CTX, decltype(&::EVP_
 
 void gen_params(byte* key, byte* iv);
 void aes_encrypt(
-  const byte* key, const byte* iv, const secure_string& instring, secure_string& outstring);
+  const byte* key, const byte* iv, secure_string const& instring, secure_string& outstring);
 void aes_decrypt(
-  const byte* key, const byte* iv, const secure_string& instring, secure_string& outstring);
+  const byte* key, const byte* iv, secure_string const& instring, secure_string& outstring);
 
 struct encryption
 {
@@ -110,15 +110,15 @@ struct encryption
   byte key[KEY_SIZE];
   byte iv[BLOCK_SIZE];
   //
-  encryption(const secure_string& passphrase, secure_string& randbytes);
+  encryption(secure_string const& passphrase, secure_string& randbytes);
   ~encryption();
 
   // core encryption routines
-  secure_string encrypt(const secure_string& input);
-  secure_string decrypt(const secure_string& input);
+  secure_string encrypt(secure_string const& input);
+  secure_string decrypt(secure_string const& input);
 
   // utility function for signing web request
-  secure_string CalcHmacSHA256(const secure_string& decodedKey, const secure_string& msg);
+  secure_string CalcHmacSHA256(secure_string const& decodedKey, secure_string const& msg);
 
 #ifdef GROX_HAVE_UUID_ENCODING
   std::string generate_uuid_string();

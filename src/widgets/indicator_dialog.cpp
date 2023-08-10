@@ -34,9 +34,9 @@ indicator_dialog::indicator_dialog()
   ui.buttons_layout->addWidget(buttonBox);
 
   // setup algorithms combobox
-  for (const auto& a : indicators::available_indicators)
+  for (auto const& a : indicators::available_indicators)
   {
-    QString s = std::visit([](const auto& obj) { return obj.name; }, a).c_str();
+    QString s = std::visit([](auto const& obj) { return obj.name; }, a).c_str();
     ui.algorithm->addItem(s);
   }
   // when algorithm is changed, rebuild gui
@@ -69,7 +69,7 @@ void clearLayout(QLayout* layout, bool deleteWidgets = true)
 
 // ----------------------------------------------------------------------------
 // we must provide one overload for each type in indicators::param_types
-QWidget* get_widget(const double& param)
+QWidget* get_widget(double const& param)
 {
   QLineEdit* const widget = new QLineEdit();
   widget->setValidator(new QDoubleValidator(-10.0E9, 10.0E9, 5, widget));
@@ -77,7 +77,7 @@ QWidget* get_widget(const double& param)
   return widget;
 }
 
-QWidget* get_widget(const int& param)
+QWidget* get_widget(int const& param)
 {
   QLineEdit* const widget = new QLineEdit();
   widget->setValidator(new QIntValidator(0, 65535, widget));
@@ -85,17 +85,17 @@ QWidget* get_widget(const int& param)
   return widget;
 }
 
-QWidget* get_widget(const bool& param)
+QWidget* get_widget(bool const& param)
 {
   QCheckBox* const widget = new QCheckBox();
   widget->setChecked(param);
   return widget;
 }
 
-QWidget* get_widget(const candle_res& param)
+QWidget* get_widget(candle_res const& param)
 {
   QStringList res_list;
-  for (const auto& r : ohlc_data_resolutions::available_resolutions())
+  for (auto const& r : ohlc_data_resolutions::available_resolutions())
   {
     res_list << r.name_;
   }
@@ -107,13 +107,13 @@ QWidget* get_widget(const candle_res& param)
 }
 
 template <typename P>
-int get_column(const P& param)
+int get_column(P const& param)
 {
   return 1;
 }
 
 template <>
-int get_column(const candle_res& param)
+int get_column(candle_res const& param)
 {
   return 0;
 }
@@ -154,24 +154,24 @@ void indicator_dialog::refresh_gui(int index)
   std::array<int, 2> counts = {0, 0};
 
   auto alg = indicators::available_indicators[index];
-  std::string desc = std::visit([](const auto& obj) { return obj.description; }, alg);
+  std::string desc = std::visit([](auto const& obj) { return obj.description; }, alg);
   ui.description->setText(QString(desc.c_str()));
 
   QGridLayout* layout = new QGridLayout;
-  int nparams = std::visit([](const auto& obj) { return obj.params.size(); }, alg);
+  int nparams = std::visit([](auto const& obj) { return obj.params.size(); }, alg);
   for (int i = 0; i < nparams; ++i)
   {
     // get the i-th param from the variant algorithm list
-    auto p = std::visit([=](const auto& obj) { return obj.params[i]; }, alg);
+    auto p = std::visit([=](auto const& obj) { return obj.params[i]; }, alg);
     // draw datasets in left column, params in right
-    int column = std::visit([&](const auto& v) { return get_column(v); }, std::get<1>(p));
+    int column = std::visit([&](auto const& v) { return get_column(v); }, std::get<1>(p));
 
     // get label for parameter
     QLabel* const label = new QLabel(QString(std::get<0>(p).c_str()));
     layout->addWidget(label, counts[column], column * 2);
 
     // get a widget to represent the parameter (based on param type)
-    QWidget* widget = std::visit([&](const auto& v) { return get_widget(v); }, std::get<1>(p));
+    QWidget* widget = std::visit([&](auto const& v) { return get_widget(v); }, std::get<1>(p));
     layout->addWidget(widget, counts[column], column * 2 + 1);
     params << widget;
     //
@@ -193,7 +193,7 @@ void indicator_dialog::update_parameters()
   // get a reference to indicator in the global indicators list
   auto& alg = indicators::available_indicators[index];
   // get the number of params it has
-  int nparams = std::visit([](const auto& obj) { return obj.params.size(); }, alg);
+  int nparams = std::visit([](auto const& obj) { return obj.params.size(); }, alg);
   for (int i = 0; i < nparams; ++i)
   {
     // get a reference to the i-th param from the variant algorithm list

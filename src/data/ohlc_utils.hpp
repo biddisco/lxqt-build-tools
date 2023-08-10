@@ -8,11 +8,11 @@
 
 void update_QwtOHLCSample(QwtOHLCSample& ohlc, QwtOHLCSample const& other);
 
-inline double get_time(const QwtOHLCSample& val)
+inline double get_time(QwtOHLCSample const& val)
 {
   return val.time;
 }
-inline double get_time(const QPointF& val)
+inline double get_time(QPointF const& val)
 {
   return val.x();
 }
@@ -21,7 +21,7 @@ struct ohlc_resample
 {
   QwtOHLCSample ohlc_;
   //
-  ohlc_resample(const QwtOHLCSample& ohlc)
+  ohlc_resample(QwtOHLCSample const& ohlc)
     : ohlc_(ohlc)
   {
   }
@@ -48,7 +48,7 @@ struct minmax_data<QPointF>
   {
   }
 
-  minmax_data<QPointF>& update(const minmax_data<QPointF>& other)
+  minmax_data<QPointF>& update(minmax_data<QPointF> const& other)
   {
     if (!isValid())
     {
@@ -89,7 +89,7 @@ struct minmax_data<QwtOHLCSample>
   {
   }
 
-  minmax_data(const QwtOHLCSample& init)
+  minmax_data(QwtOHLCSample const& init)
     : min_price_{init.low}
     , max_price_{init.high}
     , min_volume_{init.volume}
@@ -103,7 +103,7 @@ struct minmax_data<QwtOHLCSample>
     return valid_;
   }
 
-  minmax_data<QwtOHLCSample>& update(const minmax_data<QwtOHLCSample>& other)
+  minmax_data<QwtOHLCSample>& update(minmax_data<QwtOHLCSample> const& other)
   {
     if (!isValid())
     {
@@ -140,7 +140,7 @@ struct ohlc_candlemaker
   {
   }
   //
-  std::optional<QwtOHLCSample> operator()(const QwtOHLCSample& ohlc)
+  std::optional<QwtOHLCSample> operator()(QwtOHLCSample const& ohlc)
   {
     uint64_t candle_old = static_cast<uint64_t>(ohlc_.time / to_resolution_);
     uint64_t candle_cur = static_cast<uint64_t>(ohlc.time / to_resolution_);

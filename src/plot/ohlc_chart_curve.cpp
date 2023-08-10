@@ -51,32 +51,32 @@ ohlc_chart_curve::ohlc_chart_curve(ohlc_chart_data* chartData)
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_chart_curve::setSymbolPenHA(Direction d, const QPen& p)
+void ohlc_chart_curve::setSymbolPenHA(Direction d, QPen const& p)
 {
   HAPen[d] = p;
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_chart_curve::setSymbolBrushHA(Direction d, const QBrush& b)
+void ohlc_chart_curve::setSymbolBrushHA(Direction d, QBrush const& b)
 {
   HABrush[d] = b;
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_chart_curve::setSymbolPenVolume(Direction d, const QPen& p)
+void ohlc_chart_curve::setSymbolPenVolume(Direction d, QPen const& p)
 {
   VolumePen[d] = p;
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_chart_curve::setSymbolBrushVolume(Direction d, const QBrush& b)
+void ohlc_chart_curve::setSymbolBrushVolume(Direction d, QBrush const& b)
 {
   VolumeBrush[d] = b;
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_chart_curve::drawSeries(QPainter* painter, const QwtScaleMap& xMap,
-  const QwtScaleMap& yMap, const QRectF& canvasRect, int from, int to) const
+void ohlc_chart_curve::drawSeries(QPainter* painter, QwtScaleMap const& xMap,
+  QwtScaleMap const& yMap, QRectF const& canvasRect, int from, int to) const
 {
   // find the min/max indices that we need to iterate over,
   // add +1 to min to clip 1 inside at the left of the x axis
@@ -119,8 +119,8 @@ void ohlc_chart_curve::drawSeries(QPainter* painter, const QwtScaleMap& xMap,
 // DrawUSerSymbol method, because the candles are the same shape/size as normal
 // candles - we just need to modifiy the open/close/low/high vars to handle the
 // averaging as we iterate.
-void ohlc_chart_curve::drawSymbols(QPainter* painter, const QwtScaleMap& xMap,
-  const QwtScaleMap& yMap, const QRectF& canvasRect, int from, int to) const
+void ohlc_chart_curve::drawSymbols(QPainter* painter, QwtScaleMap const& xMap,
+  QwtScaleMap const& yMap, QRectF const& canvasRect, int from, int to) const
 {
   // some vars are private the the Qwt Trading plot, so we must make copies
   QPen symbolPenCopy[2];
@@ -148,12 +148,12 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter, const QwtScaleMap& xMap,
     symbolWidth = std::floor(0.5 * symbolWidth) * 2.0;
 
   // initialize heikin ashi functor
-  const QwtOHLCSample& init_ha = sample(from > 0 ? (from - 1) : from);
+  QwtOHLCSample const& init_ha = sample(from > 0 ? (from - 1) : from);
   ohlc_heikin_ashi heikin_ashi(init_ha);
 
   for (int i = from; i <= to; i++)
   {
-    const QwtOHLCSample& s = sample(i);
+    QwtOHLCSample const& s = sample(i);
     QwtOHLCSample translatedSample;
     int brushIndex;
 
@@ -206,8 +206,8 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter, const QwtScaleMap& xMap,
 // DrawUSerSymbol method, because the candles are the same shape/size as normal
 // candles - we just need to modifiy the open/close/low/high vars to handle the
 // averaging as we iterate.
-void ohlc_chart_curve::drawVolume(QPainter* painter, const QwtScaleMap& xMap,
-  const QwtScaleMap& yMap, const QRectF& canvasRect, int from, int to) const
+void ohlc_chart_curve::drawVolume(QPainter* painter, QwtScaleMap const& xMap,
+  QwtScaleMap const& yMap, QRectF const& canvasRect, int from, int to) const
 {
   const bool doAlign = QwtPainter::roundingAlignment(painter);
 
@@ -217,7 +217,7 @@ void ohlc_chart_curve::drawVolume(QPainter* painter, const QwtScaleMap& xMap,
 
   for (int i = from; i <= to; i++)
   {
-    const QwtOHLCSample& s = sample(i);
+    QwtOHLCSample const& s = sample(i);
 
     int brushIndex =
       (s.open <= s.close) ? QwtPlotTradingCurve::Increasing : QwtPlotTradingCurve::Decreasing;
@@ -246,7 +246,7 @@ void ohlc_chart_curve::drawVolume(QPainter* painter, const QwtScaleMap& xMap,
 
 // ----------------------------------------------------------------------------
 void ohlc_chart_curve::drawVolumeBar(
-  QPainter* painter, const QwtOHLCSample& sample, double width) const
+  QPainter* painter, QwtOHLCSample const& sample, double width) const
 {
   QRectF rect(sample.time - 0.5 * width, sample.low, width, sample.high - sample.low);
   QwtPainter::drawRect(painter, rect);

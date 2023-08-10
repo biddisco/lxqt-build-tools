@@ -45,11 +45,11 @@ struct basic_account
   }
 
   // ----------------------------------------------------------------------------
-  void add_currency(const currency& curr)
+  void add_currency(currency const& curr)
   {
     std::scoped_lock l(currency_mtx_);
     //
-    auto it = ranges::find_if(currencies_, [&curr](const currency& c) {
+    auto it = ranges::find_if(currencies_, [&curr](currency const& c) {
       return c.type_ == curr.type_ && c.curr_.code_ == curr.curr_.code_ &&
         c.curr_.issuer_ == curr.curr_.issuer_;
     });
@@ -95,7 +95,7 @@ struct ledger_wallet : public basic_account
   bool testnet_;
   //
   virtual ~ledger_wallet() {}
-  virtual std::string_view get_receive_address(const currency&)
+  virtual std::string_view get_receive_address(currency const&)
   {
     return public_;
   }
@@ -105,7 +105,7 @@ struct ledger_wallet : public basic_account
     std::scoped_lock l(currency_mtx_);
     // sort so that XRP is always first
     std::sort(currencies_.begin(), currencies_.end(),
-      [](const currency& a, const currency&) -> bool { return (a.type_ == currency_type::xrp); });
+      [](currency const& a, currency const&) -> bool { return (a.type_ == currency_type::xrp); });
     //
     int reserve = 0;
     currency* xrp = nullptr;
@@ -136,7 +136,7 @@ struct bitstamp_account : public ledger_wallet
   secure_string API_secret;
   //
   // bitstamp has a different deposit address for IOUs
-  virtual std::string_view get_receive_address(const currency& c) override
+  virtual std::string_view get_receive_address(currency const& c) override
   {
     if (c.type_ == currency_type::xrp)
       return public_;

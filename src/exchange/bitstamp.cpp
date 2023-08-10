@@ -73,7 +73,7 @@ void bitstamp_network::initialize()
 
 // ----------------------------------------------------------------------------
 bool bitstamp_network::subscribe_live_trades(
-  const currency_pair& cp, net::contexts& io_contexts, bool enable)
+  currency_pair const& cp, net::contexts& io_contexts, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -101,7 +101,7 @@ bool bitstamp_network::subscribe_live_trades(
 
 // ----------------------------------------------------------------------------
 bool bitstamp_network::subscribe_order_book(
-  const currency_pair& cp, net::contexts& io_contexts, bool enable)
+  currency_pair const& cp, net::contexts& io_contexts, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -129,7 +129,7 @@ bool bitstamp_network::subscribe_order_book(
 
 // ----------------------------------------------------------------------------
 bool bitstamp_network::subscribe_my_trades(
-  const currency_pair& cp, net::contexts& io_contexts, bool enable)
+  currency_pair const& cp, net::contexts& io_contexts, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -160,7 +160,7 @@ bool bitstamp_network::subscribe_my_trades(
 
 // ----------------------------------------------------------------------------
 bool bitstamp_network::subscribe_my_orders(
-  const currency_pair& cp, net::contexts& io_contexts, bool enable)
+  currency_pair const& cp, net::contexts& io_contexts, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -260,7 +260,7 @@ bool bitstamp_network::add_currency_pair(std::string_view p1, std::string_view p
 }
 
 // ----------------------------------------------------------------------------
-const bitstamp_order_book& bitstamp_network::get_orderbook(const currency_pair& cp) const
+bitstamp_order_book const& bitstamp_network::get_orderbook(currency_pair const& cp) const
 {
   const ticker_data tdata = tickers_subscribed_.at(cp);
   return *dynamic_cast<bitstamp_order_book*>(tdata.orderbook_);
@@ -280,7 +280,7 @@ bool bitstamp_network::can_send(currency& c, exchange* dest)
 }
 
 // ----------------------------------------------------------------------------
-double bitstamp_network::get_fee_percent(const currency_type& c1, const currency_type& c2)
+double bitstamp_network::get_fee_percent(currency_type const& c1, currency_type const& c2)
 {
   std::pair<std::string, std::string> cpair;
   if (c1 == currency_type::xrp)
@@ -296,7 +296,7 @@ double bitstamp_network::get_fee_percent(const currency_type& c1, const currency
 }
 
 // ----------------------------------------------------------------------------
-double bitstamp_network::get_fee_fixed(const currency_type& c1, const currency_type& c2)
+double bitstamp_network::get_fee_fixed(currency_type const& c1, currency_type const& c2)
 {
   return 0.0;
 }
@@ -540,10 +540,10 @@ void bitstamp_network::handle_open_orders(std::string&& data)
   trades.clear();
   //
   nlohmann::json jdata = json::parse(data);
-  for (const auto& [key, val] : jdata.items())
+  for (auto const& [key, val] : jdata.items())
   {
     const std::string jstring = val[std::string_view("currency_pair")];
-    const auto& [c1, c2] = get_currency_pair(jstring);
+    auto const& [c1, c2] = get_currency_pair(jstring);
 
     double amount = std::stod(JCHARP(val["amount"]));
     double price = std::stod(JCHARP(val["price"]));
@@ -776,10 +776,10 @@ void bitstamp_network::request_tickers_available()
 void bitstamp_network::receive_tickers_available(std::string&& data)
 {
   nlohmann::json jdata = json::parse(data);
-  for (const auto& [key, val] : jdata.items())
+  for (auto const& [key, val] : jdata.items())
   {
     json::string_t jstring = val[std::string_view("pair")];
-    const auto& [c1, c2] = get_currency_pair(jstring);
+    auto const& [c1, c2] = get_currency_pair(jstring);
     bitstamp_dbg<1>.debug(str<>("Currency pair"), jstring, c1, c2);
     add_currency_pair(c1, c2);
   }
@@ -873,7 +873,7 @@ void bitstamp_network::place_buy_sell_orders(
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::ticker_subscribe(const currency& c1, const currency& c2)
+void bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
 {
   // exit if this exchange has already subscribed to this ticker
   std::string cps = currency_pair_string({c1, c2});
@@ -1001,7 +1001,7 @@ void bitstamp_network::new_ohlc_data_event(ticker_data* tdata, double old_res)
   //
   // get all available candle resolutions, except highest res
   // since we we use that one to generate all the others
-  const auto& resolutions = ohlc_data_resolutions::available_resolutions();
+  auto const& resolutions = ohlc_data_resolutions::available_resolutions();
   for (size_t i = 1; i < resolutions.size(); ++i)
   {
     auto const& res = resolutions[i];

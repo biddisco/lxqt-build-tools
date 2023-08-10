@@ -39,7 +39,7 @@ class timebased_chart_data : public QwtArraySeriesData<DataType>
     return result;
   }
 
-  inline void append(const DataType& data)
+  inline void append(DataType const& data)
   {
     m_samples += data;
   }

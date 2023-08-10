@@ -131,7 +131,7 @@ bool xrpl_network::can_send(currency& c, exchange* dest)
 }
 
 // ----------------------------------------------------------------------------
-const xrpl_order_book& xrpl_network::get_orderbook(currency_pair const& cp) const
+xrpl_order_book const& xrpl_network::get_orderbook(currency_pair const& cp) const
 {
   return *orderbook_;
 }
@@ -140,7 +140,7 @@ const xrpl_order_book& xrpl_network::get_orderbook(currency_pair const& cp) cons
 //bool xrpl_network::websocket_connect(net::contexts& io_contexts, streams_vector const& streams)
 //{
 //  bool ok = true;
-//  for (const auto& s : streams)
+//  for (auto const& s : streams)
 //  {
 //    if (s == network::streams::order_book)
 //      ok &= subscribe_orderbook(io_contexts);
@@ -155,7 +155,7 @@ const xrpl_order_book& xrpl_network::get_orderbook(currency_pair const& cp) cons
 //  net::contexts& /*io_contexts*/, streams_vector const& streams)
 //{
 //  bool ok = true;
-//  for (const auto& s : streams)
+//  for (auto const& s : streams)
 //  {
 //    if (s == network::streams::order_book)
 //      ws_orderbook->shutdown_blocking();
@@ -181,7 +181,7 @@ void xrpl_network::shut_down()
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::add_wallet(const ledger_wallet& w)
+void xrpl_network::add_wallet(ledger_wallet const& w)
 {
   subscribed_wallets_.push_back(w);
 }
@@ -223,7 +223,7 @@ bool xrpl_network::subscribe_accounts(net::contexts& io_contexts)
 {
   using namespace std::placeholders;
   std::string addresses;
-  for (const auto& w : subscribed_wallets_)
+  for (auto const& w : subscribed_wallets_)
   {
     if (addresses.size())
       addresses += ", ";
@@ -272,7 +272,7 @@ void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
     nlohmann::json jdata = json::parse(data);
     xrpnet_dbg<5>.debug(str<>("Account changes"), jdata.dump(4));
     nlohmann::json adata = jdata["meta"]["AffectedNodes"];
-    for (const auto& a : adata)
+    for (auto const& a : adata)
     {
       //            try {
       xrpnet_dbg<0>.debug(str<>("AffectedNode"), jdata.dump(4));
@@ -408,7 +408,7 @@ void xrpl_network::update_XRP_balance(std::string_view addr, double oldb, double
 
 // ----------------------------------------------------------------------------
 // an IOU update sets the new balance directly - it does not add/subtract
-void xrpl_network::update_IOU_balance(std::string_view addr, const currency& curr)
+void xrpl_network::update_IOU_balance(std::string_view addr, currency const& curr)
 {
   auto it = get_currency(addr, curr.type_);
   if (it == std::vector<currency>::iterator(nullptr))
@@ -425,7 +425,7 @@ void xrpl_network::update_IOU_balance(std::string_view addr, const currency& cur
 }
 
 // ----------------------------------------------------------------------------
-OB::Belle::Request setup_request(const std::string& host, nlohmann::json& content)
+OB::Belle::Request setup_request(std::string const& host, nlohmann::json& content)
 {
   using namespace OB;
   Belle::Request req;
@@ -507,7 +507,7 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string&& data)
   xrpnet_dbg<5>.debug(str<>("account lines"), jdata.dump(4));
   std::vector<xrp_amount> balances = jdata.get<std::vector<xrp_amount>>();
   //
-  for (const auto& b : balances)
+  for (auto const& b : balances)
   {
     // @TODO, do not hardcode USD
     if (b.currency == currency_type::usd_bitstamp)
@@ -683,7 +683,7 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string&& data)
     return;
   //
   w.offers_.clear();
-  for (const auto& offer : offers)
+  for (auto const& offer : offers)
   {
     //
     xrp_amount taker_get;
@@ -881,7 +881,7 @@ void xrpl_network::cancel_order(trade_data const& t)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::query_iou_fee(const issued_currency& c1)
+void xrpl_network::query_iou_fee(issued_currency const& c1)
 {
   if (currency_fees_.find(c1.issuer_) != currency_fees_.end())
   {
@@ -916,19 +916,19 @@ void xrpl_network::query_iou_fee(const issued_currency& c1)
 }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_transfer_fee(const currency& c1)
+double xrpl_network::get_transfer_fee(currency const& c1)
 {
   return currency_fees_[c1.curr_.issuer_];
 }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_fee_percent(const currency_type& c1, const currency_type& c2)
+double xrpl_network::get_fee_percent(currency_type const& c1, currency_type const& c2)
 {
   return 0.0;
 }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_fee_fixed(const currency_type& c1, const currency_type& c2)
+double xrpl_network::get_fee_fixed(currency_type const& c1, currency_type const& c2)
 {
   return 0.0;
 }

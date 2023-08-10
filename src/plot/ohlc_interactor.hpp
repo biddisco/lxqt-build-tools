@@ -41,7 +41,7 @@ class QWT_EXPORT ohlc_interactor : public QObject
   void setAbortKey(int key, Qt::KeyboardModifiers = Qt::NoModifier);
   void getAbortKey(int& key, Qt::KeyboardModifiers&) const;
 
-  void setCursor(const QCursor&);
+  void setCursor(QCursor const&);
   const QCursor cursor() const;
 
   void setOrientations(Qt::Orientations);

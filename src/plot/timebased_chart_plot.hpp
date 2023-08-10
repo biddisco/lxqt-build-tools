@@ -54,5 +54,5 @@ class timebased_chart_plot : public QwtPlot
   void timeAxisChanged(double, double, bool);
 
   public slots:
-  void onCrossHairsMoved(const QPointF&);
+  void onCrossHairsMoved(QPointF const&);
 };

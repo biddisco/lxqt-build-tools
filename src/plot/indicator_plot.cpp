@@ -138,7 +138,7 @@ void indicator_plot::update_time_axis(double t1, double t2, bool emit_signal)
 
 // ----------------------------------------------------------------------------
 void indicator_plot::add_asset_curve(
-  const QString& title, const QVector<QPointF>& samples, const QColor& color)
+  QString const& title, QVector<QPointF> const& samples, QColor const& color)
 {
   auto m_curve = new QwtPlotCurve(title);
   m_curve->setYAxis(QwtPlot::yRight);

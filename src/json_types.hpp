@@ -21,7 +21,7 @@ struct ohlc : QwtOHLCSample
 {
   //
   ohlc() = default;
-  ohlc(const QwtOHLCSample& other)
+  ohlc(QwtOHLCSample const& other)
     : QwtOHLCSample(other.time, other.open, other.high, other.low, other.close, other.volume)
   {
   }
@@ -31,7 +31,7 @@ Q_DECLARE_METATYPE(ohlc)
 Q_DECLARE_METATYPE(std::vector<ohlc>*)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ohlc, time, open, high, low, close, volume);
 
-std::ostream& operator<<(std::ostream& os, const QwtOHLCSample&);
+std::ostream& operator<<(std::ostream& os, QwtOHLCSample const&);
 
 // ----------------------------------------------------------------------------
 // bitstamp websocket ticker data
@@ -148,18 +148,18 @@ struct xrpl_offer
 
   // we do not need to compare all fields when modifying XRP leddger offers
   // as the book directory is unique per offer node
-  bool operator==(const xrpl_offer& other) const
+  bool operator==(xrpl_offer const& other) const
   {
     return BookDirectory == other.BookDirectory;
   }
 
-  bool operator<(const xrpl_offer& other) const
+  bool operator<(xrpl_offer const& other) const
   {
     return (rate() < other.rate()) ||
       ((std::fabs(rate() - other.rate()) < 1E-6) && owner_funds > other.owner_funds);
   }
 
-  bool operator>(const xrpl_offer& other) const
+  bool operator>(xrpl_offer const& other) const
   {
     return (rate() > other.rate()) ||
       ((std::fabs(rate() - other.rate()) < 1E-6) && owner_funds > other.owner_funds);
@@ -179,9 +179,9 @@ struct xrpl_offer
   }
 };
 
-std::ostream& operator<<(std::ostream& os, const xrpl_offer&);
-std::ostream& operator<<(std::ostream& os, const xrp_amount&);
+std::ostream& operator<<(std::ostream& os, xrpl_offer const&);
+std::ostream& operator<<(std::ostream& os, xrp_amount const&);
 
-void to_json(json& j, const xrp_amount& p);
-void from_json(const nlohmann::json& j, xrp_amount& p);
-void from_json(const nlohmann::json& j, xrpl_offer& p);
+void to_json(json& j, xrp_amount const& p);
+void from_json(nlohmann::json const& j, xrp_amount& p);
+void from_json(nlohmann::json const& j, xrpl_offer& p);

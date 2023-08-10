@@ -54,7 +54,7 @@ bool is_bad_char(const char c)
 }
 
 //-----------------------------------------------------------------------------
-std::vector<std::string> all_copies_using_ripple_alphabet(const std::vector<std::string>& words)
+std::vector<std::string> all_copies_using_ripple_alphabet(std::vector<std::string> const& words)
 {
   std::vector<std::string> result;
   //
@@ -110,7 +110,7 @@ std::size_t findkey(std::size_t iterations)
   using namespace ranges;
   using namespace ripple;
 
-  auto filewrite_func = [&](const Seed& newSeed, std::string_view pub_str) {
+  auto filewrite_func = [&](Seed const& newSeed, std::string_view pub_str) {
     auto const sec_str = toBase58(newSeed);
     auto t = std::time(nullptr);
     auto tm = *std::localtime(&t);

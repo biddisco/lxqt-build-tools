@@ -110,16 +110,16 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // return the order book for this exchange
-  const bitstamp_order_book& get_orderbook(currency_pair const& cp) const;
+  bitstamp_order_book const& get_orderbook(currency_pair const& cp) const;
 
   // ---------------------------------------
   // init connections/websockets etc
-  bool subscribe_live_trades(const currency_pair& cp, net::contexts& io_contexts, bool enable);
-  bool subscribe_order_book(const currency_pair& cp, net::contexts& io_contexts, bool enable);
-  bool subscribe_my_trades(const currency_pair& cp, net::contexts& io_contexts, bool enable);
-  bool subscribe_my_orders(const currency_pair& cp, net::contexts& io_contexts, bool enable);
-  //  bool unsubscribe_my_trades(const currency_pair& cp);
-  //  bool unsubscribe_my_orders(const currency_pair& cp);
+  bool subscribe_live_trades(currency_pair const& cp, net::contexts& io_contexts, bool enable);
+  bool subscribe_order_book(currency_pair const& cp, net::contexts& io_contexts, bool enable);
+  bool subscribe_my_trades(currency_pair const& cp, net::contexts& io_contexts, bool enable);
+  bool subscribe_my_orders(currency_pair const& cp, net::contexts& io_contexts, bool enable);
+  //  bool unsubscribe_my_trades(currency_pair const& cp);
+  //  bool unsubscribe_my_orders(currency_pair const& cp);
 
   streams_vector websocket_streams() override
   {
@@ -183,9 +183,9 @@ class bitstamp_network : public exchange
   // function called from websocket subscription to live orderbook data
   static void new_orderbook_data(bitstamp_network*, currency_pair const cp, std::string_view);
 
-  double get_fee_percent(const currency_type& c1, const currency_type& c2) override;
-  double get_fee_fixed(const currency_type& c1, const currency_type& c2) override;
-  double get_transfer_fee(const currency& /*c1*/) override
+  double get_fee_percent(currency_type const& c1, currency_type const& c2) override;
+  double get_fee_fixed(currency_type const& c1, currency_type const& c2) override;
+  double get_transfer_fee(currency const& /*c1*/) override
   {
     return 0;
   }
@@ -195,7 +195,7 @@ class bitstamp_network : public exchange
   void request_tickers_available();
   void receive_tickers_available(std::string&& data);
 
-  void ticker_subscribe(const currency& c1, const currency& c2) override;
+  void ticker_subscribe(currency const& c1, currency const& c2) override;
 
   //
   void receive_ohlc_data(ticker_data*, std::string&&);

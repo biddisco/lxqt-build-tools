@@ -268,7 +268,7 @@ namespace grox::debug {
       : data_(v)
     {
     }
-    str(const std::string& v)
+    str(std::string const& v)
       : data_(v.c_str())
     {
     }

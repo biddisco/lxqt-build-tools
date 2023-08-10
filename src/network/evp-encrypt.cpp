@@ -18,7 +18,7 @@
 //
 #include "evp-encrypt.hpp"
 
-encryption::encryption(const secure_string& passphrase, secure_string& randbytes)
+encryption::encryption(secure_string const& passphrase, secure_string& randbytes)
 {
   // copy the passphrase into the key block until N chars are done
   // wrap around the passphrase if N>len(passphrase)
@@ -45,21 +45,21 @@ encryption::~encryption()
   OPENSSL_cleanse(iv, encryption::BLOCK_SIZE);
 }
 
-secure_string encryption::encrypt(const secure_string& input)
+secure_string encryption::encrypt(secure_string const& input)
 {
   secure_string result("");
   aes_encrypt(key, iv, input, result);
   return result;
 }
 
-secure_string encryption::decrypt(const secure_string& input)
+secure_string encryption::decrypt(secure_string const& input)
 {
   secure_string result("");
   aes_decrypt(key, iv, input, result);
   return result;
 }
 
-secure_string encryption::CalcHmacSHA256(const secure_string& key, const secure_string& msg)
+secure_string encryption::CalcHmacSHA256(secure_string const& key, secure_string const& msg)
 {
   std::array<unsigned char, EVP_MAX_MD_SIZE> hash;
   unsigned int hashLen;
@@ -72,7 +72,7 @@ secure_string encryption::CalcHmacSHA256(const secure_string& key, const secure_
 }
 
 void aes_encrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption::BLOCK_SIZE],
-  const secure_string& ptext, secure_string& ctext)
+  secure_string const& ptext, secure_string& ctext)
 {
   EVP_CIPHER_CTX_free_ptr ctx(EVP_CIPHER_CTX_new(), ::EVP_CIPHER_CTX_free);
   int rc = EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_cbc(), NULL, key, iv);
@@ -98,7 +98,7 @@ void aes_encrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption:
 }
 
 void aes_decrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption::BLOCK_SIZE],
-  const secure_string& ctext, secure_string& rtext)
+  secure_string const& ctext, secure_string& rtext)
 {
   EVP_CIPHER_CTX_free_ptr ctx(EVP_CIPHER_CTX_new(), ::EVP_CIPHER_CTX_free);
   int rc = EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_cbc(), NULL, key, iv);

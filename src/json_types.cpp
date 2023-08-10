@@ -8,7 +8,7 @@
 #include "json_types.hpp"
 #include "nlohmann/json.hpp"
 
-std::ostream& operator<<(std::ostream& os, const QwtOHLCSample& x)
+std::ostream& operator<<(std::ostream& os, QwtOHLCSample const& x)
 {
 #if 0
     os << "Time: "   << x.time << " "
@@ -28,7 +28,7 @@ std::ostream& operator<<(std::ostream& os, const QwtOHLCSample& x)
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const xrp_amount& x)
+std::ostream& operator<<(std::ostream& os, xrp_amount const& x)
 {
   os << "Value: " << x.value << " "
      << "Currency: ";
@@ -45,7 +45,7 @@ std::ostream& operator<<(std::ostream& os, const xrp_amount& x)
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const xrpl_offer& x)
+std::ostream& operator<<(std::ostream& os, xrpl_offer const& x)
 {
   os << "Account: " << x.Account << " "
      << "BookDirectory: " << x.BookDirectory << " "
@@ -92,7 +92,7 @@ using nlohmann::json;
 //NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_order_book, bids, asks, timestamp, microtimestamp);
 
 // Due to std::optional, we must provide serialization ourselves
-//void to_json(json& j, const xrp_amount& p) {
+//void to_json(json& j, xrp_amount const& p) {
 //    j = json{ {"currency", p.currency},
 //              {"value", p.value} };
 //    if (p.issuer != std::nullopt)
@@ -118,7 +118,7 @@ using nlohmann::json;
     "value": "63.8354397"
 */
 
-void from_json(const nlohmann::json& j, xrp_amount& p)
+void from_json(nlohmann::json const& j, xrp_amount& p)
 {
   // if this is a simple value (just plain XRP amount)
   if (j.size() == 1)
@@ -162,7 +162,7 @@ void from_json(const nlohmann::json& j, xrp_amount& p)
   }
 }
 
-void from_json(const nlohmann::json& j, xrpl_offer& p)
+void from_json(nlohmann::json const& j, xrpl_offer& p)
 {
   bool ok = true;
   p.funded_offer = -1;

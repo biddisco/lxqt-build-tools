@@ -668,9 +668,9 @@ void GroxMainWindow::saveConnectionSetups()
   // Start "Tickers" section and remove all existing values
   settings.beginGroup("Tickers");
   settings.remove("");
-  for (const auto& e : exchange_list_)
+  for (auto const& e : exchange_list_)
   {
-    for (const auto& t : e->tickers_subscribed())
+    for (auto const& t : e->tickers_subscribed())
     {
       std::string key = std::string(e->name()) + "/" + currency_pair_string(t.first);
       settings.setValue(key.c_str(), true);
@@ -682,7 +682,7 @@ void GroxMainWindow::saveConnectionSetups()
   // Start "Streams" section and remove all existing values
   settings.beginGroup("Streams");
   settings.remove("");
-  for (const auto& e : exchange_list_)
+  for (auto const& e : exchange_list_)
   {
     // begin exchange group
     settings.beginGroup(QString(e->name().data()));
@@ -691,14 +691,14 @@ void GroxMainWindow::saveConnectionSetups()
     auto streams = e->websocket_streams();
 
     // for each ticker we are subscribed to
-    for (const auto& t : e->tickers_subscribed())
+    for (auto const& t : e->tickers_subscribed())
     {
       // begin ticker group
       std::string key = currency_pair_string(t.first);
       settings.beginGroup(QString(key.data()));
 
       // for each stream available
-      for (const auto& s : streams)
+      for (auto const& s : streams)
       {
         std::string key = stream_to_text(s);
         main_dbg<6>.debug(str<>("Stream subscribed?"), settings.group().toStdString(), key);
@@ -722,7 +722,7 @@ void GroxMainWindow::loadConnectionSetups()
 
   // ------------------------------------
   settings.beginGroup("Tickers");
-  for (const auto& e : exchange_list_)
+  for (auto const& e : exchange_list_)
   {
     settings.beginGroup(QString(e->name().data()));
     QStringList childKeys = settings.childKeys();
@@ -743,7 +743,7 @@ void GroxMainWindow::loadConnectionSetups()
 
   // ------------------------------------
   settings.beginGroup("Streams");
-  for (const auto& e : exchange_list_)
+  for (auto const& e : exchange_list_)
   {
     // begin exchange group
     settings.beginGroup(QString(e->name().data()));
@@ -752,14 +752,14 @@ void GroxMainWindow::loadConnectionSetups()
     auto streams = e->websocket_streams();
 
     // for each ticker we are subscribed to
-    for (const auto& t : e->tickers_subscribed())
+    for (auto const& t : e->tickers_subscribed())
     {
       // begin ticker group
       std::string key = currency_pair_string(t.first);
       settings.beginGroup(QString(key.data()));
 
       // for each available stream
-      for (const auto& s : streams)
+      for (auto const& s : streams)
       {
         // begin stream group
         std::string key = stream_to_text(s);
@@ -836,7 +836,7 @@ void GroxMainWindow::loadWindowSettings()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::stream_process(const QwtOHLCSample& ohlc)
+void GroxMainWindow::stream_process(QwtOHLCSample const& ohlc)
 {
   main_dbg<0>.debug(str<>("New data"), msecs_unix_to_calendar_time(ohlc.time), ohlc);
   //    df_.process(ohlc);
@@ -896,7 +896,7 @@ void GroxMainWindow::execute_filter()
 
     // initialize an ohlc input object with the first dataset value
     input_value<QwtOHLCSample> ohlc_in(data->data().front());
-    pipeline::input<const QwtOHLCSample&> ohlc_input = std::ref(ohlc_in);
+    pipeline::input<QwtOHLCSample const&> ohlc_input = std::ref(ohlc_in);
 
     // initialize a time input object
     input_value<double> time_in(data->data().front().time);
@@ -1102,7 +1102,7 @@ void GroxMainWindow::createPerspectives_Ui()
   }
   //
   perspectives_menu_->clear();
-  for (const QString& name : app_ini->dock_manager_->perspectiveNames())
+  for (QString const& name : app_ini->dock_manager_->perspectiveNames())
   {
     QAction* LoadPerspectiveAction = new QAction(name);
     LoadPerspectiveAction->setCheckable(true);
@@ -1127,7 +1127,7 @@ void GroxMainWindow::savePerspective()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::openPerspective(const QString& name)
+void GroxMainWindow::openPerspective(QString const& name)
 {
   app_settings* app_ini = global_settings();
   active_perspective_ = name;

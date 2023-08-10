@@ -27,7 +27,7 @@ class indicator_plot : public timebased_chart_plot
   ~indicator_plot();
   //
   void update_time_axis(double t1, double t2, bool emit_signal = false) override;
-  void add_asset_curve(const QString& title, const QVector<QPointF>& samples, const QColor& color);
+  void add_asset_curve(QString const& title, QVector<QPointF> const& samples, QColor const& color);
 
   private Q_SLOTS:
   void showItem(QwtPlotItem*, bool on);

@@ -148,11 +148,11 @@ struct xrpl_order_book : order_book_base
 
   void accept_json_ledger_transaction(std::string_view data);
 
-  bool update_offer(const xrpl_offer& prev_offer, xrpl_offer& final_offer, double owner_funds = -1);
+  bool update_offer(xrpl_offer const& prev_offer, xrpl_offer& final_offer, double owner_funds = -1);
 
-  bool insert_offer(const xrpl_offer& offer);
+  bool insert_offer(xrpl_offer const& offer);
 
-  bool delete_offer(const xrpl_offer& offer);
+  bool delete_offer(xrpl_offer const& offer);
 
   enum node_edit
   {
@@ -161,5 +161,5 @@ struct xrpl_order_book : order_book_base
     deleted
   };
 
-  void handle_offer_change(const nlohmann::json& trans, const nlohmann::json& affected);
+  void handle_offer_change(nlohmann::json const& trans, nlohmann::json const& affected);
 };

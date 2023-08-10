@@ -45,9 +45,9 @@ class ohlc_dataset_manager
   void read_hdf5(std::string group, std::string dataname, QVector<QwtOHLCSample>& data);
 
   // write out data to hdf5
-  void write_hdf5(std::string group, std::string dataname, const QVector<QwtOHLCSample>& samples,
+  void write_hdf5(std::string group, std::string dataname, QVector<QwtOHLCSample> const& samples,
     const uint64_t update, bool truncate);
 
   std::shared_ptr<ohlc_dataset_view> create_dataset_view(
-    std::string exchange, const currency& c1, const currency& c2);
+    std::string exchange, currency const& c1, currency const& c2);
 };

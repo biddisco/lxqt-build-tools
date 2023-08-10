@@ -83,7 +83,7 @@ bool is_xrp(currency_type c)
 }
 
 // ----------------------------------------------------------------------------
-std::pair<std::string, std::string> to_string(const currency_type& t)
+std::pair<std::string, std::string> to_string(currency_type const& t)
 {
   switch (t)
   {
@@ -112,7 +112,7 @@ std::pair<std::string, std::string> to_string(const currency_type& t)
 }
 
 // ----------------------------------------------------------------------------
-std::pair<std::string, std::string> to_string(const currency& t)
+std::pair<std::string, std::string> to_string(currency const& t)
 {
   switch (t.type_)
   {
@@ -142,14 +142,14 @@ std::pair<std::string, std::string> to_string(const currency& t)
 }
 
 // ----------------------------------------------------------------------------
-std::string currency_pair_string(const currency_pair& p, std::string_view sep)
+std::string currency_pair_string(currency_pair const& p, std::string_view sep)
 {
   std::string str = std::get<0>(p).curr_.code_ + std::string(sep) + std::get<1>(p).curr_.code_;
   return str;
 }
 
 // ----------------------------------------------------------------------------
-std::string currency_pair_lowercase_string(const currency_pair& p)
+std::string currency_pair_lowercase_string(currency_pair const& p)
 {
   std::string str = std::get<0>(p).curr_.code_ + std::get<1>(p).curr_.code_;
   lowercase_i(str);
@@ -172,14 +172,14 @@ currency_pair string_to_pair(std::string_view s, std::string_view delim)
 }
 
 // ----------------------------------------------------------------------------
-std::ostream& operator<<(std::ostream& os, const currency_type& t)
+std::ostream& operator<<(std::ostream& os, currency_type const& t)
 {
   os << to_string(t).first;
   return os;
 }
 
 // ----------------------------------------------------------------------------
-std::ostream& operator<<(std::ostream& os, const currency& c)
+std::ostream& operator<<(std::ostream& os, currency const& c)
 {
   os << c.curr_.code_ << "(" << c.curr_.issuer_ << ")" << c.balance_;
   return os;
