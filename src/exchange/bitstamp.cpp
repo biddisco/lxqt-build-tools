@@ -983,7 +983,7 @@ void bitstamp_network::receive_ohlc_data(ticker_data* tdata, std::string&& data)
     bitstamp_dbg<0>.debug(str<>("data merged up to"), tdata->view_->get_ticker_string(),
       msecs_unix_to_calendar_time(last_time));
     tdata->view_->delete_live_data_up_to(last_time);
-    tdata->chart_widget_->replot();
+    tdata->chart_widget_->update();
     //
     emit new_ohlc_data(tdata, ohlc_data_resolutions::minute);
   }
