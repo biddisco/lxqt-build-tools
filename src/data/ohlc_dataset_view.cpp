@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 //
 #include <QInputDialog>
@@ -114,10 +115,11 @@ void ohlc_dataset_view::delete_live_data_up_to(double msecs)
   std::lock_guard l(live_mutex_);
   ohlc_chart_data* live_samples = get_live_data();
   QVector<QwtOHLCSample>& live_data = live_samples->data();
-  if (live_data.size() > 0)
+  auto pos = std::remove_if(live_data.begin(), live_data.end(),
+    [msecs](QwtOHLCSample& ohlc) { return ohlc.time <= msecs; });
+  if (pos != live_data.end())
   {
-    auto index = live_samples->sample_index(msecs);
-    live_data.erase(live_data.begin(), live_data.begin() + index);
+    live_data.erase(pos);
   }
 }
 
@@ -278,7 +280,7 @@ ohlc_chart_curve* ohlc_dataset_view::get_live_curve()
 }
 
 // ----------------------------------------------------------------------------
-bool ohlc_dataset_view::add_live_data(QwtOHLCSample new_sample)
+void ohlc_dataset_view::add_live_data(QwtOHLCSample new_sample)
 {
   // snap sample to last minute in which it occured
   new_sample.time =
@@ -290,30 +292,31 @@ bool ohlc_dataset_view::add_live_data(QwtOHLCSample new_sample)
   if (live_samples->size() == 0)
   {
     live_samples->append(new_sample);
-    // return true as new candle is being started
-    return true;
+    return;
   }
 
-  // update existing OHLC candle with new data
-  size_t index = live_samples->sample_index(new_sample.time);
-  if (index >= live_samples->size())
+  // if new sample is part of last candle, update it
+  if (live_samples->data().back().time == new_sample.time)
   {
-    // if there are gaps between incoming data, fill them with last close
+    auto& prev = live_samples->data().back();
+    update_QwtOHLCSample(prev, new_sample);
+  }
+  // extend the series with candles to ensure there are no gaps
+  // (gaps can cause index computations to be wrong)
+  else
+  {
     auto prev = live_samples->data().back();
     prev.high = prev.low = prev.open = prev.close;
-    for (size_t s = live_samples->size(); s <= index; ++s)
+    prev.volume = 0;
+    while (prev.time < new_sample.time)
     {
       prev.time += ohlc_data_resolutions::minute;
-      live_samples->append(prev);
-    }
-    // return true as new candle is being started
-    return true;
+      if (prev.time == new_sample.time)
+        live_samples->append(new_sample);
+      else
+        live_samples->append(prev);
+    };
   }
-
-  auto& old_sample = live_samples->data()[index];
-  update_QwtOHLCSample(old_sample, new_sample);
-  // adding to an existing candle
-  return false;
 }
 
 // ----------------------------------------------------------------------------
