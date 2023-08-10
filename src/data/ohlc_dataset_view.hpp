@@ -70,7 +70,7 @@ class ohlc_dataset_view
   void delete_live_data_up_to(double msecs);
   // add a new trade sample to build live OHLC candles, returns true when
   // a new candle is started, false when one is (only) updated
-  bool add_live_data(QwtOHLCSample new_sample);
+  void add_live_data(QwtOHLCSample new_sample);
   ohlc_chart_curve* get_live_curve();
 
   // Get the min/max OHLC values for a given time range
