@@ -375,27 +375,15 @@ void ohlc_price_plot::update_time_axis(double t1, double t2, bool emit_signal)
   // scale change might trigger a candle resolution update
   if (auto_candle_resolution())
   {
-    // when candle resolution changes, the high/low values of candles do not
-    // change, so the scale is ok, but the volume bars are wrong, so
-    // recompute the volume min/max if the candle size changes
-    // recompute scaling so we can get the correct candle size
-    if (adjust_candle_size(0))
-    {
-      candles_changed = true;
-      minmax = ohlc_dataset_view_->get_min_max_window(get_candle_resolution(), t1, t2, 0.05);
-      setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
-    }
+    adjust_candle_size(0);
   }
-
-  if (!candles_changed)
-  {
-    minmax = ohlc_dataset_view_->get_min_max_window(get_candle_resolution(), t1, t2, 0.05);
-  }
+  minmax = ohlc_dataset_view_->get_min_max_window(get_candle_resolution(), t1, t2, 0.05);
 
   // update the Y price axis with min max
   setAxisScale(QwtAxis::YRight, minmax.min_price_, minmax.max_price_);
 
-  // update the Y volume axis with min max
+  // update the Y volume axis with min max (candle res changes might change
+  // volume bars as they sum more/less data)
   setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
 
   plot_dbg<8>.debug(str<>("min_max"),
