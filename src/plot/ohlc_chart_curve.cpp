@@ -105,7 +105,7 @@ void ohlc_chart_curve::drawSeries(QPainter* painter, QwtScaleMap const& xMap,
   QwtScaleMap ymap = plot_->canvasMap(QwtPlot::yLeft);
   drawVolume(painter, xMap, ymap, canvasRect, from, to);
 
-  // Heikin Ashi uses a movingg average, so the first point needs special treatment
+  // Heikin Ashi uses a moving average, so the first point needs special treatment
   start_heikin = true;
 
   if (symbolStyle() != QwtPlotTradingCurve::NoSymbol)
@@ -116,7 +116,7 @@ void ohlc_chart_curve::drawSeries(QPainter* painter, QwtScaleMap const& xMap,
 
 // ----------------------------------------------------------------------------
 // Note that to draw Heikin Ashi candles, we do not need to override the
-// DrawUSerSymbol method, because the candles are the same shape/size as normal
+// DrawUserSymbol method, because the candles are the same shape/size as normal
 // candles - we just need to modifiy the open/close/low/high vars to handle the
 // averaging as we iterate.
 void ohlc_chart_curve::drawSymbols(QPainter* painter, QwtScaleMap const& xMap,
@@ -203,7 +203,7 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter, QwtScaleMap const& xMap,
 
 // ----------------------------------------------------------------------------
 // Note that to draw Heikin Ashi candles, we do not need to override the
-// DrawUSerSymbol method, because the candles are the same shape/size as normal
+// DrawUserSymbol method, because the candles are the same shape/size as normal
 // candles - we just need to modifiy the open/close/low/high vars to handle the
 // averaging as we iterate.
 void ohlc_chart_curve::drawVolume(QPainter* painter, QwtScaleMap const& xMap,
