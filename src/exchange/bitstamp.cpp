@@ -1035,7 +1035,7 @@ void bitstamp_network::update_ticker_data(currency_pair cp, ticker_data* tdata)
   {
     // if no data exists, we use an arbitrary start date in 2017
     // linux time 1496275200 = Thu Jun 01 2017 00:00:00 GMT+0000
-    start_t_ms = 1496275200 * 1000;
+    start_t_ms = 1496275200ul * 1000;
     std::string s = msecs_unix_to_calendar_time(start_t_ms);
     bitstamp_dbg<0>.debug(str<>("No Data"), ticker_lowercase, "requesting from", s);
   }
