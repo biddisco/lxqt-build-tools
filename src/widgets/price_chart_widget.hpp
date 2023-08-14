@@ -91,6 +91,8 @@ class price_chart_widget : public QWidget
     crypto_price_plot_->replot();
   }
 
+  void show_plot_axes();
+
   std::tuple<indicator_plot*, QwtPlotCurve*> add_indicator_plot(
     QString const& title, QVector<QPointF> const& samples, QColor const& color);
 

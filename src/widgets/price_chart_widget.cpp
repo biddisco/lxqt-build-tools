@@ -380,6 +380,35 @@ void price_chart_widget::showEvent(QShowEvent* event)
 }
 
 // ----------------------------------------------------------------------------
+void price_chart_widget::show_plot_axes()
+{
+  // turn on x axis lables for bottom graph (all graphs have same time axis)
+  if (filter_plots_.size() == 0)
+  {
+    crypto_price_plot_->enableAxis(QwtPlot::xBottom, true);
+    crypto_price_plot_->get_crosshairs()->enableDateLabel(true);
+  }
+  else
+  {
+    // hide x axis and crosshair date/time label for principal plot
+    crypto_price_plot_->enableAxis(QwtPlot::xBottom, false);
+    crypto_price_plot_->get_crosshairs()->enableDateLabel(false);
+
+    // get the last indicator plot and make it's xaxis+label visible
+    auto it = filter_plots_.rbegin();
+    (*it)->enableAxis(QwtPlot::xBottom, true);
+    (*it)->get_crosshairs()->enableDateLabel(true);
+
+    // hide the xaxis+label for other indicators
+    for (it++; it != filter_plots_.rend(); ++it)
+    {
+      (*it)->enableAxis(QwtPlot::xBottom, false);
+      (*it)->get_crosshairs()->enableDateLabel(false);
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
 std::tuple<indicator_plot*, QwtPlotCurve*> price_chart_widget::add_indicator_plot(
   QString const& title, QVector<QPointF> const& samples, QColor const& color)
 {
@@ -412,24 +441,7 @@ std::tuple<indicator_plot*, QwtPlotCurve*> price_chart_widget::add_indicator_plo
   ui->graph_splitter->setStyleSheet("QSplitter::handle{background: #18191b; image: none; }");
   filter_plot->show();
 
-  // turn on x axis lables for bottom graph (all graphs have same time axis)
-  if (filter_plots_.size() == 0)
-  {
-    crypto_price_plot_->enableAxis(QwtPlot::xBottom, true);
-  }
-  else
-  {
-    crypto_price_plot_->enableAxis(QwtPlot::xBottom, false);
-    // get the last indicator plot
-    auto it = filter_plots_.rbegin();
-    // make it's xaxis visible
-    (*it)->enableAxis(QwtPlot::xBottom, true);
-    // hide the xaxis for other indicators
-    for (it++; it != filter_plots_.rend(); ++it)
-    {
-      (*it)->enableAxis(QwtPlot::xBottom, false);
-    }
-  }
+  show_plot_axes();
 
   connect(
     filter_plot, &indicator_plot::timeAxisChanged, this,
@@ -461,6 +473,7 @@ void price_chart_widget::remove_indicator_plot(indicator_plot* filter_plot, QwtP
       delete filter_plot;
     }
   }
+  show_plot_axes();
 }
 
 // ----------------------------------------------------------------------------
