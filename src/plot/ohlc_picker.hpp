@@ -25,6 +25,7 @@ class ohlc_picker : public QwtPlotPicker
   mutable QPointF last_coord_;
   QwtTextLabel* yaxis_label_;
   QwtTextLabel* date_label_;
+  bool date_label_enabled_;
 
   // declare this inherited function as public
   using QwtPlotPicker::transform;
@@ -34,6 +35,7 @@ class ohlc_picker : public QwtPlotPicker
     , last_coord_(0, 0)
     , yaxis_label_(new QwtTextLabel(canvas->parentWidget()))
     , date_label_(new QwtTextLabel(canvas->parentWidget()))
+    , date_label_enabled_(true)
   {
     timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas->parentWidget());
 
@@ -95,6 +97,11 @@ class ohlc_picker : public QwtPlotPicker
       adjusted += QPoint(quantize_x_screencoord(points[0]).x(), points[0].y());
     }
     return adjusted;
+  }
+
+  void enableDateLabel(bool enable)
+  {
+    date_label_enabled_ = enable;
   }
 
   virtual void updateDisplay() QWT_OVERRIDE
@@ -165,13 +172,18 @@ class ohlc_picker : public QwtPlotPicker
 
     // get size of text that will be drawn
     s = date_text.textSize();
-    // position the label
-    date_label_->setText(date_text);
-    g = date_label_->geometry();
 
-    g.moveTo(
-      xawg.x() + x - s.width() / 2, xawg.y() + xdraw->maxTickLength() + xdraw->spacing() - 1);
-    date_label_->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
+    date_label_->setVisible(date_label_enabled_);
+    if (date_label_enabled_)
+    {
+      // position the label
+      date_label_->setText(date_text);
+      g = date_label_->geometry();
+
+      g.moveTo(
+        xawg.x() + x - s.width() / 2, xawg.y() + xdraw->maxTickLength() + xdraw->spacing() - 1);
+      date_label_->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
+    }
 
     //
     // display the stats of the candle under the cursor
