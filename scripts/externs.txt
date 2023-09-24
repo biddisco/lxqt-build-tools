@@ -1,4 +1,28 @@
-Build Qt-Creator
-https://wiki.qt.io/Building_Qt_Creator_from_Git_on_Ubuntu_22.04
+# Build Qt-Creator
+# https://wiki.qt.io/Building_Qt_Creator_from_Git_on_Ubuntu_22.04
 
-curl https://raw.githubusercontent.com/nlohmann/json/develop/single_include/nlohmann/json.hpp -o ./extern/nlohmann/json.hpp
+# json header only
+# curl https://raw.githubusercontent.com/nlohmann/json/develop/single_include/nlohmann/json.hpp -o ./extern/nlohmann/json.hpp
+
+# update all externs
+cd $HOME/src/grox/extern/HighFive/
+pwd && git branch && git pull
+
+cd $HOME/src/grox/extern/QDarkStyleSheet/
+pwd && git branch && git pull
+
+cd $HOME/src/grox/extern/Qt-Advanced-Docking-System/
+pwd && git branch && git fetch --all && git pull --rebase origin master
+
+cd $HOME/src/grox/extern/belle/
+pwd && git branch && git pull
+
+cd $HOME/src/grox/extern/json/
+pwd && git branch && git pull
+
+cd $HOME/src/grox/extern/qwt
+pwd && git branch && git fa
+
+cd $HOME/src/grox/extern/range-v3/
+pwd && git branch && git pull
+

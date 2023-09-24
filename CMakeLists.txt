@@ -1,6 +1,10 @@
 # ------------------------------------------------------------------------------
 # To build grox, the following might be necessary
 # ------------------------------------------------------------------------------
+# All Qt5 :
+# apt search libqt5 2>&1 | grep "^libqt5.*-dev" | sed 's/\/.*//' | xargs sudo apt -y install
+# sudo apt install qtquickcontrols2-5-dev
+#
 # sudo apt install build-essential libqt5charts5-dev libqt5opengl5-dev libqt5svg5-dev libcurl4-openssl-dev
 # QPlatformNativeInterface requires base-private-dev
 #
