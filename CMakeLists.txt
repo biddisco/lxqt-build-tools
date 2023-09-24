@@ -334,6 +334,7 @@ find_package(Ripple QUIET)
 if(NOT Ripple_FOUND)
   # flag tells rippled not to link to static boost/etc
   set(static FALSE)
+  set(rocksdb FALSE)
   # look in the current source tree
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled/.git)
     message(

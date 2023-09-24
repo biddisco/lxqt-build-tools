@@ -1,0 +1,49 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e04b8cb66c1b..c9febfee22d2 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -280,8 +280,8 @@ endmacro()
+    tests/tools
+ #]===================================================================]
+ 
+-add_subdirectory (bench)
+-add_subdirectory (examples)
+-add_subdirectory (test)
+-add_subdirectory (tools)
++#add_subdirectory (bench)
++#add_subdirectory (examples)
++#add_subdirectory (test)
++#add_subdirectory (tools)
+ 
+diff --git a/include/nudb/CMakeLists.txt b/include/nudb/CMakeLists.txt
+index ff4ff6cd92ed..5d3f004a8890 100644
+--- a/include/nudb/CMakeLists.txt
++++ b/include/nudb/CMakeLists.txt
+@@ -20,6 +20,7 @@ install (
+   FILES
+     basic_store.hpp
+     concepts.hpp
++    context.hpp
+     create.hpp
+     error.hpp
+     file.hpp
+@@ -55,6 +56,7 @@ install (
+ install (
+   FILES
+     impl/basic_store.ipp
++    impl/context.ipp
+     impl/create.ipp
+     impl/error.ipp
+     impl/posix_file.ipp
+@@ -77,9 +79,10 @@ install (
+     detail/gentex.hpp
+     detail/mutex.hpp
+     detail/pool.hpp
++    detail/store_base.hpp
+     detail/stream.hpp
+     detail/xxhash.hpp
+-  DESTINATION include/nudb/impl)
++  DESTINATION include/nudb/detail)
+ install (
+   TARGETS nudb_core
+   EXPORT NuDBExports
