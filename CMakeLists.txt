@@ -36,6 +36,7 @@ cmake_minimum_required(VERSION 3.16)
 cmake_policy(SET CMP0048 NEW)
 cmake_policy(SET CMP0077 NEW)
 cmake_policy(SET CMP0135 NEW)
+cmake_policy(SET CMP0144 NEW)
 
 project(
   GROX
@@ -164,10 +165,11 @@ find_package(fmt)
 # ------------------------------------------------------------------------------
 # Build/Download qwt
 # ------------------------------------------------------------------------------
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/qwt)
+set(LOCAL_QWT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/qwt)
+if(EXISTS ${LOCAL_QWT_DIR})
   message(STATUS "Using QWT in source tree")
   # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_QWT ${CMAKE_CURRENT_SOURCE_DIR}/extern/qwt)
+  set(FETCHCONTENT_SOURCE_DIR_QWT ${LOCAL_QWT_DIR})
   # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_QWT ON)
 endif()
@@ -189,12 +191,13 @@ endif()
 # ------------------------------------------------------------------------------
 # Build/Download Qt-Advanced-Docking-System
 # ------------------------------------------------------------------------------
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/Qt-Advanced-Docking-System)
+set(LOCAL_DOCKING_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/Qt-Advanced-Docking-System
+)
+if(EXISTS ${LOCAL_DOCKING_DIR})
   message(STATUS "Using Qt-Advanced-Docking-System in source tree")
   # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_QTADS
-      ${CMAKE_CURRENT_SOURCE_DIR}/extern/Qt-Advanced-Docking-System
-  )
+  set(FETCHCONTENT_SOURCE_DIR_QTADS ${LOCAL_DOCKING_DIR})
   # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_QTADS ON)
 endif()
@@ -216,12 +219,11 @@ endif()
 # ------------------------------------------------------------------------------
 # Build/Download nlohmann/json
 # ------------------------------------------------------------------------------
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/json)
+set(LOCAL_JSON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/json)
+if(EXISTS ${LOCAL_JSON_DIR})
   message(STATUS "Using json in source tree")
   # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON
-      ${CMAKE_CURRENT_SOURCE_DIR}/extern/json
-  )
+  set(FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON ${LOCAL_JSON_DIR})
   # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_NLOHMANN_JSON ON)
 endif()
@@ -243,12 +245,11 @@ endif()
 # ------------------------------------------------------------------------------
 # Build/Download QDarkStyleSheet
 # ------------------------------------------------------------------------------
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/QDarkStyleSheet)
+set(LOCAL_QDARK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/QDarkStyleSheet)
+if(EXISTS ${LOCAL_QDARK_DIR})
   message(STATUS "Using QDarkStyleSheet in source tree")
   # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_QDARKSTYLESHEET
-      ${CMAKE_CURRENT_SOURCE_DIR}/extern/QDarkStyleSheet
-  )
+  set(FETCHCONTENT_SOURCE_DIR_QDARKSTYLESHEET ${LOCAL_QDARK_DIR})
   # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_QDARKSTYLESHEET ON)
 endif()
@@ -269,12 +270,11 @@ endif()
 # ------------------------------------------------------------------------------
 # Build/Download range-v3 library
 # ------------------------------------------------------------------------------
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/range-v3)
+set(LOCAL_RANGE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/range-v3)
+if(EXISTS ${LOCAL_RANGE_DIR})
   message(STATUS "Using Range-v3 in source tree")
   # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_RANGE-V3
-      ${CMAKE_CURRENT_SOURCE_DIR}/extern/range-v3
-  )
+  set(FETCHCONTENT_SOURCE_DIR_RANGE-V3 ${LOCAL_RANGE_DIR})
   # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_RANGE-V3 ON)
 endif()
@@ -296,17 +296,18 @@ endif()
 # ------------------------------------------------------------------------------
 # Build/Download HighFive hdf5 c++ library
 # ------------------------------------------------------------------------------
+set(LOCAL_HIGHFIVE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/HighFive)
+
 set(HIGHFIVE_UNIT_TESTS
     OFF
     CACHE STRING "HighFive unit testing"
 )
 set(HIGHFIVE_BUILD_DOCS OFF)
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/HighFive)
+
+if(EXISTS ${LOCAL_HIGHFIVE_DIR})
   message(STATUS "Using HighFive in source tree")
   # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_HIGHFIVE
-      ${CMAKE_CURRENT_SOURCE_DIR}/extern/HighFive
-  )
+  set(FETCHCONTENT_SOURCE_DIR_HIGHFIVE ${LOCAL_HIGHFIVE_DIR})
   # don't change branches, or pull
   set(FETCHCONTENT_UPDATES_DISCONNECTED_HIGHFIVE ON)
 endif()
@@ -336,15 +337,11 @@ if(NOT Ripple_FOUND)
   set(static FALSE)
   set(rocksdb FALSE)
   # look in the current source tree
-  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled/.git)
-    message(
-      STATUS
-        "Using rippled in source tree (${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled)"
-    )
+  set(LOCAL_RIPPLED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled)
+  if(EXISTS ${LOCAL_RIPPLED_DIR}/.git)
+    message(STATUS "Using rippled in source tree (${${LOCAL_RIPPLED_DIR}})")
     # use the source in this directory
-    set(FETCHCONTENT_SOURCE_DIR_RIPPLED
-        ${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled
-    )
+    set(FETCHCONTENT_SOURCE_DIR_RIPPLED ${LOCAL_RIPPLED_DIR})
     # don't change branches, or pull
     set(FETCHCONTENT_UPDATES_DISCONNECTED_RIPPLED ON)
     # To setup where Rippled puts its extern projects
@@ -373,13 +370,11 @@ find_package(pika QUIET)
 
 if(NOT pika_FOUND)
   # look in the current source tree
-  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/pika/.git)
-    message(
-      STATUS
-        "Using pika in source tree (${CMAKE_CURRENT_SOURCE_DIR}/extern/pika)"
-    )
+  set(LOCAL_PIKA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/pika)
+  if(EXISTS ${LOCAL_PIKA_DIR}/.git)
+    message(STATUS "Using pika in source tree (${LOCAL_PIKA_DIR})")
     # use the source in this directory
-    set(FETCHCONTENT_SOURCE_DIR_PIKA ${CMAKE_CURRENT_SOURCE_DIR}/extern/pika)
+    set(FETCHCONTENT_SOURCE_DIR_PIKA ${LOCAL_PIKA_DIR})
     # don't change branches, or pull
     set(FETCHCONTENT_UPDATES_DISCONNECTED_PIKA ON)
   endif()
