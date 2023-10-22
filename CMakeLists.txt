@@ -547,6 +547,8 @@ target_link_libraries(
 # ---------------------------------------------------
 set(TEST_INC_DIRS ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+add_subdirectory(test)
+
 # ---------------------------------------------------
 # Vanity address generator
 # ---------------------------------------------------

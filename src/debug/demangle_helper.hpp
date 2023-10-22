@@ -1,22 +1,27 @@
-//  Copyright (c) 2017 John Biddiscombe
-//  Copyright (c) 2007-2012 Hartmut Kaiser
-//
-//  SPDX-License-Identifier: BSL-1.0
-//  Distributed under the Boost Software License, Version 1.0. (See accompanying
-//  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-
-#pragma once
-
-#include <cstdlib>
+#include <memory>
 #include <string>
-#include <type_traits>
 #include <typeinfo>
 
+// gcc and clang both provide this heaader
+#if __has_include(<cxxabi.h>)
+# include <cxxabi.h>
+using cxxabi_supported__ = std::true_type;
+#else
+using cxxabi_supported__ = std::false_type;
+// create some dummmy function to make the compiler happy in the true_type instantiation
+namespace abi {
+  template <typename... Ts>
+  char* __cxa_demangle(Ts... ts)
+  {
+    return nullptr;
+  }
+}    // namespace abi
+#endif
+
 // --------------------------------------------------------------------
-// Always present regardless of compiler : used by serialization code
-// --------------------------------------------------------------------
-namespace hpx { namespace util { namespace debug {
-  template <typename T>
+namespace debug::detail {
+  // default : use built-in typeid to get the best info we can
+  template <typename T, typename Enabled = std::false_type>
   struct demangle_helper
   {
     char const* type_id() const
@@ -24,23 +29,12 @@ namespace hpx { namespace util { namespace debug {
       return typeid(T).name();
     }
   };
-}}}    // namespace hpx::util::debug
 
-#if defined(__GNUG__)
-
-# include <cxxabi.h>
-# include <memory>
-# include <stdlib.h>
-
-// --------------------------------------------------------------------
-// if available : demangle an arbitrary c++ type using gnu utility
-// --------------------------------------------------------------------
-namespace hpx { namespace util { namespace debug {
+  // if available : demangle an arbitrary c++ type using gnu utility
   template <typename T>
-  class cxxabi_demangle_helper
+  struct demangle_helper<T, std::true_type>
   {
-public:
-    cxxabi_demangle_helper()
+    demangle_helper()
       : demangled_{abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, nullptr), std::free}
     {
     }
@@ -51,67 +45,35 @@ public:
     }
 
 private:
-    std::unique_ptr<char, void (*)(void*)> demangled_;
-  };
-
-}}}    // namespace hpx::util::debug
-
-#else
-
-namespace hpx { namespace util { namespace debug {
-  template <typename T>
-  using cxxabi_demangle_helper = demangle_helper<T>;
-}}}    // namespace hpx::util::debug
-
-#endif
-
-///////////////////////////////////////////////////////////////////////////////
-namespace hpx { namespace util { namespace debug {
-  template <typename T>
-  struct type_id
-  {
-    static demangle_helper<T> typeid_;
+    std::unique_ptr<char, decltype(&std::free)> demangled_;
   };
 
   template <typename T>
-  demangle_helper<T> type_id<T>::typeid_ = demangle_helper<T>();
+  using cxx_type_id = demangle_helper<T, cxxabi_supported__>;
+}    // namespace debug::detail
 
-#if defined(__GNUG__)
-  template <typename T>
-  struct cxx_type_id
-  {
-    static cxxabi_demangle_helper<T> typeid_;
-  };
-
-  template <typename T>
-  cxxabi_demangle_helper<T> cxx_type_id<T>::typeid_ = cxxabi_demangle_helper<T>();
-#else
-  template <typename T>
-  using cxx_type_id = type_id<T>;
-#endif
-
-  // --------------------------------------------------------------------
-  // print type information
-  // usage : std::cout << print_type<args...>("separator")
-  // separator is appended if the number of types > 1
-  // --------------------------------------------------------------------
-  template <typename T = void>
+// --------------------------------------------------------------------
+// print type information
+// usage : std::cout << debug::print_type<args...>("separator")
+// separator is appended if the number of types > 1
+// --------------------------------------------------------------------
+namespace debug {
+  template <typename T = void>    // print a single type
   inline std::string print_type(const char* = "")
   {
-    return std::string(cxx_type_id<T>::typeid_.type_id());
+    return std::string(detail::cxx_type_id<T>().type_id());
   }
 
-  template <>
-  inline std::string print_type<>(const char*)
+  template <>    // fallback for an empty type
+  inline std::string print_type<>(char const*)
   {
-    return "void";
+    return "<>";
   }
 
-  template <typename T, typename... Args>
-  inline typename std::enable_if<sizeof...(Args) != 0, std::string>::type
-  print_type(const char* delim = "")
+  template <typename T, typename... Args>    // print a list of types
+  inline std::enable_if_t<sizeof...(Args) != 0, std::string> print_type(const char* delim = "")
   {
-    std::string temp(cxx_type_id<T>::typeid_.type_id());
+    std::string temp(print_type<T>());
     return temp + delim + print_type<Args...>(delim);
   }
-}}}    // namespace hpx::util::debug
+}    // namespace debug
