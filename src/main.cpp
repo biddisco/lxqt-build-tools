@@ -159,6 +159,7 @@ std::string exec(const char* cmd)
   {
     result += buffer.data();
   }
+  result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
   return result;
 }
 
@@ -180,6 +181,7 @@ int qt_main(int argc, char* argv[])
   QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
   //
   bool authenticated = false;
+  // do we have a ram filesystem mounted? (ubuntu specific env var)
   const char* tempfs_dir = std::getenv("XDG_RUNTIME_DIR");
   if (std::getenv("rand3") != nullptr)
   {
@@ -208,7 +210,6 @@ int qt_main(int argc, char* argv[])
       app_dbg<5>.error(str<>("Authentication"), "pi", "fail");
     }
   }
-  // do we have a ram filesystem mounted? (ubuntu specific env var)
   if (!authenticated && tempfs_dir)
   {
     std::string filepath = {std::string(tempfs_dir) + "/grox.txt"};
@@ -224,6 +225,21 @@ int qt_main(int argc, char* argv[])
     else
     {
       app_dbg<5>.error(str<>("Authentication"), "tempfs", "fail");
+    }
+  }
+  if (!authenticated)
+  {
+    std::string commandLine = "pass grox";
+    auto result = exec(commandLine.c_str());
+    if (result.size() > 0)
+    {
+      app_ini->grox_password = result;
+      authenticated = true;
+      app_dbg<5>.debug(str<>("authentication"), "pass", "ok");
+    }
+    else
+    {
+      app_dbg<5>.error(str<>("Authentication"), "pass", "fail");
     }
   }
   if (!authenticated)
