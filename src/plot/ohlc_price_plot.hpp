@@ -4,6 +4,7 @@
 // Qwt
 #include <QwtPlot>
 // Grox
+#include "data/ohlctv_sample.hpp"
 #include "plot/timebased_chart_plot.hpp"
 //
 class ohlc_dataset_view;
@@ -45,7 +46,7 @@ class ohlc_price_plot : public timebased_chart_plot
   ~ohlc_price_plot();
   //
   void bind_graphs();
-  void update_live_data(QwtOHLCSample const& new_sample);
+  void update_live_data(ohlctv_sample const& new_sample);
   //
   bool adjust_candle_size(double res);
   double get_candle_resolution()

@@ -112,7 +112,7 @@ class GroxMainWindow : public QMainWindow
   void saveConnectionSetups();
   void loadConnectionSetups();
 
-  void stream_process(QwtOHLCSample const& data);
+  void stream_process(ohlctv_sample const& data);
   void start_io_threads(int nthreads);
 
   void execute_filter();

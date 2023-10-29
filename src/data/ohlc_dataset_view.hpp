@@ -6,7 +6,7 @@
 // Qt
 #include <QVector>
 // Qwt
-#include <QwtOHLCSample>
+#include "data/ohlctv_sample.hpp"
 // Grox
 #include "currency.hpp"
 #include "data/ohlc_dataset_manager.hpp"
@@ -62,7 +62,7 @@ class ohlc_dataset_view
   }
 
   // Add new downloaded data to an existing dataset
-  void merge_data(double res, QVector<QwtOHLCSample> const& new_ohlc_samples_);
+  void merge_data(double res, QVector<ohlctv_sample> const& new_ohlc_samples_);
 
   // access the underlying data vector for live samples
   const ohlc_chart_data* get_live_data() const;
@@ -70,7 +70,7 @@ class ohlc_dataset_view
   void delete_live_data_up_to(double msecs);
   // add a new trade sample to build live OHLC candles, returns true when
   // a new candle is started, false when one is (only) updated
-  void add_live_data(QwtOHLCSample new_sample);
+  void add_live_data(ohlctv_sample new_sample);
   ohlc_chart_curve* get_live_curve();
 
   // Get the min/max OHLC values for a given time range
@@ -93,8 +93,8 @@ class ohlc_dataset_view
   double get_time_from_index(std::uint64_t i);
 
   // compute the average price for a buy at/after time T
-  QwtOHLCSample get_trade_data_by_volume(double volume, double time, double safety = 10);
-  QwtOHLCSample get_trade_data_by_value(double dollars, double time, double safety = 10);
+  ohlctv_sample get_trade_data_by_volume(double volume, double time, double safety = 10);
+  ohlctv_sample get_trade_data_by_value(double dollars, double time, double safety = 10);
   double get_estimated_sell_price(double volume, double time, double safety = 10);
   double get_estimated_buy_price(double volume, double time, double safety = 10);
 

@@ -82,7 +82,7 @@ class price_chart_widget : public QWidget
   void connect_gui();
   void graph_rescale(int range);
 
-  void update_live_data(QwtOHLCSample const& new_sample)
+  void update_live_data(ohlctv_sample const& new_sample)
   {
     crypto_price_plot_->update_live_data(new_sample);
   }

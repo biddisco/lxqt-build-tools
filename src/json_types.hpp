@@ -3,7 +3,7 @@
 // to pass structs as params we must declare metatypes to Qt
 #include <QtCore>
 //
-#include <QwtOHLCSample>
+#include "data/ohlctv_sample.hpp"
 //
 #include <optional>
 #include <string>
@@ -17,12 +17,12 @@
 // ----------------------------------------------------------------------------
 using nlohmann::json;
 
-struct ohlc : QwtOHLCSample
+struct ohlc : ohlctv_sample
 {
   //
   ohlc() = default;
-  ohlc(QwtOHLCSample const& other)
-    : QwtOHLCSample(other.time, other.open, other.high, other.low, other.close, other.volume)
+  ohlc(ohlctv_sample const& other)
+    : ohlctv_sample(other.time, other.open, other.high, other.low, other.close, other.volume)
   {
   }
 };
@@ -31,7 +31,7 @@ Q_DECLARE_METATYPE(ohlc)
 Q_DECLARE_METATYPE(std::vector<ohlc>*)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ohlc, time, open, high, low, close, volume);
 
-std::ostream& operator<<(std::ostream& os, QwtOHLCSample const&);
+std::ostream& operator<<(std::ostream& os, ohlctv_sample const&);
 
 // ----------------------------------------------------------------------------
 // bitstamp websocket ticker data

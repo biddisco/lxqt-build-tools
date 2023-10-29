@@ -45,7 +45,7 @@ void hdf5_check(const char* msg, herr_t err)
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::read_hdf5(
-  std::string group, std::string dataname, QVector<QwtOHLCSample>& data)
+  std::string group, std::string dataname, QVector<ohlctv_sample>& data)
 {
   // we do not currently support multi-threaded file access.
   std::lock_guard lock(hdf5_mutex_);
@@ -59,7 +59,7 @@ void ohlc_dataset_manager::read_hdf5(
     if (file.exist(path))
     {
       auto dataset = file.getDataSet(path);
-      const uint64_t ohlc_size = sizeof(QwtOHLCSample) / sizeof(double);
+      const uint64_t ohlc_size = sizeof(ohlctv_sample) / sizeof(double);
       std::size_t N = dataset.getElementCount() / ohlc_size;
       man_dbg<0>.debug(str<>("dataset read"), path, "size", dec<9>(N));
       data.resize(N);
@@ -82,7 +82,7 @@ void ohlc_dataset_manager::read_hdf5(
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
-  QVector<QwtOHLCSample> const& data, const uint64_t update, bool truncate)
+  QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate)
 {
   std::string path = group + "/" + dataname;
   int valid = ohlc_datasets::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
@@ -98,7 +98,7 @@ void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
 
   using namespace HighFive;
   // size of data as an array of doubles
-  const uint64_t ohlc_size = sizeof(QwtOHLCSample) / sizeof(double);
+  const uint64_t ohlc_size = sizeof(ohlctv_sample) / sizeof(double);
   const uint64_t N = data.size() * ohlc_size;
 
   if (!std::filesystem::exists(file_name_))

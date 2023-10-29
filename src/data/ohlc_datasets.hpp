@@ -9,6 +9,8 @@
 #include "plot/ohlc_chart_curve.hpp"
 #include "plot/ohlc_chart_data.hpp"
 
+using ohlctv_vector = QVector<ohlctv_sample>;
+
 // ----------------------------------------------------------------------------
 struct ohlc_datasets
 {
@@ -27,13 +29,13 @@ struct ohlc_datasets
   ~ohlc_datasets();
 
   // Add new downloaded data to the existing dataset
-  uint64_t merge_data(QVector<QwtOHLCSample> const& new_ohlc_samples);
+  uint64_t merge_data(ohlctv_vector const& new_ohlc_samples);
 
   // Checks that all data from time T (if present) has consecutive time stamps.
   // Important when merging new downloaded data with old to ensure no gaps
   // have crept in
   static int64_t validate_ohlc(
-    QVector<QwtOHLCSample> const& samples, candle_res res, double time, std::string name);
+    ohlctv_vector const& samples, candle_res res, double time, std::string name);
 
   // Resample the current dataset to a new resolution, it is assumed (without checks)
   // that the new lower resolution is an exact multiple of the current one

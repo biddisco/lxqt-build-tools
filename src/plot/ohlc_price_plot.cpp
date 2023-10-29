@@ -253,7 +253,7 @@ void ohlc_price_plot::bind_graphs()
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::update_live_data(QwtOHLCSample const& new_sample)
+void ohlc_price_plot::update_live_data(ohlctv_sample const& new_sample)
 {
   // repaint the live dataset
   if (!direct_painter_)
@@ -452,7 +452,7 @@ void ohlc_price_plot::display_picker_info(const QPointF pos)
     return;
   }
   //
-  QwtOHLCSample const& sample = dataset->ohlc_samples_->data().at(index);
+  ohlctv_sample const& sample = dataset->ohlc_samples_->data().at(index);
 
   std::string c;
   if (sample.open <= sample.close)

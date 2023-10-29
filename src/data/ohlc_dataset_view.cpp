@@ -58,7 +58,7 @@ ohlc_dataset_view::~ohlc_dataset_view()
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_view::merge_data(
-  const double res, QVector<QwtOHLCSample> const& new_ohlc_samples_)
+  const double res, QVector<ohlctv_sample> const& new_ohlc_samples_)
 {
   ohlc_datasets* data = get_dataset(res);
   // returns the number of samples that are 'new'
@@ -114,9 +114,9 @@ void ohlc_dataset_view::delete_live_data_up_to(double msecs)
 {
   std::lock_guard l(live_mutex_);
   ohlc_chart_data* live_samples = get_live_data();
-  QVector<QwtOHLCSample>& live_data = live_samples->data();
+  QVector<ohlctv_sample>& live_data = live_samples->data();
   auto pos = std::remove_if(live_data.begin(), live_data.end(),
-    [msecs](QwtOHLCSample& ohlc) { return ohlc.time <= msecs; });
+    [msecs](ohlctv_sample& ohlc) { return ohlc.time <= msecs; });
   if (pos != live_data.end())
   {
     live_data.erase(pos);
@@ -280,7 +280,7 @@ ohlc_chart_curve* ohlc_dataset_view::get_live_curve()
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_dataset_view::add_live_data(QwtOHLCSample new_sample)
+void ohlc_dataset_view::add_live_data(ohlctv_sample new_sample)
 {
   // snap sample to last minute in which it occured
   new_sample.time =
@@ -299,7 +299,7 @@ void ohlc_dataset_view::add_live_data(QwtOHLCSample new_sample)
   if (live_samples->data().back().time == new_sample.time)
   {
     auto& prev = live_samples->data().back();
-    update_QwtOHLCSample(prev, new_sample);
+    update_ohlctv_sample(prev, new_sample);
   }
   // extend the series with candles to ensure there are no gaps
   // (gaps can cause index computations to be wrong)
@@ -331,38 +331,38 @@ std::vector<double> ohlc_dataset_view::get_dataset_resolutions()
 }
 
 // ----------------------------------------------------------------------------
-QwtOHLCSample ohlc_dataset_view::get_trade_data_by_volume(double volume, double time, double safety)
+ohlctv_sample ohlc_dataset_view::get_trade_data_by_volume(double volume, double time, double safety)
 {
   ohlc_chart_data* samples = get_samples();
   auto index = samples->sample_index(time);
   const auto data = samples->data();
   // we use a factor of 10 to play safe, this can be adjusted
-  QwtOHLCSample ohlc(-1, -1);
+  ohlctv_sample ohlc(-1, -1);
   while (ohlc.volume < volume * safety && index < data.size())
   {
     // and accumulate data on prices
-    update_QwtOHLCSample(ohlc, data[index++]);
+    update_ohlctv_sample(ohlc, data[index++]);
   }
   return ohlc;
 }
 
 // ----------------------------------------------------------------------------
-QwtOHLCSample ohlc_dataset_view::get_trade_data_by_value(double dollars, double time, double safety)
+ohlctv_sample ohlc_dataset_view::get_trade_data_by_value(double dollars, double time, double safety)
 {
   ohlc_chart_data* samples = get_samples();
   auto index = samples->sample_index(time);
   auto data = samples->data();
   // we use a factor of 10 to play safe, this can be adjusted
   double val_traded = 0;
-  QwtOHLCSample ohlc(-1, -1);
+  ohlctv_sample ohlc(-1, -1);
   while (val_traded < dollars * safety && index < data.size())
   {
     // current candle
-    QwtOHLCSample const& sample = data[index++];
+    ohlctv_sample const& sample = data[index++];
     // get the volume for current candle
     val_traded += sample.volume * (sample.open + sample.close) / 2.0;
     // and accumulate data on prices
-    update_QwtOHLCSample(ohlc, sample);
+    update_ohlctv_sample(ohlc, sample);
   }
   return ohlc;
 }
@@ -370,7 +370,7 @@ QwtOHLCSample ohlc_dataset_view::get_trade_data_by_value(double dollars, double 
 // ----------------------------------------------------------------------------
 double ohlc_dataset_view::get_estimated_sell_price(double volume, double time, double safety)
 {
-  QwtOHLCSample ohlc = get_trade_data_by_volume(volume, time, safety);
+  ohlctv_sample ohlc = get_trade_data_by_volume(volume, time, safety);
   // we have created a candle with enough data to sell the volume requested (+safety factor)
   // return a price based on the traded data we accumulated
   if (ohlc.isValid())
@@ -384,7 +384,7 @@ double ohlc_dataset_view::get_estimated_sell_price(double volume, double time, d
 // ----------------------------------------------------------------------------
 double ohlc_dataset_view::get_estimated_buy_price(double dollars, double time, double safety)
 {
-  QwtOHLCSample ohlc = get_trade_data_by_value(dollars, time, safety);
+  ohlctv_sample ohlc = get_trade_data_by_value(dollars, time, safety);
   // we have created a candle with enough data to sell the volume requested (+safety factor)
   // return a price based on the traded data we accumulated
   if (ohlc.isValid())

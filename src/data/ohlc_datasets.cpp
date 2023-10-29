@@ -19,22 +19,6 @@ template <int Level>
 static print_threshold<Level, debug_level> ohlc_dbg("Datasets");
 
 // ----------------------------------------------------------------------------
-void update_QwtOHLCSample(QwtOHLCSample& ohlc, QwtOHLCSample const& other)
-{
-  if (ohlc.isValid())
-  {
-    ohlc.low = std::min(ohlc.low, other.low);
-    ohlc.high = std::max(ohlc.high, other.high);
-    ohlc.close = other.close;
-    ohlc.volume = ohlc.volume + other.volume;
-  }
-  else
-  {
-    ohlc = other;
-  }
-}
-
-// ----------------------------------------------------------------------------
 ohlc_datasets::ohlc_datasets(double res, std::string const& name)
   : ticker_str_(name)
 {
@@ -62,7 +46,7 @@ ohlc_datasets::~ohlc_datasets()
 }
 
 // ----------------------------------------------------------------------------
-uint64_t ohlc_datasets::merge_data(QVector<QwtOHLCSample> const& new_ohlc_samples_)
+uint64_t ohlc_datasets::merge_data(ohlctv_vector const& new_ohlc_samples_)
 {
   uint64_t update = 0;
   // initial data may be empty, so just copy without merge/update
@@ -100,7 +84,7 @@ uint64_t sample_index(double init, double time, double res)
 
 // ----------------------------------------------------------------------------
 int64_t ohlc_datasets::validate_ohlc(
-  QVector<QwtOHLCSample> const& samples, candle_res res, double time, std::string name)
+  ohlctv_vector const& samples, candle_res res, double time, std::string name)
 {
   if (samples.empty())
     return 0;
@@ -122,7 +106,7 @@ int64_t ohlc_datasets::validate_ohlc(
 
   for (int64_t index = init_index; index < samples.size(); ++index)
   {
-    QwtOHLCSample const& s1 = samples.at(index);
+    ohlctv_sample const& s1 = samples.at(index);
     //
     double expected_time = origin_time + (res * index);
     if (expected_time != s1.time)
@@ -191,12 +175,11 @@ ohlc_datasets* ohlc_datasets::resample_update(
     return this;
 
   // we will start a fresh candle from this start_T
-  QwtOHLCSample current_ohlc = other->ohlc_samples_->data()[init_sample];
+  ohlctv_sample current_ohlc = other->ohlc_samples_->data()[init_sample];
   current_ohlc.time = res1 * static_cast<uint64_t>(current_ohlc.time / res1);
 
   // iterate over all higher res samples for T onwards
-  for (QVector<QwtOHLCSample>::const_iterator it =
-         other->ohlc_samples_->data().begin() + init_sample;
+  for (ohlctv_vector::const_iterator it = other->ohlc_samples_->data().begin() + init_sample;
        it < other->ohlc_samples_->data().end(); ++it)
   {
     double quantized_time = res1 * static_cast<uint64_t>(it->time / res1);
@@ -210,7 +193,7 @@ ohlc_datasets* ohlc_datasets::resample_update(
     // overwrite the current candle with updated numbers
     else
     {
-      update_QwtOHLCSample(current_ohlc, *it);
+      update_ohlctv_sample(current_ohlc, *it);
     }
     // finalizing a new candle
     if (subsample == (subsamples - 1))

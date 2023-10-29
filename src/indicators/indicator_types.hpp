@@ -11,7 +11,7 @@ namespace indicators {
   using param_types = std::variant<double, int, bool, candle_res>;
   using param_list = std::vector<std::tuple<std::string, param_types>>;
 
-  inline double ohlc_mode_extract(const int mode, QwtOHLCSample const& ohlc)
+  inline double ohlc_mode_extract(const int mode, ohlctv_sample const& ohlc)
   {
     switch (mode)
     {

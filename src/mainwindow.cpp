@@ -22,9 +22,9 @@
 #include <QStandardItemModel>
 // Qwt
 #include <QwtAxis>
-#include <QwtOHLCSample>
 #include <QwtScaleDraw>
 #include <QwtScaleEngine>
+#include "data/ohlctv_sample.hpp"
 // Grox
 #include "data/ohlc_heikin_ashi.hpp"
 #include "debug/demangle_helper.hpp"
@@ -836,7 +836,7 @@ void GroxMainWindow::loadWindowSettings()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::stream_process(QwtOHLCSample const& ohlc)
+void GroxMainWindow::stream_process(ohlctv_sample const& ohlc)
 {
   main_dbg<0>.debug(str<>("New data"), msecs_unix_to_calendar_time(ohlc.time), ohlc);
   //    df_.process(ohlc);
@@ -895,8 +895,8 @@ void GroxMainWindow::execute_filter()
     // Other filter objects are copied during pipeline construction
 
     // initialize an ohlc input object with the first dataset value
-    input_value<QwtOHLCSample> ohlc_in(data->data().front());
-    pipeline::input<QwtOHLCSample const&> ohlc_input = std::ref(ohlc_in);
+    input_value"data/ohlctv_sample.hpp" ohlc_in(data->data().front());
+    pipeline::input<ohlctv_sample const&> ohlc_input = std::ref(ohlc_in);
 
     // initialize a time input object
     input_value<double> time_in(data->data().front().time);

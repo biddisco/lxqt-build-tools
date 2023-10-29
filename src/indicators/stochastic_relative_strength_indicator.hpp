@@ -61,7 +61,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    double operator()(QwtOHLCSample const& val)
+    double operator()(ohlctv_sample const& val)
     {
       double rsi = rsi_.operator()(val);
       double stoch_rsi_K_unsmoothed = osc_.operator()(rsi);

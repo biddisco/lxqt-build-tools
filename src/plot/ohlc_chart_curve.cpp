@@ -148,18 +148,18 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter, QwtScaleMap const& xMap,
     symbolWidth = std::floor(0.5 * symbolWidth) * 2.0;
 
   // initialize heikin ashi functor
-  QwtOHLCSample const& init_ha = sample(from > 0 ? (from - 1) : from);
+  ohlctv_sample const& init_ha = sample(from > 0 ? (from - 1) : from);
   ohlc_heikin_ashi heikin_ashi(init_ha);
 
   for (int i = from; i <= to; i++)
   {
-    QwtOHLCSample const& s = sample(i);
-    QwtOHLCSample translatedSample;
+    ohlctv_sample const& s = sample(i);
+    ohlctv_sample translatedSample;
     int brushIndex;
 
     if (symbolStyleCopy == ohlc_chart_curve::HeikinAshi)
     {
-      const QwtOHLCSample ha = heikin_ashi(s).value();
+      const ohlctv_sample ha = heikin_ashi(s).value();
 
       brushIndex =
         (ha.open < ha.close) ? QwtPlotTradingCurve::Increasing : QwtPlotTradingCurve::Decreasing;
@@ -217,7 +217,7 @@ void ohlc_chart_curve::drawVolume(QPainter* painter, QwtScaleMap const& xMap,
 
   for (int i = from; i <= to; i++)
   {
-    QwtOHLCSample const& s = sample(i);
+    ohlctv_sample const& s = sample(i);
 
     int brushIndex =
       (s.open <= s.close) ? QwtPlotTradingCurve::Increasing : QwtPlotTradingCurve::Decreasing;
@@ -238,7 +238,7 @@ void ohlc_chart_curve::drawVolume(QPainter* painter, QwtScaleMap const& xMap,
     painter->setPen(pen);
     painter->setBrush(VolumeBrush[brushIndex]);
 
-    const QwtOHLCSample translatedSample(translatedTime, 0.0, translatedV1, translatedV0, 0.0, 0.0);
+    const ohlctv_sample translatedSample(translatedTime, 0.0, translatedV1, translatedV0, 0.0, 0.0);
 
     drawVolumeBar(painter, translatedSample, symbolWidth);
   }
@@ -246,8 +246,10 @@ void ohlc_chart_curve::drawVolume(QPainter* painter, QwtScaleMap const& xMap,
 
 // ----------------------------------------------------------------------------
 void ohlc_chart_curve::drawVolumeBar(
-  QPainter* painter, QwtOHLCSample const& sample, double width) const
+  QPainter* painter, ohlctv_sample const& sample, double width) const
 {
   QRectF rect(sample.time - 0.5 * width, sample.low, width, sample.high - sample.low);
   QwtPainter::drawRect(painter, rect);
 }
+
+// ----------------------------------------------------------------------------

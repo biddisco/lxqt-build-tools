@@ -6,7 +6,7 @@
 // Qt
 #include <QVector>
 // Qwt
-#include <QwtOHLCSample>
+#include "data/ohlctv_sample.hpp"
 // Grox
 #include "currency.hpp"
 #include "data/ohlc_datasets.hpp"
@@ -42,10 +42,10 @@ class ohlc_dataset_manager
   void create_data_dir();
 
   // read datasets from hdf5 file
-  void read_hdf5(std::string group, std::string dataname, QVector<QwtOHLCSample>& data);
+  void read_hdf5(std::string group, std::string dataname, QVector<ohlctv_sample>& data);
 
   // write out data to hdf5
-  void write_hdf5(std::string group, std::string dataname, QVector<QwtOHLCSample> const& samples,
+  void write_hdf5(std::string group, std::string dataname, QVector<ohlctv_sample> const& samples,
     const uint64_t update, bool truncate);
 
   std::shared_ptr<ohlc_dataset_view> create_dataset_view(

@@ -44,7 +44,7 @@ namespace indicators {
       first_ = true;
     }
 
-    double operator()(QwtOHLCSample const& ohlc)
+    double operator()(ohlctv_sample const& ohlc)
     {
       double alpha = user_alpha_ ? decay_factor_ : 2.0 / (window_size_ + 1.0);
       //

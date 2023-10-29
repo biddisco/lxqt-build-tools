@@ -4,10 +4,10 @@
 #include <vector>
 // Qwt
 #include <QwtInterval>
-#include <QwtOHLCSample>
 #include <QwtSeriesData>
 //
 #include "data/ohlc_utils.hpp"
+#include "data/ohlctv_sample.hpp"
 
 // ----------------------------------------------------------------------------
 template <typename DataType>

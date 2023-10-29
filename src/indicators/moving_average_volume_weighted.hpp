@@ -60,7 +60,7 @@ namespace indicators {
       return (wtot > 0) ? (ptot / wtot) : 0.0;
     }
 
-    double operator()(QwtOHLCSample const& val)
+    double operator()(ohlctv_sample const& val)
     {
       double price = ohlc_mode_extract(mode_, val);
       // insert data into buffer

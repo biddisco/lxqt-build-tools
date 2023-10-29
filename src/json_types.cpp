@@ -8,7 +8,7 @@
 #include "json_types.hpp"
 #include "nlohmann/json.hpp"
 
-std::ostream& operator<<(std::ostream& os, QwtOHLCSample const& x)
+std::ostream& operator<<(std::ostream& os, ohlctv_sample const& x)
 {
 #if 0
     os << "Time: "   << x.time << " "

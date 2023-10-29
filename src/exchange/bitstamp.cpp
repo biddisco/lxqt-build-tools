@@ -48,7 +48,7 @@ bitstamp_network::bitstamp_network()
     [this](currency_pair cp, live_trades t) {
       auto p = t.price;
       auto v = t.amount;
-      QwtOHLCSample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
+      ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
       const ticker_data tdata = tickers_subscribed_.at(cp);
       tdata.view_->add_live_data(new_sample);
       tdata.chart_widget_->update_live_data(new_sample);
@@ -961,9 +961,9 @@ void bitstamp_network::receive_ohlc_data(ticker_data* tdata, std::string&& data)
     nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
     bitstamp_dbg<0>.debug(str<>("received"), tdata->view_->get_ticker_string(),
       dec<4>(jdata.size()), "json OHLC samples");
-    QVector<QwtOHLCSample> new_ohlc_samples;
+    QVector<ohlctv_sample> new_ohlc_samples;
     new_ohlc_samples.reserve(jdata.size());
-    QwtOHLCSample sample;
+    ohlctv_sample sample;
     for (auto item : jdata)
     {
       sample.close = atof(item["close"].get_ptr<json::string_t*>()->c_str());

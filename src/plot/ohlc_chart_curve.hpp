@@ -7,6 +7,7 @@
 // Qwt
 #include <QwtPlotTradingCurve>
 // Grox
+#include "data/ohlctv_sample.hpp"
 #include "plot/ohlc_chart_data.hpp"
 
 class ohlc_chart_curve : public QwtPlotTradingCurve
@@ -30,7 +31,7 @@ class ohlc_chart_curve : public QwtPlotTradingCurve
   void drawVolume(QPainter* painter, QwtScaleMap const& xMap, QwtScaleMap const& yMap,
     QRectF const& canvasRect, int from, int to) const;
 
-  void drawVolumeBar(QPainter* painter, QwtOHLCSample const& sample, double width) const;
+  void drawVolumeBar(QPainter* painter, ohlctv_sample const& sample, double width) const;
 
   void setSymbolPenHA(Direction, QPen const&);
   void setSymbolBrushHA(Direction, QBrush const&);

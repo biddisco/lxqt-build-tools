@@ -4,11 +4,11 @@
 #include <optional>
 #include <vector>
 // Qwt
-#include <QwtOHLCSample>
+#include "data/ohlctv_sample.hpp"
 
-void update_QwtOHLCSample(QwtOHLCSample& ohlc, QwtOHLCSample const& other);
+void update_ohlctv_sample(ohlctv_sample& ohlc, ohlctv_sample const& other);
 
-inline double get_time(QwtOHLCSample const& val)
+inline double get_time(ohlctv_sample const& val)
 {
   return val.time;
 }
@@ -19,16 +19,16 @@ inline double get_time(QPointF const& val)
 
 struct ohlc_resample
 {
-  QwtOHLCSample ohlc_;
+  ohlctv_sample ohlc_;
   //
-  ohlc_resample(QwtOHLCSample const& ohlc)
+  ohlc_resample(ohlctv_sample const& ohlc)
     : ohlc_(ohlc)
   {
   }
   //
-  QwtOHLCSample operator()(QwtOHLCSample const& other)
+  ohlctv_sample operator()(ohlctv_sample const& other)
   {
-    update_QwtOHLCSample(ohlc_, other);
+    update_ohlctv_sample(ohlc_, other);
     return ohlc_;
   }
 };
@@ -72,7 +72,7 @@ struct minmax_data<QPointF>
 };
 
 template <>
-struct minmax_data<QwtOHLCSample>
+struct minmax_data<ohlctv_sample>
 {
   double min_price_;
   double max_price_;
@@ -89,7 +89,7 @@ struct minmax_data<QwtOHLCSample>
   {
   }
 
-  minmax_data(QwtOHLCSample const& init)
+  minmax_data(ohlctv_sample const& init)
     : min_price_{init.low}
     , max_price_{init.high}
     , min_volume_{init.volume}
@@ -103,7 +103,7 @@ struct minmax_data<QwtOHLCSample>
     return valid_;
   }
 
-  minmax_data<QwtOHLCSample>& update(minmax_data<QwtOHLCSample> const& other)
+  minmax_data<ohlctv_sample>& update(minmax_data<ohlctv_sample> const& other)
   {
     if (!isValid())
     {
@@ -124,14 +124,14 @@ struct minmax_data<QwtOHLCSample>
 };
 
 // ----------------------------------------------------------------------------
-using ohlcv_minmax = minmax_data<QwtOHLCSample>;
+using ohlcv_minmax = minmax_data<ohlctv_sample>;
 
 // ----------------------------------------------------------------------------
 struct ohlc_candlemaker
 {
   double to_resolution_;
   double from_resolution_;
-  QwtOHLCSample ohlc_;
+  ohlctv_sample ohlc_;
   //
   ohlc_candlemaker(double to_resolution, double from_resolution)
     : to_resolution_(to_resolution)
@@ -140,13 +140,13 @@ struct ohlc_candlemaker
   {
   }
   //
-  std::optional<QwtOHLCSample> operator()(QwtOHLCSample const& ohlc)
+  std::optional<ohlctv_sample> operator()(ohlctv_sample const& ohlc)
   {
     uint64_t candle_old = static_cast<uint64_t>(ohlc_.time / to_resolution_);
     uint64_t candle_cur = static_cast<uint64_t>(ohlc.time / to_resolution_);
     if (candle_old == candle_cur)
     {
-      update_QwtOHLCSample(ohlc_, ohlc);
+      update_ohlctv_sample(ohlc_, ohlc);
     }
     else
     {
@@ -163,5 +163,5 @@ struct ohlc_candlemaker
   }
 
   private:
-  QwtOHLCSample val_;
+  ohlctv_sample val_;
 };
