@@ -4,12 +4,12 @@
 //
 #include <string>
 //
+#include "exchange/account.hpp"
 #include "exchange/exchange.hpp"
+#include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/https-async.hpp"
 #include "network/websocket-ssl.hpp"
-#include "order_book.hpp"
-#include "settings.hpp"
 #include "widgets/currency_widget.hpp"
 //
 #ifndef Q_MOC_RUN

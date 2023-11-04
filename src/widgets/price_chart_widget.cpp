@@ -9,6 +9,7 @@
 //
 #include "ui_price_chart_widget.h"
 //
+#include "config/config.hpp"
 #include "data/ohlc_dataset_manager.hpp"
 #include "indicators/indicator_definitions.hpp"
 #include "widgets/digital_clock.hpp"
@@ -16,7 +17,6 @@
 #include "widgets/price_chart_widget.hpp"
 //
 #include "debug/print.hpp"
-#include "settings.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -83,7 +83,7 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   btn_indicator_->setFlat(true);
   ui->controls_layout->addWidget(btn_indicator_);
 
-  DigitalClock* clock = new DigitalClock(this, global_settings()->get_global_clock_timer());
+  DigitalClock* clock = new DigitalClock(this, global_settings.get_global_clock_timer());
   ui->controls_layout->addWidget(clock);
   //
   connect_gui();

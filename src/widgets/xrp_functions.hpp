@@ -1,8 +1,7 @@
 #pragma once
 
 #include <QWidget>
-//
-#include "settings.hpp"
+
 class xrpl_network;
 
 namespace Ui {

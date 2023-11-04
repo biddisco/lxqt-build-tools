@@ -8,9 +8,8 @@
 #include <QVBoxLayout>
 #include <QWidget>
 //
-#include "currency.hpp"
+#include "currency/currency.hpp"
 #include "exchange/exchange.hpp"
-#include "trade_data.hpp"
 
 namespace Ui {
   class connection_widget;

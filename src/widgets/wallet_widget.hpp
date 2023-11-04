@@ -1,8 +1,9 @@
 #pragma once
 
 #include <QWidget>
+#include <QtCore>
 //
-#include "settings.hpp"
+#include "exchange/account.hpp"
 
 namespace Ui {
   class wallet_widget;

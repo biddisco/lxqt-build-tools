@@ -10,13 +10,11 @@
 #include "network/websocket-ssl.hpp"
 #include "util/stringutils.hpp"
 //
-#include "order_book.hpp"
-#include "settings.hpp"
-//
 #include "widgets/currency_widget.hpp"
 #include "widgets/xrp_functions.hpp"
 //
 #include "exchange/bitstamp.hpp"
+#include "exchange/order_book.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
 // extern

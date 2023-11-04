@@ -6,22 +6,18 @@
 //
 #include <string>
 //
+#include "config/config.hpp"
+//
 #include "network/evp-encrypt.hpp"
 #include "network/https-async.hpp"
 #include "network/websocket-ssl.hpp"
 //
-#include "currency.hpp"
+#include "currency/currency.hpp"
 #include "data/ohlc_dataset_manager.hpp"
 #include "exchange/exchange.hpp"
-#include "json_types.hpp"
-#include "order_book.hpp"
+#include "exchange/order_book.hpp"
 //
 class wallet_widget;
-class QMenu;
-
-namespace ads {
-  class CDockManager;
-}
 
 // ----------------------------------------------------------------------------
 // base class for account/wallet info
@@ -147,31 +143,3 @@ struct bitstamp_account : public ledger_wallet
     return "";
   }
 };
-
-// ----------------------------------------------------------------------------
-struct app_settings
-{
-  // file names for data and log storage
-  QString iniFileName;
-  std::string logFileName;
-  std::string hdfFileName;
-  //
-  std::string appDataLocation;
-  std::string tempLocation;
-  QString configLocation;
-  //
-  secure_string grox_password;
-  secure_string randomBytes;
-  //
-  std::vector<std::shared_ptr<exchange>> networks_;
-  //
-  std::shared_ptr<ads::CDockManager> dock_manager_;
-  QMenu* dockwindows_menu_;
-  //
-  std::shared_ptr<ohlc_dataset_manager> data_manager_;
-  //
-  static QTimer* get_global_clock_timer();
-  static void delete_global_clock_timer(QTimer* timer_);
-};
-
-app_settings* global_settings();

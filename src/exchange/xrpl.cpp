@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 // Grox
-#include "currency.hpp"
+#include "currency/currency.hpp"
 #include "debug/print.hpp"
 // extern
 #include <ripple/basics/StringUtilities.h>

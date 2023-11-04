@@ -1,0 +1,6 @@
+set(grox_data_SRCS currency.cpp)
+
+add_library(grox_currency ${grox_data_SRCS})
+target_include_directories(grox_currency PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
+
+target_link_libraries(grox_currency PUBLIC Qt::Core ${Boost_LIBRARIES} range-v3)

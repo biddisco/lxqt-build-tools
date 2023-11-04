@@ -403,28 +403,25 @@ endif()
 # grox build
 # ------------------------------------------------------------------------------
 
+add_subdirectory(src/data)
+add_subdirectory(src/currency)
+
 set(GROX_SRC
     # main application
     src/main.cpp
     src/mainwindow.cpp
-    # src/tabbed_form.cpp application utility
-    src/currency.cpp
-    src/json_types.cpp
-    src/order_book.cpp
-    # cryptography
+    # src/tabbed_form.cpp application utility cryptography
     src/network/evp-encrypt.cpp
     # networking asio etc
     src/network/websocket-ssl.cpp
     src/network/https-async.cpp
-    # data, hdf5
-    src/data/ohlc_dataset_manager.cpp
-    src/data/ohlc_dataset_view.cpp
-    src/data/ohlc_datasets.cpp
     # exchange APIs
+    src/exchange/xrpl_json.cpp
     src/exchange/xrpl.cpp
     src/exchange/exchange.cpp
     src/exchange/xrpl_network.cpp
     src/exchange/bitstamp.cpp
+    src/exchange/order_book.cpp
     # widgets and dialogs
     src/widgets/check_trades_dialog.cpp
     src/widgets/connection_widget.cpp
@@ -519,7 +516,9 @@ target_compile_definitions(
 
 target_link_libraries(
   grox
-  PUBLIC qwt
+  PUBLIC grox_data
+         grox_currency
+         qwt
          Qt::Core
          Qt::Widgets
          Qt::Gui
@@ -547,6 +546,7 @@ target_link_libraries(
 # ---------------------------------------------------
 set(TEST_INC_DIRS ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+add_subdirectory(src/indicators/test)
 add_subdirectory(test)
 
 # ---------------------------------------------------

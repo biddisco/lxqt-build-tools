@@ -19,9 +19,9 @@
 #include <range/v3/algorithm.hpp>
 #include <range/v3/all.hpp>
 //
-#include "json_types.hpp"
 #include "nlohmann/json.hpp"
 //
+#include "exchange/xrpl_json.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
 

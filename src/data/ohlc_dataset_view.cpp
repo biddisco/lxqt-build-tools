@@ -3,11 +3,11 @@
 //
 #include <QInputDialog>
 //
+#include "config/config.hpp"
 #include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_dataset_view.hpp"
 #include "data/ohlc_utils.hpp"
 #include "debug/print.hpp"
-#include "settings.hpp"
 #include "util/datetime_utils.hpp"
 
 // ----------------------------------------------------------------------------
@@ -26,7 +26,7 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency const& c1, c
   , c2_(c2)
   , ticker_string_(currency_pair_string({c1_, c2_}))
 {
-  data_manager_ = global_settings()->data_manager_;
+  data_manager_ = global_settings.data_manager_;
   // insert empty highest resolution candle dataset
   ohlc_datasets* min_res = new ohlc_datasets(ohlc_data_resolutions::minute, ticker_string_);
   candles_.insert(std::make_pair(ohlc_data_resolutions::minute, min_res));
@@ -337,7 +337,7 @@ ohlctv_sample ohlc_dataset_view::get_trade_data_by_volume(double volume, double 
   auto index = samples->sample_index(time);
   const auto data = samples->data();
   // we use a factor of 10 to play safe, this can be adjusted
-  ohlctv_sample ohlc(-1, -1);
+  ohlctv_sample ohlc{0, 0, -1, 0, 0, 0};
   while (ohlc.volume < volume * safety && index < data.size())
   {
     // and accumulate data on prices
@@ -354,7 +354,7 @@ ohlctv_sample ohlc_dataset_view::get_trade_data_by_value(double dollars, double 
   auto data = samples->data();
   // we use a factor of 10 to play safe, this can be adjusted
   double val_traded = 0;
-  ohlctv_sample ohlc(-1, -1);
+  ohlctv_sample ohlc{0, 0, -1, 0, 0, 0};
   while (val_traded < dollars * safety && index < data.size())
   {
     // current candle

@@ -5,7 +5,7 @@
 //
 #include <memory>
 //
-#include "currency.hpp"
+#include "currency/currency.hpp"
 
 class exchange;
 

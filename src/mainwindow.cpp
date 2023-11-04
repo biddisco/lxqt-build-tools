@@ -31,11 +31,9 @@
 #include "debug/print.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
-#include "json_types.hpp"
 #include "mainwindow.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/https-async.hpp"
-#include "settings.hpp"
 #include "util/datetime_utils.hpp"
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/connection_widget.hpp"
@@ -96,12 +94,11 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
   // ----------------------------------
   // global persistent settings
-  app_settings* app_ini = global_settings();
-  app_ini->dockwindows_menu_ = nullptr;
+  global_settings.dockwindows_menu_ = nullptr;
 
   // ----------------------------------
-  app_ini->data_manager_ = std::make_shared<ohlc_dataset_manager>();
-  app_ini->data_manager_->init(app_ini->appDataLocation, app_ini->hdfFileName);
+  global_settings.data_manager_ = std::make_shared<ohlc_dataset_manager>();
+  global_settings.data_manager_->init(global_settings.appDataLocation, global_settings.hdfFileName);
 
   // ----------------------------------
   // Create Dock manager and set default flags
@@ -110,7 +107,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockManager::setConfigFlag(CDockManager::OpaqueSplitterResize, true);
   CDockManager::setConfigFlag(CDockManager::XmlCompressionEnabled, false);
   CDockManager::setConfigFlag(CDockManager::FocusHighlighting, true);
-  app_ini->dock_manager_ = std::make_shared<CDockManager>(this);
+  global_settings.dock_manager_ = std::make_shared<CDockManager>(this);
 
   // ----------------------------------
   // Setup a menu to allow dockwindow control
@@ -140,9 +137,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
   NetworkDockWidget->setWidget(netbox);
   NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  auto RightArea =
-    app_ini->dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
-  app_ini->dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
+  auto RightArea = global_settings.dock_manager_->addDockWidget(
+    DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
+  global_settings.dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
 
   // ----------------------------------
   // Create dockwidget for algorithmic trading
@@ -153,9 +150,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
   AlgorithmsDockWidget->setWidget(algowidget_);
   AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  app_ini->dock_manager_->addDockWidget(
+  global_settings.dock_manager_->addDockWidget(
     DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
-  app_ini->dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
+  global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
   // ----------------------------------
   // create a dock widget to hold accounts/wallets
@@ -165,9 +162,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockWidget* AccountsDockWidget = new CDockWidget("Accounts");
   AccountsDockWidget->setWidget(accounts_frame_);
   AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  app_ini->dock_manager_->addDockWidget(
+  global_settings.dock_manager_->addDockWidget(
     DockWidgetArea::RightDockWidgetArea, AccountsDockWidget, RightArea, 2);
-  app_ini->dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
+  global_settings.dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
 
   // ----------------------------------
   // create a dock widget to hold open orders
@@ -177,12 +174,12 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockWidget* OrdersDockWidget = new CDockWidget("Trades");
   OrdersDockWidget->setWidget(orders_frame_);
   OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  app_ini->dock_manager_->addDockWidget(
+  global_settings.dock_manager_->addDockWidget(
     DockWidgetArea::RightDockWidgetArea, OrdersDockWidget, RightArea, 3);
-  app_ini->dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
+  global_settings.dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
 
   // for each wallet on each network
-  for (auto network : app_ini->networks_)
+  for (auto network : global_settings.networks_)
   {
     for (auto w : network->wallets())
     {
@@ -258,16 +255,15 @@ GroxMainWindow::~GroxMainWindow()
   delete qs_shutdown_;
   delete qs_darkmode_;
   //
-  app_settings* app_ini = global_settings();
-  app_ini->delete_global_clock_timer(app_ini->get_global_clock_timer());
+  global_settings.delete_global_clock_timer(global_settings.get_global_clock_timer());
 
   // release dockmanager
-  app_ini->dock_manager_.reset();
+  global_settings.dock_manager_.reset();
   // release all networks
-  for (auto& n : app_ini->networks_)
+  for (auto& n : global_settings.networks_)
     n.reset();
   // release datamanager
-  app_ini->data_manager_.reset();
+  global_settings.data_manager_.reset();
 }
 
 // ----------------------------------------------------------------------------
@@ -459,12 +455,10 @@ void GroxMainWindow::execute_xrp()
   if (reply == QMessageBox::Yes)
   {
     main_dbg<0>.debug(str<>("Yes clicked"));
-    //        app_settings* app_ini = global_settings();
-
     //        std::uint32_t tag = bitstamp_network_->account().tag_;
     //        bool test = make_xrp_payment(ripple::KeyType::secp256k1,
-    //            app_ini->xrpl_wallets[app_ini->active_wallet].private_,
-    //            app_ini->xrpl_wallets[app_ini->active_wallet].public_,
+    //                global_settings.xrpl_wallets[    global_settings.active_wallet].private_,
+    //                global_settings.xrpl_wallets[    global_settings.active_wallet].public_,
     //            bitstamp_network_->account().public_, tag, 10);
 
     QApplication::quit();
@@ -589,9 +583,8 @@ void GroxMainWindow::display_offers()
     }
   }
 
-  app_settings* app_ini = global_settings();
   // for each wallet on each network
-  for (auto network : app_ini->networks_)
+  for (auto network : global_settings.networks_)
   {
     for (auto w : network->wallets())
     {
@@ -630,7 +623,7 @@ void GroxMainWindow::showEvent(QShowEvent* event)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::saveTrustlines()
 {
-  QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   // Start Grox MainWindow section
   settings.beginGroup("Trustlines");
   for (auto const& t : currency::trustlines)
@@ -645,7 +638,7 @@ void GroxMainWindow::saveTrustlines()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::loadTrustlines()
 {
-  QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   // Start "Trustlines" section
   settings.beginGroup("Trustlines");
   QStringList childKeys = settings.childKeys();
@@ -662,7 +655,7 @@ void GroxMainWindow::loadTrustlines()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::saveConnectionSetups()
 {
-  QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
 
   // ------------------------------------
   // Start "Tickers" section and remove all existing values
@@ -718,7 +711,7 @@ void GroxMainWindow::saveConnectionSetups()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::loadConnectionSetups()
 {
-  QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
 
   // ------------------------------------
   settings.beginGroup("Tickers");
@@ -783,8 +776,7 @@ void GroxMainWindow::loadConnectionSetups()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::saveWindowSettings()
 {
-  app_settings* app_ini = global_settings();
-  QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
 
   settings.beginGroup("StyleSheet");
   settings.setValue("Dark", dark_mode_);
@@ -798,7 +790,7 @@ void GroxMainWindow::saveWindowSettings()
 
   // Dockwindow perspectives
   settings.beginGroup("DockWindow_Perspectives");
-  app_ini->dock_manager_->savePerspectives(settings);
+  global_settings.dock_manager_->savePerspectives(settings);
   settings.setValue("active", active_perspective_);
   settings.endGroup();
 
@@ -808,8 +800,7 @@ void GroxMainWindow::saveWindowSettings()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::loadWindowSettings()
 {
-  app_settings* app_ini = global_settings();
-  QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
 
   settings.beginGroup("StyleSheet");
   dark_mode_ = settings.value("Dark").toInt();
@@ -824,7 +815,7 @@ void GroxMainWindow::loadWindowSettings()
 
   // Dockwindow perspectives
   settings.beginGroup("DockWindow_Perspectives");
-  app_ini->dock_manager_->loadPerspectives(settings);
+  global_settings.dock_manager_->loadPerspectives(settings);
   createPerspectives_Ui();
   if (settings.contains("active"))
   {
@@ -887,7 +878,7 @@ void GroxMainWindow::execute_filter()
 
 //    base_resolution = ohlc_data_resolutions::minute;
 
-    auto dataset = app_ini->data_manager_->get_dataset(base_resolution);
+    auto dataset =     global_settings.data_manager_->get_dataset(base_resolution);
     auto data = dataset->ohlc_samples_;
 
     // NB. Inputs need to be used by reference, with the original object
@@ -981,7 +972,7 @@ void GroxMainWindow::execute_filter()
         trade_event e = pipe.operator()();
         if (e.type_ == buy_sell_type::buy_event) {
             if (funding[0].usd>0) {
-                double p = app_ini->data_manager_->get_estimated_buy_price(funding[0].usd, e.time_, 2.0);
+                double p =     global_settings.data_manager_->get_estimated_buy_price(funding[0].usd, e.time_, 2.0);
                 if (p==0) break;
 
                 // plot buy price
@@ -1002,7 +993,7 @@ void GroxMainWindow::execute_filter()
         }
         else if (e.type_ == buy_sell_type::sell_event) {
             if (funding[0].xrp>0) {
-                double p = app_ini->data_manager_->get_estimated_sell_price(funding[0].xrp, e.time_, 2.0);
+                double p =     global_settings.data_manager_->get_estimated_sell_price(funding[0].xrp, e.time_, 2.0);
                 if (p==0) break;
 
                 // plot sell price
@@ -1080,17 +1071,16 @@ void GroxMainWindow::build_connection_gui(exchange* ex)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::createPerspectives_Ui()
 {
-  app_settings* app_ini = global_settings();
   // create one time setup menu items
-  if (!app_ini->dockwindows_menu_)
+  if (!global_settings.dockwindows_menu_)
   {
     // main window menu entry
     QMenu* docking_menu_ = new QMenu("Window");
     ui.menubar->addMenu(docking_menu_);
     // subsection for dockwindows
     QAction* menuentry_ = docking_menu_->addAction("Dock windows...");
-    app_ini->dockwindows_menu_ = new QMenu();
-    menuentry_->setMenu(app_ini->dockwindows_menu_);
+    global_settings.dockwindows_menu_ = new QMenu();
+    menuentry_->setMenu(global_settings.dockwindows_menu_);
     // subsection for perspectives
     QAction* menuentry2_ = docking_menu_->addAction("Perspectives...");
     perspectives_menu_ = new QMenu();
@@ -1102,7 +1092,7 @@ void GroxMainWindow::createPerspectives_Ui()
   }
   //
   perspectives_menu_->clear();
-  for (QString const& name : app_ini->dock_manager_->perspectiveNames())
+  for (QString const& name : global_settings.dock_manager_->perspectiveNames())
   {
     QAction* LoadPerspectiveAction = new QAction(name);
     LoadPerspectiveAction->setCheckable(true);
@@ -1116,12 +1106,11 @@ void GroxMainWindow::createPerspectives_Ui()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::savePerspective()
 {
-  app_settings* app_ini = global_settings();
   QString Name = QInputDialog::getText(
     this, "Save Perspective", "Enter name:", QLineEdit::Normal, active_perspective_);
   if (!Name.isEmpty())
   {
-    app_ini->dock_manager_->addPerspective(Name);
+    global_settings.dock_manager_->addPerspective(Name);
     createPerspectives_Ui();
   }
 }
@@ -1129,7 +1118,6 @@ void GroxMainWindow::savePerspective()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::openPerspective(QString const& name)
 {
-  app_settings* app_ini = global_settings();
   active_perspective_ = name;
   for (auto* action : perspectives_menu_->actions())
   {
@@ -1142,7 +1130,7 @@ void GroxMainWindow::openPerspective(QString const& name)
       action->setChecked(false);
     }
   }
-  app_ini->dock_manager_->openPerspective(name);
+  global_settings.dock_manager_->openPerspective(name);
 }
 
 // ----------------------------------------------------------------------------
@@ -1158,7 +1146,7 @@ void GroxMainWindow::LoadStyleSheet(int dark)
   QString name;
   if (dark == 0)
   {
-    global_settings()->dock_manager_->setStyleSheet("");
+    global_settings.dock_manager_->setStyleSheet("");
     qApp->setStyleSheet("");
     return;
   }
@@ -1179,7 +1167,7 @@ void GroxMainWindow::LoadStyleSheet(int dark)
   {
     f.open(QFile::ReadOnly | QFile::Text);
     QTextStream ts(&f);
-    global_settings()->dock_manager_->setStyleSheet("");
+    global_settings.dock_manager_->setStyleSheet("");
     qApp->setStyleSheet(ts.readAll());
   }
 }

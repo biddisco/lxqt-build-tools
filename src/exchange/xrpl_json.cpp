@@ -5,28 +5,8 @@
 #include <string>
 #include <vector>
 //
-#include "json_types.hpp"
+#include "exchange/xrpl_json.hpp"
 #include "nlohmann/json.hpp"
-
-std::ostream& operator<<(std::ostream& os, ohlctv_sample const& x)
-{
-#if 0
-    os << "Time: "   << x.time << " "
-       << "Open: "   << x.open << " "
-       << "High: "   << x.high << " "
-       << "Low: "    << x.low << " "
-       << "Close: "  << x.close << " "
-       << "Volume: " << x.volume;
-#else
-  os << "T: " << x.time << " "
-     << "O: " << x.open << " "
-     << "H: " << x.high << " "
-     << "L: " << x.low << " "
-     << "C: " << x.close << " "
-     << "V: " << x.volume;
-#endif
-  return os;
-}
 
 std::ostream& operator<<(std::ostream& os, xrp_amount const& x)
 {

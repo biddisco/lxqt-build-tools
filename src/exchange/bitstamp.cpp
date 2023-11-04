@@ -10,7 +10,6 @@
 #include "network/evp-encrypt.hpp"
 #include "network/https-async.hpp"
 #include "network/websocket-ssl.hpp"
-#include "settings.hpp"
 #include "util/datetime_utils.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/price_chart_widget.hpp"
@@ -37,7 +36,7 @@ bitstamp_network::bitstamp_network()
   using namespace std::literals;
   token_expiry_ = std::chrono::steady_clock::now() - 60 * 1s;
   // update candles regularly
-  connect(global_settings()->get_global_clock_timer(), SIGNAL(timeout()), this,
+  connect(global_settings.get_global_clock_timer(), SIGNAL(timeout()), this,
     SLOT(candlestick_timer_event()));
   // after new data has been received, trigger this to process new candles and replot
   connect(this, SIGNAL(new_ohlc_data(ticker_data*, double)), this,
@@ -882,13 +881,12 @@ void bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
     bitstamp_dbg<0>.debug(str<>("subscription"), cps, "subscribed");
     return;
   }
-  app_settings* app_ini = global_settings();
   bitstamp_dbg<0>.debug(str<>("subscribing"), cps);
   currency_pair cp{c1, c2};
 
   // create a new data view from hdf5
   std::shared_ptr<ohlc_dataset_view> view =
-    app_ini->data_manager_->create_dataset_view("bitstamp", c1, c2);
+    global_settings.data_manager_->create_dataset_view("bitstamp", c1, c2);
 
   // create a new price plot object
   auto* chart_widget = new price_chart_widget(nullptr, view, shared_from_this(), cps);
@@ -899,8 +897,8 @@ void bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
   CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
   PlotDockWidget->setWidget(chart_widget);
   PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  app_ini->dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
-  app_ini->dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
+  global_settings.dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
+  global_settings.dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
 
   // create a new orderbook text display
   const size_t font_size = 8;
@@ -920,8 +918,9 @@ void bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
   CDockWidget* obPlotDockWidget = new CDockWidget(QString(obtitle.c_str()));
   obPlotDockWidget->setWidget(orderbook_text);
   obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  app_ini->dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, obPlotDockWidget);
-  app_ini->dockwindows_menu_->addAction(obPlotDockWidget->toggleViewAction());
+  global_settings.dock_manager_->addDockWidget(
+    DockWidgetArea::LeftDockWidgetArea, obPlotDockWidget);
+  global_settings.dockwindows_menu_->addAction(obPlotDockWidget->toggleViewAction());
 
   // ----------------------------------
   // Create orderbook plot widget
@@ -932,8 +931,8 @@ void bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
   CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
   obpDockWidget->setWidget(orderbook_plot);
   obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  app_ini->dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, obpDockWidget);
-  app_ini->dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
+  global_settings.dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, obpDockWidget);
+  global_settings.dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
 
   bitstamp_order_book* orderbook = new bitstamp_order_book(orderbook_plot, false);
   // add the subscribed ticker/data/plot to our list for tracking

@@ -10,7 +10,6 @@
 #include "debug/print.hpp"
 #include "mainwindow.hpp"
 #include "network/evp-encrypt.hpp"
-#include "settings.hpp"
 #include "widgets/password_dialog.hpp"
 //
 #include <pika/init.hpp>
@@ -29,14 +28,6 @@ constexpr int debug_level = 5;
 //
 template <int Level>
 static print_threshold<Level, debug_level> app_dbg("App-Main");
-
-// ----------------------------------------------------------------------------
-app_settings* global_settings()
-{
-  // create a global singleton and return an instance to it
-  static std::unique_ptr<app_settings> settings = std::make_unique<app_settings>();
-  return settings.get();
-}
 
 // ----------------------------------------------------------------------------
 void init_settings(app_settings* settings)
@@ -84,10 +75,9 @@ secure_string base64_string(QByteArray ba)
 // ----------------------------------------------------------------------------
 void generate_encrypted_ini_data(password_dialog& npw)
 {
-  app_settings* app_ini = global_settings();
-  QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   //
-  app_ini->grox_password = npw.getPassword().toStdString();
+  global_settings.grox_password = npw.getPassword().toStdString();
 
   // we write a dummy random number to ini file
   // if this is present assume that the initial encryption step is valid
@@ -98,7 +88,7 @@ void generate_encrypted_ini_data(password_dialog& npw)
   // -----------------------
   // Generate encrypted data
   // -----------------------
-  encryption encryptor(app_ini->grox_password, app_ini->randomBytes);
+  encryption encryptor(global_settings.grox_password, global_settings.randomBytes);
   //
   auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
   bitstamp.API_user = npw.getAPIUser().toStdString();
@@ -175,10 +165,9 @@ int qt_main(int argc, char* argv[])
   // (especially noticable in debugger terminal)
   app_dbg<0>.eval([]() { std::cout.setf(std::ios::unitbuf); });
 
-  init_settings(global_settings());
+  init_settings(&global_settings);
   //
-  app_settings* app_ini = global_settings();
-  QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   //
   bool authenticated = false;
   // do we have a ram filesystem mounted? (ubuntu specific env var)
@@ -187,8 +176,8 @@ int qt_main(int argc, char* argv[])
   {
     // generate a base64 encoded pw : bash commmand : echo "password" | base64
     std::string raw = std::getenv("rand3");
-    app_ini->grox_password = base64_decode(raw).toStdString();
-    app_ini->grox_password = app_ini->grox_password.substr(8, 13);
+    global_settings.grox_password = base64_decode(raw).toStdString();
+    global_settings.grox_password = global_settings.grox_password.substr(8, 13);
     authenticated = true;
     app_dbg<5>.debug(str<>("authentication"), "getenv", "ok");
   }
@@ -200,8 +189,8 @@ int qt_main(int argc, char* argv[])
     std::smatch match;
     if (std::regex_search(result, match, rgx))
     {
-      app_ini->grox_password = base64_decode(match[1]).toStdString();
-      app_ini->grox_password = app_ini->grox_password.substr(8, 13);
+      global_settings.grox_password = base64_decode(match[1]).toStdString();
+      global_settings.grox_password = global_settings.grox_password.substr(8, 13);
       authenticated = true;
       app_dbg<5>.debug(str<>("authentication"), "pi", "ok");
     }
@@ -218,7 +207,7 @@ int qt_main(int argc, char* argv[])
       std::ifstream file(filepath);
       std::stringstream buffer;
       buffer << file.rdbuf();
-      app_ini->grox_password = base64_decode(buffer.str()).toStdString();
+      global_settings.grox_password = base64_decode(buffer.str()).toStdString();
       authenticated = true;
       app_dbg<5>.debug(str<>("authentication"), "tempfs", "ok");
     }
@@ -233,7 +222,7 @@ int qt_main(int argc, char* argv[])
     auto result = exec(commandLine.c_str());
     if (result.size() > 0)
     {
-      app_ini->grox_password = result;
+      global_settings.grox_password = result;
       authenticated = true;
       app_dbg<5>.debug(str<>("authentication"), "pass", "ok");
     }
@@ -247,14 +236,14 @@ int qt_main(int argc, char* argv[])
     password_dialog npw(true);
     if (npw.exec() == QDialog::Accepted)
     {
-      app_ini->grox_password = npw.getPassword().toStdString();
+      global_settings.grox_password = npw.getPassword().toStdString();
       authenticated = true;
       app_dbg<5>.debug(str<>("authentication"), "password", "ok");
       if (tempfs_dir)
       {
         std::string filepath = {std::string(tempfs_dir) + "/grox.txt"};
         std::ofstream file(filepath);
-        file << base64_encode(app_ini->grox_password).toStdString();
+        file << base64_encode(global_settings.grox_password).toStdString();
         app_dbg<5>.debug(str<>("authentication"), "tempfs", "write");
       }
     }
@@ -266,7 +255,7 @@ int qt_main(int argc, char* argv[])
   }
 
   // we need random data for the encryption block
-  app_ini->randomBytes = generate_random_alphanumeric_string(encryption::BLOCK_SIZE, 654792);
+  global_settings.randomBytes = generate_random_alphanumeric_string(encryption::BLOCK_SIZE, 654792);
 
   // read random initialization data
   QByteArray rand = base64_decode(settings.value("EncodedData/randomBytes", "").toByteArray());
@@ -286,12 +275,12 @@ int qt_main(int argc, char* argv[])
     // ---------------------------------------
     // decode and decrypt base64 keys
     // ---------------------------------------
-    encryption encryptor(app_ini->grox_password, app_ini->randomBytes);
+    encryption encryptor(global_settings.grox_password, global_settings.randomBytes);
 
     // ---------------------------------------
     // Bitstamp exchange details
     // ---------------------------------------
-    app_ini->networks_.push_back(bitstamp_network::get_bitstamp_instance());
+    global_settings.networks_.push_back(bitstamp_network::get_bitstamp_instance());
     auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
     bitstamp.network_ = bitstamp_network::get_bitstamp_instance();
 
@@ -328,8 +317,8 @@ int qt_main(int argc, char* argv[])
     // ---------------------------------------
     // XRP wallet details
     // ---------------------------------------
-    app_ini->networks_.push_back(xrpl_network::get_instance(false));
-    app_ini->networks_.push_back(xrpl_network::get_instance(true));
+    global_settings.networks_.push_back(xrpl_network::get_instance(false));
+    global_settings.networks_.push_back(xrpl_network::get_instance(true));
     //
     bool present = true;
     int index = 0;

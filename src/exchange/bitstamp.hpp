@@ -13,13 +13,13 @@
 # include "include/belle.hh"
 #endif
 //
+#include "currency/trade_data.hpp"
+#include "exchange/account.hpp"
 #include "exchange/exchange.hpp"
+#include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/https-async.hpp"
 #include "network/websocket-ssl.hpp"
-#include "order_book.hpp"
-#include "settings.hpp"
-#include "trade_data.hpp"
 
 // ----------------------------------------------------------------------------
 class bitstamp_network : public exchange

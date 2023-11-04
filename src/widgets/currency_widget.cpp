@@ -1,6 +1,10 @@
 #include <QDialog>
 #include <QMessageBox>
 //
+#include "config/config.hpp"
+#include "exchange/account.hpp"
+#include "exchange/exchange.hpp"
+//
 #include "check_trades_dialog.hpp"
 #include "currency_widget.hpp"
 #include "trade_widget.hpp"
@@ -8,8 +12,6 @@
 //
 #include <boost/format.hpp>
 #include <string>
-//
-#include "exchange/exchange.hpp"
 
 // ----------------------------------------------------------------------------
 currency_widget::currency_widget(int decimals, QWidget* parent)
@@ -69,7 +71,7 @@ void currency_widget::set_data(
   ui->reserved->setText(to_string(c->reserved_, c->type_).c_str());
   update();
   /*
-    ui.bitstamp_xrp_fee->setText(boost::str(boost::format("fee %.4f%%") % app_ini->bitstamp_xrp_fee).c_str());
+    ui.bitstamp_xrp_fee->setText(boost::str(boost::format("fee %.4f%%") %     global_settings.bitstamp_xrp_fee).c_str());
 */
 }
 
@@ -104,10 +106,9 @@ void currency_widget::show_hide()
   if (ui->controls_pay->isHidden())
   {
     ui->dest_combo->clear();
-    app_settings* app_ini = global_settings();
 
     // for each walleet on each network
-    for (auto network : app_ini->networks_)
+    for (auto network : global_settings.networks_)
     {
       for (auto w : network->wallets())
       {
@@ -126,14 +127,14 @@ void currency_widget::show_hide()
 
     /*
         // Add bitstamp exchange to transfer list
-        if (network_->can_send(currency_, app_ini->bitstamp.network_.get())) {
+        if (network_->can_send(currency_,     global_settings.bitstamp.network_.get())) {
             QVariant v;
-            v.setValue(static_cast<basic_account*>(&app_ini->bitstamp));
-            ui->dest_combo->addItem(QString(app_ini->bitstamp.name_.c_str()), v);
+            v.setValue(static_cast<basic_account*>(&    global_settings.bitstamp));
+            ui->dest_combo->addItem(QString(    global_settings.bitstamp.name_.c_str()), v);
         }
 
         // Add xrpl exchange wallets to transfer list
-        for (auto & w: app_ini->xrpl_wallets) {
+        for (auto & w:     global_settings.xrpl_wallets) {
             if (network_->can_send(currency_, w.network_.get())) {
                 QVariant v;
                 v.setValue(static_cast<basic_account*>(&w));

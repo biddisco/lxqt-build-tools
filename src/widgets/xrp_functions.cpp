@@ -11,7 +11,7 @@
 #include <boost/format.hpp>
 #include <string>
 //
-#include "currency.hpp"
+#include "currency/currency.hpp"
 #include "exchange/exchange.hpp"
 #include "exchange/xrpl_network.hpp"
 // ----------------------------------------------------------------------------

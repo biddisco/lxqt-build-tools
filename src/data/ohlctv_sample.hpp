@@ -5,6 +5,27 @@
 using ohlctv_sample = QwtOHLCSample;
 
 // ----------------------------------------------------------------------------
+inline std::ostream& operator<<(std::ostream& os, ohlctv_sample const& x)
+{
+#if 0
+    os << "Time: "   << x.time << " "
+       << "Open: "   << x.open << " "
+       << "High: "   << x.high << " "
+       << "Low: "    << x.low << " "
+       << "Close: "  << x.close << " "
+       << "Volume: " << x.volume;
+#else
+  os << "T: " << x.time << " "
+     << "O: " << x.open << " "
+     << "H: " << x.high << " "
+     << "L: " << x.low << " "
+     << "C: " << x.close << " "
+     << "V: " << x.volume;
+#endif
+  return os;
+}
+
+// ----------------------------------------------------------------------------
 inline void update_ohlctv_sample(ohlctv_sample& ohlc, ohlctv_sample const& other)
 {
   if (ohlc.isValid())

@@ -12,13 +12,12 @@
 #include <QtCore>
 // Grox
 #include "debug/print.hpp"
-#include "json_types.hpp"
 //
+#include "exchange/order_book.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
 #include "util/stringutils.hpp"
 //
-#include "order_book.hpp"
 // extern
 #include "nlohmann/json.hpp"
 //

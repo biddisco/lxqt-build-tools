@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 //
-#include "currency.hpp"
+#include "currency/currency.hpp"
 #include "nlohmann/json.hpp"
 
 // ----------------------------------------------------------------------------
@@ -60,18 +60,9 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_trades, amount, amount_str, buy_order_id
 // ----------------------------------------------------------------------------
 // bitstamp websocket order book
 // ----------------------------------------------------------------------------
-struct numeric_val
-{
-  double value;
-};
-
-typedef std::vector<numeric_val> numeric_vector;
-
 struct bid_ask
 {
-  std::array<double, 2> values;
-  //    double price;
-  //    double amount;
+  std::array<double, 2> values;    // {price, amount}
   //
   bid_ask() = default;
 };

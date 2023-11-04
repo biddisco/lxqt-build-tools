@@ -24,9 +24,8 @@
 #include "ui_mainwindow.h"
 //
 #include "exchange/bitstamp.hpp"
+#include "exchange/order_book.hpp"
 #include "exchange/xrpl_network.hpp"
-#include "order_book.hpp"
-#include "settings.hpp"
 #include "widgets/connection_widget.hpp"
 // generated
 #include "ui_tabbed_form.h"
