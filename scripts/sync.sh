@@ -4,7 +4,7 @@ params="--exclude '*.pack'"
 echo "-----------------------------------"
 echo "Updating to Raspberry Pi"
 echo "-----------------------------------"
-$HOME/update-rsync.sh $HOME/src/xrp/grox/ pi@192.168.1.15:/home/pi/src/grox $params
+$HOME/update-rsync.sh $HOME/src/grox/ pi@192.168.1.15:/home/pi/src/grox $params
 
 echo 
 echo "-----------------------------------"
