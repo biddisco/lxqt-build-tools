@@ -19,8 +19,6 @@
 #include "plot/ohlc_picker.hpp"
 #include "plot/ohlc_price_plot.hpp"
 //
-#include "data/ohlc_dataset_manager.hpp"
-//
 #include "ui_mainwindow.h"
 //
 #include "exchange/bitstamp.hpp"

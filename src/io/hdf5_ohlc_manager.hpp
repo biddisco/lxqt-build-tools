@@ -9,9 +9,8 @@
 #include "data/ohlctv_sample.hpp"
 // Grox
 #include "currency/currency.hpp"
+#include "data/abstract_data_manager.hpp"
 #include "data/ohlc_datasets.hpp"
-
-class ohlc_dataset_view;
 
 /// dataset_manager is the interface between an array and the (hdf5) file
 /// user to hold the underlying dataset on disk.
@@ -19,7 +18,7 @@ class ohlc_dataset_view;
 /// More control of the data is provided by the dataset_view
 
 // ----------------------------------------------------------------------------
-class ohlc_dataset_manager
+class hdf5_ohlc_manager : public abstract_dataset_manager
 {
   protected:
   std::string data_dir_;
@@ -27,10 +26,10 @@ class ohlc_dataset_manager
   std::mutex hdf5_mutex_;
 
   public:
-  ohlc_dataset_manager();
-  ~ohlc_dataset_manager();
+  hdf5_ohlc_manager();
+  ~hdf5_ohlc_manager() override;
 
-  void init(std::string data_dir, std::string filename)
+  void init(std::string data_dir, std::string filename) override
   {
     data_dir_ = data_dir;
     file_name_ = filename;
@@ -39,15 +38,12 @@ class ohlc_dataset_manager
   }
 
   // Make sure that the initial data dir is present
-  void create_data_dir();
+  void create_data_dir() override;
 
   // read datasets from hdf5 file
-  void read_hdf5(std::string group, std::string dataname, QVector<ohlctv_sample>& data);
+  void read_impl(std::string group, std::string dataname, QVector<ohlctv_sample>& data) override;
 
   // write out data to hdf5
-  void write_hdf5(std::string group, std::string dataname, QVector<ohlctv_sample> const& samples,
-    const uint64_t update, bool truncate);
-
-  std::shared_ptr<ohlc_dataset_view> create_dataset_view(
-    std::string exchange, currency const& c1, currency const& c2);
+  void write_impl(std::string group, std::string dataname, QVector<ohlctv_sample> const& samples,
+    const uint64_t update, bool truncate) override;
 };

@@ -885,8 +885,7 @@ void bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
   currency_pair cp{c1, c2};
 
   // create a new data view from hdf5
-  std::shared_ptr<ohlc_dataset_view> view =
-    global_settings.data_manager_->create_dataset_view("bitstamp", c1, c2);
+  std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("bitstamp", c1, c2);
 
   // create a new price plot object
   auto* chart_widget = new price_chart_widget(nullptr, view, shared_from_this(), cps);

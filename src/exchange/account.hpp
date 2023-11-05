@@ -13,7 +13,6 @@
 #include "network/websocket-ssl.hpp"
 //
 #include "currency/currency.hpp"
-#include "data/ohlc_dataset_manager.hpp"
 #include "exchange/exchange.hpp"
 #include "exchange/order_book.hpp"
 //

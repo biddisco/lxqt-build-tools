@@ -10,7 +10,6 @@
 #include "ui_price_chart_widget.h"
 //
 #include "config/config.hpp"
-#include "data/ohlc_dataset_manager.hpp"
 #include "indicators/indicator_definitions.hpp"
 #include "widgets/digital_clock.hpp"
 #include "widgets/indicator_dialog.hpp"

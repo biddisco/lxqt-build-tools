@@ -9,7 +9,6 @@
 #include "data/ohlctv_sample.hpp"
 // Grox
 #include "currency/currency.hpp"
-#include "data/ohlc_dataset_manager.hpp"
 #include "data/ohlc_datasets.hpp"
 #include "data/ohlc_utils.hpp"
 #include "plot/ohlc_chart_data.hpp"
@@ -25,9 +24,6 @@ class generic_dataset_view
 class ohlc_dataset_view
 {
   private:
-  // file io is handled by the data manager
-  std::shared_ptr<ohlc_dataset_manager> data_manager_;
-
   // a map of datasets, key is resolution
   std::map<double, ohlc_datasets*> candles_;
 

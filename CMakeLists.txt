@@ -408,6 +408,7 @@ add_subdirectory(src/data)
 add_subdirectory(src/currency)
 add_subdirectory(src/debug)
 add_subdirectory(src/indicators)
+add_subdirectory(src/io)
 
 set(GROX_SRC
     # main application
@@ -521,23 +522,20 @@ target_link_libraries(
   grox
   PUBLIC grox_data
          grox_currency
+         grox_io
          qwt
          Qt::Core
-         Qt::Widgets
          Qt::Gui
          Qt::OpenGL
-         $<$<EQUAL:${QT_DEFAULT_MAJOR_VERSION},6>:Qt::OpenGLWidgets>
-         Qt::PrintSupport
          Qt::Svg
-         Qt::Concurrent
+         Qt::Widgets
+         $<$<EQUAL:${QT_DEFAULT_MAJOR_VERSION},6>:Qt::OpenGLWidgets>
          qt${QT_VERSION_MAJOR}advanceddocking
          ${Boost_LIBRARIES}
          nlohmann_json
          fmt::fmt
          range-v3
-         ${STD_FILESYSTEM_LIB}
          Ripple::xrpl_core
-         HighFive
          uuid
          OpenSSL::SSL
          pthread

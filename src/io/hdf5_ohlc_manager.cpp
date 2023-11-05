@@ -5,9 +5,9 @@
 #include <highfive/H5File.hpp>
 //
 #include "data/ohlc_data_exception.hpp"
-#include "data/ohlc_dataset_manager.hpp"
 #include "data/ohlc_dataset_view.hpp"
 #include "debug/print.hpp"
+#include "io/hdf5_ohlc_manager.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -19,13 +19,13 @@ template <int Level>
 static print_threshold<Level, debug_level> man_dbg("DManager");
 
 // ----------------------------------------------------------------------------
-ohlc_dataset_manager::ohlc_dataset_manager() {}
+hdf5_ohlc_manager::hdf5_ohlc_manager() {}
 
 // ----------------------------------------------------------------------------
-ohlc_dataset_manager::~ohlc_dataset_manager() {}
+hdf5_ohlc_manager::~hdf5_ohlc_manager() {}
 
 // ----------------------------------------------------------------------------
-void ohlc_dataset_manager::create_data_dir()
+void hdf5_ohlc_manager::create_data_dir()
 {
   namespace fs = std::filesystem;
   if (!fs::exists(data_dir_) && !fs::create_directory(data_dir_))
@@ -44,7 +44,7 @@ void hdf5_check(const char* msg, herr_t err)
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_dataset_manager::read_hdf5(
+void hdf5_ohlc_manager::read_impl(
   std::string group, std::string dataname, QVector<ohlctv_sample>& data)
 {
   // we do not currently support multi-threaded file access.
@@ -81,7 +81,7 @@ void ohlc_dataset_manager::read_hdf5(
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
+void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
   QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate)
 {
   std::string path = group + "/" + dataname;
@@ -150,12 +150,4 @@ void ohlc_dataset_manager::write_hdf5(std::string group, std::string dataname,
     dataset.resize({N});
   }
   man_dbg<0>.debug(str<>("file close"), path, "write_hdf5", dec<9>(data.size()));
-}
-
-// ----------------------------------------------------------------------------
-std::shared_ptr<ohlc_dataset_view> ohlc_dataset_manager::create_dataset_view(
-  std::string exchange, currency const& c1, currency const& c2)
-{
-  auto view = std::make_shared<ohlc_dataset_view>(exchange, c1, c2);
-  return view;
 }

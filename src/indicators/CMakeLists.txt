@@ -5,7 +5,6 @@ set(grox_indicators_SRCS)
 # ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 # target_link_libraries( grox_indicators PUBLIC qwt ${Boost_LIBRARIES}
-# nlohmann_json range-v3 HighFive )
 
 if(BUILD_TESTING)
   add_subdirectory(test)

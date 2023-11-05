@@ -17,7 +17,7 @@ namespace ads {
 }
 
 class exchange;
-class ohlc_dataset_manager;
+class abstract_dataset_manager;
 
 // ----------------------------------------------------------------------------
 struct app_settings
@@ -39,7 +39,7 @@ struct app_settings
   std::shared_ptr<ads::CDockManager> dock_manager_;
   QMenu* dockwindows_menu_;
   //
-  std::shared_ptr<ohlc_dataset_manager> data_manager_;
+  std::shared_ptr<abstract_dataset_manager> data_manager_;
   //
   static QTimer* get_global_clock_timer();
   static void delete_global_clock_timer(QTimer* timer_);

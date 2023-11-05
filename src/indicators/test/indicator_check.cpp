@@ -17,9 +17,9 @@
 
 // Grox
 #include "currency/currency.hpp"
-#include "data/ohlc_dataset_manager.hpp"
 #include "data/ohlc_datasets.hpp"
 #include "data/ohlc_utils.hpp"
+#include "io/hdf5_ohlc_manager.hpp"
 
 const std::string file_name("/home/biddisco/.local/share/grox/grox.hdf5");
 const std::string dataset_name("bitstamp/XRP-USD");

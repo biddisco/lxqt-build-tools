@@ -31,6 +31,7 @@
 #include "debug/print.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
+#include "io/hdf5_ohlc_manager.hpp"
 #include "mainwindow.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/https-async.hpp"
@@ -97,7 +98,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   global_settings.dockwindows_menu_ = nullptr;
 
   // ----------------------------------
-  global_settings.data_manager_ = std::make_shared<ohlc_dataset_manager>();
+  global_settings.data_manager_ =
+    std::dynamic_pointer_cast<abstract_dataset_manager>(std::make_shared<hdf5_ohlc_manager>());
   global_settings.data_manager_->init(global_settings.appDataLocation, global_settings.hdfFileName);
 
   // ----------------------------------

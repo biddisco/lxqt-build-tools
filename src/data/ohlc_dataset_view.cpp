@@ -4,6 +4,7 @@
 #include <QInputDialog>
 //
 #include "config/config.hpp"
+#include "data/abstract_data_manager.hpp"
 #include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_dataset_view.hpp"
 #include "data/ohlc_utils.hpp"
@@ -26,7 +27,6 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency const& c1, c
   , c2_(c2)
   , ticker_string_(currency_pair_string({c1_, c2_}))
 {
-  data_manager_ = global_settings.data_manager_;
   // insert empty highest resolution candle dataset
   ohlc_datasets* min_res = new ohlc_datasets(ohlc_data_resolutions::minute, ticker_string_);
   candles_.insert(std::make_pair(ohlc_data_resolutions::minute, min_res));
@@ -64,7 +64,8 @@ void ohlc_dataset_view::merge_data(
   // returns the number of samples that are 'new'
   uint64_t update = data->merge_data(new_ohlc_samples_);
   // write new samples to the main datafile
-  data_manager_->write_hdf5("bitstamp", ticker_string_, data->ohlc_samples_->data(), update, false);
+  global_settings.data_manager_->write_file(
+    "bitstamp", ticker_string_, data->ohlc_samples_->data(), update, false);
 }
 
 // ----------------------------------------------------------------------------
@@ -72,7 +73,7 @@ void ohlc_dataset_view::read_from_disk()
 {
   try
   {
-    data_manager_->read_hdf5(
+    global_settings.data_manager_->read_file(
       exchange_, ticker_string_, candles_.begin()->second->ohlc_samples_->data());
   }
   catch (ohlc_data_exception& e)
@@ -104,7 +105,8 @@ void ohlc_dataset_view::truncate_from_time(double t)
       str<3>(ohlc_data_resolutions::get_resolution(res).name_), "at index", dec<9>(index));
     if (res == ohlc_data_resolutions::minute)
     {
-      data_manager_->write_hdf5("bitstamp", ticker_string_, samples->data(), 0, true);
+      global_settings.data_manager_->write_impl(
+        "bitstamp", ticker_string_, samples->data(), 0, true);
     }
   }
 }
