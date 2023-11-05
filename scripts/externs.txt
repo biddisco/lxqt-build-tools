@@ -1,3 +1,9 @@
+#
+# record existing git refs in case updates cause breakage
+#
+find $HOME/src/grox/extern -maxdepth 2 -type d -name .git -exec git --git-dir {} log --format=format:"%H " HEAD -1 \; -print > $HOME/src/grox/scripts/gitrefs.txt
+
+
 # Build Qt-Creator
 # https://wiki.qt.io/Building_Qt_Creator_from_Git_on_Ubuntu_22.04
 

@@ -1,0 +1,13 @@
+1a7e083cf426ac490d124ac0eb0d99971b2d10fc /home/biddisco/src/grox/extern/belle/.git
+428bdd40eea7b0ae1efa0c730b97c4a8967e55bf /home/biddisco/src/grox/extern/QuantLib/.git
+5eda73d310b6baf21be18d698f7a7a00ebf10686 /home/biddisco/src/grox/extern/QDarkStyleSheet/.git
+63383eb3e743040956af53efc68d1829b9a15950 /home/biddisco/src/grox/extern/rippled/.git
+deb6b6865e191968ef649b628391ff79676cd81c /home/biddisco/src/grox/extern/Qt-Advanced-Docking-System/.git
+2ba31b6f36070035e70a0024d1c0ba2aee49565b /home/biddisco/src/grox/extern/vanity/.git
+12f5233f7a99a9bb0201402eba809842d2ce7bb4 /home/biddisco/src/grox/extern/qwt/.git
+0819de8bbd494e46fa19f5d4f1e41c347e2b6950 /home/biddisco/src/grox/extern/streamulus.old/.git
+97452bb3eb74a73fc86504421a6a27c92bce6b99 /home/biddisco/src/grox/extern/range-v3/.git
+924d990f8f4b253e9f7897c92dccfd4c814f569e /home/biddisco/src/grox/extern/soci/.git
+88fcc898970f93a63be8e25760d6b9f33589690f /home/biddisco/src/grox/extern/HighFive/.git
+6eab7a2b187b10b2494e39c1961750bfd1bda500 /home/biddisco/src/grox/extern/json/.git
+460330306a9be9b89970ffadf8845acc17bf676d /home/biddisco/src/grox/extern/qwt2/.git
