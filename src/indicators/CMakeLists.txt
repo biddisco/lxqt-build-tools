@@ -1,10 +1,12 @@
-set(grox_data_SRCS ohlc_dataset_manager.cpp ohlc_datasets.cpp
-                   ohlc_dataset_view.cpp
-)
+set(grox_indicators_SRCS)
 
-add_library(grox_data ${grox_data_SRCS})
-target_include_directories(grox_data PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
+# add_library(grox_indicators ${grox_indicators_SRCS})
+# target_include_directories(grox_indicators PUBLIC
+# ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-target_link_libraries(
-  grox_data PUBLIC qwt ${Boost_LIBRARIES} nlohmann_json range-v3 HighFive
-)
+# target_link_libraries( grox_indicators PUBLIC qwt ${Boost_LIBRARIES}
+# nlohmann_json range-v3 HighFive )
+
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()

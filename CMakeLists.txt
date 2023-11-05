@@ -66,6 +66,7 @@ option(GROX_WITH_IWYU "add include-what-you-use support to grox build" OFF)
 # ------------------------------------------------------------------------------
 # Testing
 # ------------------------------------------------------------------------------
+include(CTest)
 enable_testing()
 
 # ------------------------------------------------------------------------------
@@ -405,6 +406,8 @@ endif()
 
 add_subdirectory(src/data)
 add_subdirectory(src/currency)
+add_subdirectory(src/debug)
+add_subdirectory(src/indicators)
 
 set(GROX_SRC
     # main application
@@ -545,9 +548,6 @@ target_link_libraries(
 # Convenience var for test setup
 # ---------------------------------------------------
 set(TEST_INC_DIRS ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
-add_subdirectory(src/indicators/test)
-add_subdirectory(test)
 
 # ---------------------------------------------------
 # Vanity address generator
