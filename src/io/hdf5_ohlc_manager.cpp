@@ -45,7 +45,7 @@ void hdf5_check(const char* msg, herr_t err)
 
 // ----------------------------------------------------------------------------
 void hdf5_ohlc_manager::read_impl(
-  std::string group, std::string dataname, QVector<ohlctv_sample>& data)
+  std::string group, std::string dataname, QVector<ohlctv_sample>& data, std::uint64_t N)
 {
   // we do not currently support multi-threaded file access.
   std::lock_guard lock(hdf5_mutex_);
@@ -59,11 +59,16 @@ void hdf5_ohlc_manager::read_impl(
     if (file.exist(path))
     {
       auto dataset = file.getDataSet(path);
-      const uint64_t ohlc_size = sizeof(ohlctv_sample) / sizeof(double);
-      std::size_t N = dataset.getElementCount() / ohlc_size;
-      man_dbg<0>.debug(str<>("dataset read"), path, "size", dec<9>(N));
-      data.resize(N);
-      dataset.read<double>(reinterpret_cast<double*>(data.data()));
+      const std::uint64_t ohlc_size = sizeof(ohlctv_sample) / sizeof(double);
+      std::uint64_t Nelem = dataset.getElementCount() / ohlc_size;
+      std::uint64_t Nread =
+        std::min(Nelem, N >= 0 ? N : std::numeric_limits<std::uint64_t>().max());
+      data.resize(Nread);
+      man_dbg<0>.debug(str<>("dataset read"), path, "size", dec<9>(Nread), dec<9>(Nelem));
+      std::vector<size_t> offset{0};
+      std::vector<size_t> size{Nread * ohlc_size};
+      Selection slice = dataset.select(offset, size);
+      slice.read<double>(reinterpret_cast<double*>(data.data()));
     }
     else
     {
@@ -78,6 +83,13 @@ void hdf5_ohlc_manager::read_impl(
   //
   ohlc_datasets::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
   man_dbg<0>.debug(str<>("file close"), path, "read_hdf5", dec<9>(data.size()));
+}
+
+// ----------------------------------------------------------------------------
+void hdf5_ohlc_manager::read_impl(
+  std::string group, std::string dataname, QVector<ohlctv_sample>& data)
+{
+  read_impl(group, dataname, data, -1);
 }
 
 // ----------------------------------------------------------------------------

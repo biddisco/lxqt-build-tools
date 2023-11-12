@@ -39,7 +39,7 @@ void init_settings(app_settings* settings)
   settings->appDataLocation =
     QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).first().toLatin1().data();
   //
-  settings->hdfFileName = settings->appDataLocation + "/grox.hdf5";
+  settings->hdfFileName = "grox.hdf5";
   settings->logFileName = QLatin1String("grox.log").data();
   settings->iniFileName = (settings->configLocation + QLatin1String("/grox.ini")).toLatin1().data();
   app_dbg<5>.debug(str<>("Ini"), settings->iniFileName.toLatin1().data());

@@ -32,7 +32,7 @@ class hdf5_ohlc_manager : public abstract_dataset_manager
   void init(std::string data_dir, std::string filename) override
   {
     data_dir_ = data_dir;
-    file_name_ = filename;
+    file_name_ = data_dir + "/" + filename;
     //
     create_data_dir();
   }
@@ -42,6 +42,8 @@ class hdf5_ohlc_manager : public abstract_dataset_manager
 
   // read datasets from hdf5 file
   void read_impl(std::string group, std::string dataname, QVector<ohlctv_sample>& data) override;
+  void read_impl(std::string group, std::string dataname, QVector<ohlctv_sample>& data,
+    std::uint64_t N) override;
 
   // write out data to hdf5
   void write_impl(std::string group, std::string dataname, QVector<ohlctv_sample> const& samples,

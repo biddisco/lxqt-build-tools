@@ -30,9 +30,17 @@ class abstract_dataset_manager
     this->read_impl(group, dataname, data);
   }
 
+  template <typename T>
+  void read_file(std::string group, std::string dataname, QVector<T>& data, std::uint64_t N)
+  {
+    this->read_impl(group, dataname, data, N);
+  }
+
   // virtual functions that implement data loads for different types
   virtual void write_impl(std::string group, std::string dataname,
     QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate){};
 
   virtual void read_impl(std::string group, std::string dataname, QVector<ohlctv_sample>& data){};
+  virtual void read_impl(
+    std::string group, std::string dataname, QVector<ohlctv_sample>& data, std::uint64_t N){};
 };
