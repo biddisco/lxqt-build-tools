@@ -5,6 +5,9 @@
 #include "data/ohlc_data_resolutions.hpp"
 #include "indicators/indicator_types.hpp"
 
+// Volume-weighted Exponential Moving Average (V-EMA)
+// https://www.financialwebring.org/gummy-stuff/EMA.htm
+
 namespace indicators {
 
   struct mov_av_vw_data
