@@ -19,7 +19,7 @@ namespace abi {
 #endif
 
 // --------------------------------------------------------------------
-namespace debug::detail {
+namespace grox::debug::detail {
   // default : use built-in typeid to get the best info we can
   template <typename T, typename Enabled = std::false_type>
   struct demangle_helper
@@ -50,14 +50,14 @@ private:
 
   template <typename T>
   using cxx_type_id = demangle_helper<T, cxxabi_supported__>;
-}    // namespace debug::detail
+}    // namespace grox::debug::detail
 
 // --------------------------------------------------------------------
 // print type information
 // usage : std::cout << debug::print_type<args...>("separator")
 // separator is appended if the number of types > 1
 // --------------------------------------------------------------------
-namespace debug {
+namespace grox::debug {
   template <typename T = void>    // print a single type
   inline std::string print_type(const char* = "")
   {
@@ -76,4 +76,4 @@ namespace debug {
     std::string temp(print_type<T>());
     return temp + delim + print_type<Args...>(delim);
   }
-}    // namespace debug
+}    // namespace grox::debug

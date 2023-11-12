@@ -324,25 +324,36 @@ namespace grox::debug {
   struct mem_crc32
   {
     mem_crc32(const void* a, std::size_t len, const char* txt)
-      : addr_(reinterpret_cast<const uint64_t*>(a))
+      : addr_(reinterpret_cast<const std::uint8_t*>(a))
       , len_(len)
       , txt_(txt)
     {
     }
-    const uint64_t* addr_;
+    const std::uint8_t* addr_;
     const std::size_t len_;
     const char* txt_;
     friend std::ostream& operator<<(std::ostream& os, mem_crc32 const& p)
     {
-      const uint64_t* uintBuf = static_cast<const uint64_t*>(p.addr_);
+      const std::uint8_t* byte = static_cast<const std::uint8_t*>(p.addr_);
       os << "Memory:";
       os << " address " << ptr(p.addr_) << " length " << hex<6>(p.len_)
          << " CRC32:" << hex<8>(crc32(p.addr_, p.len_)) << "\n";
-      for (size_t i = 0; i < (std::min)(size_t(std::ceil(p.len_ / 8.0)), size_t(128)); i++)
+      size_t i = 0;
+      while (i < std::min(size_t(128), p.len_))
       {
-        os << hex<16>(*uintBuf++) << " ";
+        os << "0x";
+        for (int j = 7; j >= 0; j--)
+        {
+          os << std::hex << std::setfill('0') << std::setw(2)
+             << (((i + j) > p.len_) ? (int) 0 : (int) byte[i + j]);
+        }
+        i += 8;
+        if (i % 32 == 0)
+          os << std::endl;
+        else
+          os << " ";
       }
-      os << " : " << p.txt_;
+      os << ": " << p.txt_;
       return os;
     }
   };
