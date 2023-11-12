@@ -64,7 +64,10 @@ uint64_t ohlc_datasets::merge_data(ohlctv_vector const& new_ohlc_samples_)
     ohlc_dbg<5>.debug(str<>("merging"), ticker_str_, "new samples offset", dec<5>(offset));
     if (first_new - last_existing != ohlc_data_resolutions::minute)
     {
-      throw std::runtime_error("Data OHLC time mismatch in merge");
+      ohlc_dbg<0>.error(str<>("merging"), ticker_str_, "last_existing", dec<12>(last_existing),
+        "first_new", dec<12>(first_new), "difference", dec<12>(first_new - last_existing));
+      if (first_new - last_existing != ohlc_data_resolutions::minute)
+        throw std::runtime_error("Data OHLC time mismatch in merge");
     }
     // add new samples
     ohlc_dbg<5>.debug(
