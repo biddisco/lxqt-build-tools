@@ -9,6 +9,7 @@
 #include <QwtPlot>
 #include <QwtScaleMap>
 // Grox
+#include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_heikin_ashi.hpp"
 #include "plot/ohlc_chart_curve.hpp"
 

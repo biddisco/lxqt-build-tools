@@ -445,7 +445,6 @@ set(GROX_SRC
     src/plot/ohlc_interactor.cpp
     src/plot/ohlc_price_plot.cpp
     src/plot/indicator_plot.cpp
-    src/plot/timebased_chart_data.cpp
     src/plot/timebased_chart_plot.cpp
 )
 

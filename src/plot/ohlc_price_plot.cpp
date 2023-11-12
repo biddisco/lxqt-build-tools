@@ -25,10 +25,10 @@
 #include <QwtSymbol>
 #include <QwtTextLabel>
 // Grox
+#include "data/ohlc_chart_data.hpp"
 #include "data/ohlc_utils.hpp"
 #include "debug/print.hpp"
 #include "plot/ohlc_chart_curve.hpp"
-#include "plot/ohlc_chart_data.hpp"
 #include "plot/ohlc_date_scaledraw.hpp"
 #include "plot/ohlc_interactor.hpp"
 #include "plot/ohlc_picker.hpp"
@@ -245,9 +245,23 @@ void ohlc_price_plot::bind_graphs()
   for (auto r : resolutions)
   {
     auto* data = ohlc_dataset_view_->get_dataset(r);
+    auto* curve = new ohlc_chart_curve(data->ohlc_samples_);
+    curves_.insert(std::make_pair(r, curve));
+
+    if (r == ohlc_data_resolutions::minute)
+    {
+      auto* live_data = ohlc_dataset_view_->get_live_data();
+      auto* live_curve = new ohlc_chart_curve(live_data);
+      live_curves_.insert(std::make_pair(r, live_curve));
+      live_curve->setSymbolPen(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));
+      live_curve->setSymbolPen(QwtPlotTradingCurve::Decreasing, QColor("#FFBF00"));
+      live_curve->setSymbolBrush(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));
+      live_curve->setSymbolBrush(QwtPlotTradingCurve::Decreasing, QColor("#FFBF00"));
+    }
+
     // bind it to this plot
-    data->ohlc_curve_->attach(this);
-    data->ohlc_curve_->setVisible(first);
+    curve->attach(this);
+    curve->setVisible(first);
     first = false;
   }
 }
@@ -255,6 +269,7 @@ void ohlc_price_plot::bind_graphs()
 // ----------------------------------------------------------------------------
 void ohlc_price_plot::update_live_data(ohlctv_sample const& new_sample)
 {
+  ohlc_chart_curve* live_curve;
   // repaint the live dataset
   if (!direct_painter_)
   {
@@ -263,15 +278,16 @@ void ohlc_price_plot::update_live_data(ohlctv_sample const& new_sample)
     // has bad repaint effects unless we turn on CopyBackingStore
     direct_painter_->setAttribute(QwtPlotDirectPainter::FullRepaint, false);
     direct_painter_->setAttribute(QwtPlotDirectPainter::CopyBackingStore, true);
-    ohlc_dataset_view_->get_live_curve()->attach(this);
-    ohlc_dataset_view_->get_live_curve()->setVisible(true);
+    live_curve = live_curves_[ohlc_data_resolutions::minute];
+    live_curve->attach(this);
+    live_curve->setVisible(true);
   }
   else
   {
-    ohlc_dataset_view_->get_live_curve()->itemChanged();
+    live_curve = live_curves_[ohlc_data_resolutions::minute];
+    live_curve->itemChanged();
   }
-  direct_painter_->drawSeries(
-    ohlc_dataset_view_->get_live_curve(), 0, ohlc_dataset_view_->get_live_data()->size() - 1);
+  direct_painter_->drawSeries(live_curve, 0, live_curve->data()->size() - 1);
 }
 
 // ----------------------------------------------------------------------------
@@ -307,10 +323,14 @@ bool ohlc_price_plot::adjust_candle_size(double res)
   for (auto const& r : ohlc_data_resolutions::available_resolutions())
   {
     auto* data = ohlc_dataset_view_->get_dataset(r);
-    data->ohlc_curve_->setVisible(r == res);
+    if (!curves_.contains(r))
+      continue;
+
+    auto* curve = curves_[r];
+    curve->setVisible(r == res);
     if (r == res)
     {
-      data->ohlc_curve_->setSymbolExtent(0.8 * r);
+      curves_[r]->setSymbolExtent(0.8 * r);
       QwtText candle_label(r.name_);
       candle_label.setRenderFlags(Qt::AlignLeft | Qt::AlignTop);
       if (auto_candle_resolution())

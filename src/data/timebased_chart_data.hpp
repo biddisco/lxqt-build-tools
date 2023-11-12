@@ -2,8 +2,7 @@
 
 // STL
 #include <vector>
-// Qwt
-#include <QwtInterval>
+//
 #include <QwtSeriesData>
 //
 #include "data/ohlc_utils.hpp"

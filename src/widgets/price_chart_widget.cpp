@@ -11,6 +11,7 @@
 //
 #include "config/config.hpp"
 #include "indicators/indicator_definitions.hpp"
+#include "plot/ohlc_chart_curve.hpp"
 #include "widgets/digital_clock.hpp"
 #include "widgets/indicator_dialog.hpp"
 #include "widgets/price_chart_widget.hpp"

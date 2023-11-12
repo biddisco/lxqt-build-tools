@@ -3,10 +3,10 @@
 // Qt
 #include <QVector>
 // Grox
+#include "data/ohlc_chart_data.hpp"
 #include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_datasets.hpp"
 #include "debug/print.hpp"
-#include "plot/ohlc_chart_data.hpp"
 #include "util/datetime_utils.hpp"
 
 // ----------------------------------------------------------------------------
@@ -25,13 +25,7 @@ ohlc_datasets::ohlc_datasets(double res, std::string const& name)
   // we do not destroy these in the destructor because they are given to the
   // plot curve object which deletes them when it is destroyed
   ohlc_samples_ = new ohlc_chart_data(res);
-  ohlc_curve_ = new ohlc_chart_curve(ohlc_samples_);
   live_samples_ = new ohlc_chart_data(res);
-  live_curve_ = new ohlc_chart_curve(live_samples_);
-  live_curve_->setSymbolPen(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));
-  live_curve_->setSymbolPen(QwtPlotTradingCurve::Decreasing, QColor("#FFBF00"));
-  live_curve_->setSymbolBrush(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));
-  live_curve_->setSymbolBrush(QwtPlotTradingCurve::Decreasing, QColor("#FFBF00"));
 }
 
 // ----------------------------------------------------------------------------

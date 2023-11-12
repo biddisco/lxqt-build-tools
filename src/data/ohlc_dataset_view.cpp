@@ -274,12 +274,12 @@ const ohlc_chart_data* ohlc_dataset_view::get_live_data() const
   return temp->live_samples_;
 }
 
-// ----------------------------------------------------------------------------
-ohlc_chart_curve* ohlc_dataset_view::get_live_curve()
-{
-  ohlc_datasets* temp = get_dataset(ohlc_data_resolutions::minute);
-  return temp->live_curve_;
-}
+//// ----------------------------------------------------------------------------
+//ohlc_chart_curve* ohlc_dataset_view::get_live_curve()
+//{
+//  ohlc_datasets* temp = get_dataset(ohlc_data_resolutions::minute);
+//  return temp->live_curve_;
+//}
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_view::add_live_data(ohlctv_sample new_sample)

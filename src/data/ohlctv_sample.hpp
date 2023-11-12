@@ -1,5 +1,8 @@
 #pragma once
 
+#include <iomanip>
+#include <iostream>
+//
 #include <QwtOHLCSample>
 
 using ohlctv_sample = QwtOHLCSample;
@@ -15,7 +18,7 @@ inline std::ostream& operator<<(std::ostream& os, ohlctv_sample const& x)
        << "Close: "  << x.close << " "
        << "Volume: " << x.volume;
 #else
-  os << "T: " << x.time << " "
+  os << "T: " << std::right << std::setw(13) << std::setprecision(14) << x.time << " "
      << "O: " << x.open << " "
      << "H: " << x.high << " "
      << "L: " << x.low << " "

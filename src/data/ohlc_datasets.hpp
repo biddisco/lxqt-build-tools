@@ -5,9 +5,8 @@
 // Qt
 #include <QVector>
 // Grox
+#include "data/ohlc_chart_data.hpp"
 #include "data/ohlc_data_resolutions.hpp"
-#include "plot/ohlc_chart_curve.hpp"
-#include "plot/ohlc_chart_data.hpp"
 
 using ohlctv_vector = QVector<ohlctv_sample>;
 
@@ -16,11 +15,9 @@ struct ohlc_datasets
 {
   // persistent downloaded data
   ohlc_chart_data* ohlc_samples_;
-  ohlc_chart_curve* ohlc_curve_;
 
   // live trade data to be included
   ohlc_chart_data* live_samples_;
-  ohlc_chart_curve* live_curve_;
 
   // for debugging, show the dataset name
   std::string ticker_str_;

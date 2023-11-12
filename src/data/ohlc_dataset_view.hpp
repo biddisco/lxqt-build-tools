@@ -9,13 +9,9 @@
 #include "data/ohlctv_sample.hpp"
 // Grox
 #include "currency/currency.hpp"
+#include "data/ohlc_chart_data.hpp"
 #include "data/ohlc_datasets.hpp"
 #include "data/ohlc_utils.hpp"
-#include "plot/ohlc_chart_data.hpp"
-
-class generic_dataset_view
-{
-};
 
 /// dataset_view provides functions to access the data array holding a dataset
 /// as well as other resampled arrays that hold the same data at lower resolutions.
@@ -52,6 +48,7 @@ class ohlc_dataset_view
       return candles_.at(resolution);
     return nullptr;
   }
+
   ohlc_chart_data* get_samples()
   {
     return candles_.begin()->second->ohlc_samples_;
@@ -67,7 +64,6 @@ class ohlc_dataset_view
   // add a new trade sample to build live OHLC candles, returns true when
   // a new candle is started, false when one is (only) updated
   void add_live_data(ohlctv_sample new_sample);
-  ohlc_chart_curve* get_live_curve();
 
   // Get the min/max OHLC values for a given time range
   // Returns the lowest of the lows, and highest of the highs in the OHLC samples
