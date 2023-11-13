@@ -37,6 +37,13 @@ namespace indicators {
     {
     }
 
+    moving_average(int window_size, int mean, int mode)
+      : decay_acc_(ba::tag::rolling_window::window_size = window_size)
+      , rolling_mean_(mean)
+      , mode_(mode)
+    {
+    }
+
     // ---------------------------------------
     // initialize internals from a parameter list
     void initialize()

@@ -64,10 +64,21 @@ option(GROX_WITH_SANITIZER "build grox using address sanitzer flags" OFF)
 option(GROX_WITH_IWYU "add include-what-you-use support to grox build" OFF)
 
 # ------------------------------------------------------------------------------
-# Testing
+# CTest testing support
 # ------------------------------------------------------------------------------
 include(CTest)
 enable_testing()
+
+# ------------------------------------------------------------------------------
+# GoogleTest testing support
+# ------------------------------------------------------------------------------
+find_package(GTest QUIET)
+if(NOT GTest_FOUND)
+  set(BUILD_TESTING
+      OFF
+      CACHE BOOL "Testing"
+  )
+endif()
 
 # ------------------------------------------------------------------------------
 # CMake modules
