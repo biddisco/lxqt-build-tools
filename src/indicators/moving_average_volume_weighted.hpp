@@ -32,10 +32,10 @@ namespace indicators {
 
     // ---------------------------------------
     // Default constructor
-    moving_average_volume_weighted()
-      : buffer_(7)
+    moving_average_volume_weighted(int window_size = 7, int mode = 1)
+      : buffer_(window_size)
       , rolling_mean_(0)
-      , mode_(2)
+      , mode_(mode)
     {
     }
 

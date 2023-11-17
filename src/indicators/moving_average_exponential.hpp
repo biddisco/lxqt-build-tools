@@ -22,10 +22,11 @@ namespace indicators {
       std::make_tuple<std::string, param_types>("Decay 1 - alpha", 0.1),
     };
 
-    moving_average_exponential(int window_size = 7, double decay_factor = 0.1)
+    moving_average_exponential(
+      int window_size = 7, bool user_alpha = false, int mode = 1, double decay_factor = 0.1)
       : window_size_(window_size)
-      , user_alpha_(false)
-      , mode_(1)
+      , user_alpha_(user_alpha)
+      , mode_(mode)
       , decay_factor_(decay_factor)
       , xma_(0)
       , first_(true)
