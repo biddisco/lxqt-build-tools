@@ -1,12 +1,60 @@
 #pragma once
 
 // STL
+#include <iostream>
 #include <optional>
 #include <vector>
-// Qwt
+// extern
+#include <magic_enum.hpp>
+// grox
 #include "data/ohlctv_sample.hpp"
 
 void update_ohlctv_sample(ohlctv_sample& ohlc, ohlctv_sample const& other);
+
+enum class ohlc_modes : int
+{
+  open = 1,
+  close = 2,
+  mid_open_close = 3,
+  high = 4,
+  low = 5,
+  mid_high_low = 6,
+  volume = 7,
+  value = 8
+};
+
+constexpr auto ohlc_mode_names = magic_enum::enum_names<ohlc_modes>();
+
+inline double ohlc_mode_extract(const ohlc_modes mode, ohlctv_sample const& ohlc)
+{
+  switch (mode)
+  {
+  case ohlc_modes::open:
+    return ohlc.open;
+  case ohlc_modes::close:
+    return ohlc.close;
+  case ohlc_modes::mid_open_close:
+    return 0.5 * (ohlc.open + ohlc.close);
+  case ohlc_modes::high:
+    return ohlc.high;
+  case ohlc_modes::low:
+    return ohlc.low;
+  case ohlc_modes::mid_high_low:
+    return 0.5 * (ohlc.low + ohlc.high);
+  case ohlc_modes::volume:
+    return ohlc.volume;
+  case ohlc_modes::value:
+    return ohlc.volume * (0.5 * (ohlc.open + ohlc.close));
+  default:
+    return 0.0;
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& os, const ohlc_modes& m)
+{
+  os << int(m);
+  return os;
+}
 
 inline double get_time(ohlctv_sample const& val)
 {

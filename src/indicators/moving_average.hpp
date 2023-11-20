@@ -21,26 +21,26 @@ namespace indicators {
     // fields required for auto gui generation
     const std::string name = "Moving Average";
     const std::string description = "mode : 0=open, 1=close, 2=mid(o,c), 3=high, 4=low, 5=mid(h,l)";
-    const bool price_overlay = true;
+    const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {
       std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),
       std::make_tuple<std::string, param_types>("Window size", 14),
-      std::make_tuple<std::string, param_types>("mode", 2)};
+      std::make_tuple<std::string, param_types>("mode", ohlc_modes::mid_open_close)};
 
     // ---------------------------------------
     // Default constructor required by indicator algorithms
     moving_average()
-      : decay_acc_(ba::tag::rolling_window::window_size = 7)
-      , rolling_mean_(0)
-      , mode_(2)
+      : decay_acc_(ba::tag::rolling_window::window_size = 14)
+      , mode_(ohlc_modes::low)
+      , mean_(0)
     {
     }
 
-    moving_average(int window_size, int mean, int mode)
+    moving_average(int window_size, ohlc_modes mode)
       : decay_acc_(ba::tag::rolling_window::window_size = window_size)
-      , rolling_mean_(mean)
       , mode_(mode)
+      , mean_(0.0)
     {
     }
 
@@ -49,11 +49,11 @@ namespace indicators {
     void initialize()
     {
       auto window_size = std::get<int>(std::get<1>(params[1]));
-      auto mode = std::get<int>(std::get<1>(params[2]));
+      auto mode = std::get<ohlc_modes>(std::get<1>(params[2]));
       //
       decay_acc_ = ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>>(
         ba::tag::rolling_window::window_size = window_size);
-      rolling_mean_ = 0;
+      mean_ = 0;
       mode_ = mode;
     }
 
@@ -61,26 +61,27 @@ namespace indicators {
     {
       // insert data into boost accumulator
       decay_acc_(price);
-      rolling_mean_ = ba::rolling_mean(decay_acc_);
-      return rolling_mean_;
+      mean_ = ba::rolling_mean(decay_acc_);
+      return mean_;
     }
 
     double operator()(ohlctv_sample const& ohlc)
     {
-      double price = ohlc_mode_extract(mode_, ohlc);
+      double price = ohlc_mode_extract(ohlc_modes(mode_), ohlc);
       return operator()(price);
     }
 
     inline double getLastResult()
     {
-      return rolling_mean_;
+      return mean_;
     }
 
     void generate(std::shared_ptr<ohlc_dataset_view>&) {}
 
 private:
+    ohlc_modes mode_;
+    double mean_;
+    //
     ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>> decay_acc_;
-    double rolling_mean_;
-    int mode_;
   };
 }    // namespace indicators

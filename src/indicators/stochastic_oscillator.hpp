@@ -16,7 +16,7 @@ namespace indicators {
     // fields required for auto gui generation and plot setup
     const std::string name = "Stochastic Oscillator";
     const std::string description = "Stochastic Oscillator default 14 period";
-    const bool price_overlay = false;
+    const overlay_type overlay = overlay_type::minmax_limit;
     const y_limits ylimits = {0.0, 1.0};
 
     param_list params = {

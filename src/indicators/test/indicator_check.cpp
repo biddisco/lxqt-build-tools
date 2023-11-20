@@ -39,7 +39,7 @@ TEST(moving_averages, moving_average)
   data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
 
   // get a reference to indicator in the global indicators list
-  indicators::moving_average alg(15, 0, 2);
+  indicators::moving_average alg(15, ohlc_modes::mid_open_close);
 
   // display
   int i = 0;
@@ -78,7 +78,7 @@ TEST(moving_averages, exponential_moving_average)
   data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
 
   // get a reference to indicator in the global indicators list
-  indicators::moving_average_exponential alg(15, false, 2, 0.1);
+  indicators::moving_average_exponential alg(15, ohlc_modes::mid_open_close);
   // display
   int i = 0;
   std::stringstream tmp;
@@ -116,7 +116,7 @@ TEST(moving_averages, volume_weighted_moving_average)
   data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
 
   // get a reference to indicator in the global indicators list
-  indicators::moving_average_volume_weighted alg(15, 2);
+  indicators::moving_average_volume_weighted alg(15, ohlc_modes::mid_open_close);
   // display
   int i = 0;
   std::stringstream tmp;

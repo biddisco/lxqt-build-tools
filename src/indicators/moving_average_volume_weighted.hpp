@@ -23,19 +23,20 @@ namespace indicators {
     // fields required for auto gui generation
     const std::string name = "Moving Average (Volume Weighted)";
     const std::string description = "mode : 0=open, 1=close, 2=mid(o,c), 3=high, 4=low, 5=mid(h,l)";
-    const bool price_overlay = true;
+    const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {
       std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),
       std::make_tuple<std::string, param_types>("Window size", 14),
-      std::make_tuple<std::string, param_types>("mode", 2)};
+      std::make_tuple<std::string, param_types>("mode", ohlc_modes::mid_open_close)};
 
     // ---------------------------------------
     // Default constructor
-    moving_average_volume_weighted(int window_size = 7, int mode = 1)
-      : buffer_(window_size)
-      , rolling_mean_(0)
+    moving_average_volume_weighted(int window_size = 7, ohlc_modes mode = ohlc_modes::low)
+      : window_size_(window_size)
       , mode_(mode)
+      , mean_(0)
+      , buffer_(window_size)
     {
     }
 
@@ -43,12 +44,11 @@ namespace indicators {
     // initialize internals from a parameter list
     void initialize()
     {
-      auto window_size = std::get<int>(std::get<1>(params[1]));
-      auto mode = std::get<int>(std::get<1>(params[2]));
+      window_size_ = std::get<int>(std::get<1>(params[1]));
+      mode_ = std::get<ohlc_modes>(std::get<1>(params[2]));
       //
-      buffer_ = boost::circular_buffer<mov_av_vw_data>(window_size);
-      rolling_mean_ = 0;
-      mode_ = mode;
+      buffer_ = boost::circular_buffer<mov_av_vw_data>(window_size_);
+      mean_ = 0;
     }
 
     double compute()
@@ -65,7 +65,7 @@ namespace indicators {
 
     double operator()(ohlctv_sample const& val)
     {
-      double price = ohlc_mode_extract(mode_, val);
+      double price = ohlc_mode_extract(ohlc_modes(mode_), val);
       // insert data into buffer
       if (val.volume > 0)
       {
@@ -76,20 +76,21 @@ namespace indicators {
         auto last_vol = buffer_.back().weight_;
         buffer_.push_back({price, last_vol});
       }
-      rolling_mean_ = compute();
-      return rolling_mean_;
+      mean_ = compute();
+      return mean_;
     }
 
     inline double getLastResult()
     {
-      return rolling_mean_;
+      return mean_;
     }
 
 private:
-    boost::circular_buffer<mov_av_vw_data> buffer_;
+    int window_size_;
+    ohlc_modes mode_;
     //
-    double rolling_mean_;
-    int mode_;
+    boost::circular_buffer<mov_av_vw_data> buffer_;
+    double mean_;
   };
 
 }    // namespace indicators

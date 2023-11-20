@@ -8,6 +8,7 @@
 
 //
 #include "exchange/exchange.hpp"
+#include "indicators/indicator_types.hpp"
 #include "plot/indicator_plot.hpp"
 #include "plot/ohlc_picker.hpp"
 #include "plot/ohlc_price_plot.hpp"
@@ -93,8 +94,9 @@ class price_chart_widget : public QWidget
 
   void show_plot_axes();
 
-  std::tuple<indicator_plot*, QwtPlotCurve*> add_indicator_plot(
-    QString const& title, QVector<QPointF> const& samples, QColor const& color);
+  std::tuple<indicator_plot*, QwtPlotCurve*> add_indicator_plot(QString const& title,
+    QVector<QPointF> const& samples, QColor const& color,
+    indicators::y_limits ylimits = {0.0, 0.0});
 
   void remove_indicator_plot(indicator_plot* filter_plot, QwtPlotCurve* curve);
 

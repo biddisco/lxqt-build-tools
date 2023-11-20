@@ -174,242 +174,181 @@ find_package(ZLIB)
 find_package(pika)
 find_package(fmt)
 
+# -------------------------------------------------------------
+# get_external_project
+# -------------------------------------------------------------
+function(get_external_project)
+  cmake_parse_arguments(
+    ARGS
+    "DO_NOT_BUILD" # options
+    "PROJECT_NAME;GIT_REPO;GIT_TAG;FOLDER_NAME" # 1 value args
+    "" # multivalued args
+    ${ARGN}
+  )
+
+  string(TOUPPER ${ARGS_PROJECT_NAME} UPPER_PROJECT)
+  string(TOLOWER ${ARGS_PROJECT_NAME} LOWER_PROJECT)
+  find_package(${ARGS_PROJECT_NAME} QUIET)
+
+  if(NOT ${ARGS_PROJECT_NAME}_FOUND)
+    # look in the current source tree
+    if(ARGS_FOLDER_NAME)
+      set(LOCAL_DIR ${PROJECT_SOURCE_DIR}/extern/${ARGS_FOLDER_NAME})
+    else()
+      set(LOCAL_DIR ${PROJECT_SOURCE_DIR}/extern/${ARGS_PROJECT_NAME})
+    endif()
+    if(EXISTS ${LOCAL_DIR}/.git)
+      message(STATUS "ext: " "Using ${ARGS_PROJECT_NAME} in (${LOCAL_DIR})")
+      # use the source in this directory
+      set(FETCHCONTENT_SOURCE_DIR_${UPPER_PROJECT} ${LOCAL_DIR})
+      # don't change branches, or pull
+      set(FETCHCONTENT_UPDATES_DISCONNECTED_${UPPER_PROJECT} ON)
+    endif()
+
+    fetchcontent_declare(
+      ${ARGS_PROJECT_NAME}
+      GIT_REPOSITORY ${ARGS_GIT_REPO}
+      GIT_TAG ${ARGS_GIT_TAG}
+      GIT_SHALLOW TRUE
+    )
+    fetchcontent_getproperties(${ARGS_PROJECT_NAME})
+    if(NOT ${ARGS_PROJECT_NAME}_POPULATED)
+      fetchcontent_populate(${ARGS_PROJECT_NAME})
+      if(NOT ${ARGS_DO_NOT_BUILD})
+        add_subdirectory(
+          ${${LOWER_PROJECT}_SOURCE_DIR} ${${LOWER_PROJECT}_BINARY_DIR}
+        )
+      endif()
+    endif()
+    # make location of project accessible outside of function in case files are
+    # needed
+    set(${LOWER_PROJECT}_SOURCE_DIR
+        "${${LOWER_PROJECT}_SOURCE_DIR}"
+        PARENT_SCOPE
+    )
+    set(${LOWER_PROJECT}_BINARY_DIR
+        "${${LOWER_PROJECT}_BINARY_DIR}"
+        PARENT_SCOPE
+    )
+  endif()
+
+endfunction(get_external_project)
+
 # ------------------------------------------------------------------------------
 # Build/Download qwt
 # ------------------------------------------------------------------------------
-set(LOCAL_QWT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/qwt)
-if(EXISTS ${LOCAL_QWT_DIR})
-  message(STATUS "Using QWT in source tree")
-  # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_QWT ${LOCAL_QWT_DIR})
-  # don't change branches, or pull
-  set(FETCHCONTENT_UPDATES_DISCONNECTED_QWT ON)
-endif()
-
-# If we must pull a fresh copy, setup git location/branch and set shallow flag
-fetchcontent_declare(
-  qwt
-  GIT_REPOSITORY $ENV{HOME}/src/qwt
-  GIT_TAG svn-cmake
-  GIT_SHALLOW TRUE
+get_external_project(
+  PROJECT_NAME "qwt" GIT_REPO "$ENV{HOME}/src/qwt" GIT_TAG "svn-cmake"
 )
-fetchcontent_getproperties(qwt)
-if(NOT qwt_POPULATED)
-  message(STATUS "Downloading QWT source...")
-  fetchcontent_populate(qwt)
-  add_subdirectory(${qwt_SOURCE_DIR} ${qwt_BINARY_DIR})
-endif()
 
 # ------------------------------------------------------------------------------
 # Build/Download Qt-Advanced-Docking-System
 # ------------------------------------------------------------------------------
-set(LOCAL_DOCKING_DIR
-    ${CMAKE_CURRENT_SOURCE_DIR}/extern/Qt-Advanced-Docking-System
+get_external_project(
+  PROJECT_NAME
+  "QtADS"
+  FOLDER_NAME
+  "Qt-Advanced-Docking-System"
+  GIT_REPO
+  "https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System"
+  GIT_TAG
+  "master"
 )
-if(EXISTS ${LOCAL_DOCKING_DIR})
-  message(STATUS "Using Qt-Advanced-Docking-System in source tree")
-  # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_QTADS ${LOCAL_DOCKING_DIR})
-  # don't change branches, or pull
-  set(FETCHCONTENT_UPDATES_DISCONNECTED_QTADS ON)
-endif()
-
-# If we must pull a fresh copy, setup git location/branch and set shallow flag
-fetchcontent_declare(
-  QtADS
-  GIT_REPOSITORY https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System
-  GIT_TAG master
-  GIT_SHALLOW TRUE
-)
-fetchcontent_getproperties(QtADS)
-if(NOT QtADS_POPULATED)
-  message(STATUS "Downloading QtADS source...")
-  fetchcontent_populate(QtADS)
-  add_subdirectory(${qtads_SOURCE_DIR} ${qtads_BINARY_DIR})
-endif()
 
 # ------------------------------------------------------------------------------
 # Build/Download nlohmann/json
 # ------------------------------------------------------------------------------
-set(LOCAL_JSON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/json)
-if(EXISTS ${LOCAL_JSON_DIR})
-  message(STATUS "Using json in source tree")
-  # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON ${LOCAL_JSON_DIR})
-  # don't change branches, or pull
-  set(FETCHCONTENT_UPDATES_DISCONNECTED_NLOHMANN_JSON ON)
-endif()
-
-# If we must pull a fresh copy, setup git location/branch and set shallow flag
-fetchcontent_declare(
-  nlohmann_json
-  GIT_REPOSITORY https://github.com/nlohmann/json
-  GIT_TAG develop
-  GIT_SHALLOW TRUE
+get_external_project(
+  PROJECT_NAME
+  "nlohmann_json"
+  FOLDER_NAME
+  "json"
+  GIT_REPO
+  "https://github.com/nlohmann/json"
+  GIT_TAG
+  "develop"
 )
-fetchcontent_getproperties(nlohmann_json)
-if(NOT nlohmann_json_POPULATED)
-  message(STATUS "Downloading nlohmann_json source...")
-  fetchcontent_populate(nlohmann_json)
-  add_subdirectory(${nlohmann_json_SOURCE_DIR} ${nlohmann_json_BINARY_DIR})
-endif()
 
 # ------------------------------------------------------------------------------
 # Build/Download QDarkStyleSheet
 # ------------------------------------------------------------------------------
-set(LOCAL_QDARK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/QDarkStyleSheet)
-if(EXISTS ${LOCAL_QDARK_DIR})
-  message(STATUS "Using QDarkStyleSheet in source tree")
-  # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_QDARKSTYLESHEET ${LOCAL_QDARK_DIR})
-  # don't change branches, or pull
-  set(FETCHCONTENT_UPDATES_DISCONNECTED_QDARKSTYLESHEET ON)
-endif()
-
-# If we must pull a fresh copy, setup git location/branch and set shallow flag
-fetchcontent_declare(
-  QDarkStyleSheet
-  GIT_REPOSITORY https://github.com/ColinDuquesnoy/QDarkStyleSheet.git
-  GIT_TAG master
-  GIT_SHALLOW TRUE
+get_external_project(
+  PROJECT_NAME
+  "QDarkStyleSheet"
+  GIT_REPO
+  "https://github.com/ColinDuquesnoy/QDarkStyleSheet.git"
+  GIT_TAG
+  "master"
+  DO_NOT_BUILD
 )
-fetchcontent_getproperties(QDarkStyleSheet)
-if(NOT QDarkStyleSheet_POPULATED)
-  message(STATUS "Downloading QDarkStyleSheet source...")
-  fetchcontent_populate(QDarkStyleSheet)
-endif()
 
 # ------------------------------------------------------------------------------
 # Build/Download range-v3 library
 # ------------------------------------------------------------------------------
-set(LOCAL_RANGE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/range-v3)
-if(EXISTS ${LOCAL_RANGE_DIR})
-  message(STATUS "Using Range-v3 in source tree")
-  # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_RANGE-V3 ${LOCAL_RANGE_DIR})
-  # don't change branches, or pull
-  set(FETCHCONTENT_UPDATES_DISCONNECTED_RANGE-V3 ON)
-endif()
-
-# If we must pull a fresh copy, setup git location/branch and set shallow flag
-fetchcontent_declare(
-  range-v3
-  GIT_REPOSITORY https://github.com/ericniebler/range-v3.git
-  GIT_TAG master
-  GIT_SHALLOW TRUE
+get_external_project(
+  PROJECT_NAME "range-v3" GIT_REPO
+  "https://github.com/ericniebler/range-v3.git" GIT_TAG "master"
 )
-fetchcontent_getproperties(range-v3)
-if(NOT range-v3_POPULATED)
-  message(STATUS "Downloading range-v3 source...")
-  fetchcontent_populate(range-v3)
-  add_subdirectory(${range-v3_SOURCE_DIR} ${range-v3_BINARY_DIR})
-endif()
 
 # ------------------------------------------------------------------------------
 # Build/Download HighFive hdf5 c++ library
 # ------------------------------------------------------------------------------
-set(LOCAL_HIGHFIVE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/HighFive)
-
 set(HIGHFIVE_UNIT_TESTS
     OFF
     CACHE STRING "HighFive unit testing"
 )
 set(HIGHFIVE_BUILD_DOCS OFF)
 
-if(EXISTS ${LOCAL_HIGHFIVE_DIR})
-  message(STATUS "Using HighFive in source tree")
-  # use the source in this directory
-  set(FETCHCONTENT_SOURCE_DIR_HIGHFIVE ${LOCAL_HIGHFIVE_DIR})
-  # don't change branches, or pull
-  set(FETCHCONTENT_UPDATES_DISCONNECTED_HIGHFIVE ON)
-endif()
-
-# If we must pull a fresh copy, setup git location/branch and set shallow flag
-fetchcontent_declare(
-  HighFive
-  GIT_REPOSITORY https://github.com/BlueBrain/HighFive.git
-  GIT_TAG master
-  GIT_SHALLOW TRUE
+get_external_project(
+  PROJECT_NAME "HighFive" GIT_REPO "https://github.com/BlueBrain/HighFive.git"
+  GIT_TAG "master"
 )
-fetchcontent_getproperties(HighFive)
-if(NOT HighFive_POPULATED)
-  message(STATUS "Downloading HighFive source...")
-  fetchcontent_populate(HighFive)
-  add_subdirectory(${highfive_SOURCE_DIR} ${highfive_BINARY_DIR})
-endif()
 
 # ------------------------------------------------------------------------------
 # Find/Build/Download rippled
 # ------------------------------------------------------------------------------
-# try to find a system version
-find_package(Ripple QUIET)
-
-if(NOT Ripple_FOUND)
-  # flag tells rippled not to link to static boost/etc
-  set(static FALSE)
-  set(rocksdb FALSE)
-  # look in the current source tree
-  set(LOCAL_RIPPLED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/rippled)
-  if(EXISTS ${LOCAL_RIPPLED_DIR}/.git)
-    message(STATUS "Using rippled in source tree (${${LOCAL_RIPPLED_DIR}})")
-    # use the source in this directory
-    set(FETCHCONTENT_SOURCE_DIR_RIPPLED ${LOCAL_RIPPLED_DIR})
-    # don't change branches, or pull
-    set(FETCHCONTENT_UPDATES_DISCONNECTED_RIPPLED ON)
-    # To setup where Rippled puts its extern projects
-    set(NIH_CACHE_ROOT ${PROJECT_BINARY_DIR}/extern)
-  endif()
-
-  # If we must pull a fresh copy, setup git location/branch and set shallow flag
-  fetchcontent_declare(
-    rippled
-    GIT_REPOSITORY https://github.com/ripple/rippled.git
-    GIT_TAG master
-    GIT_SHALLOW TRUE
-  )
-  fetchcontent_getproperties(rippled)
-  if(NOT rippled_POPULATED)
-    message(STATUS "Downloading rippled source...")
-    fetchcontent_populate(rippled)
-    add_subdirectory(${rippled_SOURCE_DIR} ${rippled_BINARY_DIR})
-  endif()
-endif()
+set(static FALSE)
+set(rocksdb FALSE)
+# To setup where Rippled puts its extern projects
+set(NIH_CACHE_ROOT ${PROJECT_BINARY_DIR}/extern)
+get_external_project(
+  PROJECT_NAME
+  "Ripple"
+  FOLDER_NAME
+  "rippled"
+  GIT_REPO
+  "https://github.com/ripple/rippled.git"
+  GIT_TAG
+  "master"
+)
 
 # -------------------------------------------------------------
 # Find/Build/Download pika
 # -------------------------------------------------------------
-find_package(pika QUIET)
-
-if(NOT pika_FOUND)
-  # look in the current source tree
-  set(LOCAL_PIKA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern/pika)
-  if(EXISTS ${LOCAL_PIKA_DIR}/.git)
-    message(STATUS "Using pika in source tree (${LOCAL_PIKA_DIR})")
-    # use the source in this directory
-    set(FETCHCONTENT_SOURCE_DIR_PIKA ${LOCAL_PIKA_DIR})
-    # don't change branches, or pull
-    set(FETCHCONTENT_UPDATES_DISCONNECTED_PIKA ON)
-  endif()
-
-  fetchcontent_declare(
-    pika
-    GIT_REPOSITORY https://github.com/STEllAR-GROUP/pika
-    GIT_TAG master
-    GIT_SHALLOW TRUE
+get_external_project(
+  PROJECT_NAME "pika" GIT_REPO "https://github.com/ripple/rippled.git" GIT_TAG
+  "master"
+)
+if(pika_WITH_APEX)
+  # I think something like this should be done in APEX' CMakeLists.pika
+  include_directories(
+    ${pika_SOURCE_DIR}/libs/preprocessor/include
+    ${pika_SOURCE_DIR}/apex/src/apex ${pika_SOURCE_DIR}/apex/src/contrib
   )
-  fetchcontent_getproperties(pika)
-  if(NOT pika_POPULATED)
-    fetchcontent_populate(pika)
-    if(pika_WITH_APEX)
-      # I think something like this should be done in APEX' CMakeLists.pika
-      include_directories(
-        ${pika_SOURCE_DIR}/libs/preprocessor/include
-        ${pika_SOURCE_DIR}/apex/src/apex ${pika_SOURCE_DIR}/apex/src/contrib
-      )
-    endif()
-    add_subdirectory(${pika_SOURCE_DIR} ${pika_BINARY_DIR})
-  endif()
 endif()
+
+# -------------------------------------------------------------
+# Find/Build/Download magic_enum
+# -------------------------------------------------------------
+set(MAGIC_ENUM_OPT_BUILD_EXAMPLES
+    OFF
+    CACHE BOOL " " FORCE
+)
+get_external_project(
+  PROJECT_NAME magic_enum GIT_REPO "https://github.com/Neargye/magic_enum.git"
+  GIT_TAG "master"
+)
+# include(properties) print_target_properties(magic_enum::magic_enum)
 
 # ------------------------------------------------------------------------------
 # grox build

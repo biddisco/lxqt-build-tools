@@ -5,4 +5,6 @@ set(grox_data_SRCS ohlc_datasets.cpp ohlc_dataset_view.cpp
 add_library(grox_data ${grox_data_SRCS})
 target_include_directories(grox_data PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-target_link_libraries(grox_data PUBLIC qwt ${Boost_LIBRARIES} range-v3)
+target_link_libraries(
+  grox_data PUBLIC qwt magic_enum::magic_enum ${Boost_LIBRARIES} range-v3
+)

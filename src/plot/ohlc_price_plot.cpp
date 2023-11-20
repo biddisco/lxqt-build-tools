@@ -537,6 +537,20 @@ QwtPlotCurve* ohlc_price_plot::add_overlay_curve(
 }
 
 // ----------------------------------------------------------------------------
+QwtPlotCurve* ohlc_price_plot::add_overlay_volume_curve(
+  QString const& title, QVector<QPointF> const& samples, QColor const& color)
+{
+  auto m_curve = new QwtPlotCurve(title);
+  m_curve->setYAxis(QwtPlot::yLeft);
+  m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
+  m_curve->setStyle(QwtPlotCurve::Lines);
+  m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
+  m_curve->setPen(color, 2);
+  m_curve->setSamples(samples);
+  m_curve->attach(this);
+  return m_curve;
+}
+// ----------------------------------------------------------------------------
 void ohlc_price_plot::updateLayout()
 {
   QwtPlot::updateLayout();

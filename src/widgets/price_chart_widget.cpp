@@ -10,13 +10,14 @@
 #include "ui_price_chart_widget.h"
 //
 #include "config/config.hpp"
+#include "debug/print.hpp"
 #include "indicators/indicator_definitions.hpp"
+#include "indicators/indicator_types.hpp"
 #include "plot/ohlc_chart_curve.hpp"
 #include "widgets/digital_clock.hpp"
 #include "widgets/indicator_dialog.hpp"
 #include "widgets/price_chart_widget.hpp"
 //
-#include "debug/print.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -279,9 +280,25 @@ void price_chart_widget::connect_gui()
           QString name = QString(alg.name.c_str());
           QwtPlotCurve* curve;
           indicator_plot* plot = nullptr;
-          if (alg.price_overlay)
+          if (alg.overlay == indicators::overlay_type::price)
           {
             curve = crypto_price_plot_->add_overlay_curve(name, indicator_data, colour);
+          }
+          else if (alg.overlay == indicators::overlay_type::mode_select)
+          {
+            ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(alg.params[2]));
+            if (mode == ohlc_modes::volume)
+            {
+              curve = crypto_price_plot_->add_overlay_volume_curve(name, indicator_data, colour);
+            }
+            else if (mode == ohlc_modes::value)
+            {
+              std::tie(plot, curve) = add_indicator_plot(name, indicator_data, colour);
+            }
+            else
+            {
+              curve = crypto_price_plot_->add_overlay_curve(name, indicator_data, colour);
+            }
           }
           else
           {
@@ -410,11 +427,19 @@ void price_chart_widget::show_plot_axes()
 
 // ----------------------------------------------------------------------------
 std::tuple<indicator_plot*, QwtPlotCurve*> price_chart_widget::add_indicator_plot(
-  QString const& title, QVector<QPointF> const& samples, QColor const& color)
+  QString const& title, QVector<QPointF> const& samples, QColor const& color,
+  indicators::y_limits ylimits)
 {
   auto filter_plot = new indicator_plot(this);
   filter_plot->setMinimumHeight(128);
-  filter_plot->setAxisScale(QwtAxis::YRight, 0, 1);
+  if (ylimits.min == ylimits.max)
+  {
+    filter_plot->setAxisAutoScale(QwtAxis::YRight, true);
+  }
+  else
+  {
+    filter_plot->setAxisScale(QwtAxis::YRight, ylimits.min, ylimits.max);
+  }
 
   auto m_curve = new QwtPlotCurve(title);
   m_curve->setYAxis(QwtPlot::yRight);

@@ -85,6 +85,20 @@ QWidget* get_widget(int const& param)
   return widget;
 }
 
+QWidget* get_widget(ohlc_modes const& param)
+{
+  QStringList mode_list;
+  for (auto const& r : ohlc_mode_names)
+  {
+    mode_list << QString::fromStdString(std::string(r));
+  }
+
+  QComboBox* const widget = new QComboBox();
+  widget->addItems(mode_list);
+  widget->setCurrentText(QString::fromStdString(std::string(magic_enum::enum_name(param))));
+  return widget;
+}
+
 QWidget* get_widget(bool const& param)
 {
   QCheckBox* const widget = new QCheckBox();
@@ -141,6 +155,14 @@ void set_param(QWidget* widget, candle_res& param)
   QComboBox* w = dynamic_cast<QComboBox*>(widget);
   int index = w->currentIndex();
   param = ohlc_data_resolutions::available_resolutions()[index];
+}
+
+void set_param(QWidget* widget, ohlc_modes& param)
+{
+  QComboBox* w = dynamic_cast<QComboBox*>(widget);
+  int index = w->currentIndex();
+  param = magic_enum::enum_value<ohlc_modes>(index);
+  ;
 }
 
 // ----------------------------------------------------------------------------
