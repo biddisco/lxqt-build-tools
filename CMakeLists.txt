@@ -220,8 +220,7 @@ function(get_external_project)
         )
       endif()
     endif()
-    # make location of project accessible outside of function in case files are
-    # needed
+    # make location of project visible outside function
     set(${LOWER_PROJECT}_SOURCE_DIR
         "${${LOWER_PROJECT}_SOURCE_DIR}"
         PARENT_SCOPE
@@ -238,7 +237,7 @@ endfunction(get_external_project)
 # Build/Download qwt
 # ------------------------------------------------------------------------------
 get_external_project(
-  PROJECT_NAME "qwt" GIT_REPO "$ENV{HOME}/src/qwt" GIT_TAG "svn-cmake"
+  PROJECT_NAME "qwt" GIT_REPO "$ENV{HOME}/git-repos/qwt" GIT_TAG "candle-fixes"
 )
 
 # ------------------------------------------------------------------------------
@@ -267,6 +266,21 @@ get_external_project(
   "https://github.com/nlohmann/json"
   GIT_TAG
   "develop"
+)
+
+# ------------------------------------------------------------------------------
+# Build/Download belle
+# ------------------------------------------------------------------------------
+get_external_project(
+  PROJECT_NAME
+  "belle"
+  FOLDER_NAME
+  "belle"
+  GIT_REPO
+  "$ENV{HOME}/git-repos/belle"
+  GIT_TAG
+  "master"
+  DO_NOT_BUILD
 )
 
 # ------------------------------------------------------------------------------
@@ -311,23 +325,24 @@ set(static FALSE)
 set(rocksdb FALSE)
 # To setup where Rippled puts its extern projects
 set(NIH_CACHE_ROOT ${PROJECT_BINARY_DIR}/extern)
+file(MAKE_DIRECTORY ${NIH_CACHE_ROOT})
 get_external_project(
   PROJECT_NAME
   "Ripple"
   FOLDER_NAME
   "rippled"
   GIT_REPO
-  "https://github.com/ripple/rippled.git"
+  "$ENV{HOME}/git-repos/rippled"
   GIT_TAG
-  "master"
+  "jb-master"
 )
 
 # -------------------------------------------------------------
 # Find/Build/Download pika
 # -------------------------------------------------------------
 get_external_project(
-  PROJECT_NAME "pika" GIT_REPO "https://github.com/ripple/rippled.git" GIT_TAG
-  "master"
+  PROJECT_NAME "pika" GIT_REPO "https://github.com/pika-org/pika" GIT_TAG
+  "main"
 )
 if(pika_WITH_APEX)
   # I think something like this should be done in APEX' CMakeLists.pika
@@ -420,7 +435,7 @@ target_include_directories(
   grox
   PUBLIC ${Boost_INCLUDE_DIRS} ${HDF5_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}
          ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
-         ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle
+         ${belle_SOURCE_DIR}
 )
 
 if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
@@ -507,7 +522,7 @@ target_compile_options(vanity PRIVATE -O3)
 # ---------------------------------------------------
 # OLD : vanity address generator
 # ---------------------------------------------------
-add_subdirectory(extern/vanity)
+# add_subdirectory(extern/vanity)
 
 # ---------------------------------------------------
 # test websocket code
@@ -594,7 +609,7 @@ endif()
 # ---------------------------------------------------
 add_executable(test-belle-client src/network/test/test-belle-client.cpp)
 target_include_directories(
-  test-belle-client PUBLIC extern/belle/include ${TEST_INC_DIRS}
+  test-belle-client PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS}
 )
 target_link_libraries(
   test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json
@@ -607,7 +622,7 @@ add_executable(
   test-belle-client-request src/network/test/test-belle-client-request.cpp
 )
 target_include_directories(
-  test-belle-client-request PUBLIC extern/belle/include ${TEST_INC_DIRS}
+  test-belle-client-request PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS}
 )
 target_link_libraries(
   test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
@@ -619,7 +634,7 @@ target_link_libraries(
 # ---------------------------------------------------
 add_executable(test-belle-websocket src/network/test/test-belle-websocket.cpp)
 target_include_directories(
-  test-belle-websocket PUBLIC extern/belle/include ${TEST_INC_DIRS}
+  test-belle-websocket PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS}
 )
 target_link_libraries(
   test-belle-websocket PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
@@ -630,11 +645,10 @@ target_link_libraries(
 # belle - example original https test client/server
 # ---------------------------------------------------
 add_executable(
-  test-belle-https-client
-  ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/client/https/src/main.cc
+  test-belle-https-client ${belle_SOURCE_DIR}/example/client/https/src/main.cc
 )
 target_include_directories(
-  test-belle-https-client PUBLIC extern/belle/include ${TEST_INC_DIRS}
+  test-belle-https-client PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS}
 )
 target_link_libraries(
   test-belle-https-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
@@ -642,14 +656,13 @@ target_link_libraries(
 )
 target_compile_definitions(
   test-belle-https-client
-  PRIVATE
-    BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert"
+  PRIVATE BELLE_CERT_PATH="${belle_SOURCE_DIR}/example/cert"
 )
 
 # add_executable(test-belle-https-server
-# ${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/server/https/src/main.cc)
-# target_include_directories(test-belle-https-server PUBLIC extern/belle/include
-# ${TEST_INC_DIRS}) target_link_libraries(test-belle-https-server PUBLIC ssl
-# crypto pthread ${Boost_LIBRARIES})
-# target_compile_definitions(test-belle-https-server PRIVATE
-# BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/extern/belle/example/cert" )
+# ${CMAKE_CURRENT_SOURCE_DIR}/belle_SOURCE_DIR/example/server/https/src/main.cc)
+# target_include_directories(test-belle-https-server PUBLIC
+# ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS})
+# target_link_libraries(test-belle-https-server PUBLIC ssl crypto pthread
+# ${Boost_LIBRARIES}) target_compile_definitions(test-belle-https-server PRIVATE
+# BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/belle_SOURCE_DIR/example/cert" )
