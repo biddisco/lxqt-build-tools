@@ -20,7 +20,7 @@ namespace indicators {
     // ---------------------------------------
     // fields required for auto gui generation
     const std::string name = "Moving Average";
-    const std::string description = "mode : 0=open, 1=close, 2=mid(o,c), 3=high, 4=low, 5=mid(h,l)";
+    const std::string description = "Simple Moving Average";
     const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {
@@ -29,18 +29,12 @@ namespace indicators {
       std::make_tuple<std::string, param_types>("mode", ohlc_modes::mid_open_close)};
 
     // ---------------------------------------
-    // Default constructor required by indicator algorithms
-    moving_average()
-      : decay_acc_(ba::tag::rolling_window::window_size = 14)
-      , mode_(ohlc_modes::low)
-      , mean_(0)
-    {
-    }
-
-    moving_average(int window_size, ohlc_modes mode)
-      : decay_acc_(ba::tag::rolling_window::window_size = window_size)
+    // Default constructor
+    moving_average(int window_size = 14, ohlc_modes mode = ohlc_modes::low)
+      : window_size_(window_size)
       , mode_(mode)
-      , mean_(0.0)
+      , mean_(0)
+      , decay_acc_(ba::tag::rolling_window::window_size = window_size)
     {
     }
 
@@ -48,13 +42,12 @@ namespace indicators {
     // initialize internals from a parameter list
     void initialize()
     {
-      auto window_size = std::get<int>(std::get<1>(params[1]));
-      auto mode = std::get<ohlc_modes>(std::get<1>(params[2]));
+      window_size_ = std::get<int>(std::get<1>(params[1]));
+      mode_ = std::get<ohlc_modes>(std::get<1>(params[2]));
       //
       decay_acc_ = ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>>(
-        ba::tag::rolling_window::window_size = window_size);
+        ba::tag::rolling_window::window_size = window_size_);
       mean_ = 0;
-      mode_ = mode;
     }
 
     double operator()(const double price)
@@ -67,7 +60,7 @@ namespace indicators {
 
     double operator()(ohlctv_sample const& ohlc)
     {
-      double price = ohlc_mode_extract(ohlc_modes(mode_), ohlc);
+      double price = ohlc_mode_extract(mode_, ohlc);
       return operator()(price);
     }
 
@@ -79,6 +72,7 @@ namespace indicators {
     void generate(std::shared_ptr<ohlc_dataset_view>&) {}
 
 private:
+    int window_size_;
     ohlc_modes mode_;
     double mean_;
     //

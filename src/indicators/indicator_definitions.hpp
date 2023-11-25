@@ -10,6 +10,7 @@
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 #include "indicators/moving_average_exponential.hpp"
+#include "indicators/moving_average_exponential_volume_weighted.hpp"
 #include "indicators/moving_average_volume_weighted.hpp"
 #include "indicators/relative_strength_indicator.hpp"
 #include "indicators/stochastic_oscillator.hpp"
@@ -23,6 +24,7 @@ namespace indicators {
     moving_average,
     moving_average_volume_weighted,
     moving_average_exponential,
+moving_average_exponential_volume_weighted,
     relative_strength_indicator,
     stochastic_relative_strength_indicator
   >;
@@ -31,6 +33,7 @@ namespace indicators {
     moving_average{},
     moving_average_volume_weighted{},
     moving_average_exponential{},
+moving_average_exponential_volume_weighted{},
     relative_strength_indicator{},
     stochastic_relative_strength_indicator{},
     /*stochastic_oscillator{}, */
