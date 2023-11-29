@@ -514,10 +514,9 @@ set(TEST_INC_DIRS ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # ---------------------------------------------------
 # Vanity address generator
 # ---------------------------------------------------
-add_executable(vanity vanity/vanity.cpp)
-target_link_libraries(vanity range-v3 Ripple::xrpl_core pika::pika)
-# enable optimizations for vanity generator regardless of build type setting
-target_compile_options(vanity PRIVATE -O3)
+# add_executable(vanity vanity/vanity.cpp) target_link_libraries(vanity range-v3
+# Ripple::xrpl_core pika::pika) enable optimizations for vanity generator
+# regardless of build type setting target_compile_options(vanity PRIVATE -O3)
 
 # ---------------------------------------------------
 # OLD : vanity address generator
