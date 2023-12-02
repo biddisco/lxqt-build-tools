@@ -9,9 +9,9 @@
 #include "data/ohlctv_sample.hpp"
 // Grox
 #include "currency/currency.hpp"
-#include "data/ohlc_chart_data.hpp"
 #include "data/ohlc_datasets.hpp"
 #include "data/ohlc_utils.hpp"
+#include "data/timebased_chart_data.hpp"
 
 /// dataset_view provides functions to access the data array holding a dataset
 /// as well as other resampled arrays that hold the same data at lower resolutions.

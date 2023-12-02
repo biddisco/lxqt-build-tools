@@ -77,3 +77,7 @@ class timebased_chart_data : public QwtArraySeriesData<DataType>
     return m_samples;
   }
 };
+
+// ----------------------------------------------------------------------------
+using ohlc_chart_data = timebased_chart_data<ohlctv_sample>;
+using point_chart_data = timebased_chart_data<QPointF>;

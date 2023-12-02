@@ -252,8 +252,8 @@ void price_chart_widget::connect_gui()
           // convert the dataset name selections in the dialog into actual datasets
           std::vector<ohlc_datasets*> datasets = indicators::get_datasets(alg.params, hdf5_ohlc_);
 
-          timebased_chart_data<QPointF>* indicator_data =
-            new timebased_chart_data<QPointF>(datasets[0]->ohlc_samples_->get_resolution());
+          point_chart_data* indicator_data =
+            new point_chart_data(datasets[0]->ohlc_samples_->get_resolution());
           // if the algorithm operates on a single input dataset
           if (datasets.size() == 1)
           {
@@ -428,8 +428,7 @@ void price_chart_widget::show_plot_axes()
 
 // ----------------------------------------------------------------------------
 std::tuple<indicator_plot*, timebased_data_curve*> price_chart_widget::add_indicator_plot(
-  QString const& title, timebased_chart_data<QPointF>* data, QColor const& color,
-  indicators::y_limits ylimits)
+  QString const& title, point_chart_data* data, QColor const& color, indicators::y_limits ylimits)
 {
   auto filter_plot = new indicator_plot(this);
   filter_plot->setMinimumHeight(128);

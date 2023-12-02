@@ -79,10 +79,10 @@ class ohlc_price_plot : public timebased_chart_plot
   bool update_candle_size();
 
   timebased_data_curve* add_overlay_curve(
-    QString const& title, timebased_chart_data<QPointF>* data, QColor const& color);
+    QString const& title, point_chart_data* data, QColor const& color);
 
   timebased_data_curve* add_overlay_volume_curve(
-    QString const& title, timebased_chart_data<QPointF>* data, QColor const& color);
+    QString const& title, point_chart_data* data, QColor const& color);
 
   QwtPlotCurve* add_buy_sell_curve(
     QString const& title, QVector<QPointF> const& samples, QColor const& color);

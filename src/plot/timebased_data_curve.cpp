@@ -31,8 +31,7 @@ void timebased_data_curve::drawSeries(QPainter* painter, QwtScaleMap const& xMap
   // find the min/max indices that we need to iterate over,
   // add +1 to min to clip 1 inside at the left of the x axis
   // right hand side is trucated by int conversion and always clipped anyway
-  timebased_chart_data<QPointF> const* time_data =
-    dynamic_cast<timebased_chart_data<QPointF> const*>(data());
+  point_chart_data const* time_data = dynamic_cast<point_chart_data const*>(data());
   if (time_data->size() == 0)
   {
     return;

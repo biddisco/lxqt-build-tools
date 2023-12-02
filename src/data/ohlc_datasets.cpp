@@ -3,9 +3,9 @@
 // Qt
 #include <QVector>
 // Grox
-#include "data/ohlc_chart_data.hpp"
 #include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_datasets.hpp"
+#include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
 #include "util/datetime_utils.hpp"
 

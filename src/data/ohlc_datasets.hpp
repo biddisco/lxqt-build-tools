@@ -5,8 +5,8 @@
 // Qt
 #include <QVector>
 // Grox
-#include "data/ohlc_chart_data.hpp"
 #include "data/ohlc_data_resolutions.hpp"
+#include "data/timebased_chart_data.hpp"
 
 using ohlctv_vector = QVector<ohlctv_sample>;
 

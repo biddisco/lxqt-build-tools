@@ -24,7 +24,7 @@
 #include <QwtSymbol>
 #include <QwtTextLabel>
 // Grox
-#include "data/ohlc_chart_data.hpp"
+#include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
 #include "plot/indicator_plot.hpp"
 #include "plot/ohlc_chart_curve.hpp"

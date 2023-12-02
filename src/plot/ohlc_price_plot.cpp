@@ -25,8 +25,8 @@
 #include <QwtSymbol>
 #include <QwtTextLabel>
 // Grox
-#include "data/ohlc_chart_data.hpp"
 #include "data/ohlc_utils.hpp"
+#include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
 #include "plot/ohlc_chart_curve.hpp"
 #include "plot/ohlc_date_scaledraw.hpp"
@@ -518,7 +518,7 @@ QwtPlotCurve* ohlc_price_plot::add_buy_sell_curve(
 
 // ----------------------------------------------------------------------------
 timebased_data_curve* ohlc_price_plot::add_overlay_curve(
-  QString const& title, timebased_chart_data<QPointF>* data, QColor const& color)
+  QString const& title, point_chart_data* data, QColor const& color)
 {
   auto m_curve = new timebased_data_curve(title);
   m_curve->setYAxis(QwtPlot::yRight);
@@ -539,7 +539,7 @@ timebased_data_curve* ohlc_price_plot::add_overlay_curve(
 
 // ----------------------------------------------------------------------------
 timebased_data_curve* ohlc_price_plot::add_overlay_volume_curve(
-  QString const& title, timebased_chart_data<QPointF>* data, QColor const& color)
+  QString const& title, point_chart_data* data, QColor const& color)
 {
   auto m_curve = new timebased_data_curve(title);
   m_curve->setYAxis(QwtPlot::yLeft);
