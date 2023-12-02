@@ -33,6 +33,7 @@
 #include "plot/ohlc_interactor.hpp"
 #include "plot/ohlc_picker.hpp"
 #include "plot/ohlc_price_plot.hpp"
+#include "plot/timebased_data_curve.hpp"
 #include "util/datetime_utils.hpp"
 //
 #include <range/v3/view.hpp>
@@ -516,10 +517,10 @@ QwtPlotCurve* ohlc_price_plot::add_buy_sell_curve(
 }
 
 // ----------------------------------------------------------------------------
-QwtPlotCurve* ohlc_price_plot::add_overlay_curve(
-  QString const& title, QVector<QPointF> const& samples, QColor const& color)
+timebased_data_curve* ohlc_price_plot::add_overlay_curve(
+  QString const& title, timebased_chart_data<QPointF>* data, QColor const& color)
 {
-  auto m_curve = new QwtPlotCurve(title);
+  auto m_curve = new timebased_data_curve(title);
   m_curve->setYAxis(QwtPlot::yRight);
   m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
   m_curve->setStyle(QwtPlotCurve::Lines);
@@ -531,22 +532,22 @@ QwtPlotCurve* ohlc_price_plot::add_overlay_curve(
   //    symbol->setPen(color, 4);
   //    m_curve->setSymbol(symbol);
 
-  m_curve->setSamples(samples);
+  m_curve->setData(data);
   m_curve->attach(this);
   return m_curve;
 }
 
 // ----------------------------------------------------------------------------
-QwtPlotCurve* ohlc_price_plot::add_overlay_volume_curve(
-  QString const& title, QVector<QPointF> const& samples, QColor const& color)
+timebased_data_curve* ohlc_price_plot::add_overlay_volume_curve(
+  QString const& title, timebased_chart_data<QPointF>* data, QColor const& color)
 {
-  auto m_curve = new QwtPlotCurve(title);
+  auto m_curve = new timebased_data_curve(title);
   m_curve->setYAxis(QwtPlot::yLeft);
   m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
   m_curve->setStyle(QwtPlotCurve::Lines);
   m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
   m_curve->setPen(color, 2);
-  m_curve->setSamples(samples);
+  m_curve->setData(data);
   m_curve->attach(this);
   return m_curve;
 }

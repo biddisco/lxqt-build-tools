@@ -426,7 +426,8 @@ int pika_main(int argc, char** argv)
   tt::sync_wait(std::move(snd));
 
   // allow pika to shutdown
-  return pika::finalize();
+  pika::finalize();
+  return 0;
 }
 
 //----------------------------------------------------------------------------

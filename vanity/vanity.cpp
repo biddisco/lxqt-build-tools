@@ -1,5 +1,4 @@
 #include <pika/execution.hpp>
-#include <pika/future.hpp>
 #include <pika/init.hpp>
 #include <pika/program_options.hpp>
 //
@@ -293,7 +292,8 @@ int pika_main(pika::program_options::variables_map& vm)
 
   scoped_lock lock(output_mutex);
   std::cout << "Main thread completing" << std::endl;
-  return pika::finalize();
+  pika::finalize();
+  return 0;
 }
 
 //-----------------------------------------------------------------------------

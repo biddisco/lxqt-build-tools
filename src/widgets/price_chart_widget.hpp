@@ -25,7 +25,7 @@ struct indicator_data
   QString text;
   QString params;
   indicator_plot* plot;
-  QwtPlotCurve* curve;
+  timebased_data_curve* curve;
 };
 Q_DECLARE_METATYPE(indicator_data*)
 
@@ -94,11 +94,11 @@ class price_chart_widget : public QWidget
 
   void show_plot_axes();
 
-  std::tuple<indicator_plot*, QwtPlotCurve*> add_indicator_plot(QString const& title,
-    QVector<QPointF> const& samples, QColor const& color,
+  std::tuple<indicator_plot*, timebased_data_curve*> add_indicator_plot(QString const& title,
+    timebased_chart_data<QPointF>* data, QColor const& color,
     indicators::y_limits ylimits = {0.0, 0.0});
 
-  void remove_indicator_plot(indicator_plot* filter_plot, QwtPlotCurve* curve);
+  void remove_indicator_plot(indicator_plot* filter_plot, timebased_data_curve* curve);
 
   void resizeEvent(QResizeEvent* event) override;
   void showEvent(QShowEvent* event) override;
