@@ -31,12 +31,9 @@ ohlc_datasets::ohlc_datasets(double res, std::string const& name)
 // ----------------------------------------------------------------------------
 ohlc_datasets::~ohlc_datasets()
 {
-  // curve is deleted by plot,
-  // samples are deleted by curve
-  //    delete ohlc_curve_;
-  //    delete ohlc_samples_;
-  //    delete live_curve_;
-  //    delete live_samples_;
+  // qwt curves, own the samples they plot, so we do not need to delete
+  //    ohlc_samples_;
+  //    live_samples_;
 }
 
 // ----------------------------------------------------------------------------

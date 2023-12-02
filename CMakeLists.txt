@@ -374,6 +374,7 @@ add_subdirectory(src/currency)
 add_subdirectory(src/debug)
 add_subdirectory(src/indicators)
 add_subdirectory(src/io)
+add_subdirectory(src/plot)
 
 set(GROX_SRC
     # main application
@@ -402,15 +403,6 @@ set(GROX_SRC
     src/widgets/wallet_widget.cpp
     src/widgets/xrp_functions.cpp
     src/widgets/price_chart_widget.cpp
-    # plotting
-    src/plot/OrderBookPlot.cpp
-    src/plot/OrderBookCurve.cpp
-    src/plot/ohlc_chart_curve.cpp
-    src/plot/ohlc_date_scaledraw.cpp
-    src/plot/ohlc_interactor.cpp
-    src/plot/ohlc_price_plot.cpp
-    src/plot/indicator_plot.cpp
-    src/plot/timebased_chart_plot.cpp
 )
 
 qt_wrap_ui(GROX_SRC src/tabbed_form.ui)
@@ -433,7 +425,7 @@ set_property(TARGET grox PROPERTY AUTORCC ON)
 
 target_include_directories(
   grox
-  PUBLIC ${Boost_INCLUDE_DIRS} ${HDF5_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}
+  PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}
          ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
          ${belle_SOURCE_DIR}
 )
@@ -487,6 +479,7 @@ target_link_libraries(
   PUBLIC grox_data
          grox_currency
          grox_io
+         grox_plot
          qwt
          Qt::Core
          Qt::Gui

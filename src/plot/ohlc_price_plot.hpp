@@ -5,13 +5,15 @@
 #include <QwtPlot>
 // Grox
 #include "data/ohlctv_sample.hpp"
+#include "data/timebased_chart_data.hpp"
 #include "plot/timebased_chart_plot.hpp"
-//
+
 class ohlc_chart_curve;
 class ohlc_dataset_view;
 class ohlc_interactor;
 class ohlc_price_scaledraw;
 class ohlc_picker;
+class timebased_data_curve;
 //
 class QwtDateScaleDraw;
 class QwtDateScaleEngine;
@@ -76,11 +78,11 @@ class ohlc_price_plot : public timebased_chart_plot
   void adjust_data_scaling();
   bool update_candle_size();
 
-  QwtPlotCurve* add_overlay_curve(
-    QString const& title, QVector<QPointF> const& samples, QColor const& color);
+  timebased_data_curve* add_overlay_curve(
+    QString const& title, timebased_chart_data<QPointF>* data, QColor const& color);
 
-  QwtPlotCurve* add_overlay_volume_curve(
-    QString const& title, QVector<QPointF> const& samples, QColor const& color);
+  timebased_data_curve* add_overlay_volume_curve(
+    QString const& title, timebased_chart_data<QPointF>* data, QColor const& color);
 
   QwtPlotCurve* add_buy_sell_curve(
     QString const& title, QVector<QPointF> const& samples, QColor const& color);

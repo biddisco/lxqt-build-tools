@@ -39,7 +39,6 @@
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/connection_widget.hpp"
 #include "widgets/currency_widget.hpp"
-#include "widgets/indicator_dialog.hpp"
 #include "widgets/password_dialog.hpp"
 #include "widgets/trade_widget.hpp"
 #include "widgets/wallet_widget.hpp"

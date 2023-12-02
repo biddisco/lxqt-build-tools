@@ -6,7 +6,6 @@
 #include <QwtSeriesData>
 //
 #include "data/ohlc_utils.hpp"
-#include "data/ohlctv_sample.hpp"
 
 // ----------------------------------------------------------------------------
 template <typename DataType>
