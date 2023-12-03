@@ -20,24 +20,35 @@
 # Rippled needs
 # sudo apt install liblz4-dev libarchive-dev libsoci-dev
 #
-# Build boost (1.75) on raspberry pi (4) ./bootstrap ./b2 architecture=arm
-# address-model=32 threading=multi link=shared variant=release
-# --prefix=$HOME/apps/boost --without-mpi --without-python --without-graph
-# --without-graph_parallel -j3 install
-#
 # Example cmake invocation
 # cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Debug ~/src/xrp/grox/
 
 # ------------------------------------------------------------------------------
-# @TODO : add acknowledgement to
-# https://github.com/sroehling/ChartPatternFinderDesktop
+# CMake version requirement
 # ------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.16)
-cmake_policy(SET CMP0048 NEW)
-cmake_policy(SET CMP0077 NEW)
-cmake_policy(SET CMP0135 NEW)
-cmake_policy(SET CMP0144 NEW)
 
+# ------------------------------------------------------------------------------
+# Policies
+# ------------------------------------------------------------------------------
+function(set_policy POLICY_NAME POLICY_VALUE)
+  if(POLICY ${POLICY_NAME})
+    cmake_policy(SET ${POLICY_NAME} ${POLICY_VALUE})
+  endif()
+endfunction()
+
+set_policy(CMP0028 NEW) # Double colon in target name means ALIAS or IMPORTED target
+set_policy(CMP0048 NEW) # The project() command manages VERSION variables
+set_policy(CMP0060 NEW) # Link libraries by full path even in implicit directories
+set_policy(CMP0074 NEW) # find_package() uses <PackageName>_ROOT variables
+set_policy(CMP0077 NEW) # option() honors normal variables
+set_policy(CMP0135 NEW) # ExternalProject_Add() updates timestamps
+set_policy(CMP0144 NEW) # find_package() uses upper-case <PACKAGENAME>_ROOT variables
+set_policy(CMP0148 NEW) # FindPythonInterp, FindPythonLibs modules are removed, use FindPython3
+
+# ------------------------------------------------------------------------------
+# Project declaration
+# ------------------------------------------------------------------------------
 project(
   GROX
   VERSION 0.1
@@ -57,11 +68,17 @@ set(CMAKE_CXX_STANDARD 20)
 # ------------------------------------------------------------------------------
 # Options
 # ------------------------------------------------------------------------------
-option(BUILD_SHARED_LIBS "build shared ripple libraries" OFF)
-set(Boost_NO_WARN_NEW_VERSIONS 1)
+option(BUILD_SHARED_LIBS "build shared libraries" OFF)
 
 option(GROX_WITH_SANITIZER "build grox using address sanitzer flags" OFF)
 option(GROX_WITH_IWYU "add include-what-you-use support to grox build" OFF)
+
+# ------------------------------------------------------------------------------
+# CMake modules we need to include
+# ------------------------------------------------------------------------------
+include(FetchContent)
+include(FindPkgConfig)
+include(ExternalProject)
 
 # ------------------------------------------------------------------------------
 # CTest testing support
@@ -81,11 +98,6 @@ if(NOT GTest_FOUND)
 endif()
 
 # ------------------------------------------------------------------------------
-# CMake modules
-# ------------------------------------------------------------------------------
-include(FetchContent)
-
-# ------------------------------------------------------------------------------
 # Setup Output directories
 # ------------------------------------------------------------------------------
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
@@ -102,27 +114,12 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
 )
 
 # ------------------------------------------------------------------------------
-# Utility function to print all vars
+# include-what-you-use
 # ------------------------------------------------------------------------------
-function(dump_cmake_variables)
-  get_cmake_property(_variableNames VARIABLES)
-  list(SORT _variableNames)
-  foreach(_variableName ${_variableNames})
-    if(ARGV0)
-      unset(MATCHED)
-      string(REGEX MATCH ${ARGV0} MATCHED ${_variableName})
-      if(NOT MATCHED)
-        continue()
-      endif()
-    endif()
-    message(STATUS "${_variableName}=${${_variableName}}")
-  endforeach()
-endfunction()
-
-# ------------------------------------------------------------------------------
-# FindPkg
-# ------------------------------------------------------------------------------
-include(FindPkgConfig)
+if(GROX_WITH_IWYU)
+  find_program(iwyu_path NAMES include-what-you-use iwyu REQUIRED)
+  message(STATUS "iwyu PATH ${iwyu_path}")
+endif()
 
 # ------------------------------------------------------------------------------
 # Find Qt, first 6, then 5 if not found
@@ -165,80 +162,36 @@ endif()
 
 find_package(Qt${QT_DEFAULT_MAJOR_VERSION} REQUIRED COMPONENTS ${qtcomponents})
 
+# ------------------------------------------------------------------------------
+# Boost
+# ------------------------------------------------------------------------------
+set(Boost_NO_WARN_NEW_VERSIONS 1)
 find_package(Boost NO_MODULE REQUIRED system unit_test_framework)
-find_package(OpenSSL REQUIRED)
-# find_package(MPI     REQUIRED COMPONENTS CXX) # needed by hdf5 if compiled
-# with defaults
-find_package(HDF5 REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
-find_package(ZLIB)
-find_package(pika)
+
+# ------------------------------------------------------------------------------
+# fmt formatting library
+# ------------------------------------------------------------------------------
 find_package(fmt)
 
-# -------------------------------------------------------------
-# get_external_project
-# -------------------------------------------------------------
-function(get_external_project)
-  cmake_parse_arguments(
-    ARGS
-    "DO_NOT_BUILD" # options
-    "PROJECT_NAME;GIT_REPO;GIT_TAG;FOLDER_NAME" # 1 value args
-    "" # multivalued args
-    ${ARGN}
-  )
+# ------------------------------------------------------------------------------
+# OpenSSL
+# ------------------------------------------------------------------------------
+find_package(OpenSSL REQUIRED)
 
-  string(TOUPPER ${ARGS_PROJECT_NAME} UPPER_PROJECT)
-  string(TOLOWER ${ARGS_PROJECT_NAME} LOWER_PROJECT)
-  find_package(${ARGS_PROJECT_NAME} QUIET)
+# ------------------------------------------------------------------------------
+# HDF5
+# ------------------------------------------------------------------------------
+find_package(HDF5 REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
 
-  if(NOT ${ARGS_PROJECT_NAME}_FOUND)
-    # look in the current source tree
-    if(ARGS_FOLDER_NAME)
-      set(LOCAL_DIR ${PROJECT_SOURCE_DIR}/extern/${ARGS_FOLDER_NAME})
-    else()
-      set(LOCAL_DIR ${PROJECT_SOURCE_DIR}/extern/${ARGS_PROJECT_NAME})
-    endif()
-    if(EXISTS ${LOCAL_DIR}/.git)
-      message(STATUS "ext: " "Using ${ARGS_PROJECT_NAME} in (${LOCAL_DIR})")
-      # use the source in this directory
-      set(FETCHCONTENT_SOURCE_DIR_${UPPER_PROJECT} ${LOCAL_DIR})
-      # don't change branches, or pull
-      set(FETCHCONTENT_UPDATES_DISCONNECTED_${UPPER_PROJECT} ON)
-    endif()
-
-    fetchcontent_declare(
-      ${ARGS_PROJECT_NAME}
-      GIT_REPOSITORY ${ARGS_GIT_REPO}
-      GIT_TAG ${ARGS_GIT_TAG}
-      GIT_SHALLOW TRUE
-    )
-    fetchcontent_getproperties(${ARGS_PROJECT_NAME})
-    if(NOT ${ARGS_PROJECT_NAME}_POPULATED)
-      fetchcontent_populate(${ARGS_PROJECT_NAME})
-      if(NOT ${ARGS_DO_NOT_BUILD})
-        add_subdirectory(
-          ${${LOWER_PROJECT}_SOURCE_DIR} ${${LOWER_PROJECT}_BINARY_DIR}
-        )
-      endif()
-    endif()
-    # make location of project visible outside function
-    set(${LOWER_PROJECT}_SOURCE_DIR
-        "${${LOWER_PROJECT}_SOURCE_DIR}"
-        PARENT_SCOPE
-    )
-    set(${LOWER_PROJECT}_BINARY_DIR
-        "${${LOWER_PROJECT}_BINARY_DIR}"
-        PARENT_SCOPE
-    )
-  endif()
-
-endfunction(get_external_project)
+# ------------------------------------------------------------------------------
+# pika
+# ------------------------------------------------------------------------------
+find_package(pika)
 
 # ------------------------------------------------------------------------------
 # Build/Download qwt
 # ------------------------------------------------------------------------------
-get_external_project(
-  PROJECT_NAME "qwt" GIT_REPO "$ENV{HOME}/git-repos/qwt" GIT_TAG "candle-fixes"
-)
+get_external_project(PROJECT_NAME "qwt" GIT_REPO "$ENV{HOME}/git-repos/qwt" GIT_TAG "candle-fixes")
 
 # ------------------------------------------------------------------------------
 # Build/Download Qt-Advanced-Docking-System
@@ -300,8 +253,7 @@ get_external_project(
 # Build/Download range-v3 library
 # ------------------------------------------------------------------------------
 get_external_project(
-  PROJECT_NAME "range-v3" GIT_REPO
-  "https://github.com/ericniebler/range-v3.git" GIT_TAG "master"
+  PROJECT_NAME "range-v3" GIT_REPO "https://github.com/ericniebler/range-v3.git" GIT_TAG "master"
 )
 
 # ------------------------------------------------------------------------------
@@ -311,11 +263,17 @@ set(HIGHFIVE_UNIT_TESTS
     OFF
     CACHE STRING "HighFive unit testing"
 )
-set(HIGHFIVE_BUILD_DOCS OFF)
+set(HIGHFIVE_BUILD_DOCS
+    OFF
+    CACHE BOOL "Build Docs"
+)
+set(HIGHFIVE_EXAMPLES
+    OFF
+    CACHE BOOL "Compile examples"
+)
 
 get_external_project(
-  PROJECT_NAME "HighFive" GIT_REPO "https://github.com/BlueBrain/HighFive.git"
-  GIT_TAG "master"
+  PROJECT_NAME "HighFive" GIT_REPO "https://github.com/BlueBrain/HighFive.git" GIT_TAG "master"
 )
 
 # ------------------------------------------------------------------------------
@@ -340,15 +298,12 @@ get_external_project(
 # -------------------------------------------------------------
 # Find/Build/Download pika
 # -------------------------------------------------------------
-get_external_project(
-  PROJECT_NAME "pika" GIT_REPO "https://github.com/pika-org/pika" GIT_TAG
-  "main"
-)
+get_external_project(PROJECT_NAME "pika" GIT_REPO "https://github.com/pika-org/pika" GIT_TAG "main")
 if(pika_WITH_APEX)
   # I think something like this should be done in APEX' CMakeLists.pika
   include_directories(
-    ${pika_SOURCE_DIR}/libs/preprocessor/include
-    ${pika_SOURCE_DIR}/apex/src/apex ${pika_SOURCE_DIR}/apex/src/contrib
+    ${pika_SOURCE_DIR}/libs/preprocessor/include ${pika_SOURCE_DIR}/apex/src/apex
+    ${pika_SOURCE_DIR}/apex/src/contrib
   )
 endif()
 
@@ -360,10 +315,8 @@ set(MAGIC_ENUM_OPT_BUILD_EXAMPLES
     CACHE BOOL " " FORCE
 )
 get_external_project(
-  PROJECT_NAME magic_enum GIT_REPO "https://github.com/Neargye/magic_enum.git"
-  GIT_TAG "master"
+  PROJECT_NAME magic_enum GIT_REPO "https://github.com/Neargye/magic_enum.git" GIT_TAG "master"
 )
-# include(properties) print_target_properties(magic_enum::magic_enum)
 
 # ------------------------------------------------------------------------------
 # grox build
@@ -380,9 +333,8 @@ set(GROX_SRC
     # main application
     src/main.cpp
     src/mainwindow.cpp
-    # src/tabbed_form.cpp application utility cryptography
-    src/network/evp-encrypt.cpp
     # networking asio etc
+    src/network/evp-encrypt.cpp
     src/network/websocket-ssl.cpp
     src/network/https-async.cpp
     # exchange APIs
@@ -410,9 +362,8 @@ qt_wrap_ui(GROX_SRC src/tabbed_form.ui)
 # -----------------------------------------------------------------------------
 # Qt resource files
 # -----------------------------------------------------------------------------
-set(GROX_QRC_SRC
-    src/grox.qrc ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
-    ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc
+set(GROX_QRC_SRC src/grox.qrc ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
+                 ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc
 )
 
 add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC})
@@ -424,10 +375,8 @@ set_property(TARGET grox PROPERTY AUTOUIC ON)
 set_property(TARGET grox PROPERTY AUTORCC ON)
 
 target_include_directories(
-  grox
-  PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}
-         ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
-         ${belle_SOURCE_DIR}
+  grox PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
+              ${CMAKE_CURRENT_SOURCE_DIR}/src ${belle_SOURCE_DIR}
 )
 
 if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
@@ -455,14 +404,6 @@ if(GROX_WITH_SANITIZER)
     -fsanitize=float-cast-overflow
     -fno-sanitize=null
     -fno-sanitize=alignment
-  )
-endif()
-
-if(GROX_WITH_IWYU)
-  find_program(iwyu_path NAMES include-what-you-use iwyu REQUIRED)
-  message(STATUS "iwyu PATH ${iwyu_path}")
-  set_property(
-    TARGET grox PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path} -Xiwyu --verbose
   )
 endif()
 
@@ -507,9 +448,9 @@ set(TEST_INC_DIRS ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # ---------------------------------------------------
 # Vanity address generator
 # ---------------------------------------------------
-# add_executable(vanity vanity/vanity.cpp) target_link_libraries(vanity range-v3
-# Ripple::xrpl_core pika::pika) enable optimizations for vanity generator
-# regardless of build type setting target_compile_options(vanity PRIVATE -O3)
+# add_executable(vanity vanity/vanity.cpp) target_link_libraries(vanity range-v3 Ripple::xrpl_core
+# pika::pika) enable optimizations for vanity generator regardless of build type setting
+# target_compile_options(vanity PRIVATE -O3)
 
 # ---------------------------------------------------
 # OLD : vanity address generator
@@ -525,9 +466,7 @@ add_executable(test-websocket ${WS_SRC})
 
 target_include_directories(test-websocket PUBLIC ${TEST_INC_DIRS})
 
-target_link_libraries(
-  test-websocket PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL pthread
-)
+target_link_libraries(test-websocket PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL pthread)
 
 # ---------------------------------------------------
 # test https code
@@ -538,9 +477,7 @@ add_executable(test-https ${HTTPS_SRC})
 
 target_include_directories(test-https PUBLIC ${TEST_INC_DIRS})
 
-target_link_libraries(
-  test-https PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL pthread
-)
+target_link_libraries(test-https PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL pthread)
 
 # ---------------------------------------------------
 # test Token authentication
@@ -553,13 +490,10 @@ add_executable(test-login ${LOGIN_SRC})
 target_include_directories(test-login PUBLIC ${TEST_INC_DIRS})
 
 target_link_libraries(
-  test-login PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL curl uuid
-                    pthread
+  test-login PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL curl uuid pthread
 )
 
-target_compile_definitions(
-  test-login PRIVATE GROX_HAVE_CURL_ENCODING GROX_HAVE_UUID_ENCODING
-)
+target_compile_definitions(test-login PRIVATE GROX_HAVE_CURL_ENCODING GROX_HAVE_UUID_ENCODING)
 
 # ---------------------------------------------------
 # Bitstamp official example
@@ -567,13 +501,10 @@ target_compile_definitions(
 set(BITSTAMP_SRC src/network/test/test-bitstamp.cpp src/network/evp-encrypt.cpp)
 add_executable(test-bitstamp ${BITSTAMP_SRC})
 
-target_include_directories(
-  test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS} ${TEST_INC_DIRS}
-)
+target_include_directories(test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS} ${TEST_INC_DIRS})
 
 target_link_libraries(
-  test-bitstamp PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL curl uuid
-                       pthread
+  test-bitstamp PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL curl uuid pthread
 )
 
 # ---------------------------------------------------
@@ -591,70 +522,53 @@ target_link_libraries(test-aes256 PUBLIC OpenSSL::SSL pthread)
 if(TARGET Ripple::xrpl_core)
   set(SIGN_SRC src/network/test/ripple-sign-demo.cpp)
   add_executable(test-ripple-signing ${SIGN_SRC})
-  target_link_libraries(
-    test-ripple-signing PUBLIC Ripple::xrpl_core OpenSSL::SSL pthread
-  )
+  target_link_libraries(test-ripple-signing PUBLIC Ripple::xrpl_core OpenSSL::SSL pthread)
 endif()
 
 # ---------------------------------------------------
 # belle - client test against bitstamp API
 # ---------------------------------------------------
 add_executable(test-belle-client src/network/test/test-belle-client.cpp)
-target_include_directories(
-  test-belle-client PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS}
-)
-target_link_libraries(
-  test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json
-)
+target_include_directories(test-belle-client PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS})
+target_link_libraries(test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json)
 
 # ---------------------------------------------------
 # belle - client test against bitstamp API
 # ---------------------------------------------------
-add_executable(
-  test-belle-client-request src/network/test/test-belle-client-request.cpp
-)
+add_executable(test-belle-client-request src/network/test/test-belle-client-request.cpp)
 target_include_directories(
   test-belle-client-request PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS}
 )
 target_link_libraries(
-  test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
-                                   nlohmann_json
+  test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json
 )
 
 # ---------------------------------------------------
 # belle - websocket test against ripple API
 # ---------------------------------------------------
 add_executable(test-belle-websocket src/network/test/test-belle-websocket.cpp)
-target_include_directories(
-  test-belle-websocket PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS}
-)
+target_include_directories(test-belle-websocket PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS})
 target_link_libraries(
-  test-belle-websocket PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
-                              nlohmann_json
+  test-belle-websocket PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json
 )
 
 # ---------------------------------------------------
 # belle - example original https test client/server
 # ---------------------------------------------------
-add_executable(
-  test-belle-https-client ${belle_SOURCE_DIR}/example/client/https/src/main.cc
-)
+add_executable(test-belle-https-client ${belle_SOURCE_DIR}/example/client/https/src/main.cc)
 target_include_directories(
   test-belle-https-client PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS}
 )
 target_link_libraries(
-  test-belle-https-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES}
-                                 nlohmann_json
+  test-belle-https-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json
 )
 target_compile_definitions(
-  test-belle-https-client
-  PRIVATE BELLE_CERT_PATH="${belle_SOURCE_DIR}/example/cert"
+  test-belle-https-client PRIVATE BELLE_CERT_PATH="${belle_SOURCE_DIR}/example/cert"
 )
 
 # add_executable(test-belle-https-server
 # ${CMAKE_CURRENT_SOURCE_DIR}/belle_SOURCE_DIR/example/server/https/src/main.cc)
-# target_include_directories(test-belle-https-server PUBLIC
-# ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS})
-# target_link_libraries(test-belle-https-server PUBLIC ssl crypto pthread
+# target_include_directories(test-belle-https-server PUBLIC ${belle_SOURCE_DIR}/include
+# ${TEST_INC_DIRS}) target_link_libraries(test-belle-https-server PUBLIC ssl crypto pthread
 # ${Boost_LIBRARIES}) target_compile_definitions(test-belle-https-server PRIVATE
 # BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/belle_SOURCE_DIR/example/cert" )
