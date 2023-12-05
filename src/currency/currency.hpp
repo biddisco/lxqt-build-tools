@@ -1,8 +1,5 @@
 #pragma once
 
-// to pass structs as params we must declare metatypes to Qt
-#include <QtCore>
-//
 #include <algorithm>
 #include <sstream>
 #include <string>
@@ -66,9 +63,6 @@ struct currency
 
 using currency_pair = std::tuple<currency, currency>;
 using currency_pairlist = std::vector<currency_pair>;
-
-// To ensure Qt can emit signals of this type
-Q_DECLARE_METATYPE(currency)
 
 // ----------------------------------------------------------------------------
 // convert a string pair, name, issuer to a currency type enum
