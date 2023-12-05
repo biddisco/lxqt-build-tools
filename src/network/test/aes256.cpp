@@ -15,5 +15,5 @@ int main(int argc, char* argv[])
   std::cout << "Recovered message:\n" << decrypted << std::endl;
   std::cout << "Hashed message:\n" << hashed << std::endl;
 
-  return 0;
+  return (ptext == decrypted) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

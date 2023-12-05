@@ -1,4 +1,9 @@
-add_executable(debug_print debug_print.cpp)
-target_include_directories(debug_print PUBLIC ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(debug_print PUBLIC GTest::gtest)
-add_test(NAME debug_print COMMAND $<TARGET_FILE:debug_print>)
+set(TEST_SRCS debug_print.cpp)
+
+foreach(test ${TEST_SRCS})
+  cmake_path(GET test STEM testname)
+  add_executable(${testname} ${test})
+  target_link_libraries(${testname} PUBLIC grox_debug GTest::gtest)
+  set(${testname}_PARAMETERS "${${testname}_PARAMETERS}" THREADS 0)
+  grox_add_test_and_deps("debug" ${testname} EXECUTABLE ${testname} ${${testname}_PARAMETERS})
+endforeach()

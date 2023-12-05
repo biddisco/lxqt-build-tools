@@ -1,12 +1,3 @@
-//
-// Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-// Official repository: https://github.com/boostorg/beast
-//
-
 //------------------------------------------------------------------------------
 //
 // Example: HTTP SSL client, asynchronous
@@ -30,17 +21,18 @@
 //
 #include "network/https-async.hpp"
 
-// Report a failure
-namespace net {
-  void msg_fail(boost::beast::error_code ec, char const* what)
-  {
-    std::cerr << what << ": " << ec.message() << "\n";
-  }
-}    // namespace net
+std::atomic<int> counter{0};
 
+//
+// Creates a session using https and fetches data from bitstamp
+//
 //------------------------------------------------------------------------------
 void new_data(std::string&& data)
 {
+  if (data.find("{\"data\": {\"ohlc\":") != data.npos)
+  {
+    counter++;
+  }
   std::cout << "\n\nReceived\n\n" << data << std::endl;
 }
 
@@ -89,16 +81,23 @@ int main(int argc, char** argv)
     session->write(target, version);
   });
 
+  const int sec = 5;
   // wait 5 seconds and collect some data
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < sec && (counter.load() == 0); i++)
   {
-    std::cout << "Closing in " << 5 - i << " seconds " << std::endl;
+    std::cout << "Closing in " << sec - i << " seconds " << std::endl;
     std::chrono::seconds dura(1);
     std::this_thread::sleep_for(dura);
   }
 
   session->shutdown_blocking();
-  websocket_thread.join();
+  session.reset();
+  std::cout << "Completed " << std::endl;
   //
-  return EXIT_SUCCESS;
+  contexts.work_guard_->reset();
+  contexts.ioc.stop();
+  websocket_thread.join();
+
+  std::cout << "Exiting" << std::endl;
+  return (counter.load() > 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

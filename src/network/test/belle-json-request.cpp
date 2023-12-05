@@ -1,11 +1,12 @@
-// belle client https example
+#include <atomic>
+#include <iostream>
+#include <string>
 
+#include <nlohmann/json.hpp>
 #include "belle.hh"
 namespace Belle = OB::Belle;
 
-#include <iostream>
-#include <nlohmann/json.hpp>
-#include <string>
+static std::atomic<int> pass_count{0};
 
 // prototypes
 void on_http_error(Belle::Client& app);
@@ -57,11 +58,22 @@ void xrpl_order_book()
     {
       // print the response status code and reason
       std::cerr << "Error: " << ctx.res.result_int() << " " << ctx.res.reason() << "\n\n";
+      pass_count--;
       return;
     }
 
     // print the full response
     std::cerr << ctx.res << "\n\n";
+    std::string result = ctx.res.body();
+    if (result.find("{\"result\":{\"ledger_hash\":") != std::string::npos)
+    {
+      std::cout << "json quick check ok\n\n";
+      pass_count++;
+    }
+    else
+    {
+      pass_count--;
+    }
   });
 
   // save the number of requests in the queue
@@ -69,11 +81,11 @@ void xrpl_order_book()
 
   // start the client and save the number of completed requests
   auto completed = app.connect();
-  std::cout << "Completed " << completed << std::endl;
+  std::cout << "Completed " << completed << " " << total << std::endl;
 }
 
 int main(int argc, char* argv[])
 {
   xrpl_order_book();
-  return 0;
+  return pass_count.load() == 1 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

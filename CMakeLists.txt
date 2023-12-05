@@ -29,22 +29,9 @@
 cmake_minimum_required(VERSION 3.16)
 
 # ------------------------------------------------------------------------------
-# Policies
+# Policies - use the latest of everything
 # ------------------------------------------------------------------------------
-function(set_policy POLICY_NAME POLICY_VALUE)
-  if(POLICY ${POLICY_NAME})
-    cmake_policy(SET ${POLICY_NAME} ${POLICY_VALUE})
-  endif()
-endfunction()
-
-set_policy(CMP0028 NEW) # Double colon in target name means ALIAS or IMPORTED target
-set_policy(CMP0048 NEW) # The project() command manages VERSION variables
-set_policy(CMP0060 NEW) # Link libraries by full path even in implicit directories
-set_policy(CMP0074 NEW) # find_package() uses <PackageName>_ROOT variables
-set_policy(CMP0077 NEW) # option() honors normal variables
-set_policy(CMP0135 NEW) # ExternalProject_Add() updates timestamps
-set_policy(CMP0144 NEW) # find_package() uses upper-case <PACKAGENAME>_ROOT variables
-set_policy(CMP0148 NEW) # FindPythonInterp, FindPythonLibs modules are removed, use FindPython3
+cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 
 # ------------------------------------------------------------------------------
 # Project declaration
@@ -174,6 +161,11 @@ find_package(Boost NO_MODULE REQUIRED system unit_test_framework)
 find_package(fmt)
 
 # ------------------------------------------------------------------------------
+# fmt formatting library
+# ------------------------------------------------------------------------------
+find_package(Threads QUIET)
+
+# ------------------------------------------------------------------------------
 # OpenSSL
 # ------------------------------------------------------------------------------
 find_package(OpenSSL REQUIRED)
@@ -182,11 +174,6 @@ find_package(OpenSSL REQUIRED)
 # HDF5
 # ------------------------------------------------------------------------------
 find_package(HDF5 REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
-
-# ------------------------------------------------------------------------------
-# pika
-# ------------------------------------------------------------------------------
-find_package(pika)
 
 # ------------------------------------------------------------------------------
 # Build/Download qwt
@@ -233,7 +220,6 @@ get_external_project(
   "$ENV{HOME}/git-repos/belle"
   GIT_TAG
   "master"
-  DO_NOT_BUILD
 )
 
 # ------------------------------------------------------------------------------
@@ -322,21 +308,27 @@ get_external_project(
 # grox build
 # ------------------------------------------------------------------------------
 
+if(BUILD_TESTING)
+  set(PIKA_WITH_PSEUDO_DEPENDENCIES
+      ON
+      CACHE INTERNAL "" FORCE
+  )
+  include(grox_add_test)
+  pika_add_pseudo_target(tests)
+endif()
+
 add_subdirectory(src/data)
 add_subdirectory(src/currency)
 add_subdirectory(src/debug)
 add_subdirectory(src/indicators)
 add_subdirectory(src/io)
+add_subdirectory(src/network)
 add_subdirectory(src/plot)
 
 set(GROX_SRC
     # main application
     src/main.cpp
     src/mainwindow.cpp
-    # networking asio etc
-    src/network/evp-encrypt.cpp
-    src/network/websocket-ssl.cpp
-    src/network/https-async.cpp
     # exchange APIs
     src/exchange/xrpl_json.cpp
     src/exchange/xrpl.cpp
@@ -421,6 +413,7 @@ target_link_libraries(
          grox_currency
          grox_io
          grox_plot
+         grox_network
          qwt
          Qt::Core
          Qt::Gui
@@ -435,140 +428,6 @@ target_link_libraries(
          range-v3
          Ripple::xrpl_core
          uuid
-         OpenSSL::SSL
-         pthread
+         Threads::Threads
          pika::pika
 )
-
-# ---------------------------------------------------
-# Convenience var for test setup
-# ---------------------------------------------------
-set(TEST_INC_DIRS ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
-# ---------------------------------------------------
-# Vanity address generator
-# ---------------------------------------------------
-# add_executable(vanity vanity/vanity.cpp) target_link_libraries(vanity range-v3 Ripple::xrpl_core
-# pika::pika) enable optimizations for vanity generator regardless of build type setting
-# target_compile_options(vanity PRIVATE -O3)
-
-# ---------------------------------------------------
-# OLD : vanity address generator
-# ---------------------------------------------------
-# add_subdirectory(extern/vanity)
-
-# ---------------------------------------------------
-# test websocket code
-# ---------------------------------------------------
-set(WS_SRC src/network/websocket-ssl.cpp src/network/test/test-websocket.cpp)
-
-add_executable(test-websocket ${WS_SRC})
-
-target_include_directories(test-websocket PUBLIC ${TEST_INC_DIRS})
-
-target_link_libraries(test-websocket PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL pthread)
-
-# ---------------------------------------------------
-# test https code
-# ---------------------------------------------------
-set(HTTPS_SRC src/network/https-async.cpp src/network/test/test-https.cpp)
-
-add_executable(test-https ${HTTPS_SRC})
-
-target_include_directories(test-https PUBLIC ${TEST_INC_DIRS})
-
-target_link_libraries(test-https PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL pthread)
-
-# ---------------------------------------------------
-# test Token authentication
-# ---------------------------------------------------
-set(LOGIN_SRC src/network/test/test-login.cpp src/network/https-async.cpp
-              src/network/evp-encrypt.cpp
-)
-add_executable(test-login ${LOGIN_SRC})
-
-target_include_directories(test-login PUBLIC ${TEST_INC_DIRS})
-
-target_link_libraries(
-  test-login PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL curl uuid pthread
-)
-
-target_compile_definitions(test-login PRIVATE GROX_HAVE_CURL_ENCODING GROX_HAVE_UUID_ENCODING)
-
-# ---------------------------------------------------
-# Bitstamp official example
-# ---------------------------------------------------
-set(BITSTAMP_SRC src/network/test/test-bitstamp.cpp src/network/evp-encrypt.cpp)
-add_executable(test-bitstamp ${BITSTAMP_SRC})
-
-target_include_directories(test-bitstamp PUBLIC ${Boost_INCLUDE_DIRS} ${TEST_INC_DIRS})
-
-target_link_libraries(
-  test-bitstamp PUBLIC ${Boost_LIBRARIES} nlohmann_json OpenSSL::SSL curl uuid pthread
-)
-
-# ---------------------------------------------------
-# test AES code
-# ---------------------------------------------------
-set(AES256_SRC src/network/evp-encrypt.cpp src/network/test/test-aes256.cpp)
-
-add_executable(test-aes256 ${AES256_SRC})
-target_include_directories(test-aes256 PUBLIC ${TEST_INC_DIRS})
-target_link_libraries(test-aes256 PUBLIC OpenSSL::SSL pthread)
-
-# ---------------------------------------------------
-# Ripple transaction signing demo
-# ---------------------------------------------------
-if(TARGET Ripple::xrpl_core)
-  set(SIGN_SRC src/network/test/ripple-sign-demo.cpp)
-  add_executable(test-ripple-signing ${SIGN_SRC})
-  target_link_libraries(test-ripple-signing PUBLIC Ripple::xrpl_core OpenSSL::SSL pthread)
-endif()
-
-# ---------------------------------------------------
-# belle - client test against bitstamp API
-# ---------------------------------------------------
-add_executable(test-belle-client src/network/test/test-belle-client.cpp)
-target_include_directories(test-belle-client PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS})
-target_link_libraries(test-belle-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json)
-
-# ---------------------------------------------------
-# belle - client test against bitstamp API
-# ---------------------------------------------------
-add_executable(test-belle-client-request src/network/test/test-belle-client-request.cpp)
-target_include_directories(
-  test-belle-client-request PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS}
-)
-target_link_libraries(
-  test-belle-client-request PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json
-)
-
-# ---------------------------------------------------
-# belle - websocket test against ripple API
-# ---------------------------------------------------
-add_executable(test-belle-websocket src/network/test/test-belle-websocket.cpp)
-target_include_directories(test-belle-websocket PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS})
-target_link_libraries(
-  test-belle-websocket PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json
-)
-
-# ---------------------------------------------------
-# belle - example original https test client/server
-# ---------------------------------------------------
-add_executable(test-belle-https-client ${belle_SOURCE_DIR}/example/client/https/src/main.cc)
-target_include_directories(
-  test-belle-https-client PUBLIC ${belle_SOURCE_DIR}/include ${TEST_INC_DIRS}
-)
-target_link_libraries(
-  test-belle-https-client PUBLIC ssl crypto pthread ${Boost_LIBRARIES} nlohmann_json
-)
-target_compile_definitions(
-  test-belle-https-client PRIVATE BELLE_CERT_PATH="${belle_SOURCE_DIR}/example/cert"
-)
-
-# add_executable(test-belle-https-server
-# ${CMAKE_CURRENT_SOURCE_DIR}/belle_SOURCE_DIR/example/server/https/src/main.cc)
-# target_include_directories(test-belle-https-server PUBLIC ${belle_SOURCE_DIR}/include
-# ${TEST_INC_DIRS}) target_link_libraries(test-belle-https-server PUBLIC ssl crypto pthread
-# ${Boost_LIBRARIES}) target_compile_definitions(test-belle-https-server PRIVATE
-# BELLE_CERT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/belle_SOURCE_DIR/example/cert" )

@@ -1,6 +1,9 @@
-add_executable(indicator_check indicator_check.cpp)
-target_link_libraries(
-  indicator_check PUBLIC grox_data grox_io fmt::fmt GTest::gtest
-)
-target_include_directories(indicator_check PUBLIC ${PROJECT_SOURCE_DIR}/src)
-add_test(NAME indicator_check COMMAND $<TARGET_FILE:indicator_check>)
+set(TEST_SRCS averages.cpp)
+
+foreach(test ${TEST_SRCS})
+  cmake_path(GET test STEM testname)
+  add_executable(${testname} ${test})
+  target_link_libraries(${testname} PUBLIC grox_indicators GTest::gtest)
+  set(${testname}_PARAMETERS "${${testname}_PARAMETERS}" THREADS 0)
+  grox_add_test_and_deps("indicators" ${testname} EXECUTABLE ${testname} ${${testname}_PARAMETERS})
+endforeach()
