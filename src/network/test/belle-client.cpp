@@ -1,10 +1,15 @@
-// belle client https example
+#include <atomic>
+#include <iostream>
+#include <string>
 
 #include "belle.hh"
 namespace Belle = OB::Belle;
 
-#include <iostream>
-#include <string>
+static std::atomic<int> pass_count{0};
+
+const int num_tests = 2;
+
+// belle client https example
 
 void on_http_error(Belle::Client& app)
 {
@@ -23,11 +28,21 @@ void request(Belle::Client& app, int index)
     {
       // print the response status code and reason
       std::cerr << "Error: " << ctx.res.result_int() << " " << ctx.res.reason() << "\n\n";
-      return;
+      pass_count--;
     }
 
     // print the response headers and body
-    std::cerr << "Response request " << std::to_string(index) << "\n" << ctx.res.body() << "\n\n";
+    std::cerr << "Response request " << std::to_string(index) << "\n" << ctx.res.body() << "\n";
+    std::string result = ctx.res.body();
+    if (result.find("{\"data\": {\"ohlc\": [{\"close\":") != std::string::npos)
+    {
+      std::cout << "json quick check ok\n\n";
+      pass_count++;
+    }
+    else
+    {
+      pass_count--;
+    }
   });
 }
 
@@ -37,7 +52,7 @@ void http_post_lots()
   Belle::Client app{"www.bitstamp.net", 443, true};
   on_http_error(app);
 
-  for (int i = 0; i < 5; ++i)
+  for (int i = 0; i < num_tests; ++i)
   {
     request(app, i);
   }
@@ -51,7 +66,7 @@ void http_post_lots()
   // print the number of completed requests
   std::cerr << "connect: " << completed << "/" << total << "\n\n";
 
-  for (int i = 0; i < 5; ++i)
+  for (int i = 0; i < num_tests; ++i)
   {
     request(app, i);
   }
@@ -68,5 +83,5 @@ int main(int argc, char* argv[])
 {
   // perform multiple http get requests to a single remote endpoint
   http_post_lots();
-  return 0;
+  return pass_count.load() == num_tests * 2 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

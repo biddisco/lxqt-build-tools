@@ -212,7 +212,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   start_io_threads(2);
 
   // ----------------------------------
-  // initialize networks / start websocket connnections etc
+  // initialize networks / start websocket connections etc
   main_dbg<0>.debug("Init bitstamp");
   bitstamp_network_->initialize();
   //

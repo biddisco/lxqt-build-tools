@@ -50,7 +50,7 @@ int main(int argc, char** argv)
   const std::string api_secret = std::getenv("rand3") ? std::getenv("rand3") : "";
   if (api_key.empty() || api_secret.empty())
   {
-    std::cout << "Set ENV vars for API_KEY and APi_SEC " << std::endl;
+    std::cout << "Set ENV vars for API_KEY and API_SEC " << std::endl;
     return EXIT_FAILURE;
   }
 
