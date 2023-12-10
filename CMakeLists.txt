@@ -267,6 +267,9 @@ get_external_project(
 # ------------------------------------------------------------------------------
 set(static FALSE)
 set(rocksdb FALSE)
+set(protobuf_MODULE_COMPATIBLE TRUE)
+set(SECP256K1_BUILD_TESTS FALSE)
+set(SECP256K1_BUILD_EXHAUSTIVE_TESTS FALSE)
 # To setup where Rippled puts its extern projects
 set(NIH_CACHE_ROOT ${PROJECT_BINARY_DIR}/extern)
 file(MAKE_DIRECTORY ${NIH_CACHE_ROOT})
