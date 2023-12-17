@@ -22,7 +22,7 @@
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 1;
+constexpr int debug_level = 2;
 //
 template <int Level>
 static print_threshold<Level, debug_level> bitstamp_dbg("Bitstamp");
@@ -80,7 +80,7 @@ bool bitstamp_network::subscribe_live_trades(
   command["data"]["channel"] = string_join("live_trades_", ticker);
 
   ticker_data& tdata = tickers_subscribed_.at(cp);
-  bitstamp_dbg<2>.debug(str<>("websocket trades"), command["event"],
+  bitstamp_dbg<4>.debug(str<>("websocket trades"), command["event"],
     string_join("live_trades_", ticker), command.dump(4));
 
   if (enable)
@@ -108,7 +108,7 @@ bool bitstamp_network::subscribe_order_book(
   command["data"]["channel"] = string_join("order_book_", ticker);
 
   ticker_data& tdata = tickers_subscribed_.at(cp);
-  bitstamp_dbg<2>.debug(str<>("websocket orders"), command["event"],
+  bitstamp_dbg<4>.debug(str<>("websocket orders"), command["event"],
     string_join("order_book_", ticker), command.dump(4));
 
   if (enable)
@@ -137,7 +137,7 @@ bool bitstamp_network::subscribe_my_trades(
   command["data"]["auth"] = websocket_token_;
 
   ticker_data& tdata = tickers_subscribed_.at(cp);
-  bitstamp_dbg<2>.debug(str<>("websocket mytrades"), command["event"],
+  bitstamp_dbg<3>.debug(str<>("websocket mytrades"), command["event"],
     string_join("private-my_trades_", ticker), command.dump(4));
 
   if (enable)
@@ -168,7 +168,7 @@ bool bitstamp_network::subscribe_my_orders(
   command["data"]["auth"] = websocket_token_;
 
   ticker_data& tdata = tickers_subscribed_.at(cp);
-  bitstamp_dbg<2>.debug(str<>("websocket myorders"), command["event"],
+  bitstamp_dbg<3>.debug(str<>("websocket myorders"), command["event"],
     string_join("private-my_orders_", ticker), command.dump(4));
 
   if (enable)
@@ -243,8 +243,17 @@ void bitstamp_network::shut_down()
   {
     for (auto& [stream, websocket] : tdata.websockets_)
     {
-      websocket->shutdown_blocking();
-      websocket.reset();
+      try
+      {
+        bitstamp_dbg<2>.debug(
+          str<>("websocket close"), currency_pair_string(ticker), ptr(websocket.get()));
+        websocket->shutdown_blocking();
+        websocket.reset();
+      }
+      catch (const std::exception& err)
+      {
+        std::cerr << err.what() << std::endl;
+      }
     }
   }
 }
@@ -359,7 +368,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
   currency xrp_bitstamp{{"", "XRP"}, currency_type::xrp,
     std::stod(jdata["xrp_balance"].get_ptr<json::string_t*>()->c_str()),
     std::stod(jdata["xrp_available"].get_ptr<json::string_t*>()->c_str()),
-    std::stod(jdata["xrp_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
+    std::stod(jdata["xrp_reserved"].get_ptr<json::string_t*>()->c_str()) /*, nullptr*/};
   acct.add_currency(xrp_bitstamp);
 
   if (jdata.contains("usd_balance"))
@@ -367,7 +376,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
     currency usd_bitstamp{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp,
       std::stod(jdata["usd_balance"].get_ptr<json::string_t*>()->c_str()),
       std::stod(jdata["usd_available"].get_ptr<json::string_t*>()->c_str()),
-      std::stod(jdata["usd_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
+      std::stod(jdata["usd_reserved"].get_ptr<json::string_t*>()->c_str()) /*, nullptr*/};
     acct.add_currency(usd_bitstamp);
   }
 
@@ -653,7 +662,7 @@ void bitstamp_network::account_request(
 void bitstamp_network::new_orderbook_data(
   bitstamp_network* n, currency_pair const cp, std::string_view data)
 {
-  bitstamp_dbg<2>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
+  bitstamp_dbg<4>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<7>.debug(str<>("Orderbook data"), data);
 
   const ticker_data tdata = n->tickers_subscribed_.at(cp);
@@ -667,7 +676,7 @@ void bitstamp_network::new_orderbook_data(
 void bitstamp_network::new_live_trade_data(
   bitstamp_network* n, currency_pair cp, std::string_view data)
 {
-  bitstamp_dbg<2>.debug(str<>("Live Trade"), "Ticker", currency_pair_string(cp));
+  bitstamp_dbg<4>.debug(str<>("Live Trade"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<5>.debug(str<>("Trade data"), data);
   if (!startswith(data, "{\"data\":"))
     return;
