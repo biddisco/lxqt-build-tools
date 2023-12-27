@@ -1,27 +1,24 @@
 # ------------------------------------------------------------------------------
 # To build grox, the following might be necessary
 # ------------------------------------------------------------------------------
-# All Qt5 :
-# apt search libqt5 2>&1 | grep "^libqt5.*-dev" | sed 's/\/.*//' | xargs sudo apt -y install
-# sudo apt install qtquickcontrols2-5-dev
 #
-# sudo apt install build-essential libqt5charts5-dev libqt5opengl5-dev libqt5svg5-dev libcurl4-openssl-dev
-# QPlatformNativeInterface requires base-private-dev
+# check status of qt install (last check was 6.2)
+#   qtdiag
 #
-# qt6 : sudo apt install qt6-base-dev qt6-base-private-dev libqt6opengl6-dev libqt6svg6-dev
-# Advanced docking system needs
-# sudo apt install qml6-module-qtquick qt6-declarative-dev
+# Install all Qt6 dev packages:
+#   sudo apt search qt6 2>&1 | grep ".*-dev" | sed 's/\/.*//' | sort -u | xargs sudo apt -y install
 #
-# Assumes hdf5, boost, installed using spack environment
 # Qt6 GUI needs opengl,
-# sudo apt install libgl1-mesa-dev
-# SSL : sudo apt-get install libssl-dev libcurl4-openssl-dev
+#   sudo apt install libgl1-mesa-dev
+#
+# Advanced docking system needs
+#   sudo apt install qml6-module-qtquick qt6-declarative-dev
+#
+# SSL needs:
+#   sudo apt-get install libssl-dev libcurl4-openssl-dev
 #
 # Rippled needs
-# sudo apt install liblz4-dev libarchive-dev libsoci-dev
-#
-# Example cmake invocation
-# cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Debug ~/src/xrp/grox/
+#   sudo apt install liblz4-dev libarchive-dev libsoci-dev
 
 # ------------------------------------------------------------------------------
 # CMake version requirement
@@ -57,7 +54,8 @@ set(CMAKE_CXX_STANDARD 20)
 # ------------------------------------------------------------------------------
 option(BUILD_SHARED_LIBS "build shared libraries" OFF)
 
-option(GROX_WITH_SANITIZER "build grox using address sanitzer flags" OFF)
+option(GROX_WITH_SANITIZER "build grox with address/memory sanitizer flags" OFF)
+option(GROX_WITH_TESTING_SANITIZER "build grox tests with address/memory sanitizer flags" OFF)
 option(GROX_WITH_IWYU "add include-what-you-use support to grox build" OFF)
 
 # ------------------------------------------------------------------------------
@@ -66,6 +64,7 @@ option(GROX_WITH_IWYU "add include-what-you-use support to grox build" OFF)
 include(FetchContent)
 include(FindPkgConfig)
 include(ExternalProject)
+include(Sanitizer)
 
 # ------------------------------------------------------------------------------
 # CTest testing support
@@ -183,6 +182,7 @@ get_external_project(PROJECT_NAME "qwt" GIT_REPO "$ENV{HOME}/git-repos/qwt" GIT_
 # ------------------------------------------------------------------------------
 # Build/Download Qt-Advanced-Docking-System
 # ------------------------------------------------------------------------------
+set(BUILD_EXAMPLES OFF)
 get_external_project(
   PROJECT_NAME
   "QtADS"
@@ -305,6 +305,13 @@ set(MAGIC_ENUM_OPT_BUILD_EXAMPLES
 )
 get_external_project(
   PROJECT_NAME magic_enum GIT_REPO "https://github.com/Neargye/magic_enum.git" GIT_TAG "master"
+)
+
+# -------------------------------------------------------------
+# QtCreator dark theme
+# -------------------------------------------------------------
+get_external_project(
+  PROJECT_NAME monokai GIT_REPO "https://github.com/bfrg/qtcreator-monokai.git" GIT_TAG "master" DO_NOT_BUILD
 )
 
 # ------------------------------------------------------------------------------

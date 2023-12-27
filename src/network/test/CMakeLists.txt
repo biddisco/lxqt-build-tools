@@ -35,6 +35,9 @@ foreach(test ${TEST_SRCS})
     ${testname} PRIVATE # needed for UUID generation in web requests
                         GROX_HAVE_UUID_ENCODING
   )
+    if (GROX_WITH_TESTING_SANITIZER)
+        target_add_sanitizer_flags(${testname})
+    endif()
   if(testname MATCHES "belle")
     target_link_libraries(${testname} PUBLIC belle)
     target_compile_definitions(
