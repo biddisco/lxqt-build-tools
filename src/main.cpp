@@ -150,6 +150,7 @@ std::string exec(const char* cmd)
     result += buffer.data();
   }
   result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
+  std::cout << result << std::endl;
   return result;
 }
 

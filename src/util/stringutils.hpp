@@ -8,6 +8,14 @@
 
 #define JCHARP(val) val.get_ptr<json::string_t*>()->c_str()
 
+/*
+struct fmt::formatter<QString> : formatter<const char*> {
+  auto format(const QString& s, format_context& ctx) {
+    return formatter<const char*>::format((const char *)value.toUtf8(), ctx);
+  }
+};
+*/
+
 // ----------------------------------------------------------------------------
 inline bool startswith(std::string_view str, std::string_view sub)
 {

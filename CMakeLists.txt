@@ -311,7 +311,13 @@ get_external_project(
 # QtCreator dark theme
 # -------------------------------------------------------------
 get_external_project(
-  PROJECT_NAME monokai GIT_REPO "https://github.com/bfrg/qtcreator-monokai.git" GIT_TAG "master" DO_NOT_BUILD
+  PROJECT_NAME
+  monokai
+  GIT_REPO
+  "https://github.com/bfrg/qtcreator-monokai.git"
+  GIT_TAG
+  "master"
+  DO_NOT_BUILD
 )
 
 # ------------------------------------------------------------------------------
@@ -327,6 +333,7 @@ if(BUILD_TESTING)
   pika_add_pseudo_target(tests)
 endif()
 
+add_subdirectory(src/util)
 add_subdirectory(src/data)
 add_subdirectory(src/currency)
 add_subdirectory(src/debug)
@@ -419,7 +426,8 @@ target_compile_definitions(
 
 target_link_libraries(
   grox
-  PUBLIC grox_data
+  PUBLIC grox_util
+         grox_data
          grox_currency
          grox_io
          grox_plot

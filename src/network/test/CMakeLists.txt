@@ -29,8 +29,14 @@ foreach(test ${TEST_SRCS})
   cmake_path(GET test STEM testname)
   add_executable(${testname} ${test})
   target_link_libraries(
-    ${testname} PUBLIC grox_network nlohmann_json belle ${UUID_LIBRARIES} OpenSSL::SSL
-                       Threads::Threads
+    ${testname}
+    PUBLIC grox_util
+           grox_network
+           nlohmann_json
+           belle
+           ${UUID_LIBRARIES}
+           OpenSSL::SSL
+           Threads::Threads
   )
   target_compile_definitions(
     ${testname} PRIVATE # needed for UUID generation in web requests

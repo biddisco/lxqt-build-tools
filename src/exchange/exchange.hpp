@@ -10,7 +10,8 @@
 //
 #include "data/ohlc_dataset_view.hpp"
 #include "network/https-async.hpp"
-#include "network/websocket-ssl.hpp"
+#include "network/qwebsocket_client.hpp"
+#include "network/qwebsocket_session.hpp"
 
 class basic_account;
 
@@ -78,7 +79,7 @@ struct ticker_data
   QPlainTextEdit* orderbook_text_;
   OrderBookPlot* orderbook_plot_;
   // each ticker may subscribe to multiple streams
-  std::map<network::streams, std::shared_ptr<net::ws::session>> websockets_;
+  std::map<network::streams, std::shared_ptr<net::ws::qwebsocket_session>> websockets_;
 };
 
 // To ensure Qt can emit signals of this type

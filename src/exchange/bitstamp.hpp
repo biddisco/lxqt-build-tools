@@ -179,9 +179,11 @@ class bitstamp_network : public exchange
 
   // function called from websocket subscription to live trade data
   static void new_live_trade_data(bitstamp_network*, currency_pair cp, std::string_view);
+  static void new_live_trade_data_q(bitstamp_network*, currency_pair cp, const QString);
 
   // function called from websocket subscription to live orderbook data
   static void new_orderbook_data(bitstamp_network*, currency_pair const cp, std::string_view);
+  static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, const QString);
 
   double get_fee_percent(currency_type const& c1, currency_type const& c2) override;
   double get_fee_fixed(currency_type const& c1, currency_type const& c2) override;
