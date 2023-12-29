@@ -2,7 +2,8 @@
 # Get all propreties that cmake supports
 # -------------------------------------------------------------
 if(NOT CMAKE_PROPERTY_LIST)
-  execute_process(COMMAND cmake --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTY_LIST)
+  execute_process(COMMAND cmake --help-property-list
+                  OUTPUT_VARIABLE CMAKE_PROPERTY_LIST)
 
   # Convert command output into a CMake list
   string(REGEX REPLACE ";" "\\\\;" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
@@ -30,8 +31,7 @@ function(print_target_properties target)
     # https://stackoverflow.com/questions/32197663/how-can-i-remove-the-the-location-property-may-not-be-read-from-target-error-i
     if(property STREQUAL "LOCATION"
        OR property MATCHES "^LOCATION_"
-       OR property MATCHES "_LOCATION$"
-    )
+       OR property MATCHES "_LOCATION$")
       continue()
     endif()
 
@@ -39,8 +39,7 @@ function(print_target_properties target)
       was_set
       TARGET ${target}
       PROPERTY ${property}
-      SET
-    )
+      SET)
     if(was_set)
       get_target_property(value ${target} ${property})
       message("${target} ${property} = ${value}")

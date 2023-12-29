@@ -19,11 +19,14 @@ if(GROX_AUTHRNTICATION_TESTS)
 endif()
 
 set(websocket-bitstamp_PARAMETERS
-    ARGS "ws.bitstamp.net" "443"
+    ARGS
+    "ws.bitstamp.net"
+    "443"
     "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": \"live_trades_xrpusd\"}}"
 )
 
-set(https_PARAMETERS ARGS "www.bitstamp.net" "443" "/api/v2/ohlc/xrpusd/?step=60&limit=10")
+set(https_PARAMETERS ARGS "www.bitstamp.net" "443"
+                     "/api/v2/ohlc/xrpusd/?step=60&limit=10")
 
 foreach(test ${TEST_SRCS})
   cmake_path(GET test STEM testname)
@@ -36,12 +39,10 @@ foreach(test ${TEST_SRCS})
            belle
            ${UUID_LIBRARIES}
            OpenSSL::SSL
-           Threads::Threads
-  )
+           Threads::Threads)
   target_compile_definitions(
     ${testname} PRIVATE # needed for UUID generation in web requests
-                        GROX_HAVE_UUID_ENCODING
-  )
+                        GROX_HAVE_UUID_ENCODING)
   if(GROX_WITH_TESTING_SANITIZER)
     target_add_sanitizer_flags(${testname})
   endif()
@@ -52,11 +53,11 @@ foreach(test ${TEST_SRCS})
       PRIVATE # disable support for belle websocket server
               OB_BELLE_CONFIG_SERVER_OFF
               # set certificate path for belle original test
-              BELLE_CERT_PATH="${belle_SOURCE_DIR}/example/cert"
-    )
+              BELLE_CERT_PATH="${belle_SOURCE_DIR}/example/cert")
   endif()
   set(${testname}_PARAMETERS "${${testname}_PARAMETERS}" THREADS 4)
-  grox_add_test_and_deps("network" ${testname} EXECUTABLE ${testname} ${${testname}_PARAMETERS})
+  grox_add_test_and_deps("network" ${testname} EXECUTABLE ${testname}
+                         ${${testname}_PARAMETERS})
 endforeach()
 
 target_link_libraries(ripple-sign PUBLIC Ripple::xrpl_core)

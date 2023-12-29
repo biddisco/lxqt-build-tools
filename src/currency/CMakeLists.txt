@@ -6,5 +6,6 @@ target_include_directories(grox_currency PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(grox_currency PUBLIC Qt::Core ${Boost_LIBRARIES} range-v3)
 
 if(GROX_WITH_IWYU)
-  set_property(TARGET grox_currency PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path})
+  set_property(TARGET grox_currency PROPERTY CXX_INCLUDE_WHAT_YOU_USE
+                                             ${iwyu_path})
 endif()

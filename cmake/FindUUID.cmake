@@ -1,3 +1,4 @@
+# ~~~
 # - Find UUID
 # Find the native UUID includes and library
 # This module defines
@@ -7,12 +8,12 @@
 # also defined, but not for general use are
 #  UUID_LIBRARY, where to find the UUID library.
 #
-#  Copyright (c) 2006-2016 Mathieu Malaterre <mathieu.malaterre@gmail.com>
+# Copyright (c) 2006-2016 Mathieu Malaterre <mathieu.malaterre@gmail.com>
 #
 #  Redistribution and use is allowed according to the terms of the New
 #  BSD license.
 #  For details see the accompanying COPYING-CMAKE-SCRIPTS file.
-#
+# ~~~
 
 # On Mac OS X the uuid functions are in the System library.
 if(APPLE)
@@ -25,8 +26,7 @@ endif()
 find_library(
   UUID_LIBRARY
   NAMES ${UUID_LIBRARY_VAR}
-  PATHS /lib /usr/lib /usr/local/lib
-)
+  PATHS /lib /usr/lib /usr/local/lib)
 
 # Must be *after* the lib itself
 set(CMAKE_FIND_FRAMEWORK_SAVE ${CMAKE_FIND_FRAMEWORK})

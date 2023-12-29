@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # To build grox, the following might be necessary
 # ------------------------------------------------------------------------------
-#
+# ~~~
 # check status of qt install (last check was 6.2)
 #   qtdiag
 #
@@ -19,6 +19,7 @@
 #
 # Rippled needs
 #   sudo apt install liblz4-dev libarchive-dev libsoci-dev
+# ~~~
 
 # ------------------------------------------------------------------------------
 # CMake version requirement
@@ -36,8 +37,7 @@ cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 project(
   GROX
   VERSION 0.1
-  LANGUAGES CXX C
-)
+  LANGUAGES CXX C)
 
 # ------------------------------------------------------------------------------
 # CMake configuration
@@ -55,7 +55,8 @@ set(CMAKE_CXX_STANDARD 20)
 option(BUILD_SHARED_LIBS "build shared libraries" OFF)
 
 option(GROX_WITH_SANITIZER "build grox with address/memory sanitizer flags" OFF)
-option(GROX_WITH_TESTING_SANITIZER "build grox tests with address/memory sanitizer flags" OFF)
+option(GROX_WITH_TESTING_SANITIZER
+       "build grox tests with address/memory sanitizer flags" OFF)
 option(GROX_WITH_IWYU "add include-what-you-use support to grox build" OFF)
 
 # ------------------------------------------------------------------------------
@@ -79,8 +80,7 @@ find_package(GTest QUIET)
 if(NOT GTest_FOUND)
   set(BUILD_TESTING
       OFF
-      CACHE BOOL "Testing"
-  )
+      CACHE BOOL "Testing")
 endif()
 
 # ------------------------------------------------------------------------------
@@ -88,16 +88,13 @@ endif()
 # ------------------------------------------------------------------------------
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
     ${PROJECT_BINARY_DIR}/bin
-    CACHE PATH "Single Directory for all Executables."
-)
+    CACHE PATH "Single Directory for all Executables.")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY
     ${PROJECT_BINARY_DIR}/bin
-    CACHE PATH "Single Directory for all Libraries"
-)
+    CACHE PATH "Single Directory for all Libraries")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
     ${PROJECT_BINARY_DIR}/bin
-    CACHE PATH "Single Directory for all static libraries."
-)
+    CACHE PATH "Single Directory for all static libraries.")
 
 # ------------------------------------------------------------------------------
 # include-what-you-use
@@ -114,8 +111,7 @@ endif()
 find_package(
   QT NAMES Qt6
   COMPONENTS Core
-  REQUIRED
-)
+  REQUIRED)
 #
 find_package(Qt6 COMPONENTS Core)
 if(NOT Qt6_FOUND)
@@ -132,8 +128,7 @@ if(${QT_DEFAULT_MAJOR_VERSION} EQUAL 6)
       OpenGLWidgets
       PrintSupport
       Svg
-      Concurrent
-  )
+      Concurrent)
 else()
   set(qtcomponents
       Core
@@ -142,8 +137,7 @@ else()
       OpenGL
       PrintSupport
       Svg
-      Concurrent
-  )
+      Concurrent)
 endif()
 
 find_package(Qt${QT_DEFAULT_MAJOR_VERSION} REQUIRED COMPONENTS ${qtcomponents})
@@ -177,7 +171,8 @@ find_package(HDF5 REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
 # ------------------------------------------------------------------------------
 # Build/Download qwt
 # ------------------------------------------------------------------------------
-get_external_project(PROJECT_NAME "qwt" GIT_REPO "$ENV{HOME}/git-repos/qwt" GIT_TAG "candle-fixes")
+get_external_project(PROJECT_NAME "qwt" GIT_REPO "$ENV{HOME}/git-repos/qwt"
+                     GIT_TAG "candle-fixes")
 
 # ------------------------------------------------------------------------------
 # Build/Download Qt-Advanced-Docking-System
@@ -191,8 +186,7 @@ get_external_project(
   GIT_REPO
   "https://github.com/githubuser0xFFFF/Qt-Advanced-Docking-System"
   GIT_TAG
-  "master"
-)
+  "master")
 
 # ------------------------------------------------------------------------------
 # Build/Download nlohmann/json
@@ -205,8 +199,7 @@ get_external_project(
   GIT_REPO
   "https://github.com/nlohmann/json"
   GIT_TAG
-  "develop"
-)
+  "develop")
 
 # ------------------------------------------------------------------------------
 # Build/Download belle
@@ -219,8 +212,7 @@ get_external_project(
   GIT_REPO
   "$ENV{HOME}/git-repos/belle"
   GIT_TAG
-  "master"
-)
+  "master")
 
 # ------------------------------------------------------------------------------
 # Build/Download QDarkStyleSheet
@@ -232,35 +224,31 @@ get_external_project(
   "https://github.com/ColinDuquesnoy/QDarkStyleSheet.git"
   GIT_TAG
   "master"
-  DO_NOT_BUILD
-)
+  DO_NOT_BUILD)
 
 # ------------------------------------------------------------------------------
 # Build/Download range-v3 library
 # ------------------------------------------------------------------------------
 get_external_project(
-  PROJECT_NAME "range-v3" GIT_REPO "https://github.com/ericniebler/range-v3.git" GIT_TAG "master"
-)
+  PROJECT_NAME "range-v3" GIT_REPO
+  "https://github.com/ericniebler/range-v3.git" GIT_TAG "master")
 
 # ------------------------------------------------------------------------------
 # Build/Download HighFive hdf5 c++ library
 # ------------------------------------------------------------------------------
 set(HIGHFIVE_UNIT_TESTS
     OFF
-    CACHE STRING "HighFive unit testing"
-)
+    CACHE STRING "HighFive unit testing")
 set(HIGHFIVE_BUILD_DOCS
     OFF
-    CACHE BOOL "Build Docs"
-)
+    CACHE BOOL "Build Docs")
 set(HIGHFIVE_EXAMPLES
     OFF
-    CACHE BOOL "Compile examples"
-)
+    CACHE BOOL "Compile examples")
 
 get_external_project(
-  PROJECT_NAME "HighFive" GIT_REPO "https://github.com/BlueBrain/HighFive.git" GIT_TAG "master"
-)
+  PROJECT_NAME "HighFive" GIT_REPO "https://github.com/BlueBrain/HighFive.git"
+  GIT_TAG "master")
 
 # ------------------------------------------------------------------------------
 # Find/Build/Download rippled
@@ -281,19 +269,18 @@ get_external_project(
   GIT_REPO
   "$ENV{HOME}/git-repos/rippled"
   GIT_TAG
-  "jb-master"
-)
+  "jb-master")
 
 # -------------------------------------------------------------
 # Find/Build/Download pika
 # -------------------------------------------------------------
-get_external_project(PROJECT_NAME "pika" GIT_REPO "https://github.com/pika-org/pika" GIT_TAG "main")
+get_external_project(PROJECT_NAME "pika" GIT_REPO
+                     "https://github.com/pika-org/pika" GIT_TAG "main")
 if(pika_WITH_APEX)
   # I think something like this should be done in APEX' CMakeLists.pika
   include_directories(
-    ${pika_SOURCE_DIR}/libs/preprocessor/include ${pika_SOURCE_DIR}/apex/src/apex
-    ${pika_SOURCE_DIR}/apex/src/contrib
-  )
+    ${pika_SOURCE_DIR}/libs/preprocessor/include
+    ${pika_SOURCE_DIR}/apex/src/apex ${pika_SOURCE_DIR}/apex/src/contrib)
 endif()
 
 # -------------------------------------------------------------
@@ -301,11 +288,10 @@ endif()
 # -------------------------------------------------------------
 set(MAGIC_ENUM_OPT_BUILD_EXAMPLES
     OFF
-    CACHE BOOL " " FORCE
-)
+    CACHE BOOL " " FORCE)
 get_external_project(
-  PROJECT_NAME magic_enum GIT_REPO "https://github.com/Neargye/magic_enum.git" GIT_TAG "master"
-)
+  PROJECT_NAME magic_enum GIT_REPO "https://github.com/Neargye/magic_enum.git"
+  GIT_TAG "master")
 
 # -------------------------------------------------------------
 # QtCreator dark theme
@@ -317,8 +303,7 @@ get_external_project(
   "https://github.com/bfrg/qtcreator-monokai.git"
   GIT_TAG
   "master"
-  DO_NOT_BUILD
-)
+  DO_NOT_BUILD)
 
 # ------------------------------------------------------------------------------
 # grox build
@@ -327,8 +312,7 @@ get_external_project(
 if(BUILD_TESTING)
   set(PIKA_WITH_PSEUDO_DEPENDENCIES
       ON
-      CACHE INTERNAL "" FORCE
-  )
+      CACHE INTERNAL "" FORCE)
   include(grox_add_test)
   pika_add_pseudo_target(tests)
 endif()
@@ -363,17 +347,16 @@ set(GROX_SRC
     src/widgets/trade_widget.cpp
     src/widgets/wallet_widget.cpp
     src/widgets/xrp_functions.cpp
-    src/widgets/price_chart_widget.cpp
-)
+    src/widgets/price_chart_widget.cpp)
 
 qt_wrap_ui(GROX_SRC src/tabbed_form.ui)
 
 # -----------------------------------------------------------------------------
 # Qt resource files
 # -----------------------------------------------------------------------------
-set(GROX_QRC_SRC src/grox.qrc ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
-                 ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc
-)
+set(GROX_QRC_SRC
+    src/grox.qrc ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
+    ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc)
 
 add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC})
 # c++ properties
@@ -384,9 +367,10 @@ set_property(TARGET grox PROPERTY AUTOUIC ON)
 set_property(TARGET grox PROPERTY AUTORCC ON)
 
 target_include_directories(
-  grox PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
-              ${CMAKE_CURRENT_SOURCE_DIR}/src ${belle_SOURCE_DIR}
-)
+  grox
+  PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}
+         ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
+         ${belle_SOURCE_DIR})
 
 if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
   set(STD_FILESYSTEM_LIB "stdc++fs")
@@ -401,8 +385,7 @@ if(GROX_WITH_SANITIZER)
             -fsanitize=float-divide-by-zero
             -fsanitize=float-cast-overflow
             -fno-sanitize=null
-            -fno-sanitize=alignment
-  )
+            -fno-sanitize=alignment)
   target_link_options(
     grox
     PRIVATE
@@ -412,8 +395,7 @@ if(GROX_WITH_SANITIZER)
     -fsanitize=float-divide-by-zero
     -fsanitize=float-cast-overflow
     -fno-sanitize=null
-    -fno-sanitize=alignment
-  )
+    -fno-sanitize=alignment)
 endif()
 
 target_compile_definitions(
@@ -421,8 +403,7 @@ target_compile_definitions(
   PRIVATE # needed for UUID generation in web requests
           GROX_HAVE_UUID_ENCODING
           # disable support for belle websocket server
-          OB_BELLE_CONFIG_SERVER_OFF
-)
+          OB_BELLE_CONFIG_SERVER_OFF)
 
 target_link_libraries(
   grox
@@ -447,5 +428,4 @@ target_link_libraries(
          Ripple::xrpl_core
          uuid
          Threads::Threads
-         pika::pika
-)
+         pika::pika)
