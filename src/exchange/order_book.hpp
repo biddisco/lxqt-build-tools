@@ -3,21 +3,10 @@
 // to pass structs as params we must declare metatypes to Qt
 #include <QtCore>
 //
-#include <algorithm>
-#include <iomanip>
-#include <iostream>
-#include <list>
-#include <map>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-//
-#include <boost/format.hpp>
-#include <boost/iterator/zip_iterator.hpp>
-//
-#include <range/v3/algorithm.hpp>
-#include <range/v3/all.hpp>
 //
 #include "nlohmann/json.hpp"
 //
