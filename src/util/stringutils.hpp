@@ -3,6 +3,8 @@
 #include <string>
 #include <string_view>
 //
+#include <QString>
+//
 #include <range/v3/algorithm.hpp>
 #include <range/v3/all.hpp>
 
@@ -26,6 +28,12 @@ inline bool startswith(std::string_view str, std::string_view sub)
     return false;
   }
   return true;
+}
+
+// ----------------------------------------------------------------------------
+inline bool startswith(QString str, QString sub)
+{
+  return str.startsWith(sub);
 }
 
 // ----------------------------------------------------------------------------

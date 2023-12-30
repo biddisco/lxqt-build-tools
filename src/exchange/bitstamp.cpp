@@ -29,6 +29,8 @@ template <int Level>
 static print_threshold<Level, debug_level> bitstamp_dbg("Bitstamp");
 
 // ----------------------------------------------------------------------------
+std::atomic<bool> bitstamp_network::closing_down_ = false;
+// ----------------------------------------------------------------------------
 bitstamp_network::bitstamp_network()
 {
   bitstamp_account default_acct;
@@ -55,6 +57,8 @@ bitstamp_network::bitstamp_network()
       // stream_process(new_sample);
     },
     Qt::QueuedConnection);
+  //
+  closing_down_ = false;
 }
 
 // ----------------------------------------------------------------------------
@@ -87,9 +91,9 @@ bool bitstamp_network::subscribe_live_trades(
   if (enable)
   {
     using namespace std::placeholders;
-    tdata.websockets_[network::streams::live_trades] =
-      net::ws::qwebsocket_session::create(bitstamp_websocket_address, bitstamp_websocket_port,
-        command.dump(4), std::bind(bitstamp_network::new_live_trade_data_q, this, cp, _1));
+    tdata.websockets_[network::streams::live_trades] = net::ws::qwebsocket_session::create(
+      "bs::Trades " + ticker, bitstamp_websocket_address, bitstamp_websocket_port, command.dump(4),
+      std::bind(bitstamp_network::new_live_trade_data_q, this, cp, _1));
   }
   else
   {
@@ -115,9 +119,9 @@ bool bitstamp_network::subscribe_order_book(
   if (enable)
   {
     using namespace std::placeholders;
-    tdata.websockets_[network::streams::order_book] =
-      net::ws::qwebsocket_session::create(bitstamp_websocket_address, bitstamp_websocket_port,
-        command.dump(4), std::bind(&bitstamp_network::new_orderbook_data_q, this, cp, _1));
+    tdata.websockets_[network::streams::order_book] = net::ws::qwebsocket_session::create(
+      "bs::Orders " + ticker, bitstamp_websocket_address, bitstamp_websocket_port, command.dump(4),
+      std::bind(&bitstamp_network::new_orderbook_data_q, this, cp, _1));
   }
   else
   {
@@ -143,11 +147,12 @@ bool bitstamp_network::subscribe_my_trades(
 
   if (enable)
   {
-    tdata.websockets_[network::streams::my_trades] = net::ws::qwebsocket_session::create(
-      bitstamp_websocket_address, bitstamp_websocket_port, command.dump(4), [](const QString data) {
-        //
-        bitstamp_dbg<7>.debug(str<>("(private) Trade data handler"), data);
-      });
+    tdata.websockets_[network::streams::my_trades] =
+      net::ws::qwebsocket_session::create("bs::MyTrades " + ticker, bitstamp_websocket_address,
+        bitstamp_websocket_port, command.dump(4), [](const QString data) {
+          //
+          bitstamp_dbg<7>.debug(str<>("(private) Trade data handler"), data);
+        });
   }
   else
   {
@@ -174,8 +179,8 @@ bool bitstamp_network::subscribe_my_orders(
   if (enable)
   {
     tdata.websockets_[network::streams::my_orders] =
-      net::ws::qwebsocket_session::create(bitstamp_websocket_address, bitstamp_websocket_port,
-        command.dump(4), [this](const QString data) {
+      net::ws::qwebsocket_session::create("bs::MyOrders " + ticker, bitstamp_websocket_address,
+        bitstamp_websocket_port, command.dump(4), [this](const QString data) {
           std::string stdstring = data.toStdString();
           bitstamp_dbg<7>.debug(str<>("Orders data"), stdstring);
           nlohmann::json jdata = json::parse(stdstring);
@@ -239,7 +244,12 @@ bool bitstamp_network::stream_subscribe(
 // ----------------------------------------------------------------------------
 void bitstamp_network::shut_down()
 {
+  // do not allow shutdown / async operations concurrently
+  closing_down_ = true;
+  std::lock_guard l(async_mutex_);
+  //
   bitstamp_dbg<0>.debug(str<>("websockets"), "shutdown start");
+  //
   for (auto& [ticker, tdata] : tickers_subscribed_)
   {
     for (auto& [stream, websocket] : tdata.websockets_)
@@ -255,7 +265,10 @@ void bitstamp_network::shut_down()
         std::cerr << err.what() << std::endl;
       }
     }
+    // delete orderbook _after_ closing websocket to avoid some late async data arrivals
+    delete tdata.orderbook_;
   }
+  tickers_subscribed_.clear();
 }
 
 // ----------------------------------------------------------------------------
@@ -659,13 +672,24 @@ void bitstamp_network::account_request(
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::new_orderbook_data(
-  bitstamp_network* n, currency_pair const cp, std::string_view data)
+void bitstamp_network::new_orderbook_data_q(
+  bitstamp_network* n, currency_pair const cp, const QString data)
 {
-  bitstamp_dbg<4>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
+  bitstamp_dbg<0>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<7>.debug(str<>("Orderbook data"), data);
-
+  //
+  std::lock_guard l(n->async_mutex_);
+  if (closing_down_)
+  {
+    bitstamp_dbg<0>.error(str<>("Orderbook data"), "Shutdown in progress: ignoring data");
+    return;
+  }
+  //
   const ticker_data tdata = n->tickers_subscribed_.at(cp);
+  //
+  if (!tdata.orderbook_)
+    return;    // @todo probably called during destruction
+
   if (!dynamic_cast<bitstamp_order_book*>(tdata.orderbook_)->accept_json_bitstamp(data))
     return;
 
@@ -673,48 +697,22 @@ void bitstamp_network::new_orderbook_data(
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::new_orderbook_data_q(
-  bitstamp_network* n, currency_pair const cp, QString data)
-{
-  std::string stdstring = data.toStdString();
-  bitstamp_dbg<4>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
-  bitstamp_dbg<7>.debug(str<>("Orderbook data"), data);
-
-  const ticker_data tdata = n->tickers_subscribed_.at(cp);
-  if (!dynamic_cast<bitstamp_order_book*>(tdata.orderbook_)->accept_json_bitstamp(stdstring))
-    return;
-
-  emit n->orderbook_changed();
-}
-
-// ----------------------------------------------------------------------------
-void bitstamp_network::new_live_trade_data(
-  bitstamp_network* n, currency_pair cp, std::string_view data)
-{
-  bitstamp_dbg<4>.debug(str<>("Live Trade"), "Ticker", currency_pair_string(cp));
-  bitstamp_dbg<5>.debug(str<>("Trade data"), data);
-  if (!startswith(data, "{\"data\":"))
-    return;
-  //
-  nlohmann::json jdata = json::parse(data);
-  // extract the main subgroup
-  jdata = jdata["data"];
-  bitstamp_dbg<7>.debug(str<>("Trade data parsed"), jdata.dump(4));
-  live_trades trade_data = jdata.get<live_trades>();
-  //
-  emit n->new_live_trade_data_ui(cp, trade_data);
-}
-
-// ----------------------------------------------------------------------------
 void bitstamp_network::new_live_trade_data_q(
   bitstamp_network* n, currency_pair cp, const QString data)
 {
-  std::string stdstring = data.toStdString();
-  //
   bitstamp_dbg<4>.debug(str<>("Live Trade"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<5>.debug(str<>("Trade data"), data);
-  if (!startswith(stdstring, "{\"data\":"))
+  //
+  std::lock_guard l(n->async_mutex_);
+  if (closing_down_)
+  {
+    bitstamp_dbg<0>.error(str<>("trade data"), "Shutdown in progress: ignoring data");
     return;
+  }
+  if (!startswith(data, "{\"data\":"))
+    return;
+  //
+  std::string stdstring = data.toStdString();
   //
   nlohmann::json jdata = json::parse(stdstring);
   // extract the main subgroup

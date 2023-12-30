@@ -34,26 +34,27 @@ namespace net::ws {
   // ----------------------------------------------------------------------------
   using namespace grox::debug;
   template <int Level>
-  static print_threshold<Level, 5> qweb_dbg("QWebsock");
+  static print_threshold<Level, 5> qwebsocket_dbg("QWebsock");
 
   // ------------------------------------------------------------------
-  qwebsocket_client::qwebsocket_client(
-    const QUrl& url, QString subscribe, rx_msg_handler_type handler, QObject* parent)
+  qwebsocket_client::qwebsocket_client(const std::string& id, const QUrl& url, QString subscribe,
+    rx_msg_handler_type handler, QObject* parent)
     : QObject(parent)
+    , rx_handler_(handler)
+    , url_(url)
+    , subscribe_(subscribe)
+    , id_(id)
   {
-    rx_handler_ = handler;
-    url_ = url;
-    subscribe_ = subscribe;
   }
 
   // ------------------------------------------------------------------
   qwebsocket_client::~qwebsocket_client()
   {
-    qweb_dbg<2>.debug(fmt::format("{:17s} Destructor", "Client::WebSocket"));
+    qwebsocket_dbg<2>.debug(fmt::format("{:20s} Destructor", id_));
     if (websocket_)
     {
-      qweb_dbg<2>.error(
-        fmt::format("{:17s}, {:s}", "Client::destructor", "websocket delete - out of order"));
+      qwebsocket_dbg<2>.error(
+        fmt::format("{:20s}, Client::destructor : websocket delete - out of order", id_));
       delete websocket_;
     }
   }
@@ -61,7 +62,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::startConnection()
   {
-    qweb_dbg<2>.debug(fmt::format("{:17s} startConnection", "Client::WebSocket", url_));
+    qwebsocket_dbg<2>.debug(fmt::format("{:20s} startConnection", id_, url_));
     //
     websocket_ = new QWebSocket;
     websocket_->setPauseMode(QAbstractSocket::PauseNever);    // @todo PauseOnSslErrors
@@ -102,7 +103,7 @@ namespace net::ws {
     connect(websocket_, &QWebSocket::bytesWritten, this, &qwebsocket_client::onBytesWritten,
       Qt::DirectConnection);
 
-    qweb_dbg<2>.debug(fmt::format("{:17s} openConnection {:s}", "Client::WebSocket", url_));
+    qwebsocket_dbg<2>.debug(fmt::format("{:20s} openConnection {}", id_, url_));
     QNetworkRequest request = QNetworkRequest(QUrl(url_));
     websocket_->open(request);
   }
@@ -112,8 +113,7 @@ namespace net::ws {
   {
     if (websocket_ != nullptr)
     {
-      qweb_dbg<2>.debug(
-        fmt::format("{:17s} stopConnection : invoking WebSocket close", "Client::WebSocket"));
+      qwebsocket_dbg<2>.debug(fmt::format("{:20s} stopConnection : invoking WebSocket close", id_));
       QMetaObject::invokeMethod(websocket_, "close", Qt::QueuedConnection);
       websocket_->deleteLater();
       websocket_ = nullptr;
@@ -123,7 +123,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onConnected()
   {
-    qweb_dbg<2>.debug(fmt::format("{:17s} Connected : sending subscribe", "Client::WebSocket"));
+    qwebsocket_dbg<2>.debug(fmt::format("{:20s} Connected : sending subscribe", id_));
     websocket_->sendTextMessage(subscribe_);
   }
 
@@ -132,9 +132,8 @@ namespace net::ws {
   {
     if (websocket_)
     {
-      qweb_dbg<2>.error(fmt::format("{:17s} Disconnected : Unexpected : CloseCode is : {} {:s}",
-        "Client::WebSocket", QVariant::fromValue(websocket_->closeCode()).toString(),
-        websocket_->errorString()));
+      qwebsocket_dbg<2>.error(fmt::format("{:20s} Disconnected : Unexpected : CloseCode is : {} {}",
+        id_, QVariant::fromValue(websocket_->closeCode()).toString(), websocket_->errorString()));
     }
     emit finished();
   }
@@ -142,8 +141,8 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onStateChanged(QAbstractSocket::SocketState socketState)
   {
-    qweb_dbg<2>.debug(fmt::format(
-      "{:17s} StateChanged {}", "Client::WebSocket", QVariant::fromValue(socketState).toString()));
+    qwebsocket_dbg<2>.debug(
+      fmt::format("{:20s} StateChanged {}", id_, QVariant::fromValue(socketState).toString()));
   }
 
   // ------------------------------------------------------------------
@@ -152,10 +151,9 @@ namespace net::ws {
     if (websocket_)
     {
       auto reason = websocket_->closeReason();
-      qweb_dbg<0>.error(fmt::format(
-        "{:17s} AboutToClose : Unexpected CloseCode is : {} {:s} : reconnect after time T",
-        "Client::WebSocket", QVariant::fromValue(websocket_->closeCode()).toString(),
-        websocket_->errorString()));
+      qwebsocket_dbg<0>.error(fmt::format(
+        "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
+        QVariant::fromValue(websocket_->closeCode()).toString(), websocket_->errorString()));
     }
     /*setTimeout(setupWebSocket, 1000);*/
   }
@@ -163,7 +161,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onSslErrors(const QList<QSslError>& errors)
   {
-    qweb_dbg<0>.error(fmt::format("{:17s} SslErrors", "Client::WebSocket"));
+    qwebsocket_dbg<0>.error(fmt::format("{:20s} SslErrors", id_));
     Q_UNUSED(errors);
 
     // WARNING: Never ignore SSL errors in production code.
@@ -176,52 +174,52 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onError(QAbstractSocket::SocketError socketError)
   {
-    qweb_dbg<0>.error(
-      fmt::format("{:17s} SslErrors : Error :{}", "Client::WebSocket", websocket_->errorString()));
+    qwebsocket_dbg<0>.error(
+      fmt::format("{:20s} SslErrors : Error :{}", id_, websocket_->errorString()));
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onTextFrameReceived(const QString& frame, bool isLastFrame)
   {
-    qweb_dbg<9>.error(
-      fmt::format("{:17s} TextFrameReceived - this should be overriden", "Client::WebSocket"));
+    qwebsocket_dbg<9>.error(
+      fmt::format("{:20s} TextFrameReceived - this should be overriden", id_));
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onTextMessageReceived(QString message)
   {
-    qweb_dbg<2>.error(
-      fmt::format("{:17s} TextMessageReceived - this should be overriden", "Client::WebSocket"));
+    qwebsocket_dbg<0>.error(
+      fmt::format("{:20s} TextMessageReceived - this should be overriden", id_));
     emit processIncomingMessage(message);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onBinaryFrameReceived(const QByteArray& frame, bool isLastFrame)
   {
-    qweb_dbg<5>.error(fmt::format("{:17s} BinaryFrameReceived", "Client::WebSocket"));
+    qwebsocket_dbg<5>.error(fmt::format("{:20s} BinaryFrameReceived", id_));
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onBinaryMessageReceived(const QByteArray& message)
   {
-    qweb_dbg<5>.error(fmt::format("{:17s} BinaryMessageReceived", "Client::WebSocket"));
+    qwebsocket_dbg<5>.error(fmt::format("{:20s} BinaryMessageReceived", id_));
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onReadChannelFinished()
   {
-    qweb_dbg<3>.error(fmt::format("{:17s} ReadChannelFinished", "Client::WebSocket"));
+    qwebsocket_dbg<3>.debug(fmt::format("{:20s} ReadChannelFinished", id_));
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onPong(quint64 elapsedTime, const QByteArray& payload)
   {
-    qweb_dbg<9>.error(fmt::format("{:17s} Pong", "Client::WebSocket"));
+    qwebsocket_dbg<9>.error(fmt::format("{:20s} Pong", id_));
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onBytesWritten(qint64 bytes)
   {
-    qweb_dbg<9>.error(fmt::format("{:17s} BytesWritten {}", "Client::WebSocket", bytes));
+    qwebsocket_dbg<9>.error(fmt::format("{:20s} BytesWritten {}", id_, bytes));
   }
 }    // namespace net::ws

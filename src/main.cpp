@@ -150,7 +150,6 @@ std::string exec(const char* cmd)
     result += buffer.data();
   }
   result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
-  std::cout << result << std::endl;
   return result;
 }
 
@@ -452,7 +451,8 @@ void init_resource_partitioner_handler(
   // Create a thread pool with a single core for Qt
   rp.create_thread_pool(qt_pool_name, pika::resource::scheduling_policy::unspecified, mode);
   // set the schedule mode for the default pool
-  rp.create_thread_pool("default", pika::resource::scheduling_policy::shared_priority, mode);
+  //  rp.create_thread_pool("default", pika::resource::scheduling_policy::shared_priority, mode);
+  rp.create_thread_pool("default", pika::resource::scheduling_policy::unspecified, mode);
   rp.add_resource(rp.numa_domains()[0].cores()[0].pus()[0], qt_pool_name);
 }
 

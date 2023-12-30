@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": \"live_trades_btcusd\"}}";
 
   std::shared_ptr<net::ws::qwebsocket_session> websocket = net::ws::qwebsocket_session::create(
-    address, subscribe, net::ws::rx_msg_handler_type(onTextMessageReceived));
+    "Bitstamp Trades", address, subscribe, net::ws::rx_msg_handler_type(onTextMessageReceived));
 
   int completed = 0;
   // wait N seconds and collect some data

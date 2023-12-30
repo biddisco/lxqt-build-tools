@@ -4,6 +4,7 @@
 //
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
@@ -41,6 +42,13 @@ class bitstamp_network : public exchange
   std::map<std::pair<std::string, std::string>, double> fee_map_;
 
   std::set<currency_pair> candlestick_updates_active_;
+
+  public:
+  // if an asynchronous websocket/http operation is being handled
+  // then shutdown must wait until it has completed before starting
+  // and then set a flag to prevent new async operations being handled
+  std::mutex async_mutex_;
+  static std::atomic<bool> closing_down_;
 
   public:
   //
@@ -178,11 +186,9 @@ class bitstamp_network : public exchange
     currency_pair cp, uint64_t start_t, uint64_t samples, fn_on_http fn);
 
   // function called from websocket subscription to live trade data
-  static void new_live_trade_data(bitstamp_network*, currency_pair cp, std::string_view);
   static void new_live_trade_data_q(bitstamp_network*, currency_pair cp, const QString);
 
   // function called from websocket subscription to live orderbook data
-  static void new_orderbook_data(bitstamp_network*, currency_pair const cp, std::string_view);
   static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, const QString);
 
   double get_fee_percent(currency_type const& c1, currency_type const& c2) override;

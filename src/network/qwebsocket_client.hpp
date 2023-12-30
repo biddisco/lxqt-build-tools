@@ -20,16 +20,21 @@ namespace net::ws {
     Q_OBJECT
 public:
 private:
-    QWebSocket* websocket_;
-    rx_msg_handler_type rx_handler_;
-    QUrl url_;
-    QString subscribe_;
+    QWebSocket* websocket_;             // internal websocket
+    rx_msg_handler_type rx_handler_;    // handler for message received
+    QUrl url_;                          // the address/port
+    QString subscribe_;                 // the channel subscription request
+    std::string id_;                    // a name we use for debugging
 
 public:
-    explicit qwebsocket_client(const QUrl& url, const QString subscribe,
+    explicit qwebsocket_client(const std::string& id, const QUrl& url, const QString subscribe,
       const rx_msg_handler_type handler, QObject* parent = nullptr);
     ~qwebsocket_client();
 
+    const std::string& id()
+    {
+      return id_;
+    }
     void startConnection();
     void stopConnection();
 

@@ -79,11 +79,12 @@ order_book_base::order_book_base(OrderBookPlot* obp, bool secondaxis)
 
 order_book_base::~order_book_base()
 {
-  // release shared_ptr reference early
+  obook_dbg<0>.debug(str<>("order_book_base"), "destructing");
+  // curves are owned by plot, so no need to delete
+  bid_curve_ = nullptr;
+  ask_curve_ = nullptr;
+  // explicity release shared_ptr reference
   OrderBookPlot_ = nullptr;
-  // owned by plot?
-  //delete bid_curve_;
-  //delete ask_curve_;
 }
 
 void order_book_base::update_graph_limits(bool primary)
@@ -378,11 +379,19 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 // accept json reply from bitstamp order book query and turn into numeric arrays
-bool bitstamp_order_book::accept_json_bitstamp(std::string_view data)
+bool bitstamp_order_book::accept_json_bitstamp(const QString data)
 {
-  if (!startswith(data, "{\"data\":"))
+  if (!bid_curve_ || !ask_curve_)
+  {
+    // late websocket data arriving after destruction started
+    obook_dbg<0>.error(str<>("accept_json_bitstamp"), "destructing");
     return false;
-  nlohmann::json jdata = json::parse(data)["data"];
+  }
+  if (!startswith(data, QStringLiteral("{\"data\":")))
+    return false;
+  //
+  std::string stdstring = data.toStdString();
+  nlohmann::json jdata = json::parse(stdstring)["data"];
   //
   bids.clear();
   asks.clear();
@@ -437,7 +446,7 @@ void xrpl_order_book::accept_json_ledger_snapshot(std::string_view data)
 {
   nlohmann::json jdata = json::parse(data);
   auto joffers = jdata["result"]["offers"];
-  obook_dbg<5>.debug("snapshot"), joffers.dump(4);
+  obook_dbg<5>.debug(str<>("snapshot"), joffers.dump(4));
   //
   // websocket (re?)connnect: clear the orderbook ...
   orders.clear();

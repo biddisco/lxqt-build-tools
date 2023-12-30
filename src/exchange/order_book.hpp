@@ -110,7 +110,7 @@ struct bitstamp_order_book : order_book_base
 
   // ----------------------------------------------------------------------------
   // accept json reply from bitstamp order book query and turn into numeric arrays
-  bool accept_json_bitstamp(std::string_view data);
+  bool accept_json_bitstamp(const QString data);
 
   private:
   // ----------------------------------------------------------------------------
