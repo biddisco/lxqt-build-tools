@@ -1,5 +1,5 @@
 find_package(UUID REQUIRED)
-option(GROX_AUTHRNTICATION_TESTS "Enable tests requireing authentication" OFF)
+option(GROX_AUTHENTICATION_TESTS "Enable tests requireing authentication" OFF)
 
 set(TEST_SRCS
     websocket-bitstamp.cpp # * websocket test bitstamp
@@ -10,9 +10,10 @@ set(TEST_SRCS
     belle-client.cpp # * bitstamp connection test using belle
     belle-json-request.cpp # * xrpl json https request using belle
     websocket_qt_bitstamp.cpp # websocket bitstamp SSL using Qt networking
+    https-request-qt.cpp # http qt test
 )
 
-if(GROX_AUTHRNTICATION_TESTS)
+if(GROX_AUTHENTICATION_TESTS)
   set(TEST_SRCS login.cpp # token authentication
                 bitstamp.cpp # bitstamp official example code
   )
@@ -46,6 +47,9 @@ foreach(test ${TEST_SRCS})
   if(GROX_WITH_TESTING_SANITIZER)
     target_add_sanitizer_flags(${testname})
   endif()
+  if(testname MATCHES "qt")
+    # set_property(TARGET ${testname} PROPERTY AUTOMOC ON)
+  endif()
   if(testname MATCHES "belle")
     target_link_libraries(${testname} PUBLIC belle)
     target_compile_definitions(
@@ -61,6 +65,6 @@ foreach(test ${TEST_SRCS})
 endforeach()
 
 target_link_libraries(ripple-sign PUBLIC Ripple::xrpl_core)
-if(GROX_AUTHRNTICATION_TESTS)
+if(GROX_AUTHENTICATION_TESTS)
   target_link_libraries(bitstamp PUBLIC curl)
 endif()
