@@ -9,8 +9,9 @@ set(TEST_SRCS
     ripple-sign.cpp # * Ripple transaction signing demo
     belle-client.cpp # * bitstamp connection test using belle
     belle-json-request.cpp # * xrpl json https request using belle
-    websocket_qt_bitstamp.cpp # websocket bitstamp SSL using Qt networking
-    https-request-qt.cpp # http qt test
+    websocket-qt-bitstamp.cpp # websocket bitstamp SSL using Qt networking
+    https-qt-xrpl.cpp # http qt test
+    https-qt-bitstamp.cpp # http qt test
 )
 
 if(GROX_AUTHENTICATION_TESTS)

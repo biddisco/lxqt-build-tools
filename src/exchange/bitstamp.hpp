@@ -1,13 +1,14 @@
 #pragma once
 
-#include <QString>
-//
 #include <chrono>
 #include <memory>
 #include <mutex>
 #include <set>
 #include <string>
 #include <vector>
+//
+#include <QNetworkAccessManager>
+#include <QString>
 //
 #ifndef Q_MOC_RUN
 // MOC chokes on keyword "signals" used by belle
@@ -20,6 +21,7 @@
 #include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/https-async.hpp"
+#include "network/qhttp-request-client.hpp"
 #include "network/websocket-ssl.hpp"
 
 // ----------------------------------------------------------------------------
@@ -42,6 +44,8 @@ class bitstamp_network : public exchange
   std::map<std::pair<std::string, std::string>, double> fee_map_;
 
   std::set<currency_pair> candlestick_updates_active_;
+
+  QNetworkAccessManager networkmanager_;
 
   public:
   // if an asynchronous websocket/http operation is being handled
@@ -183,7 +187,7 @@ class bitstamp_network : public exchange
   using fn_on_http = std::function<void(OB::Belle::Client::Http_Ctx&)>;
 
   void request_new_candlestick_data(
-    currency_pair cp, uint64_t start_t, uint64_t samples, fn_on_http fn);
+    currency_pair cp, uint64_t start_t, uint64_t samples, net::http::rx_req_handler_type fn);
 
   // function called from websocket subscription to live trade data
   static void new_live_trade_data_q(bitstamp_network*, currency_pair cp, const QString);
@@ -206,7 +210,7 @@ class bitstamp_network : public exchange
   void ticker_subscribe(currency const& c1, currency const& c2) override;
 
   //
-  void receive_ohlc_data(ticker_data*, std::string&&);
+  void receive_ohlc_data(ticker_data*, std::string_view);
   void update_ticker_data(currency_pair cp, ticker_data* data);
   void update_candlestick_data();
 

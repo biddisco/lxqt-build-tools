@@ -1,0 +1,57 @@
+#include <iostream>
+//
+#include <QCoreApplication>
+#include <QDebug>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+//
+#include <fmt/format.h>
+#include <nlohmann/json.hpp>
+//
+#include "network/qhttp-request-client.hpp"
+
+static std::atomic<int> pass_count{0};
+std::vector<std::string> test_list{"xrpusd", "btcusd", "xrpeur", "btceur", "xrpbtc"};
+
+void handler(net::http::client_ptr client, std::string_view reply)
+{
+  // print the full response
+  std::cerr << "Response:\n" << reply << "\n\n";
+  if (reply.find("{\"data\": {\"ohlc\": [{") != std::string::npos)
+  {
+    std::cout << "json quick check ok\n\n";
+    pass_count++;
+    if (pass_count == test_list.size())
+    {
+      QCoreApplication::quit();
+    }
+  }
+  else
+  {
+    pass_count--;
+  }
+  client.reset();
+}
+
+int main(int argc, char* argv[])
+{
+  QCoreApplication a(argc, argv);
+  //
+  QNetworkAccessManager networkmanager;
+
+  for (auto& cp : test_list)
+  {
+    std::string url = fmt::format("https://{}:{}/api/v2/ohlc/{}/?step=60&start=1704048480&limit=10",
+      "www.bitstamp.net", 443, cp);
+    net::http::client_ptr client =
+      net::http::qhttp_request_client::create(networkmanager, url, &handler);
+    client->get_url_request();
+  }
+  a.exec();
+  //
+  std::cout << "received " << pass_count.load() << std::endl;
+  return pass_count.load() == 1 ? EXIT_SUCCESS : EXIT_FAILURE;
+}

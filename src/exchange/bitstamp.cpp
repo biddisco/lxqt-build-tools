@@ -1,14 +1,17 @@
+#include <string>
+//
 #include <QMenu>
 #include <QPlainTextEdit>
 #include <QString>
 //
-#include <string>
+#include <fmt/format.h>
 //
 #include "debug/print.hpp"
 #include "exchange/bitstamp.hpp"
 #include "exchange/xrpl_network.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/https-async.hpp"
+#include "network/qhttp-request-client.hpp"
 #include "network/websocket-ssl.hpp"
 #include "util/datetime_utils.hpp"
 #include "util/nljson.hpp"
@@ -22,11 +25,9 @@
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 2;
 //
 template <int Level>
-static print_threshold<Level, debug_level> bitstamp_dbg("Bitstamp");
+static print_threshold<Level, 3> bitstamp_dbg("Bitstamp");
 
 // ----------------------------------------------------------------------------
 std::atomic<bool> bitstamp_network::closing_down_ = false;
@@ -675,7 +676,7 @@ void bitstamp_network::account_request(
 void bitstamp_network::new_orderbook_data_q(
   bitstamp_network* n, currency_pair const cp, const QString data)
 {
-  bitstamp_dbg<0>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
+  bitstamp_dbg<5>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<7>.debug(str<>("Orderbook data"), data);
   //
   std::lock_guard l(n->async_mutex_);
@@ -725,7 +726,7 @@ void bitstamp_network::new_live_trade_data_q(
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::request_new_candlestick_data(
-  currency_pair cp, uint64_t start_t, uint64_t samples, fn_on_http fn)
+  currency_pair cp, uint64_t start_t, uint64_t samples, net::http::rx_req_handler_type fn)
 {
   std::string ticker_lowercase = currency_pair_lowercase_string(cp);
   // doesn't really matter if the key is already in the set (shouldn't be)
@@ -734,7 +735,7 @@ void bitstamp_network::request_new_candlestick_data(
   std::string req;
   if (start_t == 0)
   {
-    req = string_join("/api/v2/ohlc/", ticker_lowercase) + "/?step=60&limit=1000";
+    req = fmt::format("/api/v2/ohlc/{}/?step=60&limit=1000", ticker_lowercase);
   }
   else
   {
@@ -746,10 +747,17 @@ void bitstamp_network::request_new_candlestick_data(
     std::string start = std::to_string(start_t);
     std::string limit = std::to_string(samples);
     // send a request for ticker data using the io context thread to make the request
-    req = string_join("/api/v2/ohlc/", ticker_lowercase) + "/?step=60&start=" + start +
-      "&limit=" + limit;
+    req = fmt::format("/api/v2/ohlc/{}/?step=60&start={}&limit={}", ticker_lowercase, start, limit);
     bitstamp_dbg<0>.debug(str<>("request"), ticker_lowercase, req);
   }
+
+  std::string url = fmt::format("https://{}:{}{}", bitstamp_https_address, 443, req);
+  net::http::client_ptr client =
+    net::http::qhttp_request_client::create(networkmanager_, url, std::move(fn));
+  client->get_url_request();
+
+  /*
+  aaaaaaaaaaaaaaaaa
 
   auto thread_function = [this, cp, req = std::move(req), fn = std::move(fn)]() {
     OB::Belle::Client new_client(bitstamp_https_address, bitstamp_https_port, true);
@@ -780,6 +788,7 @@ void bitstamp_network::request_new_candlestick_data(
   };
   auto https_thread = std::thread(std::move(thread_function));
   https_thread.detach();
+  */
 }
 
 // ----------------------------------------------------------------------------
@@ -993,13 +1002,13 @@ void bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::receive_ohlc_data(ticker_data* tdata, std::string&& data)
+void bitstamp_network::receive_ohlc_data(ticker_data* tdata, std::string_view data)
 {
   try
   {
     // convert json data into vectors of actual data
     nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
-    bitstamp_dbg<0>.debug(str<>("received"), tdata->view_->get_ticker_string(),
+    bitstamp_dbg<0>.debug(str<>("OHLC received"), tdata->view_->get_ticker_string(),
       dec<4>(jdata.size()), "json OHLC samples");
     QVector<ohlctv_sample> new_ohlc_samples;
     new_ohlc_samples.reserve(jdata.size());
@@ -1030,6 +1039,7 @@ void bitstamp_network::receive_ohlc_data(ticker_data* tdata, std::string&& data)
   catch (std::exception& e)
   {
     bitstamp_dbg<0>.error(str<>("JSON error"), "decoding OHLC data:", e.what(), "\n", data, "\n\n");
+    std::terminate();
   }
 }
 
@@ -1103,12 +1113,15 @@ void bitstamp_network::update_ticker_data(currency_pair cp, ticker_data* tdata)
   bitstamp_dbg<0>.debug(
     str<>("requesting"), ticker_lowercase, samples, msecs_unix_to_calendar_time(req_t * 1000));
 
-  request_new_candlestick_data(cp, req_t, samples, [this, req_t, cp, tdata](auto& ctx) {
-    bitstamp_dbg<0>.debug(str<>("received"), tdata->view_->get_ticker_string(),
-      msecs_unix_to_calendar_time(req_t * 1000));
-    receive_ohlc_data(tdata, std::move(ctx.res.body()));
-    update_ticker_data(cp, tdata);
-  });
+  request_new_candlestick_data(cp, req_t, samples,
+    [this, req_t, cp, tdata](net::http::client_ptr client, std::string_view reply) {
+      bitstamp_dbg<0>.debug(str<>("OHLC (lambda)"), tdata->view_->get_ticker_string(),
+        msecs_unix_to_calendar_time(req_t * 1000));
+      receive_ohlc_data(tdata, reply);
+      update_ticker_data(cp, tdata);
+      candlestick_updates_active_.erase(cp);
+      client.reset();
+    });
 }
 
 // ----------------------------------------------------------------------------
