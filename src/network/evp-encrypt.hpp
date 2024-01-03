@@ -118,7 +118,7 @@ struct encryption
   secure_string decrypt(secure_string const& input);
 
   // utility function for signing web request
-  secure_string CalcHmacSHA256(secure_string const& decodedKey, secure_string const& msg);
+  static secure_string CalcHmacSHA256(secure_string const& decodedKey, secure_string const& msg);
 
 #ifdef GROX_HAVE_UUID_ENCODING
   std::string generate_uuid_string();

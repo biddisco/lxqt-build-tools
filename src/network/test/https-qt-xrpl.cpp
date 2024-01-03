@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
   QNetworkAccessManager networkmanager;
   net::http::client_ptr client = net::http::qhttp_request_client::create(
     networkmanager, "https://s1.ripple.com:51234", content.dump(), &handler);
-  client->post_json_request();
+  client->post_request();
 
   a.exec();
   std::cout << "received " << pass_count.load() << std::endl;

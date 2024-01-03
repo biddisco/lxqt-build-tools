@@ -362,8 +362,8 @@ int qt_main(int argc, char* argv[])
       index++;
     }
   }
-
-  if (argc > 1 && std::string(argv[1]) == std::string("decode"))
+  /*
+  if ((argc > 1) && (std::string(argv[1]) == std::string("--decode")))
   {
     auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
     app_dbg<5>.debug("\nDecrypted information\n");
@@ -393,7 +393,7 @@ int qt_main(int argc, char* argv[])
     }
     return EXIT_SUCCESS;
   }
-
+*/
   GroxMainWindow mainWindow;
 
   QObject::connect(&app, SIGNAL(aboutToQuit()), &mainWindow, SLOT(appExitCleanupHandler()));

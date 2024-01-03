@@ -36,6 +36,14 @@ namespace net::http {
   }
 
   // ----------------------------------------------------------------------------
+  client_ptr qhttp_request_client::create_signed(QNetworkAccessManager& networkmanager,
+    QNetworkRequest request, std::string&& content, rx_req_handler_type&& handler)
+  {
+    return std::make_shared<qhttp_request_client>(
+      networkmanager, request, std::move(content), std::forward<rx_req_handler_type>(handler));
+  }
+
+  // ----------------------------------------------------------------------------
   qhttp_request_client::qhttp_request_client(
     QNetworkAccessManager& networkmanager, const std::string& url, rx_req_handler_type&& handler)
     : networkmanager_(networkmanager)
@@ -43,12 +51,11 @@ namespace net::http {
     , handler_(handler)
   {
     debug_count_++;
-    /* We do not use this as it triggers  callback on every client, for every finished
-     * so we cannot easily tell which reply belongs to which request
-      connect(&networkmanager_, &QNetworkAccessManager::finished, this,
-        std::bind(&qhttp_request_client::request_finished, this, _1),
-        Qt::AutoConnection);
-    */
+    request_.setUrl(QUrl(url_.c_str()));
+    request_.setRawHeader("Content-Type", "application/x-www-form-urlencoded");
+    request_.setRawHeader("User-Agent", "mystery");
+    request_.setRawHeader("Accept", "application/json");
+    request_.setRawHeader("Connection", "close");
   }
 
   // ----------------------------------------------------------------------------
@@ -56,6 +63,22 @@ namespace net::http {
     const std::string& url, std::string&& content, rx_req_handler_type&& handler)
     : networkmanager_(networkmanager)
     , url_(url)
+    , content_(std::move(content))
+    , handler_(handler)
+  {
+    debug_count_++;
+    request_.setUrl(QUrl(url_.c_str()));
+    request_.setRawHeader("Content-Type", "application/json");
+    request_.setRawHeader("User-Agent", "mystery");
+    request_.setRawHeader("Accept", "application/json");
+    request_.setRawHeader("Connection", "close");
+  }
+
+  // ----------------------------------------------------------------------------
+  qhttp_request_client::qhttp_request_client(QNetworkAccessManager& networkmanager,
+    QNetworkRequest request, std::string&& content, rx_req_handler_type&& handler)
+    : networkmanager_(networkmanager)
+    , request_(request)
     , content_(std::move(content))
     , handler_(handler)
   {
@@ -71,61 +94,48 @@ namespace net::http {
   }
 
   // ----------------------------------------------------------------------------
-  void qhttp_request_client::get_url_request()
+  inline void attach_handler(qhttp_request_client* self, QNetworkReply* reply)
   {
-    QNetworkRequest request(QUrl(url_.c_str()));
-    request.setRawHeader("Content-Type", "application/x-www-form-urlencoded");
-    request.setRawHeader("User-Agent", "mystery");
-    request.setRawHeader("Accept", "application/json");
-    request.setRawHeader("Connection", "close");
-
-    // issue get request
-    http_dbg<2>.debug(str<>("get_url_request"), url_);
-    QNetworkReply* reply = networkmanager_.get(request);
     if (nullptr != reply)
     {
       if (reply->isRunning())
       {
-        connect(reply, &QNetworkReply::finished, this,
-          std::bind(&qhttp_request_client::reply_finished, shared_from_this(), reply),
+        self->connect(reply, &QNetworkReply::finished, self,
+          std::bind(&qhttp_request_client::reply_finished, self->shared_from_this(), reply),
           Qt::AutoConnection);
-        connect(reply, &QNetworkReply::errorOccurred, this,
-          [](QNetworkReply::NetworkError err) { qDebug() << QVariant(err).toString(); });
+        self->connect(
+          reply, &QNetworkReply::errorOccurred, self,
+          [](QNetworkReply::NetworkError err) {
+            qDebug() << QVariant(err).toString();
+            // std::terminate();
+          },
+          Qt::DirectConnection);
+        self->connect(reply, &QNetworkReply::sslErrors, self, &qhttp_request_client::onSslErrors,
+          Qt::DirectConnection);
       }
       else
       {    // if already finished
-        reply_finished(shared_from_this(), reply);
+        self->reply_finished(self->shared_from_this(), reply);
       }
     }
   }
 
   // ----------------------------------------------------------------------------
-  void qhttp_request_client::post_json_request()
+  void qhttp_request_client::get_request()
   {
-    QNetworkRequest request(QUrl(url_.c_str()));
-    request.setRawHeader("Content-Type", "application/json");
-    request.setRawHeader("User-Agent", "mystery");
-    request.setRawHeader("Accept", "application/json");
-    request.setRawHeader("Connection", "close");
+    // issue get request
+    http_dbg<2>.debug(str<>("get_request"), url_);
+    QNetworkReply* reply = networkmanager_.get(request_);
+    attach_handler(this, reply);
+  }
 
+  // ----------------------------------------------------------------------------
+  void qhttp_request_client::post_request()
+  {
     // issue post request
-    http_dbg<2>.debug(str<>("post_json_request"), url_, content_);
-    QNetworkReply* reply = networkmanager_.post(request, QByteArray(content_.data()));
-    if (nullptr != reply)
-    {
-      if (reply->isRunning())
-      {
-        connect(reply, &QNetworkReply::finished, this,
-          std::bind(&qhttp_request_client::reply_finished, shared_from_this(), reply),
-          Qt::AutoConnection);
-        connect(reply, &QNetworkReply::errorOccurred, this,
-          [](QNetworkReply::NetworkError err) { qDebug() << QVariant(err).toString(); });
-      }
-      else
-      {    // if already finished
-        reply_finished(shared_from_this(), reply);
-      }
-    }
+    http_dbg<2>.debug(str<>("post_request"), url_, content_);
+    QNetworkReply* reply = networkmanager_.post(request_, QByteArray(content_.data()));
+    attach_handler(this, reply);
   }
 
   // ----------------------------------------------------------------------------
@@ -146,5 +156,19 @@ namespace net::http {
     self->handler_(self, str);
     //
     delete reply;
+  }
+
+  // ----------------------------------------------------------------------------
+  void qhttp_request_client::onSslErrors(const QList<QSslError>& errors)
+  {
+    QString errorString;
+    foreach (const QSslError& error, errors)
+    {
+      if (!errorString.isEmpty())
+        errorString += '\n';
+      errorString += error.errorString();
+    }
+
+    qDebug() << "SSL Error: " << errorString;
   }
 }    // namespace net::http

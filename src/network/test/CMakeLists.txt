@@ -15,8 +15,10 @@ set(TEST_SRCS
 )
 
 if(GROX_AUTHENTICATION_TESTS)
-  set(TEST_SRCS login.cpp # token authentication
-                bitstamp.cpp # bitstamp official example code
+  set(TEST_SRCS
+      ${TEST_SRCS} login.cpp # token authentication
+      bitstamp.cpp # bitstamp official example code
+      https-qt-account-balance.cpp # bitstamp official example code
   )
 endif()
 

@@ -634,7 +634,7 @@ void bitstamp_network::account_request(
 
     // generated signature
     auto signed_hmac =
-      encryptor.CalcHmacSHA256(get_bitstamp_instance()->account().API_secret, data_to_sign);
+      encryption::CalcHmacSHA256(get_bitstamp_instance()->account().API_secret, data_to_sign);
     assert(signed_hmac.size() == 32);
     std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
 
@@ -751,43 +751,19 @@ void bitstamp_network::request_new_candlestick_data(
     bitstamp_dbg<0>.debug(str<>("request"), ticker_lowercase, req);
   }
 
+  // @todo : add error handler
   std::string url = fmt::format("https://{}:{}{}", bitstamp_https_address, 443, req);
   net::http::client_ptr client =
     net::http::qhttp_request_client::create(networkmanager_, url, std::move(fn));
-  client->get_url_request();
+  client->get_request();
 
   /*
-  aaaaaaaaaaaaaaaaa
-
-  auto thread_function = [this, cp, req = std::move(req), fn = std::move(fn)]() {
-    OB::Belle::Client new_client(bitstamp_https_address, bitstamp_https_port, true);
     // set the http 'on error' callback
     new_client.on_http_error([this, cp](auto& ctx) {
       std::cerr << "account_request : Protocol Error: " << ctx.ec.message() << "\n\n";
       // clear this so it will be retried later
       candlestick_updates_active_.erase(cp);
     });
-
-    new_client.on_http(req, [this, cp, fn](auto& ctx) mutable {
-      candlestick_updates_active_.erase(cp);
-      // check http status code
-      if (ctx.res.result() != OB::Belle::Status::ok)
-      {
-        // print the response status code and reason
-        bitstamp_dbg<0>.error(str<>("HTTPS Error:"), ctx.res.result_int(), ctx.res.reason());
-      }
-      else
-      {
-        // debug : print the response headers and body
-        bitstamp_dbg<6>.debug(str<>("Candlestick"), ctx.res.body());
-        // if the request was limited, we might need more data,
-        fn(ctx);
-      }
-    });
-    new_client.connect();
-  };
-  auto https_thread = std::thread(std::move(thread_function));
-  https_thread.detach();
   */
 }
 

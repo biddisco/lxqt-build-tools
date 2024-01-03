@@ -2,14 +2,9 @@
 //
 #include <QCoreApplication>
 #include <QDebug>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QNetworkAccessManager>
-#include <QNetworkReply>
 //
 #include <fmt/format.h>
-#include <nlohmann/json.hpp>
 //
 #include "network/qhttp-request-client.hpp"
 
@@ -48,7 +43,7 @@ int main(int argc, char* argv[])
       "www.bitstamp.net", 443, cp);
     net::http::client_ptr client =
       net::http::qhttp_request_client::create(networkmanager, url, &handler);
-    client->get_url_request();
+    client->get_request();
   }
   a.exec();
   //
