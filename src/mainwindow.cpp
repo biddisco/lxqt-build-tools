@@ -72,7 +72,7 @@ QTimer* app_settings::get_global_clock_timer()
   if (!timer_)
   {
     timer_ = new QTimer(nullptr);
-    timer_->start(1000);
+    timer_->start(60000);
   }
   return timer_;
 }
@@ -210,19 +210,15 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   // initialize networks / start websocket connections etc
   main_dbg<0>.debug("Init bitstamp");
   bitstamp_network_->initialize();
+  progress_events(10);
   //
   main_dbg<0>.debug("Init xrpl mainnet");
   xrpl_network_->initialize();
+  progress_events(10);
   //
   main_dbg<0>.debug("Init xrpl testnet");
   xrpl_testnet_->initialize();
-
-  // process messages to unblock startup waits
-  for (auto start = std::chrono::steady_clock::now(), now = start;
-       now < start + std::chrono::milliseconds{25}; now = std::chrono::steady_clock::now())
-  {
-    QCoreApplication::processEvents();
-  }
+  progress_events(10);
 
   // ----------------------------------
   // setup connections tab
@@ -267,6 +263,18 @@ GroxMainWindow::~GroxMainWindow()
     n.reset();
   // release datamanager
   global_settings.data_manager_.reset();
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::progress_events(int milliseconds)
+{
+  // process messages to unblock startup waits
+  for (auto start = std::chrono::steady_clock::now(), now = start;
+       now < start + std::chrono::milliseconds{milliseconds};
+       now = std::chrono::steady_clock::now())
+  {
+    QCoreApplication::processEvents();
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -588,6 +596,10 @@ void GroxMainWindow::showEvent(QShowEvent* event)
   {
     loadWindowSettings();
     only_once = false;
+    main_dbg<0>.debug(str<>("ShowEvent"), "Reset timer");
+    QTimer* timer = global_settings.get_global_clock_timer();
+    timer->stop();
+    timer->start(1000);
   }
 }
 
@@ -700,7 +712,7 @@ void GroxMainWindow::loadConnectionSetups()
         auto cp = string_to_pair(currencypair, "-");
         e->ticker_subscribe(std::get<0>(cp), std::get<1>(cp));
         // process messages to unblock startup waits
-        QCoreApplication::processEvents();
+        progress_events(10);
       }
     }
     settings.endGroup();
@@ -737,7 +749,7 @@ void GroxMainWindow::loadConnectionSetups()
           main_dbg<0>.debug(str<>("Stream"), "subscribing", settings.group().toStdString(), key);
           e->stream_subscribe(t.first, s, true);
           // process messages to unblock startup waits
-          QCoreApplication::processEvents();
+          progress_events(10);
         }
       }
       settings.endGroup();    // ticker

@@ -39,7 +39,7 @@ bitstamp_network::bitstamp_network()
   token_expiry_ = std::chrono::steady_clock::now() - 60 * 1s;
   // update candles regularly
   connect(global_settings.get_global_clock_timer(), SIGNAL(timeout()), this,
-    SLOT(candlestick_timer_event()));
+    SLOT(candlestick_timer_event()), Qt::QueuedConnection);
   // after new data has been received, trigger this to process new candles and replot
   connect(this, SIGNAL(new_ohlc_data(ticker_data*, double)), this,
     SLOT(new_ohlc_data_event(ticker_data*, double)));
@@ -1093,11 +1093,11 @@ void bitstamp_network::candlestick_timer_event()
   // UTC! for local use # tm local_tm = *localtime(&tt);
   tm utc_tm = *gmtime(&tt);
   //
-  if (utc_tm.tm_sec >= 8 && last_minute != utc_tm.tm_min)
+  if ((last_minute == -1) || ((last_minute != utc_tm.tm_min) && (utc_tm.tm_sec >= 8)))
   {
     last_minute = utc_tm.tm_min;
     QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
-    bitstamp_dbg<0>.debug("candlestick_timer_event : " + now.toStdString());
+    bitstamp_dbg<0>.debug(str<>("candlestick_timer"), now.toStdString());
     update_candlestick_data();
   }
 }
