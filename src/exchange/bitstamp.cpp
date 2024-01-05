@@ -10,9 +10,7 @@
 #include "exchange/bitstamp.hpp"
 #include "exchange/xrpl_network.hpp"
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
 #include "network/qhttp-request-client.hpp"
-#include "network/websocket-ssl.hpp"
 #include "util/datetime_utils.hpp"
 #include "util/nljson.hpp"
 #include "util/stringutils.hpp"
@@ -71,7 +69,7 @@ bitstamp_network::~bitstamp_network()
 // ----------------------------------------------------------------------------
 void bitstamp_network::initialize()
 {
-  get_websocket_token();
+  //get_websocket_token();
 
   request_tickers_available();
   get_account_info();
@@ -79,8 +77,7 @@ void bitstamp_network::initialize()
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_live_trades(
-  currency_pair const& cp, net::contexts& io_contexts, bool enable)
+bool bitstamp_network::subscribe_live_trades(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -107,8 +104,7 @@ bool bitstamp_network::subscribe_live_trades(
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_order_book(
-  currency_pair const& cp, net::contexts& io_contexts, bool enable)
+bool bitstamp_network::subscribe_order_book(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -135,8 +131,7 @@ bool bitstamp_network::subscribe_order_book(
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_my_trades(
-  currency_pair const& cp, net::contexts& io_contexts, bool enable)
+bool bitstamp_network::subscribe_my_trades(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -166,8 +161,7 @@ bool bitstamp_network::subscribe_my_trades(
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_my_orders(
-  currency_pair const& cp, net::contexts& io_contexts, bool enable)
+bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -209,7 +203,7 @@ bool bitstamp_network::subscribe_my_orders(
 // ----------------------------------------------------------------------------
 // connect to a single stream
 bool bitstamp_network::stream_subscribe(
-  net::contexts& io_contexts, currency_pair const& cp, network::streams const stream, bool enabled)
+  currency_pair const& cp, network::streams const stream, bool enabled)
 {
   get_websocket_token();
   //
@@ -217,16 +211,16 @@ bool bitstamp_network::stream_subscribe(
   switch (stream)
   {
   case network::streams::my_trades:
-    ok = subscribe_my_trades(cp, io_contexts, enabled);
+    ok = subscribe_my_trades(cp, enabled);
     break;
   case network::streams::my_orders:
-    ok = subscribe_my_orders(cp, io_contexts, enabled);
+    ok = subscribe_my_orders(cp, enabled);
     break;
   case network::streams::live_trades:
-    ok = subscribe_live_trades(cp, io_contexts, enabled);
+    ok = subscribe_live_trades(cp, enabled);
     break;
   case network::streams::order_book:
-    ok = subscribe_order_book(cp, io_contexts, enabled);
+    ok = subscribe_order_book(cp, enabled);
     break;
   default:
     ok = false;
@@ -760,36 +754,19 @@ void bitstamp_network::request_new_candlestick_data(
 // ----------------------------------------------------------------------------
 void bitstamp_network::request_tickers_available()
 {
-  std::string req = "https://www.bitstamp.net/api/v2/ticker/";
-  bitstamp_dbg<0>.debug(str<>("Tickers Request"), req);
-
-  auto thread_function = [this, req = std::move(req)]() {
-    OB::Belle::Client new_client(bitstamp_https_address, bitstamp_https_port, true);
-    // set the http 'on error' callback
-    new_client.on_http_error([](auto& ctx) {
-      std::cerr << "Tickers Request : Protocol Error: " << ctx.ec.message() << "\n\n";
-    });
-
-    new_client.on_http(req, [this](auto& ctx) mutable {
-      // check http status code
-      if (ctx.res.result() != OB::Belle::Status::ok)
-      {
-        // print the response status code and reason
-        bitstamp_dbg<0>.error(str<>("HTTPS Error:"), ctx.res.result_int(), ctx.res.reason());
-        return;
-      }
+  std::string url = fmt::format("https://{}:{}/api/v2/ticker/", "www.bitstamp.net", 443);
+  bitstamp_dbg<0>.debug(str<>("Tickers Request"), url);
+  auto* client = net::http::qhttp_request_client::create(
+    *global_settings.networkmanager_, url, "", [this](std::string_view data) {
       // debug : print the response headers and body
-      bitstamp_dbg<6>.debug(str<>("Tickers"), ctx.res.body());
-      receive_tickers_available(std::move(ctx.res.body()));
+      bitstamp_dbg<6>.debug(str<>("Tickers"), data);
+      receive_tickers_available(data);
     });
-    new_client.connect();
-  };
-  auto https_thread = std::thread(std::move(thread_function));
-  https_thread.detach();
+  client->get_request();
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::receive_tickers_available(std::string&& data)
+void bitstamp_network::receive_tickers_available(std::string_view data)
 {
   nlohmann::json jdata = json::parse(data);
   for (auto const& [key, val] : jdata.items())

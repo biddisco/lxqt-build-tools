@@ -3,7 +3,7 @@
 #include <string>
 //
 #include "currency/currency.hpp"
-#include "network/websocket-ssl.hpp"
+#include "network/test/websocket-ssl.hpp"
 
 net::contexts io_contexts_;
 std::vector<std::thread> ioc_threads_;

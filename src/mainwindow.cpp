@@ -34,7 +34,6 @@
 #include "io/hdf5_ohlc_manager.hpp"
 #include "mainwindow.hpp"
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
 #include "util/datetime_utils.hpp"
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/connection_widget.hpp"
@@ -208,10 +207,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   loadTrustlines();
 
   // ----------------------------------
-  // start asio threads
-  start_io_threads(2);
-
-  // ----------------------------------
   // initialize networks / start websocket connections etc
   main_dbg<0>.debug("Init bitstamp");
   bitstamp_network_->initialize();
@@ -284,18 +279,6 @@ void GroxMainWindow::appExitCleanupHandler()
   xrpl_testnet_->shut_down();
   xrpl_testnet_.reset();
   main_dbg<0>.debug(str<>("websockets"), "shutdown complete");
-
-  // remove work guard so IO threads can exit
-  io_contexts_.work_guard_->reset();
-
-  // stop boost::asio io_service
-  io_contexts_.ioc.stop();
-  for (auto& t : ioc_threads_)
-  {
-    if (t.joinable())
-      t.join();
-  }
-  main_dbg<0>.debug(str<>("boost::asio"), "shutdown complete");
 }
 
 // ----------------------------------------------------------------------------
@@ -494,26 +477,6 @@ void GroxMainWindow::capture_image()
   //    auto image = algo_form_->tabWidget->grab();
   //    algo_form_->imagelabel->setPixmap(image);
   //    algo_form_->imagelabel->setScaledContents(true);
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::start_io_threads(int nthreads)
-{
-  static bool initialized = false;
-  if (!initialized)
-  {
-    ioc_threads_.reserve(nthreads);
-    // Run the I/O service on some threads.
-    for (int i = 0; i < nthreads; ++i)
-    {
-      ioc_threads_.emplace_back([&]() {
-        main_dbg<5>.debug(str<>("io_contexts"), "run : thread", std::this_thread::get_id());
-        // The call will return when the socket is closed.
-        io_contexts_.ioc.run();
-      });
-    }
-    initialized = true;
-  }
 }
 
 // ----------------------------------------------------------------------------
@@ -763,7 +726,7 @@ void GroxMainWindow::loadConnectionSetups()
         if (subscribed)
         {
           main_dbg<0>.debug(str<>("Stream"), "subscribing", settings.group().toStdString(), key);
-          e->stream_subscribe(io_contexts_, t.first, s, true);
+          e->stream_subscribe(t.first, s, true);
         }
       }
       settings.endGroup();    // ticker
@@ -1064,7 +1027,7 @@ void GroxMainWindow::execute_filter()
 void GroxMainWindow::build_connection_gui(exchange* ex)
 {
   // widget with panels for tickers/selected/streams
-  connection_widget* conwidget = new connection_widget(this, io_contexts_, ex);
+  connection_widget* conwidget = new connection_widget(this, ex);
   conwidget->setup_gui();
   net_layout_->insertWidget(0, conwidget);
 }

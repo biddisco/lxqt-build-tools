@@ -7,10 +7,9 @@
 #include "ui_connection_widget.h"
 
 // ----------------------------------------------------------------------------
-connection_widget::connection_widget(QWidget* parent, net::contexts& io_contexts, exchange* ex)
+connection_widget::connection_widget(QWidget* parent, exchange* ex)
   : QWidget(parent)
   , ui(new Ui::connection_widget)
-  , io_contexts_(io_contexts)
   , exchange_(ex)
 {
   ui->setupUi(this);
@@ -47,7 +46,7 @@ void connection_widget::setup_gui()
         bx, &QCheckBox::stateChanged, this,
         [this, t, s](bool checked) {
           //
-          exchange_->stream_subscribe(io_contexts_, t.first, s, checked);
+          exchange_->stream_subscribe(t.first, s, checked);
         },
         Qt::QueuedConnection);
 

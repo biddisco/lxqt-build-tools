@@ -4,14 +4,6 @@
 //
 //------------------------------------------------------------------------------
 
-#include <openssl/ssl.h>
-
-#include <boost/asio/strand.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/ssl.hpp>
-#include <boost/beast/websocket.hpp>
-#include <boost/beast/websocket/ssl.hpp>
-//
 #include <cstdlib>
 #include <functional>
 #include <iostream>
@@ -19,7 +11,14 @@
 #include <string>
 #include <thread>
 //
-#include "network/https-async.hpp"
+#include <boost/asio/strand.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/ssl.hpp>
+#include <boost/beast/websocket.hpp>
+#include <boost/beast/websocket/ssl.hpp>
+#include <openssl/ssl.h>
+//
+#include "network/test/https-async.hpp"
 
 std::atomic<int> counter{0};
 

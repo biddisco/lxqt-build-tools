@@ -7,9 +7,6 @@ set(TEST_SRCS
     aes256.cpp
     # Ripple transaction signing demo
     ripple-sign.cpp
-    # obsolete, belle tsets
-    belle-client.cpp
-    belle-json-request.cpp
     # obsolete boost asio tests
     boost-https-request.cpp
     boost-websocket-bitstamp.cpp
@@ -53,14 +50,8 @@ foreach(test ${TEST_SRCS})
   cmake_path(GET test STEM testname)
   add_executable(${testname} ${test})
   target_link_libraries(
-    ${testname}
-    PUBLIC grox_util
-           grox_network
-           nlohmann_json
-           belle
-           ${UUID_LIBRARIES}
-           OpenSSL::SSL
-           Threads::Threads)
+    ${testname} PUBLIC grox_util grox_network nlohmann_json ${UUID_LIBRARIES}
+                       OpenSSL::SSL Threads::Threads)
   target_compile_definitions(
     ${testname} PRIVATE # needed for UUID generation in web requests
                         GROX_HAVE_UUID_ENCODING)
@@ -69,15 +60,6 @@ foreach(test ${TEST_SRCS})
   endif()
   if(testname MATCHES "qt")
     # set_property(TARGET ${testname} PROPERTY AUTOMOC ON)
-  endif()
-  if(testname MATCHES "belle")
-    target_link_libraries(${testname} PUBLIC belle)
-    target_compile_definitions(
-      ${testname}
-      PRIVATE # disable support for belle websocket server
-              OB_BELLE_CONFIG_SERVER_OFF
-              # set certificate path for belle original test
-              BELLE_CERT_PATH="${belle_SOURCE_DIR}/example/cert")
   endif()
 
   if(testname MATCHES "pika")

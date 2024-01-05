@@ -9,7 +9,6 @@
 #include "currency/trade_data.hpp"
 //
 #include "data/ohlc_dataset_view.hpp"
-#include "network/https-async.hpp"
 #include "network/qwebsocket_client.hpp"
 #include "network/qwebsocket_session.hpp"
 
@@ -140,8 +139,8 @@ class exchange
   // puts an entry into the stream map
   void mark_stream_subscribed(std::string const& s, bool enabled);
   // un/subscribe to an individual ticker stream
-  virtual bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
-    network::streams const stream, bool enabled) = 0;
+  virtual bool stream_subscribe(
+    currency_pair const& cp, network::streams const stream, bool enabled) = 0;
   //  virtual bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) = 0;
   //  virtual bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) = 0;
 

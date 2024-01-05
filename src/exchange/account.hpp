@@ -20,8 +20,6 @@
 #include "exchange/exchange.hpp"
 #include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
-#include "network/websocket-ssl.hpp"
 //
 class wallet_widget;
 

@@ -12,20 +12,12 @@
 #include <uuid/uuid.h>
 //
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
+#include "network/test/https-async.hpp"
 
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace asio = boost::asio;
 using tcp = asio::ip::tcp;
-
-// Report a failure
-namespace net {
-  void msg_fail(beast::error_code ec, char const* what)
-  {
-    std::cerr << what << ": " << ec.message() << "\n";
-  }
-}    // namespace net
 
 static std::atomic<int> reply_ready = 0;
 

@@ -202,19 +202,6 @@ get_external_project(
   "develop")
 
 # ------------------------------------------------------------------------------
-# Build/Download belle
-# ------------------------------------------------------------------------------
-get_external_project(
-  PROJECT_NAME
-  "belle"
-  FOLDER_NAME
-  "belle"
-  GIT_REPO
-  "$ENV{HOME}/git-repos/belle"
-  GIT_TAG
-  "master")
-
-# ------------------------------------------------------------------------------
 # Build/Download QDarkStyleSheet
 # ------------------------------------------------------------------------------
 get_external_project(
@@ -367,10 +354,8 @@ set_property(TARGET grox PROPERTY AUTOUIC ON)
 set_property(TARGET grox PROPERTY AUTORCC ON)
 
 target_include_directories(
-  grox
-  PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}
-         ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
-         ${belle_SOURCE_DIR})
+  grox PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}
+              ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
   set(STD_FILESYSTEM_LIB "stdc++fs")
@@ -399,11 +384,8 @@ if(GROX_WITH_SANITIZER)
 endif()
 
 target_compile_definitions(
-  grox
-  PRIVATE # needed for UUID generation in web requests
-          GROX_HAVE_UUID_ENCODING
-          # disable support for belle websocket server
-          OB_BELLE_CONFIG_SERVER_OFF)
+  grox PRIVATE # needed for UUID generation in web requests
+               GROX_HAVE_UUID_ENCODING)
 
 target_link_libraries(
   grox

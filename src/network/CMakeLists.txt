@@ -1,12 +1,10 @@
 find_package(Qt6 REQUIRED COMPONENTS Core WebSockets)
 
-set(grox_network_HDRS
-    evp-encrypt.hpp https-async.hpp qwebsocket_client.hpp
-    qhttp-request-client.hpp qwebsocket_session.hpp websocket-ssl.hpp)
+set(grox_network_HDRS evp-encrypt.hpp qwebsocket_client.hpp
+                      qhttp-request-client.hpp qwebsocket_session.hpp)
 
-set(grox_network_SRCS
-    evp-encrypt.cpp https-async.cpp qwebsocket_client.cpp
-    qhttp-request-client.cpp qwebsocket_session.cpp websocket-ssl.cpp)
+set(grox_network_SRCS evp-encrypt.cpp qwebsocket_client.cpp
+                      qhttp-request-client.cpp qwebsocket_session.cpp)
 
 add_library(grox_network ${grox_network_SRCS} ${grox_network_HDRS})
 

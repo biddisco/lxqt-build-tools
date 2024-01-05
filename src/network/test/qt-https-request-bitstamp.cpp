@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
   {
     std::string url = fmt::format("https://{}:{}/api/v2/ohlc/{}/?step=60&start=1704048480&limit=10",
       "www.bitstamp.net", 443, cp);
-    auto client = net::http::qhttp_request_client::create(networkmanager, url, &handler);
+    auto* client = net::http::qhttp_request_client::create(networkmanager, url, &handler);
     client->get_request();
   }
   a.exec();

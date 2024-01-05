@@ -10,19 +10,12 @@
 //
 #include <QString>
 //
-#ifndef Q_MOC_RUN
-// MOC chokes on keyword "signals" used by belle
-# include "include/belle.hh"
-#endif
-//
 #include "currency/trade_data.hpp"
 #include "exchange/account.hpp"
 #include "exchange/exchange.hpp"
 #include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
 #include "network/qhttp-request-client.hpp"
-#include "network/websocket-ssl.hpp"
 
 // ----------------------------------------------------------------------------
 class bitstamp_network : public exchange
@@ -124,10 +117,10 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // init connections/websockets etc
-  bool subscribe_live_trades(currency_pair const& cp, net::contexts& io_contexts, bool enable);
-  bool subscribe_order_book(currency_pair const& cp, net::contexts& io_contexts, bool enable);
-  bool subscribe_my_trades(currency_pair const& cp, net::contexts& io_contexts, bool enable);
-  bool subscribe_my_orders(currency_pair const& cp, net::contexts& io_contexts, bool enable);
+  bool subscribe_live_trades(currency_pair const& cp, bool enable);
+  bool subscribe_order_book(currency_pair const& cp, bool enable);
+  bool subscribe_my_trades(currency_pair const& cp, bool enable);
+  bool subscribe_my_orders(currency_pair const& cp, bool enable);
   //  bool unsubscribe_my_trades(currency_pair const& cp);
   //  bool unsubscribe_my_orders(currency_pair const& cp);
 
@@ -142,8 +135,8 @@ class bitstamp_network : public exchange
   }
 
   // connect to a single stream
-  bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
-    network::streams const stream, bool enabled) override;
+  bool stream_subscribe(
+    currency_pair const& cp, network::streams const stream, bool enabled) override;
 
   // connect to (multiple) streams
   //  bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) override;
@@ -183,8 +176,6 @@ class bitstamp_network : public exchange
     net::http::rx_req_handler_type&& handler);
   //
 
-  using fn_on_http = std::function<void(OB::Belle::Client::Http_Ctx&)>;
-
   void request_new_candlestick_data(
     currency_pair cp, uint64_t start_t, uint64_t samples, net::http::rx_req_handler_type fn);
 
@@ -204,7 +195,7 @@ class bitstamp_network : public exchange
   void custom_functions(basic_account* /*acct*/) override{};
 
   void request_tickers_available();
-  void receive_tickers_available(std::string&& data);
+  void receive_tickers_available(std::string_view data);
 
   void ticker_subscribe(currency const& c1, currency const& c2) override;
 
