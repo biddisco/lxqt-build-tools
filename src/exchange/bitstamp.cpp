@@ -69,8 +69,7 @@ bitstamp_network::~bitstamp_network()
 // ----------------------------------------------------------------------------
 void bitstamp_network::initialize()
 {
-  //get_websocket_token();
-
+  get_websocket_token();
   request_tickers_available();
   get_account_info();
   //get_open_orders();
@@ -363,7 +362,11 @@ void bitstamp_network::get_websocket_token()
   {
     account_request("/api/v2/websockets_token/", "",
       [this](std::string_view data) { handle_websockets_token(data); });
-    sleep(1);
+    for (auto start = std::chrono::steady_clock::now(), now = start;
+         now < start + std::chrono::seconds{1}; now = std::chrono::steady_clock::now())
+    {
+      QCoreApplication::processEvents();
+    }
   }
 }
 

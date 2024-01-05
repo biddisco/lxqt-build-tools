@@ -217,6 +217,13 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   main_dbg<0>.debug("Init xrpl testnet");
   xrpl_testnet_->initialize();
 
+  // process messages to unblock startup waits
+  for (auto start = std::chrono::steady_clock::now(), now = start;
+       now < start + std::chrono::milliseconds{25}; now = std::chrono::steady_clock::now())
+  {
+    QCoreApplication::processEvents();
+  }
+
   // ----------------------------------
   // setup connections tab
   loadConnectionSetups();
@@ -692,6 +699,8 @@ void GroxMainWindow::loadConnectionSetups()
         main_dbg<0>.debug(str<>("Enable Ticker"), currencypair);
         auto cp = string_to_pair(currencypair, "-");
         e->ticker_subscribe(std::get<0>(cp), std::get<1>(cp));
+        // process messages to unblock startup waits
+        QCoreApplication::processEvents();
       }
     }
     settings.endGroup();
@@ -727,6 +736,8 @@ void GroxMainWindow::loadConnectionSetups()
         {
           main_dbg<0>.debug(str<>("Stream"), "subscribing", settings.group().toStdString(), key);
           e->stream_subscribe(t.first, s, true);
+          // process messages to unblock startup waits
+          QCoreApplication::processEvents();
         }
       }
       settings.endGroup();    // ticker
