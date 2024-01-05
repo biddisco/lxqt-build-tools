@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <mutex>
@@ -7,7 +8,6 @@
 #include <string>
 #include <vector>
 //
-#include <QNetworkAccessManager>
 #include <QString>
 //
 #ifndef Q_MOC_RUN
@@ -35,7 +35,7 @@ class bitstamp_network : public exchange
   // websocket token userid
   std::string websocket_user_id_;
   // token expiry time
-  std::chrono::time_point<std::chrono::steady_clock> token_expiry_;
+  std::atomic<std::chrono::time_point<std::chrono::steady_clock>> token_expiry_;
 
   // usually only one present, but allow for more
   std::vector<bitstamp_account> accounts_;
@@ -44,8 +44,6 @@ class bitstamp_network : public exchange
   std::map<std::pair<std::string, std::string>, double> fee_map_;
 
   std::set<currency_pair> candlestick_updates_active_;
-
-  QNetworkAccessManager networkmanager_;
 
   public:
   // if an asynchronous websocket/http operation is being handled
@@ -160,14 +158,14 @@ class bitstamp_network : public exchange
   void get_websocket_token();
 
   // process account info response
-  void handle_account_info(std::string&&);
-  void handle_websockets_token(std::string&&);
+  void handle_account_info(std::string_view);
+  void handle_websockets_token(std::string_view);
 
   // ---------------------------------------
   // http: fetch open order data
   void get_open_orders();
   // process open order data response
-  void handle_open_orders(std::string&&);
+  void handle_open_orders(std::string_view);
   void process_order(nlohmann::json& jdata, std::string_view event);
 
   // ---------------------------------------
@@ -181,7 +179,8 @@ class bitstamp_network : public exchange
   void cancel_order(trade_data const& t) override;
 
   // ----------------------------------------------------------------------------
-  void account_request(std::string&& url_path, std::string&& url_query, request_callback&& cb);
+  void account_request(const std::string& url_path, const std::string& url_query,
+    net::http::rx_req_handler_type&& handler);
   //
 
   using fn_on_http = std::function<void(OB::Belle::Client::Http_Ctx&)>;

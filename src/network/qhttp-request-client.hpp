@@ -10,8 +10,9 @@
 namespace net::http {
 
   class qhttp_request_client;
-  using client_ptr = std::shared_ptr<qhttp_request_client>;
-  using rx_req_handler_type = std::function<void(client_ptr, std::string_view)>;
+  using client_shr = std::shared_ptr<qhttp_request_client>;
+  using client_ptr = qhttp_request_client*;
+  using rx_req_handler_type = std::function<void(std::string_view)>;
 
   class qhttp_request_client
     : public QObject
@@ -50,10 +51,13 @@ public:
 
     void get_request();
     void post_request();
+    void attach_handler(QNetworkReply* reply);
 
-    static void request_finished(client_ptr self, QNetworkReply* reply);
     static void reply_finished(client_ptr self, QNetworkReply* reply);
-    static void onSslErrors(const QList<QSslError>& errors);
+    static void onSslErrors(client_ptr self, QNetworkReply* reply, const QList<QSslError>& errors);
+    static void request_finished(client_ptr self, QNetworkReply* reply);
+    static void onSslErrors_nam(
+      client_ptr self, QNetworkReply* reply, const QList<QSslError>& errors);
   };
 
 }    // namespace net::http

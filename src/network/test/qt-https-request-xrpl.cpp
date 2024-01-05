@@ -14,7 +14,7 @@
 
 static std::atomic<int> pass_count{0};
 
-void handler(net::http::client_ptr client, std::string_view reply)
+void handler(std::string_view reply)
 {
   // print the full response
   std::cerr << reply << "\n\n";
@@ -31,12 +31,12 @@ void handler(net::http::client_ptr client, std::string_view reply)
   {
     pass_count--;
   }
-  client.reset();
 }
 
 int main(int argc, char* argv[])
 {
   QCoreApplication a(argc, argv);
+  QNetworkAccessManager networkmanager;
 
   nlohmann::json content;
   content["method"] = "book_offers";
@@ -49,7 +49,6 @@ int main(int argc, char* argv[])
   //
   content["params"] = nlohmann::json::array({paramlist});
 
-  QNetworkAccessManager networkmanager;
   net::http::client_ptr client = net::http::qhttp_request_client::create(
     networkmanager, "https://s1.ripple.com:51234", content.dump(), &handler);
   client->post_request();

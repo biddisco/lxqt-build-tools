@@ -64,7 +64,7 @@ int main(int argc, char** argv)
     net::https::create_session(contexts.ioc, contexts.ctx, host, port, new_data);
 
   // Run the I/O service on a thread.
-  std::thread websocket_thread([&]() {
+  std::thread io_thread([&]() {
     // The call will return when the socket is closed.
     contexts.ioc.run();
   });
@@ -96,7 +96,7 @@ int main(int argc, char** argv)
   //
   contexts.work_guard_->reset();
   contexts.ioc.stop();
-  websocket_thread.join();
+  io_thread.join();
 
   std::cout << "Exiting" << std::endl;
   return (counter.load() > 0) ? EXIT_SUCCESS : EXIT_FAILURE;

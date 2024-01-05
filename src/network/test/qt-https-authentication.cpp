@@ -7,39 +7,32 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QNetworkAccessManager>
+#include <QTimer>
 //
 #include "fmt/format.h"
 //
+#include "debug/print.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 
 static std::atomic<int> reply_ready = 0;
+static std::string api_user;
+static std::string api_key;
+static std::string api_secret;
+const std::string bitstamp_https_address = "www.bitstamp.net";
+const int bitstamp_https_port = 443;
+QNetworkAccessManager networkmanager;
 
-void handler(net::http::client_ptr client, std::string_view data)
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+//
+template <int Level>
+static print_threshold<Level, 2> test1_dbg("https://");
+
+// ----------------------------------------------------------------------------
+void account_request(QNetworkAccessManager& networkmanager_, const std::string& url_path,
+  const std::string& url_query, net::http::rx_req_handler_type&& handler)
 {
-  std::cout << "Response : " << data << std::endl;
-  reply_ready = 1;
-  client.reset();
-  QCoreApplication::quit();
-}
-
-int main(int argc, char** argv)
-{
-  QCoreApplication a(argc, argv);
-  //
-  std::string api_user = std::getenv("rand1") ? std::getenv("rand1") : "";
-  std::string api_key = std::getenv("rand2") ? std::getenv("rand2") : "";
-  std::string api_secret = std::getenv("rand3") ? std::getenv("rand3") : "";
-
-  if (api_user.empty() || api_key.empty() || api_secret.empty())
-  {
-    std::cout << "Set ENV vars for API_KEY and API_SEC " << std::endl;
-    return EXIT_FAILURE;
-  }
-
-  const std::string bitstamp_https_address = "www.bitstamp.net";
-  const int bitstamp_https_port = 443;
-
   secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
   encryption encryptor(api_key, randbytes);
   //
@@ -48,8 +41,6 @@ int main(int argc, char** argv)
 
   // setup REST request fields
   std::string url_host = bitstamp_https_address;
-  std::string url_path = "/api/v2/balance/";
-  std::string url_query = "";
   std::string content_type = "application/x-www-form-urlencoded";
   std::string payload = url_query.size() > 0 ? url_query : url_encode("{offset:1}");
   std::string http_method = "POST";
@@ -107,20 +98,45 @@ int main(int argc, char** argv)
   request.setRawHeader("X-Auth-Timestamp", x_auth_timestamp.c_str());
   request.setRawHeader("X-Auth-Version", x_auth_version.c_str());
 
-  QNetworkAccessManager networkmanager;
-  net::http::client_ptr client = net::http::qhttp_request_client::create_signed(
-    networkmanager, request, std::move(payload), &handler);
+  auto* client = net::http::qhttp_request_client::create_signed(
+    networkmanager_, request, std::move(payload), std::move(handler));
   client->post_request();
-  a.exec();
+}
 
-  // wait 5 seconds and collect some data
-  for (int i = 0; i < 5 && reply_ready < 1; i++)
+// ----------------------------------------------------------------------------
+void make_request(QNetworkAccessManager& networkmanager)
+{
+  // std::string url_path = "/api/v2/open_orders/all/";
+  // std::string url_path = "/api/v2/balance/";
+  std::string url_path = "/api/v2/websockets_token/";
+  std::string url_query = "";
+
+  //test1_dbg<0>.debug(str<>("ref count"), client.get(), "test", client.use_count());
+
+  // Run
+  account_request(networkmanager, url_path, url_query, [](std::string_view data) {
+    std::cout << "Response : " << data << std::endl;
+    reply_ready = 1;
+    QCoreApplication::exit(0);
+  });
+}
+
+// ----------------------------------------------------------------------------
+int main(int argc, char** argv)
+{
+  QCoreApplication a(argc, argv);
+  //
+  api_user = std::getenv("rand1") ? std::getenv("rand1") : "";
+  api_key = std::getenv("rand2") ? std::getenv("rand2") : "";
+  api_secret = std::getenv("rand3") ? std::getenv("rand3") : "";
+  if (api_user.empty() || api_key.empty() || api_secret.empty())
   {
-    std::cout << "Closing in " << 5 - i << " seconds " << std::endl;
-    std::chrono::seconds dura(1);
-    std::this_thread::sleep_for(dura);
+    std::cout << "Set ENV vars for API_KEY and API_SEC " << std::endl;
+    return EXIT_FAILURE;
   }
 
-  //
-  return EXIT_SUCCESS;
+  make_request(networkmanager);
+
+  ;
+  return a.exec();
 }

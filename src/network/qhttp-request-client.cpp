@@ -13,9 +13,8 @@ using namespace grox::debug;
 template <int Level>
 static print_threshold<Level, 2> http_dbg("https://");
 
+// ----------------------------------------------------------------------------
 namespace net::http {
-
-  using namespace std::placeholders;
 
   std::atomic<int> qhttp_request_client::debug_count_ = 0;
 
@@ -23,24 +22,28 @@ namespace net::http {
   client_ptr qhttp_request_client::create(
     QNetworkAccessManager& networkmanager, const std::string& url, rx_req_handler_type&& handler)
   {
-    return std::make_shared<qhttp_request_client>(
-      networkmanager, url, std::forward<rx_req_handler_type>(handler));
+    //return std::make_shared<qhttp_request_client>(networkmanager, url, move(handler));
+    return new qhttp_request_client(networkmanager, url, move(handler));
   }
 
   // ----------------------------------------------------------------------------
   client_ptr qhttp_request_client::create(QNetworkAccessManager& networkmanager,
     const std::string& url, std::string&& content, rx_req_handler_type&& handler)
   {
-    return std::make_shared<qhttp_request_client>(networkmanager, url,
-      std::forward<std::string>(content), std::forward<rx_req_handler_type>(handler));
+    // return std::make_shared<qhttp_request_client>(
+    //   networkmanager, url, std::forward<std::string>(content), std::move(handler));
+    return new qhttp_request_client(
+      networkmanager, url, std::forward<std::string>(content), std::move(handler));
   }
 
   // ----------------------------------------------------------------------------
   client_ptr qhttp_request_client::create_signed(QNetworkAccessManager& networkmanager,
     QNetworkRequest request, std::string&& content, rx_req_handler_type&& handler)
   {
-    return std::make_shared<qhttp_request_client>(
-      networkmanager, request, std::move(content), std::forward<rx_req_handler_type>(handler));
+    return new qhttp_request_client(
+      networkmanager, request, std::move(content), std::move(handler));
+    // return std::make_shared<qhttp_request_client>(
+    //   networkmanager, request, std::move(content), std::move(handler));
   }
 
   // ----------------------------------------------------------------------------
@@ -48,7 +51,7 @@ namespace net::http {
     QNetworkAccessManager& networkmanager, const std::string& url, rx_req_handler_type&& handler)
     : networkmanager_(networkmanager)
     , url_(url)
-    , handler_(handler)
+    , handler_(std::move(handler))
   {
     debug_count_++;
     request_.setUrl(QUrl(url_.c_str()));
@@ -64,7 +67,7 @@ namespace net::http {
     : networkmanager_(networkmanager)
     , url_(url)
     , content_(std::move(content))
-    , handler_(handler)
+    , handler_(std::move(handler))
   {
     debug_count_++;
     request_.setUrl(QUrl(url_.c_str()));
@@ -80,7 +83,7 @@ namespace net::http {
     : networkmanager_(networkmanager)
     , request_(request)
     , content_(std::move(content))
-    , handler_(handler)
+    , handler_(/*std::move*/ (handler))
   {
     debug_count_++;
   }
@@ -90,33 +93,43 @@ namespace net::http {
   {
     // just for debugging, to track use
     debug_count_--;
-    http_dbg<5>.debug(str<>("destructor"), debug_count_.load());
+    http_dbg<0>.debug(str<>("destructor"), this, debug_count_.load());
   }
 
   // ----------------------------------------------------------------------------
-  inline void attach_handler(qhttp_request_client* self, QNetworkReply* reply)
+  void qhttp_request_client::attach_handler(QNetworkReply* reply)
   {
-    if (nullptr != reply)
+    using namespace std::placeholders;
+    // client_ptr self = thisptr->shared_from_this();
+    //http_dbg<0>.debug(str<>("ref count"), self, "attach handler", self.use_count());
+    if (nullptr == reply)
     {
-      if (reply->isRunning())
-      {
-        self->connect(reply, &QNetworkReply::finished, self,
-          std::bind(&qhttp_request_client::reply_finished, self->shared_from_this(), reply),
-          Qt::AutoConnection);
-        self->connect(
-          reply, &QNetworkReply::errorOccurred, self,
-          [](QNetworkReply::NetworkError err) {
-            qDebug() << QVariant(err).toString();
-            // std::terminate();
-          },
-          Qt::DirectConnection);
-        self->connect(reply, &QNetworkReply::sslErrors, self, &qhttp_request_client::onSslErrors,
-          Qt::DirectConnection);
-      }
-      else
-      {    // if already finished
-        self->reply_finished(self->shared_from_this(), reply);
-      }
+      http_dbg<0>.error(str<>("attach_handler"), this, "fail : nullptr");
+      return;
+    }
+    if (reply->isRunning())
+    {
+      QObject::connect(reply, &QNetworkReply::finished, this,
+        std::bind(&qhttp_request_client::reply_finished, this, reply), Qt::DirectConnection);
+
+      QObject::connect(
+        reply, &QNetworkReply::errorOccurred, this,
+        [this](QNetworkReply::NetworkError err) { qDebug() << QVariant(err).toString(); },
+        Qt::DirectConnection);
+
+      QObject::connect(reply, &QNetworkReply::sslErrors, this,
+        std::bind(&qhttp_request_client::onSslErrors, this, reply, _1), Qt::DirectConnection);
+
+      QObject::connect(&networkmanager_, &QNetworkAccessManager::finished, this,
+        std::bind(&qhttp_request_client::request_finished, this, _1), Qt::DirectConnection);
+
+      QObject::connect(&networkmanager_, &QNetworkAccessManager::sslErrors, this,
+        std::bind(&qhttp_request_client::onSslErrors_nam, this, _1, _2), Qt::DirectConnection);
+    }
+    else
+    {    // if already finished
+      http_dbg<0>.debug(str<>("early completion"), this, "attach handler");
+      reply_finished(this, reply);
     }
   }
 
@@ -124,18 +137,51 @@ namespace net::http {
   void qhttp_request_client::get_request()
   {
     // issue get request
-    http_dbg<2>.debug(str<>("get_request"), url_);
+    http_dbg<2>.debug(str<>("get_request"), this, url_);
     QNetworkReply* reply = networkmanager_.get(request_);
-    attach_handler(this, reply);
+    attach_handler(reply);
   }
 
   // ----------------------------------------------------------------------------
   void qhttp_request_client::post_request()
   {
     // issue post request
-    http_dbg<2>.debug(str<>("post_request"), url_, content_);
+    http_dbg<2>.debug(str<>("post_request"), this, url_, content_);
     QNetworkReply* reply = networkmanager_.post(request_, QByteArray(content_.data()));
-    attach_handler(this, reply);
+    attach_handler(reply);
+  }
+
+  // ----------------------------------------------------------------------------
+  void qhttp_request_client::reply_finished(client_ptr self, QNetworkReply* reply)
+  {
+    http_dbg<0>.debug(str<>("reply_finished"), self);
+    if (!reply)
+      return;
+    // convert raw data into std::string, this should be safe since our http traffic is utf8
+    QByteArray byteArray = reply->readAll();
+    std::string_view str(byteArray.constData(), byteArray.length());
+    // invoke handler with result data in string form
+    self->handler_(str);
+    //
+    delete reply;
+    delete self;
+  }
+
+  // ----------------------------------------------------------------------------
+  void qhttp_request_client::onSslErrors(
+    client_ptr self, QNetworkReply* reply, const QList<QSslError>& errors)
+  {
+    http_dbg<0>.debug(str<>("onSslErrors"), self);
+    QString errorString;
+    foreach (const QSslError& error, errors)
+    {
+      if (!errorString.isEmpty())
+        errorString += '\n';
+      errorString += error.errorString();
+    }
+    qDebug() << "SSL Error: " << errorString;
+    delete reply;
+    delete self;
   }
 
   // ----------------------------------------------------------------------------
@@ -145,22 +191,10 @@ namespace net::http {
   }
 
   // ----------------------------------------------------------------------------
-  void qhttp_request_client::reply_finished(client_ptr self, QNetworkReply* reply)
+  void qhttp_request_client::onSslErrors_nam(
+    client_ptr self, QNetworkReply* reply, const QList<QSslError>& errors)
   {
-    if (!reply)
-      return;
-    // convert raw data into std::string, this should be safe since our http traffic is utf8
-    QByteArray byteArray = reply->readAll();
-    std::string_view str(byteArray.constData(), byteArray.length());
-    // invoke handler with result data in string form
-    self->handler_(self, str);
-    //
-    delete reply;
-  }
-
-  // ----------------------------------------------------------------------------
-  void qhttp_request_client::onSslErrors(const QList<QSslError>& errors)
-  {
+    http_dbg<0>.debug(str<>("onSslErrors"), self);
     QString errorString;
     foreach (const QSslError& error, errors)
     {
@@ -168,7 +202,8 @@ namespace net::http {
         errorString += '\n';
       errorString += error.errorString();
     }
-
     qDebug() << "SSL Error: " << errorString;
+    delete reply;
+    delete self;
   }
 }    // namespace net::http

@@ -1,13 +1,12 @@
 #pragma once
 
+#include <string>
+#include <vector>
+//
 #include <QApplication>
 #include <QMenu>
 #include <QString>
 #include <QTimer>
-//
-#include <string>
-#include <vector>
-//
 
 // @TODO: Put back string with cleanup operation
 using secure_string = std::string;
@@ -18,6 +17,7 @@ namespace ads {
 
 class exchange;
 class abstract_dataset_manager;
+class QNetworkAccessManager;
 
 // ----------------------------------------------------------------------------
 struct app_settings
@@ -40,6 +40,8 @@ struct app_settings
   QMenu* dockwindows_menu_;
   //
   std::shared_ptr<abstract_dataset_manager> data_manager_;
+  //
+  QNetworkAccessManager* networkmanager_;
   //
   static QTimer* get_global_clock_timer();
   static void delete_global_clock_timer(QTimer* timer_);
