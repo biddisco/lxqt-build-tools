@@ -15,4 +15,4 @@ set_property(TARGET grox_plot PROPERTY AUTOMOC ON)
 
 target_include_directories(grox_plot PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-target_link_libraries(grox_plot PUBLIC qwt grox_data)
+target_link_libraries(grox_plot PUBLIC qwt grox_data fmt::fmt)
