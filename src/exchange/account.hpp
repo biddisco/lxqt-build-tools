@@ -1,20 +1,25 @@
 #pragma once
 
+#include <algorithm>
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+//
+#include <range/v3/algorithm.hpp>
+//
 #include <QApplication>
 #include <QString>
 #include <QTimer>
 //
-#include <string>
-//
 #include "config/config.hpp"
-//
-#include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
-#include "network/websocket-ssl.hpp"
-//
 #include "currency/currency.hpp"
 #include "exchange/exchange.hpp"
 #include "exchange/order_book.hpp"
+#include "network/evp-encrypt.hpp"
 //
 class wallet_widget;
 

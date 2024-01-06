@@ -3,7 +3,8 @@ function(grox_add_test category name)
   set(options FAILURE_EXPECTED RUN_SERIAL TESTING PERFORMANCE_TESTING VALGRIND)
   set(one_value_args EXECUTABLE RANKS THREADS TIMEOUT RUNWRAPPER)
   set(multi_value_args ARGS)
-  cmake_parse_arguments(${name} "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
+  cmake_parse_arguments(${name} "${options}" "${one_value_args}"
+                        "${multi_value_args}" ${ARGN})
 
   if(NOT ${name}_RANKS)
     set(${name}_RANKS 1)
@@ -12,8 +13,7 @@ function(grox_add_test category name)
   if(NOT ${name}_THREADS)
     set(${name}_THREADS 1)
   elseif(PIKA_WITH_TESTS_MAX_THREADS GREATER 0 AND ${name}_THREADS GREATER
-                                                   PIKA_WITH_TESTS_MAX_THREADS
-  )
+                                                   PIKA_WITH_TESTS_MAX_THREADS)
     set(${name}_THREADS ${PIKA_WITH_TESTS_MAX_THREADS})
   endif()
 
@@ -45,13 +45,13 @@ function(grox_add_test category name)
 
   set(args "--pika:threads=${${name}_THREADS}")
   if(PIKA_WITH_TESTS_DEBUG_LOG)
-    set(args ${args} "--pika:debug-pika-log=${PIKA_WITH_TESTS_DEBUG_LOG_DESTINATION}")
+    set(args ${args}
+             "--pika:debug-pika-log=${PIKA_WITH_TESTS_DEBUG_LOG_DESTINATION}")
   endif()
 
   if(PIKA_WITH_PARALLEL_TESTS_BIND_NONE
      AND NOT run_serial
-     AND NOT "${name}_RUNWRAPPER"
-  )
+     AND NOT "${name}_RUNWRAPPER")
     set(args ${args} "--pika:bind=none")
   endif()
 
@@ -64,9 +64,8 @@ function(grox_add_test category name)
   if(${name}_RUNWRAPPER)
     set(_preflags_list_ ${MPIEXEC_PREFLAGS})
     separate_arguments(_preflags_list_)
-    list(PREPEND cmd "${MPIEXEC_EXECUTABLE}" "${MPIEXEC_NUMPROC_FLAG}" "${${name}_RANKS}"
-         ${_preflags_list_}
-    )
+    list(PREPEND cmd "${MPIEXEC_EXECUTABLE}" "${MPIEXEC_NUMPROC_FLAG}"
+         "${${name}_RANKS}" ${_preflags_list_})
   endif()
 
   if(PIKA_WITH_TESTS_VALGRIND)
@@ -94,7 +93,8 @@ function(grox_add_test category name)
   endif()
 
   if(TARGET ${${name}_EXECUTABLE}_test AND ${name}_PERFORMANCE_TESTING)
-    target_link_libraries(${${name}_EXECUTABLE}_test PRIVATE grox_performance_testing)
+    target_link_libraries(${${name}_EXECUTABLE}_test
+                          PRIVATE grox_performance_testing)
   endif()
 
 endfunction(grox_add_test)
@@ -102,7 +102,8 @@ endfunction(grox_add_test)
 # ------------------------------------------------------------------------------
 function(grox_add_test_target_dependencies category name)
   set(one_value_args PSEUDO_DEPS_NAME)
-  cmake_parse_arguments(${name} "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
+  cmake_parse_arguments(${name} "${options}" "${one_value_args}"
+                        "${multi_value_args}" ${ARGN})
 
   # Add a custom target for this example
   pika_add_pseudo_target(${category}.${name})
@@ -111,7 +112,8 @@ function(grox_add_test_target_dependencies category name)
   # Add dependencies to pseudo-target
   if(${name}_PSEUDO_DEPS_NAME)
     # When the test depend on another executable name
-    pika_add_pseudo_dependencies(${category}.${name} ${${name}_PSEUDO_DEPS_NAME}${_ext})
+    pika_add_pseudo_dependencies(${category}.${name}
+                                 ${${name}_PSEUDO_DEPS_NAME}${_ext})
   else()
     pika_add_pseudo_dependencies(${category}.${name} ${name}${_ext})
   endif()
@@ -122,4 +124,4 @@ endfunction(grox_add_test_target_dependencies)
 function(grox_add_test_and_deps category name)
   grox_add_test(tests.${category} ${name} ${ARGN})
   grox_add_test_target_dependencies(tests.${category} ${name} ${ARGN})
-endfunction(grox_add_test_and_deps_test)
+endfunction(grox_add_test_and_deps)

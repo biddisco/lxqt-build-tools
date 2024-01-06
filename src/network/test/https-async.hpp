@@ -27,7 +27,7 @@
 #include <string>
 
 // just for namespaces etc
-#include "websocket-ssl.hpp"
+#include "network/test/websocket-ssl.hpp"
 
 //------------------------------------------------------------------------------
 namespace net { namespace https {
@@ -232,7 +232,17 @@ public:
     }
   };
 
-  std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
-    std::string host, std::string port, std::function<void(std::string&&)>&& callback);
+  inline std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
+    std::string host, std::string port, std::function<void(std::string&&)>&& callback)
+  {
+    // Launch the asynchronous operation
+    auto session_ptr = std::make_shared<session>(ioc, ctx);
+
+    session_ptr->set_callback(std::move(callback));
+
+    session_ptr->run(host.c_str(), port.c_str());
+
+    return session_ptr;
+  }
 
 }}    // namespace net::https

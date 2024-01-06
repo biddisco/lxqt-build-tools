@@ -3,10 +3,20 @@
 #include <string>
 #include <string_view>
 //
+#include <QString>
+//
 #include <range/v3/algorithm.hpp>
 #include <range/v3/all.hpp>
 
 #define JCHARP(val) val.get_ptr<json::string_t*>()->c_str()
+
+/*
+struct fmt::formatter<QString> : formatter<const char*> {
+  auto format(const QString& s, format_context& ctx) {
+    return formatter<const char*>::format((const char *)value.toUtf8(), ctx);
+  }
+};
+*/
 
 // ----------------------------------------------------------------------------
 inline bool startswith(std::string_view str, std::string_view sub)
@@ -18,6 +28,12 @@ inline bool startswith(std::string_view str, std::string_view sub)
     return false;
   }
   return true;
+}
+
+// ----------------------------------------------------------------------------
+inline bool startswith(QString str, QString sub)
+{
+  return str.startsWith(sub);
 }
 
 // ----------------------------------------------------------------------------

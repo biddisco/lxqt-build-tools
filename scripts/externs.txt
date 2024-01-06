@@ -23,6 +23,9 @@ pwd && git branch && git fetch --all && git pull --rebase origin master
 cd $HOME/src/grox/extern/belle/
 pwd && git branch && git pull
 
+cd $HOME/src/grox/extern/magic_enum/
+pwd && git branch && git pull
+
 cd $HOME/src/grox/extern/json/
 pwd && git branch && git pull
 
@@ -31,4 +34,3 @@ pwd && git branch && git fa
 
 cd $HOME/src/grox/extern/range-v3/
 pwd && git branch && git pull
-

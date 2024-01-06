@@ -2,29 +2,24 @@
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
-#include <list>
-#include <map>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 // Qt
 #include <QtCore>
+//
+#include <range/v3/algorithm.hpp>
+#include <range/v3/all.hpp>
+#include <fmt/format.h>
+#include <nlohmann/json.hpp>
 // Grox
 #include "debug/print.hpp"
-//
 #include "exchange/order_book.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
 #include "util/stringutils.hpp"
 //
-// extern
-#include "nlohmann/json.hpp"
-//
-#include <boost/format.hpp>
-//
-#include <range/v3/algorithm.hpp>
-#include <range/v3/all.hpp>
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -84,11 +79,12 @@ order_book_base::order_book_base(OrderBookPlot* obp, bool secondaxis)
 
 order_book_base::~order_book_base()
 {
-  // release shared_ptr reference early
+  obook_dbg<0>.debug(str<>("order_book_base"), "destructing");
+  // curves are owned by plot, so no need to delete
+  bid_curve_ = nullptr;
+  ask_curve_ = nullptr;
+  // explicity release shared_ptr reference
   OrderBookPlot_ = nullptr;
-  // owned by plot?
-  //delete bid_curve_;
-  //delete ask_curve_;
 }
 
 void order_book_base::update_graph_limits(bool primary)
@@ -165,33 +161,31 @@ std::string order_book_base::order_book_string()
   if (bids.orig.size() == 0)
   {
     // title format string
-    boost::format title("%8s %10s %10s | %10s %10s %8s\n");
-    temp << title % "Total" % "Size" % "Bid" % "Ask" % "Size" % "Total";
-    // numeric entries format string
-    boost::format num("%8.0f %10.2f %10.4f | %10.4f %10.2f %8.0f\n");
+    temp << fmt::format("{:8s} {:10s} {:10s} | {:10s} {:10s} {:8s}\n", "Total", "Size", "Bid",
+      "Ask", "Size", "Total");
     // iterate over bids/asks
     auto zipped =
       ranges::views::zip(bids.total, bids.size, bids.rate, asks.rate, asks.size, asks.total);
     for (auto const& z : zipped)
     {
-      temp << num % std::get<0>(z) % std::get<1>(z) % std::get<2>(z) % std::get<3>(z) %
-          std::get<4>(z) % std::get<5>(z);
+      temp << fmt::format("{:8.0f} {:10.2f} {:10.4f} | {:10.4f} {:10.2f} {:8.0f}\n", std::get<0>(z),
+        std::get<1>(z), std::get<2>(z), std::get<3>(z), std::get<4>(z), std::get<5>(z));
     }
   }
   else
   {
     // title format string
-    boost::format title("%8s %10s %10s %10s | %10s %10s %10s %8s\n");
-    temp << title % "Total" % "Size" % "Orig" % "Bid" % "Ask" % "Size" % "Orig" % "Total";
-    // numeric entries format string
-    boost::format num("%8.0f %10.2f %10.2f %10.4f | %10.4f %10.2f %10.2f %8.0f\n");
+    temp << fmt::format("{:8s} {:10s} {:10s} {:10s} | {:10s} {:10s} {:10s} {:8s}\n", "Total",
+      "Size", "Orig", "Bid", "Ask", "Size", "Orig", "Total");
     // iterate over bids/asks
     auto zipped = ranges::views::zip(
       bids.total, bids.size, bids.orig, bids.rate, asks.rate, asks.size, asks.orig, asks.total);
     for (auto const& z : zipped)
     {
-      temp << num % std::get<0>(z) % std::get<1>(z) % std::get<2>(z) % std::get<3>(z) %
-          std::get<4>(z) % std::get<5>(z) % std::get<6>(z) % std::get<7>(z);
+      temp << fmt::format(
+        "{:8.0f} {:10.2f} {:10.2f} {:10.4f} | {:10.4f} {:10.2f} {:10.2f} {:8.0f}\n", std::get<0>(z),
+        std::get<1>(z), std::get<2>(z), std::get<3>(z), std::get<4>(z), std::get<5>(z),
+        std::get<6>(z), std::get<7>(z));
     }
   }
   //
@@ -244,28 +238,22 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
   double sell_size, sell_rate;
   std::tie(sell_size, sell_rate) = *sell_point;
   //
-  QString now = QDateTime::currentDateTime().toUTC().toString("yyyy-MM-dd hh:mm:ss");
+  QString now = QDateTime::currentDateTimeUtc().toString("yyyy-MM-dd hh:mm:ss");
   //
   // title format string
   std::stringstream temp;
   temp << now.toStdString() << "\n";
   if (test_offset > 0)
   {
-    boost::format offset("TEST_MODE, arbitrage data offset %6.4f \n");
     temp << "*****************************************\n"
-         << offset % test_offset << "*****************************************\n";
+         << fmt::format("TEST_MODE, arbitrage data offset {:6.4f} \n", test_offset)
+         << "*****************************************\n";
   }
   //
-  boost::format title("%11s %11s %10s %10s | %11s %11s %10s %11s | %10s %10s %10s %10s\n");
-  temp << title % "Buy" % "Avail" % "Price" % "Cost" % "Sell" % "Avail" % "Price" % "Receive" %
-      "Gain" % "%" % "C_Gain" % "C_%";
-  // numeric entries format string
-  boost::format num(
-    "%11.4f %11.4f %10.4f %10.4f | %11.4f %11.4f %10.4f %11.4f | %10.4f %10.4f %10.4f %10.4f\n");
-  boost::format num_partial(
-    "%11s %11s %10s %10s | %11.4f %11.4f %10.4f %11.4f | %10.4f %10.4f %10.4f %10.4f\n");
-  boost::format num_summary(
-    "%11s %11s %10s %10.4f | %11.4f %11s %10s %11.4f | %10.4f %10.4f %10.4f %10.4f\n");
+  temp << fmt::format(
+    "{:11s} {:11s} {:10s} {:10s} | {:11s} {:11s} {:10s} {:11s} | {:10s} {:10s} {:10s} {:10s}\n",
+    "Buy", "Avail", "Price", "Cost", "Sell", "Avail", "Price", "Receive", "Gain", "%", "C_Gain",
+    "C_%");
   //
   std::vector<trade_set> trades;
   //
@@ -334,13 +322,17 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
 
       if (multi_part_sell_index > 0)
       {
-        temp << num_partial % "---" % "---" % "---" % "---" % tokens_sold % sell_size % sell_rate %
-            funds_received % gain % pc % cum_gain % cum_pc;
+        temp << fmt::format("{:11s} {:11s} {:10s} {:10s} | {:11.4f} {:11.4f} {:10.4f} {:11.4f} | "
+                            "{:10.4f} {:10.4f} {:10.4f} {:10.4f}\n",
+          "---", "---", "---", "---", tokens_sold, sell_size, sell_rate, funds_received, gain, pc,
+          cum_gain, cum_pc);
       }
       else
       {
-        temp << num % tokens_bought % ask_size % ask_rate % funds_spent_partital % tokens_sold %
-            sell_size % sell_rate % funds_received % gain % pc % cum_gain % cum_pc;
+        temp << fmt::format("{:11.4f} {:11.4f} {:10.4f} {:10.4f} | {:11.4f} {:11.4f} {:10.4f} "
+                            "{:11.4f} | {:10.4f} {:10.4f} {:10.4f} {:10.4f}\n",
+          tokens_bought, ask_size, ask_rate, funds_spent_partital, tokens_sold, sell_size,
+          sell_rate, funds_received, gain, pc, cum_gain, cum_pc);
       }
 
       tokens_to_sell -= tokens_sold;
@@ -361,9 +353,10 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
         gain = multi_part_funds_received - multi_part_funds_spent;
         pc = 100.0 * (gain / multi_part_funds_spent);
         //
-        temp << num_summary % "---" % "---" % "---" % multi_part_funds_spent %
-            multi_part_tokens_sold % "---" % "---" % multi_part_funds_received % gain % pc %
-            cum_gain % cum_pc;
+        temp << fmt::format("{:11s} {:11s} {:10s} {:10.4f} | {:11.4f} {:11s} {:10s} {:11.4f} | "
+                            "{:10.4f} {:10.4f} {:10.4f} {:10.4f}\n",
+          "---", "---", "---", multi_part_funds_spent, multi_part_tokens_sold, "---", "---",
+          multi_part_funds_received, gain, pc, cum_gain, cum_pc);
       }
       multi_part_sell_index++;
     }
@@ -386,11 +379,19 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 // accept json reply from bitstamp order book query and turn into numeric arrays
-bool bitstamp_order_book::accept_json_bitstamp(std::string_view data)
+bool bitstamp_order_book::accept_json_bitstamp(const QString data)
 {
-  if (!startswith(data, "{\"data\":"))
+  if (!bid_curve_ || !ask_curve_)
+  {
+    // late websocket data arriving after destruction started
+    obook_dbg<0>.error(str<>("accept_json_bitstamp"), "destructing");
     return false;
-  nlohmann::json jdata = json::parse(data)["data"];
+  }
+  if (!startswith(data, QStringLiteral("{\"data\":")))
+    return false;
+  //
+  std::string stdstring = data.toStdString();
+  nlohmann::json jdata = json::parse(stdstring)["data"];
   //
   bids.clear();
   asks.clear();
@@ -445,7 +446,7 @@ void xrpl_order_book::accept_json_ledger_snapshot(std::string_view data)
 {
   nlohmann::json jdata = json::parse(data);
   auto joffers = jdata["result"]["offers"];
-  obook_dbg<5>.debug("snapshot"), joffers.dump(4);
+  obook_dbg<5>.debug(str<>("snapshot"), joffers.dump(4));
   //
   // websocket (re?)connnect: clear the orderbook ...
   orders.clear();

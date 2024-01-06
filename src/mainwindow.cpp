@@ -34,7 +34,6 @@
 #include "io/hdf5_ohlc_manager.hpp"
 #include "mainwindow.hpp"
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
 #include "util/datetime_utils.hpp"
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/connection_widget.hpp"
@@ -73,7 +72,7 @@ QTimer* app_settings::get_global_clock_timer()
   if (!timer_)
   {
     timer_ = new QTimer(nullptr);
-    timer_->start(1000);
+    timer_->start(60000);
   }
   return timer_;
 }
@@ -208,19 +207,18 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   loadTrustlines();
 
   // ----------------------------------
-  // start asio threads
-  start_io_threads(2);
-
-  // ----------------------------------
   // initialize networks / start websocket connections etc
   main_dbg<0>.debug("Init bitstamp");
   bitstamp_network_->initialize();
+  progress_events(10);
   //
   main_dbg<0>.debug("Init xrpl mainnet");
   xrpl_network_->initialize();
+  progress_events(10);
   //
   main_dbg<0>.debug("Init xrpl testnet");
   xrpl_testnet_->initialize();
+  progress_events(10);
 
   // ----------------------------------
   // setup connections tab
@@ -268,6 +266,18 @@ GroxMainWindow::~GroxMainWindow()
 }
 
 // ----------------------------------------------------------------------------
+void GroxMainWindow::progress_events(int ms)
+{
+  using namespace std::chrono;
+  // process messages to unblock startup waits
+  for (auto start = system_clock::now(), now = start; now < start + milliseconds{ms};
+       now = system_clock::now())
+  {
+    QCoreApplication::processEvents();
+  }
+}
+
+// ----------------------------------------------------------------------------
 void GroxMainWindow::appExitCleanupHandler()
 {
   main_dbg<0>.debug(str<>("appExitCleanupHandler"));
@@ -284,18 +294,6 @@ void GroxMainWindow::appExitCleanupHandler()
   xrpl_testnet_->shut_down();
   xrpl_testnet_.reset();
   main_dbg<0>.debug(str<>("websockets"), "shutdown complete");
-
-  // remove work guard so IO threads can exit
-  io_contexts_.work_guard_->reset();
-
-  // stop boost::asio io_service
-  io_contexts_.ioc.stop();
-  for (auto& t : ioc_threads_)
-  {
-    if (t.joinable())
-      t.join();
-  }
-  main_dbg<0>.debug(str<>("boost::asio"), "shutdown complete");
 }
 
 // ----------------------------------------------------------------------------
@@ -497,26 +495,6 @@ void GroxMainWindow::capture_image()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::start_io_threads(int nthreads)
-{
-  static bool initialized = false;
-  if (!initialized)
-  {
-    ioc_threads_.reserve(nthreads);
-    // Run the I/O service on some threads.
-    for (int i = 0; i < nthreads; ++i)
-    {
-      ioc_threads_.emplace_back([&]() {
-        main_dbg<5>.debug(str<>("io_contexts"), "run : thread", std::this_thread::get_id());
-        // The call will return when the socket is closed.
-        io_contexts_.ioc.run();
-      });
-    }
-    initialized = true;
-  }
-}
-
-// ----------------------------------------------------------------------------
 void GroxMainWindow::perform_arbitrage()
 {
   double budget = 100000;
@@ -618,6 +596,10 @@ void GroxMainWindow::showEvent(QShowEvent* event)
   {
     loadWindowSettings();
     only_once = false;
+    main_dbg<0>.debug(str<>("ShowEvent"), "Reset timer");
+    QTimer* timer = global_settings.get_global_clock_timer();
+    timer->stop();
+    timer->start(1000);
   }
 }
 
@@ -729,6 +711,8 @@ void GroxMainWindow::loadConnectionSetups()
         main_dbg<0>.debug(str<>("Enable Ticker"), currencypair);
         auto cp = string_to_pair(currencypair, "-");
         e->ticker_subscribe(std::get<0>(cp), std::get<1>(cp));
+        // process messages to unblock startup waits
+        progress_events(10);
       }
     }
     settings.endGroup();
@@ -763,7 +747,9 @@ void GroxMainWindow::loadConnectionSetups()
         if (subscribed)
         {
           main_dbg<0>.debug(str<>("Stream"), "subscribing", settings.group().toStdString(), key);
-          e->stream_subscribe(io_contexts_, t.first, s, true);
+          e->stream_subscribe(t.first, s, true);
+          // process messages to unblock startup waits
+          progress_events(10);
         }
       }
       settings.endGroup();    // ticker
@@ -1064,7 +1050,7 @@ void GroxMainWindow::execute_filter()
 void GroxMainWindow::build_connection_gui(exchange* ex)
 {
   // widget with panels for tickers/selected/streams
-  connection_widget* conwidget = new connection_widget(this, io_contexts_, ex);
+  connection_widget* conwidget = new connection_widget(this, ex);
   conwidget->setup_gui();
   net_layout_->insertWidget(0, conwidget);
 }

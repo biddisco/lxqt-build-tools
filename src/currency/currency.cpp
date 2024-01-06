@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 //
-#include <range/v3/algorithm.hpp>
 #include "currency/currency.hpp"
 #include "util/stringutils.hpp"
 

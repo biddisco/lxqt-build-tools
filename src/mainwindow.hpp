@@ -7,14 +7,6 @@
 #include <QTimer>
 #include <QWidgetAction>
 //
-#ifndef Q_MOC_RUN
-// MOC chokes on keyword "signals" used by belle
-# include "include/belle.hh"
-#endif
-//
-#include "network/https-async.hpp"
-#include "network/websocket-ssl.hpp"
-//
 #include "plot/OrderBookPlot.h"
 #include "plot/ohlc_picker.hpp"
 #include "plot/ohlc_price_plot.hpp"
@@ -75,9 +67,6 @@ class GroxMainWindow : public QMainWindow
   std::shared_ptr<xrpl_network> xrpl_network_;
   std::shared_ptr<xrpl_network> xrpl_testnet_;
 
-  // io context for websocket/https requests
-  net::contexts io_contexts_;
-  std::vector<std::thread> ioc_threads_;
   QVBoxLayout* net_layout_;
 
   // menu helpers for docking support
@@ -92,6 +81,8 @@ class GroxMainWindow : public QMainWindow
   public:
   explicit GroxMainWindow(QWidget* parent = nullptr);
   ~GroxMainWindow() override;
+
+  void progress_events(int ms);
   void connect_gui_controls();
   bool eventFilter(QObject* obj, QEvent* event) override;
 
@@ -110,7 +101,6 @@ class GroxMainWindow : public QMainWindow
   void loadConnectionSetups();
 
   void stream_process(ohlctv_sample const& data);
-  void start_io_threads(int nthreads);
 
   void execute_filter();
 

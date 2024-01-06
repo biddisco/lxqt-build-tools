@@ -1,16 +1,20 @@
+#include <string>
+//
 #include <QMenu>
 #include <QPlainTextEdit>
 #include <QString>
 //
-#include <string>
+#include <fmt/chrono.h>
+#include <fmt/core.h>
+#include <fmt/format.h>
 //
 #include "debug/print.hpp"
 #include "exchange/bitstamp.hpp"
 #include "exchange/xrpl_network.hpp"
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
-#include "network/websocket-ssl.hpp"
+#include "network/qhttp-request-client.hpp"
 #include "util/datetime_utils.hpp"
+#include "util/nljson.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/price_chart_widget.hpp"
 #include "widgets/wallet_widget.hpp"
@@ -21,12 +25,12 @@
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 1;
 //
 template <int Level>
-static print_threshold<Level, debug_level> bitstamp_dbg("Bitstamp");
+static print_threshold<Level, 3> bitstamp_dbg("Bitstamp");
 
+// ----------------------------------------------------------------------------
+std::atomic<bool> bitstamp_network::closing_down_ = false;
 // ----------------------------------------------------------------------------
 bitstamp_network::bitstamp_network()
 {
@@ -34,10 +38,10 @@ bitstamp_network::bitstamp_network()
   default_acct.name_ = "Bitstamp Main";
   accounts_.push_back(default_acct);
   using namespace std::literals;
-  token_expiry_ = std::chrono::steady_clock::now() - 60 * 1s;
+  token_expiry_ = std::chrono::system_clock::now() - 60 * 1s;
   // update candles regularly
   connect(global_settings.get_global_clock_timer(), SIGNAL(timeout()), this,
-    SLOT(candlestick_timer_event()));
+    SLOT(candlestick_timer_event()), Qt::QueuedConnection);
   // after new data has been received, trigger this to process new candles and replot
   connect(this, SIGNAL(new_ohlc_data(ticker_data*, double)), this,
     SLOT(new_ohlc_data_event(ticker_data*, double)));
@@ -54,6 +58,8 @@ bitstamp_network::bitstamp_network()
       // stream_process(new_sample);
     },
     Qt::QueuedConnection);
+  //
+  closing_down_ = false;
 }
 
 // ----------------------------------------------------------------------------
@@ -65,14 +71,14 @@ bitstamp_network::~bitstamp_network()
 // ----------------------------------------------------------------------------
 void bitstamp_network::initialize()
 {
+  get_websocket_token();
   request_tickers_available();
   get_account_info();
-  get_open_orders();
+  //get_open_orders();
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_live_trades(
-  currency_pair const& cp, net::contexts& io_contexts, bool enable)
+bool bitstamp_network::subscribe_live_trades(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -80,27 +86,26 @@ bool bitstamp_network::subscribe_live_trades(
   command["data"]["channel"] = string_join("live_trades_", ticker);
 
   ticker_data& tdata = tickers_subscribed_.at(cp);
-  bitstamp_dbg<2>.debug(str<>("websocket trades"), command["event"],
+  bitstamp_dbg<4>.debug(str<>("websocket trades"), command["event"],
     string_join("live_trades_", ticker), command.dump(4));
 
   if (enable)
   {
     using namespace std::placeholders;
-    tdata.websockets_[network::streams::live_trades] = net::ws::create_session(io_contexts.ioc,
-      io_contexts.ctx, bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
-      command.dump(4), std::bind(bitstamp_network::new_live_trade_data, this, cp, _1));
+    tdata.websockets_[network::streams::live_trades] = net::ws::qwebsocket_session::create(
+      "bs::Trades " + ticker, bitstamp_websocket_address, bitstamp_websocket_port, command.dump(4),
+      std::bind(bitstamp_network::new_live_trade_data_q, this, cp, _1));
   }
   else
   {
-    tdata.websockets_[network::streams::live_trades]->shutdown_blocking();
+    tdata.websockets_[network::streams::live_trades].reset();
     tdata.websockets_.erase(network::streams::live_trades);
   }
   return true;
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_order_book(
-  currency_pair const& cp, net::contexts& io_contexts, bool enable)
+bool bitstamp_network::subscribe_order_book(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -108,27 +113,26 @@ bool bitstamp_network::subscribe_order_book(
   command["data"]["channel"] = string_join("order_book_", ticker);
 
   ticker_data& tdata = tickers_subscribed_.at(cp);
-  bitstamp_dbg<2>.debug(str<>("websocket orders"), command["event"],
+  bitstamp_dbg<4>.debug(str<>("websocket orders"), command["event"],
     string_join("order_book_", ticker), command.dump(4));
 
   if (enable)
   {
     using namespace std::placeholders;
-    tdata.websockets_[network::streams::order_book] = net::ws::create_session(io_contexts.ioc,
-      io_contexts.ctx, bitstamp_websocket_address, std::to_string(bitstamp_websocket_port),
-      command.dump(4), std::bind(&bitstamp_network::new_orderbook_data, this, cp, _1));
+    tdata.websockets_[network::streams::order_book] = net::ws::qwebsocket_session::create(
+      "bs::Orders " + ticker, bitstamp_websocket_address, bitstamp_websocket_port, command.dump(4),
+      std::bind(&bitstamp_network::new_orderbook_data_q, this, cp, _1));
   }
   else
   {
-    tdata.websockets_[network::streams::order_book]->shutdown_blocking();
+    tdata.websockets_[network::streams::order_book].reset();
     tdata.websockets_.erase(network::streams::order_book);
   }
   return true;
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_my_trades(
-  currency_pair const& cp, net::contexts& io_contexts, bool enable)
+bool bitstamp_network::subscribe_my_trades(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -137,29 +141,28 @@ bool bitstamp_network::subscribe_my_trades(
   command["data"]["auth"] = websocket_token_;
 
   ticker_data& tdata = tickers_subscribed_.at(cp);
-  bitstamp_dbg<2>.debug(str<>("websocket mytrades"), command["event"],
+  bitstamp_dbg<3>.debug(str<>("websocket mytrades"), command["event"],
     string_join("private-my_trades_", ticker), command.dump(4));
 
   if (enable)
   {
     tdata.websockets_[network::streams::my_trades] =
-      net::ws::create_session(io_contexts.ioc, io_contexts.ctx, bitstamp_websocket_address,
-        std::to_string(bitstamp_websocket_port), command.dump(4), [](std::string_view data) {
+      net::ws::qwebsocket_session::create("bs::MyTrades " + ticker, bitstamp_websocket_address,
+        bitstamp_websocket_port, command.dump(4), [](const QString data) {
           //
           bitstamp_dbg<7>.debug(str<>("(private) Trade data handler"), data);
         });
   }
   else
   {
-    tdata.websockets_[network::streams::my_trades]->shutdown_blocking();
+    tdata.websockets_[network::streams::my_trades].reset();
     tdata.websockets_.erase(network::streams::my_trades);
   }
   return true;
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::subscribe_my_orders(
-  currency_pair const& cp, net::contexts& io_contexts, bool enable)
+bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
   nlohmann::json command;
@@ -168,16 +171,17 @@ bool bitstamp_network::subscribe_my_orders(
   command["data"]["auth"] = websocket_token_;
 
   ticker_data& tdata = tickers_subscribed_.at(cp);
-  bitstamp_dbg<2>.debug(str<>("websocket myorders"), command["event"],
+  bitstamp_dbg<3>.debug(str<>("websocket myorders"), command["event"],
     string_join("private-my_orders_", ticker), command.dump(4));
 
   if (enable)
   {
     tdata.websockets_[network::streams::my_orders] =
-      net::ws::create_session(io_contexts.ioc, io_contexts.ctx, bitstamp_websocket_address,
-        std::to_string(bitstamp_websocket_port), command.dump(4), [this](std::string_view data) {
-          bitstamp_dbg<7>.debug(str<>("Orders data"), data);
-          nlohmann::json jdata = json::parse(data);
+      net::ws::qwebsocket_session::create("bs::MyOrders " + ticker, bitstamp_websocket_address,
+        bitstamp_websocket_port, command.dump(4), [this](const QString data) {
+          std::string stdstring = data.toStdString();
+          bitstamp_dbg<7>.debug(str<>("Orders data"), stdstring);
+          nlohmann::json jdata = json::parse(stdstring);
           if (jdata["event"] == "bts:subscription_succeeded")
           {
             bitstamp_dbg<0>.debug(str<>("Orders data"), "bts:subscription_succeeded");
@@ -191,7 +195,7 @@ bool bitstamp_network::subscribe_my_orders(
   else
   {
     // tdata.websocket_->write(command.dump(4));
-    tdata.websockets_[network::streams::my_orders]->shutdown_blocking();
+    tdata.websockets_[network::streams::my_orders].reset();
     tdata.websockets_.erase(network::streams::my_orders);
   }
   return true;
@@ -200,31 +204,24 @@ bool bitstamp_network::subscribe_my_orders(
 // ----------------------------------------------------------------------------
 // connect to a single stream
 bool bitstamp_network::stream_subscribe(
-  net::contexts& io_contexts, currency_pair const& cp, network::streams const stream, bool enabled)
+  currency_pair const& cp, network::streams const stream, bool enabled)
 {
-  using namespace std::literals;
-  auto now = std::chrono::steady_clock::now();
-  // request a new token if the current has expired
-  while ((token_expiry_ - now) / 1s < 5)
-  {
-    get_websocket_token();
-    sleep(1);
-  }
+  get_websocket_token();
   //
   bool ok = true;
   switch (stream)
   {
   case network::streams::my_trades:
-    ok = subscribe_my_trades(cp, io_contexts, enabled);
+    ok = subscribe_my_trades(cp, enabled);
     break;
   case network::streams::my_orders:
-    ok = subscribe_my_orders(cp, io_contexts, enabled);
+    ok = subscribe_my_orders(cp, enabled);
     break;
   case network::streams::live_trades:
-    ok = subscribe_live_trades(cp, io_contexts, enabled);
+    ok = subscribe_live_trades(cp, enabled);
     break;
   case network::streams::order_book:
-    ok = subscribe_order_book(cp, io_contexts, enabled);
+    ok = subscribe_order_book(cp, enabled);
     break;
   default:
     ok = false;
@@ -238,15 +235,31 @@ bool bitstamp_network::stream_subscribe(
 // ----------------------------------------------------------------------------
 void bitstamp_network::shut_down()
 {
+  // do not allow shutdown / async operations concurrently
+  closing_down_ = true;
+  std::lock_guard l(async_mutex_);
+  //
   bitstamp_dbg<0>.debug(str<>("websockets"), "shutdown start");
+  //
   for (auto& [ticker, tdata] : tickers_subscribed_)
   {
     for (auto& [stream, websocket] : tdata.websockets_)
     {
-      websocket->shutdown_blocking();
-      websocket.reset();
+      try
+      {
+        bitstamp_dbg<2>.debug(
+          str<>("websocket close"), currency_pair_string(ticker), ptr(websocket.get()));
+        websocket.reset();
+      }
+      catch (const std::exception& err)
+      {
+        std::cerr << err.what() << std::endl;
+      }
     }
+    // delete orderbook _after_ closing websocket to avoid some late async data arrivals
+    delete tdata.orderbook_;
   }
+  tickers_subscribed_.clear();
 }
 
 // ----------------------------------------------------------------------------
@@ -316,7 +329,7 @@ bool bitstamp_network::make_payment(currency& c, basic_account* src, basic_accou
   {
     req_string << "&destination_tag" << c.type_;
     //
-    account_request("/api/v2/xrp_withdrawal/", req_string.str(), [](std::string&& data) {
+    account_request("/api/v2/xrp_withdrawal/", req_string.str(), [](std::string_view data) {
       bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/xrp_withdrawal/", data);
     });
   }
@@ -325,7 +338,7 @@ bool bitstamp_network::make_payment(currency& c, basic_account* src, basic_accou
   {
     req_string << "&currency=" << c.type_;
     //
-    account_request("/api/v2/ripple_withdrawal/", req_string.str(), [](std::string&& data) {
+    account_request("/api/v2/ripple_withdrawal/", req_string.str(), [](std::string_view data) {
       bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/ripple_withdrawal/", data);
     });
   }
@@ -338,18 +351,42 @@ bool bitstamp_network::make_payment(currency& c, basic_account* src, basic_accou
 void bitstamp_network::get_account_info()
 {
   account_request(
-    "/api/v2/balance/", "", [this](std::string&& data) { handle_account_info(std::move(data)); });
+    "/api/v2/balance/", "", [this](std::string_view data) { handle_account_info(data); });
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::get_websocket_token()
+// token is valid if it has more than (say) 5s of time left before it expires
+bool token_valid(std::atomic<std::chrono::time_point<std::chrono::system_clock>>& expiry)
 {
-  account_request("/api/v2/websockets_token/", "",
-    [this](std::string&& data) { handle_websockets_token(std::move(data)); });
+  using namespace std::literals;
+  return ((expiry.load() - std::chrono::system_clock::now()) / 1s) > 5;
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::handle_account_info(std::string&& data)
+bool bitstamp_network::get_websocket_token()
+{
+  using namespace std::chrono;
+  using namespace std::literals;
+  if (!token_valid(token_expiry_))
+  {
+    bitstamp_dbg<2>.debug(str<>("websocket_token"), "Fetching new");
+    account_request("/api/v2/websockets_token/", "",
+      [this](std::string_view data) { handle_websocket_token(data); });
+    // spin on network until 5s has elapsed, or new valid token arrives
+    for (auto start = system_clock::now(), now = start;
+         !token_valid(token_expiry_) && now < start + 5s; now = system_clock::now())
+    {
+      QCoreApplication::processEvents();
+    }
+  }
+  bitstamp_dbg<2>.debug(str<>("websocket_token"),
+    token_valid(token_expiry_) ? "valid until" : "expired",
+    fmt::format("{:%Y-%m-%d %X}", round<seconds>(token_expiry_.load())));
+  return token_valid(token_expiry_);
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::handle_account_info(std::string_view data)
 {
   nlohmann::json jdata = json::parse(data);
   bitstamp_dbg<6>.debug(str<>("account info"), jdata.dump(4));
@@ -359,7 +396,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
   currency xrp_bitstamp{{"", "XRP"}, currency_type::xrp,
     std::stod(jdata["xrp_balance"].get_ptr<json::string_t*>()->c_str()),
     std::stod(jdata["xrp_available"].get_ptr<json::string_t*>()->c_str()),
-    std::stod(jdata["xrp_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
+    std::stod(jdata["xrp_reserved"].get_ptr<json::string_t*>()->c_str()) /*, nullptr*/};
   acct.add_currency(xrp_bitstamp);
 
   if (jdata.contains("usd_balance"))
@@ -367,7 +404,7 @@ void bitstamp_network::handle_account_info(std::string&& data)
     currency usd_bitstamp{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp,
       std::stod(jdata["usd_balance"].get_ptr<json::string_t*>()->c_str()),
       std::stod(jdata["usd_available"].get_ptr<json::string_t*>()->c_str()),
-      std::stod(jdata["usd_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
+      std::stod(jdata["usd_reserved"].get_ptr<json::string_t*>()->c_str()) /*, nullptr*/};
     acct.add_currency(usd_bitstamp);
   }
 
@@ -415,10 +452,10 @@ void bitstamp_network::handle_account_info(std::string&& data)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::handle_websockets_token(std::string&& data)
+void bitstamp_network::handle_websocket_token(std::string_view data)
 {
   nlohmann::json jdata = json::parse(data);
-  bitstamp_dbg<0>.debug(str<>("websocket token"), jdata.dump());
+  bitstamp_dbg<5>.debug(str<>("websocket token"), jdata.dump());
   //
   bitstamp_account& acct = get_bitstamp_instance()->account();
   //
@@ -426,15 +463,15 @@ void bitstamp_network::handle_websockets_token(std::string&& data)
   auto valid_sec = jdata["valid_sec"].get<int>();
   websocket_token_ = jdata["token"].get<std::string>();
   websocket_user_id_ = std::to_string(jdata["user_id"].get<int>());
-  token_expiry_ = std::chrono::steady_clock::now() + valid_sec * 1s;
+  token_expiry_ = std::chrono::system_clock::now() + valid_sec * 1s;
 }
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::get_open_orders()
 {
-  account_request("/api/v2/open_orders/all/", "", [this](std::string&& data) {
+  account_request("/api/v2/open_orders/all/", "", [this](std::string_view data) {
     bitstamp_dbg<0>.debug(str<>("Open Order response"), data);
-    handle_open_orders(std::move(data));
+    handle_open_orders(data);
   });
 }
 
@@ -532,7 +569,7 @@ void bitstamp_network::process_order(nlohmann::json& jdata, std::string_view eve
 
 */
 
-void bitstamp_network::handle_open_orders(std::string&& data)
+void bitstamp_network::handle_open_orders(std::string_view data)
 {
   bitstamp_account& acct = get_bitstamp_instance()->account();
   auto& trades = acct.offers_;
@@ -570,93 +607,101 @@ void bitstamp_network::handle_open_orders(std::string&& data)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::account_request(
-  std::string&& url_path, std::string&& url_query, request_callback&& cb)
+void bitstamp_network::account_request(const std::string& url_path, const std::string& url_query,
+  net::http::rx_req_handler_type&& handler)
 {
-  // NB. HTTP POST request uses payload for parameters, not URI/URL
-  auto thread_function = [cb = std::move(cb), url_path = std::move(url_path),
-                           url_query = std::move(url_query)]() {
-    OB::Belle::Client new_client(bitstamp_https_address, bitstamp_https_port, true);
-    // set the http 'on error' callback
-    new_client.on_http_error([](auto& ctx) {
-      std::cerr << "account_request : Protocol Error: " << ctx.ec.message() << "\n\n";
-    });
+  std::string api_key = get_bitstamp_instance()->account().API_key;
+  std::string api_secret = get_bitstamp_instance()->account().API_secret;
+  secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
+  encryption encryptor(api_key, randbytes);
+  //
+  std::chrono::milliseconds timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::system_clock::now().time_since_epoch());
 
-    secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
-    encryption encryptor(get_bitstamp_instance()->account().API_key, randbytes);
-    //
-    std::chrono::milliseconds timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::system_clock::now().time_since_epoch());
-    // setup REST request fields
-    std::string x_auth = "BITSTAMP " + get_bitstamp_instance()->account().API_key;
-    std::string x_auth_nonce = encryptor.generate_uuid_string();
-    std::string x_auth_timestamp = std::to_string(timestamp.count());
-    std::string x_auth_version = "v2";
-    std::string content_type = "application/x-www-form-urlencoded";
-    std::string payload = url_query.size() > 0 ? url_query : url_encode("{offset:1}");
-    std::string http_method = "POST";
+  // setup REST request fields
+  std::string url_host = bitstamp_https_address;
+  std::string content_type = "application/x-www-form-urlencoded";
+  std::string payload = url_query.size() > 0 ? url_query : url_encode("{offset:1}");
+  std::string http_method = "POST";
+  std::string x_auth = "BITSTAMP " + api_key;
+  std::string x_auth_nonce = encryptor.generate_uuid_string();
+  std::string x_auth_timestamp = std::to_string(timestamp.count());
+  std::string x_auth_version = "v2";
 
-    // full query is signed using Hmac SHA256 algorithm
-    std::string data_to_sign = "";
-    data_to_sign.append(x_auth);
-    data_to_sign.append(http_method);
-    data_to_sign.append(bitstamp_https_address);
-    data_to_sign.append(url_path);
-    data_to_sign.append("");
-    data_to_sign.append(content_type);
-    data_to_sign.append(x_auth_nonce);
-    data_to_sign.append(x_auth_timestamp);
-    data_to_sign.append(x_auth_version);
-    data_to_sign.append(payload);
+  // https://www.bitstamp.net/api/#section/Authentication
+  // x_auth_signature:
+  //   sha256.hmac({string_to_sign}, {api_secret})
+  //   {string_to_sign} is your signature message.
+  //   Content-Type should not be added to the string if request.body is empty.
+  //   The following have to be combined into a single string:
+  //   "BITSTAMP" + " " + api_key +
+  //   HTTP Verb +
+  //   url.host +
+  //   url.path +
+  //   url.query +
+  //   Content-Type +
+  //   X-Auth-Nonce +
+  //   X-Auth-Timestamp +
+  //   X-Auth-Version +
+  //   request.body
 
-    // generated signature
-    auto signed_hmac =
-      encryptor.CalcHmacSHA256(get_bitstamp_instance()->account().API_secret, data_to_sign);
-    assert(signed_hmac.size() == 32);
-    std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
+  std::string string_to_sign = "";
+  string_to_sign.append(x_auth);
+  string_to_sign.append(http_method);
+  string_to_sign.append(url_host);
+  string_to_sign.append(url_path);
+  string_to_sign.append(url_query);
+  string_to_sign.append(payload.size() > 0 ? content_type.c_str() : "");
+  string_to_sign.append(x_auth_nonce);
+  string_to_sign.append(x_auth_timestamp);
+  string_to_sign.append(x_auth_version);
+  string_to_sign.append(payload);
 
-    OB::Belle::Request b_request;
-    b_request = OB::Belle::Request(http::verb::post, url_path, 11);
-    b_request.target(url_path);
-    b_request.set(http::field::host, bitstamp_https_address);
-    b_request.set(http::field::content_type, content_type);
-    b_request.set("X-Auth", x_auth);
-    b_request.set("X-Auth-Signature", x_auth_signature);
-    b_request.set("X-Auth-Nonce", x_auth_nonce);
-    b_request.set("X-Auth-Timestamp", x_auth_timestamp);
-    b_request.set("X-Auth-Version", x_auth_version);
-    //
-    b_request.body() = payload;
-    b_request.prepare_payload();
-    bitstamp_dbg<7>.debug(str<>("Account request"), b_request);
+  // generated signature
+  auto signed_hmac = encryptor.CalcHmacSHA256(api_secret, string_to_sign);
+  assert(signed_hmac.size() == 32);
+  std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
 
-    new_client.on_http(b_request, [cb = std::move(cb)](auto& ctx) {
-      // check http status code
-      if (ctx.res.result() != OB::Belle::Status::ok)
-      {
-        // print the response status code and reason
-        std::cerr << "HTTPS Error: (belle_https_bitstamp): " << ctx.res.result_int() << " "
-                  << ctx.res.reason() << "\n\n";
-        return;
-      }
-      // debug : print the response headers and body
-      bitstamp_dbg<6>.debug(str<>("Request response"), ctx.res.body());
-      cb(std::move(ctx.res.body()));
-    });
-    new_client.connect();
-  };
-  auto https_thread = std::thread(std::move(thread_function));
-  https_thread.detach();
+  std::string urlstring = fmt::format(
+    "https://{}:{}{}{}", bitstamp_https_address, bitstamp_https_port, url_path, url_query);
+  //bitstamp_dbg<2>.debug(str<>("account_request"), urlstring, string_to_sign);
+
+  QNetworkRequest request(QUrl(urlstring.c_str()));
+  request.setRawHeader("Content-Type", content_type.c_str());
+  request.setRawHeader("User-Agent", "mystery");
+  request.setRawHeader("Accept", "application/json");
+  request.setRawHeader("Connection", "close");
+  //
+  request.setRawHeader("X-Auth", x_auth.c_str());
+  request.setRawHeader("X-Auth-Signature", x_auth_signature.c_str());
+  request.setRawHeader("X-Auth-Nonce", x_auth_nonce.c_str());
+  request.setRawHeader("X-Auth-Timestamp", x_auth_timestamp.c_str());
+  request.setRawHeader("X-Auth-Version", x_auth_version.c_str());
+
+  auto* client = net::http::qhttp_request_client::create_signed(
+    *global_settings.networkmanager_, request, std::move(payload), std::move(handler));
+  client->post_request();
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::new_orderbook_data(
-  bitstamp_network* n, currency_pair const cp, std::string_view data)
+void bitstamp_network::new_orderbook_data_q(
+  bitstamp_network* n, currency_pair const cp, const QString data)
 {
-  bitstamp_dbg<2>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
+  bitstamp_dbg<5>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<7>.debug(str<>("Orderbook data"), data);
-
+  //
+  std::lock_guard l(n->async_mutex_);
+  if (closing_down_)
+  {
+    bitstamp_dbg<0>.error(str<>("Orderbook data"), "Shutdown in progress: ignoring data");
+    return;
+  }
+  //
   const ticker_data tdata = n->tickers_subscribed_.at(cp);
+  //
+  if (!tdata.orderbook_)
+    return;    // @todo probably called during destruction
+
   if (!dynamic_cast<bitstamp_order_book*>(tdata.orderbook_)->accept_json_bitstamp(data))
     return;
 
@@ -664,15 +709,24 @@ void bitstamp_network::new_orderbook_data(
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::new_live_trade_data(
-  bitstamp_network* n, currency_pair cp, std::string_view data)
+void bitstamp_network::new_live_trade_data_q(
+  bitstamp_network* n, currency_pair cp, const QString data)
 {
-  bitstamp_dbg<2>.debug(str<>("Live Trade"), "Ticker", currency_pair_string(cp));
+  bitstamp_dbg<4>.debug(str<>("Live Trade"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<5>.debug(str<>("Trade data"), data);
+  //
+  std::lock_guard l(n->async_mutex_);
+  if (closing_down_)
+  {
+    bitstamp_dbg<0>.error(str<>("trade data"), "Shutdown in progress: ignoring data");
+    return;
+  }
   if (!startswith(data, "{\"data\":"))
     return;
   //
-  nlohmann::json jdata = json::parse(data);
+  std::string stdstring = data.toStdString();
+  //
+  nlohmann::json jdata = json::parse(stdstring);
   // extract the main subgroup
   jdata = jdata["data"];
   bitstamp_dbg<7>.debug(str<>("Trade data parsed"), jdata.dump(4));
@@ -683,7 +737,7 @@ void bitstamp_network::new_live_trade_data(
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::request_new_candlestick_data(
-  currency_pair cp, uint64_t start_t, uint64_t samples, fn_on_http fn)
+  currency_pair cp, uint64_t start_t, uint64_t samples, net::http::rx_req_handler_type fn)
 {
   std::string ticker_lowercase = currency_pair_lowercase_string(cp);
   // doesn't really matter if the key is already in the set (shouldn't be)
@@ -692,7 +746,7 @@ void bitstamp_network::request_new_candlestick_data(
   std::string req;
   if (start_t == 0)
   {
-    req = string_join("/api/v2/ohlc/", ticker_lowercase) + "/?step=60&limit=1000";
+    req = fmt::format("/api/v2/ohlc/{}/?step=60&limit=1000", ticker_lowercase);
   }
   else
   {
@@ -704,75 +758,33 @@ void bitstamp_network::request_new_candlestick_data(
     std::string start = std::to_string(start_t);
     std::string limit = std::to_string(samples);
     // send a request for ticker data using the io context thread to make the request
-    req = string_join("/api/v2/ohlc/", ticker_lowercase) + "/?step=60&start=" + start +
-      "&limit=" + limit;
+    req = fmt::format("/api/v2/ohlc/{}/?step=60&start={}&limit={}", ticker_lowercase, start, limit);
     bitstamp_dbg<0>.debug(str<>("request"), ticker_lowercase, req);
   }
 
-  auto thread_function = [this, cp, req = std::move(req), fn = std::move(fn)]() {
-    OB::Belle::Client new_client(bitstamp_https_address, bitstamp_https_port, true);
-    // set the http 'on error' callback
-    new_client.on_http_error([this, cp](auto& ctx) {
-      std::cerr << "account_request : Protocol Error: " << ctx.ec.message() << "\n\n";
-      // clear this so it will be retried later
-      candlestick_updates_active_.erase(cp);
-    });
-
-    new_client.on_http(req, [this, cp, fn](auto& ctx) mutable {
-      candlestick_updates_active_.erase(cp);
-      // check http status code
-      if (ctx.res.result() != OB::Belle::Status::ok)
-      {
-        // print the response status code and reason
-        bitstamp_dbg<0>.error(str<>("HTTPS Error:"), ctx.res.result_int(), ctx.res.reason());
-      }
-      else
-      {
-        // debug : print the response headers and body
-        bitstamp_dbg<6>.debug(str<>("Candlestick"), ctx.res.body());
-        // if the request was limited, we might need more data,
-        fn(ctx);
-      }
-    });
-    new_client.connect();
-  };
-  auto https_thread = std::thread(std::move(thread_function));
-  https_thread.detach();
+  // @todo : add error handler
+  std::string url = fmt::format("https://{}:{}{}", bitstamp_https_address, 443, req);
+  net::http::client_ptr client =
+    net::http::qhttp_request_client::create(*global_settings.networkmanager_, url, std::move(fn));
+  client->get_request();
 }
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::request_tickers_available()
 {
-  std::string req = "https://www.bitstamp.net/api/v2/ticker/";
-  bitstamp_dbg<0>.debug(str<>("Tickers Request"), req);
-
-  auto thread_function = [this, req = std::move(req)]() {
-    OB::Belle::Client new_client(bitstamp_https_address, bitstamp_https_port, true);
-    // set the http 'on error' callback
-    new_client.on_http_error([](auto& ctx) {
-      std::cerr << "Tickers Request : Protocol Error: " << ctx.ec.message() << "\n\n";
-    });
-
-    new_client.on_http(req, [this](auto& ctx) mutable {
-      // check http status code
-      if (ctx.res.result() != OB::Belle::Status::ok)
-      {
-        // print the response status code and reason
-        bitstamp_dbg<0>.error(str<>("HTTPS Error:"), ctx.res.result_int(), ctx.res.reason());
-        return;
-      }
+  std::string url = fmt::format("https://{}:{}/api/v2/ticker/", "www.bitstamp.net", 443);
+  bitstamp_dbg<0>.debug(str<>("Tickers Request"), url);
+  auto* client = net::http::qhttp_request_client::create(
+    *global_settings.networkmanager_, url, "", [this](std::string_view data) {
       // debug : print the response headers and body
-      bitstamp_dbg<6>.debug(str<>("Tickers"), ctx.res.body());
-      receive_tickers_available(std::move(ctx.res.body()));
+      bitstamp_dbg<6>.debug(str<>("Tickers"), data);
+      receive_tickers_available(data);
     });
-    new_client.connect();
-  };
-  auto https_thread = std::thread(std::move(thread_function));
-  https_thread.detach();
+  client->get_request();
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::receive_tickers_available(std::string&& data)
+void bitstamp_network::receive_tickers_available(std::string_view data)
 {
   nlohmann::json jdata = json::parse(data);
   for (auto const& [key, val] : jdata.items())
@@ -790,7 +802,7 @@ void bitstamp_network::receive_tickers_available(std::string&& data)
 void bitstamp_network::cancel_order(trade_data const& t)
 {
   std::string data = "&id=" + std::to_string(t.id_);
-  account_request("/api/v2/cancel_order/", std::move(data), [this](std::string&& data) {
+  account_request("/api/v2/cancel_order/", data, [this](std::string_view data) {
     nlohmann::json jdata = json::parse(data);
     bitstamp_dbg<0>.debug(str<>("Cancel Order response"), jdata.dump(4));
     // refresh order status
@@ -830,7 +842,7 @@ void bitstamp_network::place_limit_order(trade_data const& t, bool update_after)
   bitstamp_dbg<0>.debug(
     str<>("limit-order"), (t.get_trade_type() == trade_type::buy ? "Buy" : "Sell"), req, data);
 
-  account_request(std::move(req), std::move(data), [this, t, update_after](std::string&& data) {
+  account_request(std::move(req), std::move(data), [this, t, update_after](std::string_view data) {
     nlohmann::json jdata = json::parse(data);
     bitstamp_dbg<0>.debug(str<>("limit-order response"), jdata.dump(4));
     // refresh order status if we don't have orders websocket
@@ -951,13 +963,13 @@ void bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::receive_ohlc_data(ticker_data* tdata, std::string&& data)
+void bitstamp_network::receive_ohlc_data(ticker_data* tdata, std::string_view data)
 {
   try
   {
     // convert json data into vectors of actual data
     nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
-    bitstamp_dbg<0>.debug(str<>("received"), tdata->view_->get_ticker_string(),
+    bitstamp_dbg<0>.debug(str<>("OHLC received"), tdata->view_->get_ticker_string(),
       dec<4>(jdata.size()), "json OHLC samples");
     QVector<ohlctv_sample> new_ohlc_samples;
     new_ohlc_samples.reserve(jdata.size());
@@ -988,6 +1000,7 @@ void bitstamp_network::receive_ohlc_data(ticker_data* tdata, std::string&& data)
   catch (std::exception& e)
   {
     bitstamp_dbg<0>.error(str<>("JSON error"), "decoding OHLC data:", e.what(), "\n", data, "\n\n");
+    std::terminate();
   }
 }
 
@@ -1061,12 +1074,14 @@ void bitstamp_network::update_ticker_data(currency_pair cp, ticker_data* tdata)
   bitstamp_dbg<0>.debug(
     str<>("requesting"), ticker_lowercase, samples, msecs_unix_to_calendar_time(req_t * 1000));
 
-  request_new_candlestick_data(cp, req_t, samples, [this, req_t, cp, tdata](auto& ctx) {
-    bitstamp_dbg<0>.debug(str<>("received"), tdata->view_->get_ticker_string(),
-      msecs_unix_to_calendar_time(req_t * 1000));
-    receive_ohlc_data(tdata, std::move(ctx.res.body()));
-    update_ticker_data(cp, tdata);
-  });
+  request_new_candlestick_data(
+    cp, req_t, samples, [this, req_t, cp, tdata](std::string_view reply) {
+      bitstamp_dbg<0>.debug(str<>("OHLC (lambda)"), tdata->view_->get_ticker_string(),
+        msecs_unix_to_calendar_time(req_t * 1000));
+      receive_ohlc_data(tdata, reply);
+      update_ticker_data(cp, tdata);
+      candlestick_updates_active_.erase(cp);
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -1093,11 +1108,11 @@ void bitstamp_network::candlestick_timer_event()
   // UTC! for local use # tm local_tm = *localtime(&tt);
   tm utc_tm = *gmtime(&tt);
   //
-  if (utc_tm.tm_sec >= 8 && last_minute != utc_tm.tm_min)
+  if ((last_minute == -1) || ((last_minute != utc_tm.tm_min) && (utc_tm.tm_sec >= 8)))
   {
     last_minute = utc_tm.tm_min;
     QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
-    bitstamp_dbg<0>.debug("candlestick_timer_event : " + now.toStdString());
+    bitstamp_dbg<0>.debug(str<>("candlestick_timer"), now.toStdString());
     update_candlestick_data();
   }
 }

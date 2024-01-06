@@ -7,8 +7,7 @@ set(grox_plot_SRCS
     ohlc_chart_curve.cpp
     ohlc_interactor.cpp
     OrderBookCurve.cpp
-    timebased_chart_plot.cpp
-)
+    timebased_chart_plot.cpp)
 
 add_library(grox_plot ${grox_plot_SRCS})
 

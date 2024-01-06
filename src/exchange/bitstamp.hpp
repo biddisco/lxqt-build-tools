@@ -1,25 +1,21 @@
 #pragma once
 
-#include <QString>
-//
+#include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
 //
-#ifndef Q_MOC_RUN
-// MOC chokes on keyword "signals" used by belle
-# include "include/belle.hh"
-#endif
+#include <QString>
 //
 #include "currency/trade_data.hpp"
 #include "exchange/account.hpp"
 #include "exchange/exchange.hpp"
 #include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
-#include "network/websocket-ssl.hpp"
+#include "network/qhttp-request-client.hpp"
 
 // ----------------------------------------------------------------------------
 class bitstamp_network : public exchange
@@ -32,7 +28,7 @@ class bitstamp_network : public exchange
   // websocket token userid
   std::string websocket_user_id_;
   // token expiry time
-  std::chrono::time_point<std::chrono::steady_clock> token_expiry_;
+  std::atomic<std::chrono::time_point<std::chrono::system_clock>> token_expiry_;
 
   // usually only one present, but allow for more
   std::vector<bitstamp_account> accounts_;
@@ -41,6 +37,13 @@ class bitstamp_network : public exchange
   std::map<std::pair<std::string, std::string>, double> fee_map_;
 
   std::set<currency_pair> candlestick_updates_active_;
+
+  public:
+  // if an asynchronous websocket/http operation is being handled
+  // then shutdown must wait until it has completed before starting
+  // and then set a flag to prevent new async operations being handled
+  std::mutex async_mutex_;
+  static std::atomic<bool> closing_down_;
 
   public:
   //
@@ -114,10 +117,10 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // init connections/websockets etc
-  bool subscribe_live_trades(currency_pair const& cp, net::contexts& io_contexts, bool enable);
-  bool subscribe_order_book(currency_pair const& cp, net::contexts& io_contexts, bool enable);
-  bool subscribe_my_trades(currency_pair const& cp, net::contexts& io_contexts, bool enable);
-  bool subscribe_my_orders(currency_pair const& cp, net::contexts& io_contexts, bool enable);
+  bool subscribe_live_trades(currency_pair const& cp, bool enable);
+  bool subscribe_order_book(currency_pair const& cp, bool enable);
+  bool subscribe_my_trades(currency_pair const& cp, bool enable);
+  bool subscribe_my_orders(currency_pair const& cp, bool enable);
   //  bool unsubscribe_my_trades(currency_pair const& cp);
   //  bool unsubscribe_my_orders(currency_pair const& cp);
 
@@ -132,8 +135,8 @@ class bitstamp_network : public exchange
   }
 
   // connect to a single stream
-  bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
-    network::streams const stream, bool enabled) override;
+  bool stream_subscribe(
+    currency_pair const& cp, network::streams const stream, bool enabled) override;
 
   // connect to (multiple) streams
   //  bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) override;
@@ -145,17 +148,17 @@ class bitstamp_network : public exchange
   // ---------------------------------------
   // http: fetch account info/data
   void get_account_info();
-  void get_websocket_token();
+  bool get_websocket_token();
 
   // process account info response
-  void handle_account_info(std::string&&);
-  void handle_websockets_token(std::string&&);
+  void handle_account_info(std::string_view);
+  void handle_websocket_token(std::string_view);
 
   // ---------------------------------------
   // http: fetch open order data
   void get_open_orders();
   // process open order data response
-  void handle_open_orders(std::string&&);
+  void handle_open_orders(std::string_view);
   void process_order(nlohmann::json& jdata, std::string_view event);
 
   // ---------------------------------------
@@ -169,19 +172,18 @@ class bitstamp_network : public exchange
   void cancel_order(trade_data const& t) override;
 
   // ----------------------------------------------------------------------------
-  void account_request(std::string&& url_path, std::string&& url_query, request_callback&& cb);
+  void account_request(const std::string& url_path, const std::string& url_query,
+    net::http::rx_req_handler_type&& handler);
   //
 
-  using fn_on_http = std::function<void(OB::Belle::Client::Http_Ctx&)>;
-
   void request_new_candlestick_data(
-    currency_pair cp, uint64_t start_t, uint64_t samples, fn_on_http fn);
+    currency_pair cp, uint64_t start_t, uint64_t samples, net::http::rx_req_handler_type fn);
 
   // function called from websocket subscription to live trade data
-  static void new_live_trade_data(bitstamp_network*, currency_pair cp, std::string_view);
+  static void new_live_trade_data_q(bitstamp_network*, currency_pair cp, const QString);
 
   // function called from websocket subscription to live orderbook data
-  static void new_orderbook_data(bitstamp_network*, currency_pair const cp, std::string_view);
+  static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, const QString);
 
   double get_fee_percent(currency_type const& c1, currency_type const& c2) override;
   double get_fee_fixed(currency_type const& c1, currency_type const& c2) override;
@@ -193,12 +195,12 @@ class bitstamp_network : public exchange
   void custom_functions(basic_account* /*acct*/) override{};
 
   void request_tickers_available();
-  void receive_tickers_available(std::string&& data);
+  void receive_tickers_available(std::string_view data);
 
   void ticker_subscribe(currency const& c1, currency const& c2) override;
 
   //
-  void receive_ohlc_data(ticker_data*, std::string&&);
+  void receive_ohlc_data(ticker_data*, std::string_view);
   void update_ticker_data(currency_pair cp, ticker_data* data);
   void update_candlestick_data();
 

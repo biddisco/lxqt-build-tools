@@ -1,13 +1,18 @@
 // STL
 #include <string>
 // Qt
+#include <QDialog>
+#include <QHBoxLayout>
 #include <QObject>
 #include <QString>
+// extern
+#include <fmt/format.h>
+#include <ripple/protocol/Issue.h>
+#include <ripple/protocol/Sign.h>
+#include <ripple/protocol/UintTypes.h>
 //
 #include "debug/print.hpp"
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
-#include "network/websocket-ssl.hpp"
 #include "util/stringutils.hpp"
 //
 #include "widgets/currency_widget.hpp"
@@ -17,13 +22,6 @@
 #include "exchange/order_book.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
-// extern
-#include <ripple/protocol/Issue.h>
-#include <ripple/protocol/Sign.h>
-#include <ripple/protocol/UintTypes.h>
-//
-#include <QDialog>
-#include <QHBoxLayout>
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -168,12 +166,10 @@ void xrpl_network::shut_down()
 {
   if (ws_orderbook)
   {
-    ws_orderbook->shutdown_blocking();
     ws_orderbook.reset();
   }
   if (ws_accounts)
   {
-    ws_accounts->shutdown_blocking();
     ws_accounts.reset();
   }
 }
@@ -185,7 +181,7 @@ void xrpl_network::add_wallet(ledger_wallet const& w)
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::subscribe_orderbook(net::contexts& io_contexts)
+bool xrpl_network::subscribe_orderbook()
 {
   using namespace std::placeholders;
   //startswith
@@ -209,15 +205,15 @@ bool xrpl_network::subscribe_orderbook(net::contexts& io_contexts)
   xrpnet_dbg<0>.debug(str<>("Subscribing"), "xrpl:XRP/USD orderbook");
   xrpnet_dbg<5>.debug(str<>("subscribe orderbook"), subscription);
 
-  ws_orderbook = net::ws::create_session(io_contexts.ioc, io_contexts.ctx, websocket_address(),
-    std::to_string(websocket_port()), subscription,
+  ws_orderbook = net::ws::qwebsocket_session::create("xrpl::orderbook xrp/usd", websocket_address(),
+    websocket_port(), subscription,
     std::bind(xrpl_network::new_orderbook_data, this, currency_pair{}, _1));
 
   return true;
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::subscribe_accounts(net::contexts& io_contexts)
+bool xrpl_network::subscribe_accounts()
 {
   using namespace std::placeholders;
   std::string addresses;
@@ -230,17 +226,17 @@ bool xrpl_network::subscribe_accounts(net::contexts& io_contexts)
   std::string subscription = "{ \"command\": \"subscribe\", \"accounts\": [ " + addresses + " ] }";
   xrpnet_dbg<0>.debug(str<>("Subscribing"), "account changes for", addresses);
 
-  ws_accounts = net::ws::create_session(io_contexts.ioc, io_contexts.ctx, websocket_address(),
-    std::to_string(websocket_port()), subscription,
-    std::bind(xrpl_network::new_account_data, this, _1));
+  ws_accounts =
+    net::ws::qwebsocket_session::create("xrpl::accounts" + addresses, websocket_address(),
+      websocket_port(), subscription, std::bind(xrpl_network::new_account_data, this, _1));
 
   return true;
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::new_orderbook_data(
-  xrpl_network* nw, currency_pair const cp, std::string_view data)
+void xrpl_network::new_orderbook_data(xrpl_network* nw, currency_pair const cp, QString qdata)
 {
+  std::string data = qdata.toStdString();
   if (startswith(data, "{\"result\":"))
   {
     xrpnet_dbg<5>.debug(str<>("ledger_snapshot"));
@@ -257,8 +253,9 @@ void xrpl_network::new_orderbook_data(
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::new_account_data(xrpl_network* nw, std::string_view data)
+void xrpl_network::new_account_data(xrpl_network* nw, QString qdata)
 {
+  std::string data = qdata.toStdString();
   xrpnet_dbg<0>.debug(str<>("Account changes"), data);
   if (startswith(data, "{\"result\":"))
   {
@@ -423,55 +420,22 @@ void xrpl_network::update_IOU_balance(std::string_view addr, currency const& cur
 }
 
 // ----------------------------------------------------------------------------
-OB::Belle::Request setup_request(std::string const& host, nlohmann::json& content)
-{
-  using namespace OB;
-  Belle::Request req;
-  // method
-  req.method(Belle::Method::post);
-  // headers
-  req.set(Belle::Header::host, host);
-  req.set(Belle::Header::user_agent, "mystery");
-  req.set(Belle::Header::content_type, "application/json");
-  req.set(Belle::Header::accept, "application/json");
-  req.set(Belle::Header::connection, "close");
-  // target path
-  req.target("/");
-  // contents
-  req.body() = content.dump();
-  // finalize
-  req.prepare_payload();
-  xrpnet_dbg<5>.debug(str<>("request"), req);
-  //
-  return req;
-}
-
-// ----------------------------------------------------------------------------
 void xrpl_network::get_account_lines(std::string addr, fn_on_http on_http)
 {
-  auto thread_function = [=]() {
-    OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
-    // set the http 'on error' callback
-    new_client.on_http_error([](auto& ctx) {
-      xrpnet_dbg<5>.debug(str<>("get_account_lines"), "Protocol Error", ctx.ec.message());
-    });
+  nlohmann::json params;
+  params["account"] = addr;
+  params["validated"] = true;
 
-    nlohmann::json params;
-    params["account"] = addr;
-    params["validated"] = true;
+  nlohmann::json content;
+  content["method"] = "account_lines";
+  content["params"] = nlohmann::json::array({params});
 
-    nlohmann::json content;
-    content["method"] = "account_lines";
-    content["params"] = nlohmann::json::array({params});
-
-    // init an http request object
-    OB::Belle::Request req = setup_request(jsonrpc_address(), content);
-    new_client.on_http(req, on_http);
-    new_client.connect();
-  };
-  xrpnet_dbg<5>.debug(str<>("get_account_lines"), addr);
-  auto https_thread = std::thread(std::move(thread_function));
-  https_thread.detach();
+  // init an http request object
+  std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
+  xrpnet_dbg<5>.debug(str<>("account_lines"), url);
+  auto* client = net::http::qhttp_request_client::create(
+    *global_settings.networkmanager_, url, content.dump(), std::move(on_http));
+  client->post_request();
 }
 
 // ----------------------------------------------------------------------------
@@ -479,22 +443,16 @@ void xrpl_network::get_all_account_lines()
 {
   for (auto& w : subscribed_wallets_)
   {
-    get_account_lines(w.public_, [this, &w](auto& ctx) {
-      if (ctx.res.result() != OB::Belle::Status::ok)
-      {
-        std::cerr << "Account balance : HTTPS Error: " << ctx.res.result_int() << " "
-                  << ctx.res.reason() << " - Address Not found? " << w.public_ << "\n";
-        return;
-      }
+    get_account_lines(w.public_, [this, &w](std::string_view data) {
       // debug : print the response headers and body
-      xrpnet_dbg<5>.debug(str<>("Ledger response"), ctx.res.body());
-      this->handle_account_lines(w, std::move(ctx.res.body()));
+      xrpnet_dbg<5>.debug(str<>("Ledger response"), data);
+      this->handle_account_lines(w, data);
     });
   };
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::handle_account_lines(ledger_wallet& w, std::string&& data)
+void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
 {
   nlohmann::json jdata = json::parse(data)["result"]["lines"];
   if (jdata.size() == 0)
@@ -545,31 +503,22 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string&& data)
 // ----------------------------------------------------------------------------
 void xrpl_network::get_account_info(std::string addr, fn_on_http on_http)
 {
-  auto thread_function = [=]() {
-    OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
-    // set the http 'on error' callback
-    new_client.on_http_error([](auto& ctx) {
-      std::cerr << "get_account_info : Protocol Error: " << ctx.ec.message() << "\n\n";
-    });
+  nlohmann::json params;
+  params["account"] = addr;
+  params["ledger_index"] = "current";
+  params["strict"] = true;
+  params["queue"] = true;
 
-    nlohmann::json params;
-    params["account"] = addr;
-    params["ledger_index"] = "current";
-    params["strict"] = true;
-    params["queue"] = true;
+  nlohmann::json content;
+  content["method"] = "account_info";
+  content["params"] = nlohmann::json::array({params});
 
-    nlohmann::json content;
-    content["method"] = "account_info";
-    content["params"] = nlohmann::json::array({params});
-
-    // init an http request object
-    OB::Belle::Request req = setup_request(jsonrpc_address(), content);
-    new_client.on_http(req, on_http);
-    new_client.connect();
-  };
-  xrpnet_dbg<5>.debug(str<>("account_info"), addr);
-  auto https_thread = std::thread(std::move(thread_function));
-  https_thread.detach();
+  // init an http request object
+  std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
+  xrpnet_dbg<5>.debug(str<>("account_info"), url);
+  auto* client = net::http::qhttp_request_client::create(
+    *global_settings.networkmanager_, url, content.dump(), std::move(on_http));
+  client->post_request();
 }
 
 // ----------------------------------------------------------------------------
@@ -577,16 +526,10 @@ void xrpl_network::get_all_account_infos()
 {
   for (auto& w : subscribed_wallets_)
   {
-    fn_on_http func = [this, &w](auto& ctx) {
-      if (ctx.res.result() != OB::Belle::Status::ok)
-      {
-        std::cerr << "account_info : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
-                  << " " << ctx.res.reason() << "\n";
-        return;
-      }
+    fn_on_http func = [this, &w](std::string_view data) {
       // debug : print the response headers and body
-      xrpnet_dbg<5>.debug(str<>("account_info"), w.public_, ctx.res.body());
-      this->handle_account_info(w, std::move(ctx.res.body()));
+      xrpnet_dbg<5>.debug(str<>("account_info"), w.public_, data);
+      this->handle_account_info(w, data);
     };
 
     get_account_info(w.public_, func);
@@ -594,7 +537,7 @@ void xrpl_network::get_all_account_infos()
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::handle_account_info(ledger_wallet& w, std::string&& data)
+void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
 {
   nlohmann::json jdata = json::parse(data)["result"]["account_data"];
   xrpnet_dbg<5>.debug(str<>("account info"), jdata.dump(4));
@@ -622,28 +565,19 @@ void xrpl_network::handle_account_info(ledger_wallet& w, std::string&& data)
 // ----------------------------------------------------------------------------
 void xrpl_network::get_account_offers(std::string addr, fn_on_http on_http)
 {
-  auto thread_function = [=]() {
-    OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
-    // set the http 'on error' callback
-    new_client.on_http_error([](auto& ctx) {
-      std::cerr << "get_account_offers : Protocol Error: " << ctx.ec.message() << "\n\n";
-    });
+  nlohmann::json params;
+  params["account"] = addr;
 
-    nlohmann::json params;
-    params["account"] = addr;
+  nlohmann::json content;
+  content["method"] = "account_offers";
+  content["params"] = nlohmann::json::array({params});
 
-    nlohmann::json content;
-    content["method"] = "account_offers";
-    content["params"] = nlohmann::json::array({params});
-
-    // init an http request object
-    OB::Belle::Request req = setup_request(jsonrpc_address(), content);
-    new_client.on_http(req, on_http);
-    new_client.connect();
-  };
-  xrpnet_dbg<5>.debug(str<>("account offers"), addr);
-  auto https_thread = std::thread(std::move(thread_function));
-  https_thread.detach();
+  // init an http request object
+  std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
+  xrpnet_dbg<5>.debug(str<>("account_offers"), url);
+  auto* client = net::http::qhttp_request_client::create(
+    *global_settings.networkmanager_, url, content.dump(), std::move(on_http));
+  client->post_request();
 }
 
 // ----------------------------------------------------------------------------
@@ -651,16 +585,10 @@ void xrpl_network::get_all_account_offers()
 {
   for (auto& w : subscribed_wallets_)
   {
-    fn_on_http func = [this, &w](auto& ctx) {
-      if (ctx.res.result() != OB::Belle::Status::ok)
-      {
-        std::cerr << "account_offers : " << w.public_ << " : HTTPS Error: " << ctx.res.result_int()
-                  << " " << ctx.res.reason() << "\n";
-        return;
-      }
+    fn_on_http func = [this, &w](std::string_view data) {
       // debug : print the response headers and body
-      xrpnet_dbg<5>.debug(str<>("account_offers"), w.public_, ctx.res.body());
-      this->handle_account_offers(w, std::move(ctx.res.body()));
+      xrpnet_dbg<5>.debug(str<>("account_offers"), w.public_, data);
+      this->handle_account_offers(w, data);
     };
 
     get_account_offers(w.public_, func);
@@ -668,7 +596,7 @@ void xrpl_network::get_all_account_offers()
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::handle_account_offers(ledger_wallet& w, std::string&& data)
+void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data)
 {
   nlohmann::json jdata = json::parse(data)["result"];
   xrpnet_dbg<5>.debug(str<>("account offers"), jdata.dump(4));
@@ -758,31 +686,18 @@ void xrpl_network::submit_signed_transaction(std::string&& signed_tx)
   content["method"] = "submit";
   content["params"] = nlohmann::json::array({tx});
 
-  // init an http request object
-  OB::Belle::Request req = setup_request(jsonrpc_address(), content);
-
-  auto thread_function = [&, req = std::move(req)]() {
-    OB::Belle::Client new_client(jsonrpc_address(), jsonrpc_port(), true);
-    // set the http 'on error' callback
-    new_client.on_http_error(
-      [](auto& ctx) { std::cerr << "make_payment : Error: " << ctx.ec.message() << "\n\n"; });
-
-    new_client.on_http(req, [this](auto& ctx) {
-      if (ctx.res.result() != OB::Belle::Status::ok)
-      {
-        std::cerr << "Make payment : HTTPS Error: " << ctx.res.result_int() << " "
-                  << ctx.res.reason() << "\n";
-        return;
-      }
-      // debug : print the response headers and body
-      xrpnet_dbg<5>.debug(str<>("Tx submit response"), ctx.res.body());
-      emit transaction_event();
-    });
-
-    new_client.connect();
+  auto on_http = [this](std::string_view data) {
+    // debug : print the response headers and body
+    xrpnet_dbg<5>.debug(str<>("Tx submit response"), data);
+    emit transaction_event();
   };
-  auto https_thread = std::thread(std::move(thread_function));
-  https_thread.detach();
+
+  // init an http request object
+  std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
+  xrpnet_dbg<5>.debug(str<>("signed_transaction"), url);
+  auto* client = net::http::qhttp_request_client::create(
+    *global_settings.networkmanager_, url, content.dump(), std::move(on_http));
+  client->post_request();
 }
 
 // ----------------------------------------------------------------------------
@@ -887,16 +802,10 @@ void xrpl_network::query_iou_fee(issued_currency const& c1)
     return;
   }
 
-  fn_on_http func = [this, c1](auto& ctx) {
-    if (ctx.res.result() != OB::Belle::Status::ok)
-    {
-      std::cerr << "account_info : " << c1.issuer_ << " : HTTPS Error: " << ctx.res.result_int()
-                << " " << ctx.res.reason() << "\n";
-      return;
-    }
+  fn_on_http func = [this, c1](std::string_view data) {
     // debug : print the response headers and body
-    xrpnet_dbg<5>.debug(str<>("account_info"), c1.issuer_, ctx.res.body());
-    nlohmann::json jdata = json::parse(ctx.res.body())["result"]["account_data"];
+    xrpnet_dbg<5>.debug(str<>("account_info"), c1.issuer_, data);
+    nlohmann::json jdata = json::parse(data)["result"]["account_data"];
     if (jdata.contains("TransferRate"))
     {
       int sfee = jdata["TransferRate"].get<int>();
@@ -955,13 +864,3 @@ void xrpl_network::custom_functions(basic_account* acct)
 }
 
 // ----------------------------------------------------------------------------
-//    {
-//        using namespace std::chrono_literals;
-//        using namespace jtx;
-//        Basic_Con
-//        Env env(*this);
-//        env.fund(XRP(10000), "alice", "bob");
-//        env.close();
-//        auto wsc = makeWSClient(env.app().config());
-
-//    }

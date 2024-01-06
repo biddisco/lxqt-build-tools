@@ -1,16 +1,12 @@
-#include <QApplication>
-#include <QObject>
-#include <QSettings>
-#include <QStandardPaths>
-
 #include <algorithm>
 #include <memory>
 #include <regex>
-
-#include "debug/print.hpp"
-#include "mainwindow.hpp"
-#include "network/evp-encrypt.hpp"
-#include "widgets/password_dialog.hpp"
+//
+#include <QApplication>
+#include <QNetworkAccessManager>
+#include <QObject>
+#include <QSettings>
+#include <QStandardPaths>
 //
 #include <pika/init.hpp>
 #include <pika/modules/execution.hpp>
@@ -19,6 +15,11 @@
 #include <pika/modules/schedulers.hpp>
 #include <pika/modules/thread_manager.hpp>
 #include <pika/program_options.hpp>
+//
+#include "debug/print.hpp"
+#include "mainwindow.hpp"
+#include "network/evp-encrypt.hpp"
+#include "widgets/password_dialog.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -30,8 +31,9 @@ template <int Level>
 static print_threshold<Level, debug_level> app_dbg("App-Main");
 
 // ----------------------------------------------------------------------------
-void init_settings(app_settings* settings)
+void init_settings(app_settings* settings, QNetworkAccessManager* networkmanager)
 {
+  settings->networkmanager_ = networkmanager;
   settings->tempLocation =
     QStandardPaths::standardLocations(QStandardPaths::TempLocation).first().toLatin1().data();
   settings->configLocation =
@@ -156,7 +158,10 @@ std::string exec(const char* cmd)
 // ----------------------------------------------------------------------------
 int qt_main(int argc, char* argv[])
 {
+  // make sure networkmanager is created on this thread
   QApplication app(argc, argv);
+  QNetworkAccessManager networkmanager;
+  //
   QIcon icon(":images/xrp.ico");
   app.setWindowIcon(icon);
   app.setApplicationName("grox");
@@ -165,7 +170,7 @@ int qt_main(int argc, char* argv[])
   // (especially noticable in debugger terminal)
   app_dbg<0>.eval([]() { std::cout.setf(std::ios::unitbuf); });
 
-  init_settings(&global_settings);
+  init_settings(&global_settings, &networkmanager);
   //
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   //
@@ -362,8 +367,8 @@ int qt_main(int argc, char* argv[])
       index++;
     }
   }
-
-  if (argc > 1 && std::string(argv[1]) == std::string("decode"))
+  /*
+  if ((argc > 1) && (std::string(argv[1]) == std::string("--decode")))
   {
     auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
     app_dbg<5>.debug("\nDecrypted information\n");
@@ -393,7 +398,7 @@ int qt_main(int argc, char* argv[])
     }
     return EXIT_SUCCESS;
   }
-
+*/
   GroxMainWindow mainWindow;
 
   QObject::connect(&app, SIGNAL(aboutToQuit()), &mainWindow, SLOT(appExitCleanupHandler()));
@@ -451,7 +456,8 @@ void init_resource_partitioner_handler(
   // Create a thread pool with a single core for Qt
   rp.create_thread_pool(qt_pool_name, pika::resource::scheduling_policy::unspecified, mode);
   // set the schedule mode for the default pool
-  rp.create_thread_pool("default", pika::resource::scheduling_policy::shared_priority, mode);
+  //  rp.create_thread_pool("default", pika::resource::scheduling_policy::shared_priority, mode);
+  rp.create_thread_pool("default", pika::resource::scheduling_policy::unspecified, mode);
   rp.add_resource(rp.numa_domains()[0].cores()[0].pus()[0], qt_pool_name);
 }
 

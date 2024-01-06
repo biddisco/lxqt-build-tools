@@ -19,7 +19,7 @@
 #include <string>
 #include <thread>
 //
-#include "network/websocket-ssl.hpp"
+#include "network/test/websocket-ssl.hpp"
 
 net::contexts io_contexts_;
 std::vector<std::thread> ioc_threads_;
@@ -85,7 +85,7 @@ int main(int argc, char** argv)
   int completed = 0;
   const int sec = 8;
   // wait 5 seconds and collect some data
-  for (int i = 0; i < sec && (counter.load() == 0); i++)
+  for (int i = 0; i < sec && (counter.load() < 2); i++)
   {
     std::cout << "Closing in " << sec - i << " seconds " << std::endl;
     std::chrono::seconds dura(1);
