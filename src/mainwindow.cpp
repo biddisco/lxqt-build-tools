@@ -266,12 +266,12 @@ GroxMainWindow::~GroxMainWindow()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::progress_events(int milliseconds)
+void GroxMainWindow::progress_events(int ms)
 {
+  using namespace std::chrono;
   // process messages to unblock startup waits
-  for (auto start = std::chrono::steady_clock::now(), now = start;
-       now < start + std::chrono::milliseconds{milliseconds};
-       now = std::chrono::steady_clock::now())
+  for (auto start = system_clock::now(), now = start; now < start + milliseconds{ms};
+       now = system_clock::now())
   {
     QCoreApplication::processEvents();
   }

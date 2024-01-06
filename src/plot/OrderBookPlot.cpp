@@ -157,7 +157,7 @@ void OrderBookPlot::exportPlot()
 // ----------------------------------------------------------------------------
 void OrderBookPlot::update_time_and_replot()
 {
-  QString now = QDateTime::currentDateTime().toUTC().toString("yyyy-MM-dd hh:mm:ss");
+  QString now = QDateTime::currentDateTimeUtc().toString("yyyy-MM-dd hh:mm:ss");
   //
   QwtText axisTitleX("Price " + now);
   axisTitleX.setRenderFlags(Qt::AlignRight | Qt::AlignVCenter);

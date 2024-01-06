@@ -28,7 +28,7 @@ class bitstamp_network : public exchange
   // websocket token userid
   std::string websocket_user_id_;
   // token expiry time
-  std::atomic<std::chrono::time_point<std::chrono::steady_clock>> token_expiry_;
+  std::atomic<std::chrono::time_point<std::chrono::system_clock>> token_expiry_;
 
   // usually only one present, but allow for more
   std::vector<bitstamp_account> accounts_;
@@ -148,11 +148,11 @@ class bitstamp_network : public exchange
   // ---------------------------------------
   // http: fetch account info/data
   void get_account_info();
-  void get_websocket_token();
+  bool get_websocket_token();
 
   // process account info response
   void handle_account_info(std::string_view);
-  void handle_websockets_token(std::string_view);
+  void handle_websocket_token(std::string_view);
 
   // ---------------------------------------
   // http: fetch open order data

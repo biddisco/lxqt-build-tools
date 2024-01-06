@@ -238,7 +238,7 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
   double sell_size, sell_rate;
   std::tie(sell_size, sell_rate) = *sell_point;
   //
-  QString now = QDateTime::currentDateTime().toUTC().toString("yyyy-MM-dd hh:mm:ss");
+  QString now = QDateTime::currentDateTimeUtc().toString("yyyy-MM-dd hh:mm:ss");
   //
   // title format string
   std::stringstream temp;

@@ -4,6 +4,8 @@
 #include <QPlainTextEdit>
 #include <QString>
 //
+#include <fmt/chrono.h>
+#include <fmt/core.h>
 #include <fmt/format.h>
 //
 #include "debug/print.hpp"
@@ -36,7 +38,7 @@ bitstamp_network::bitstamp_network()
   default_acct.name_ = "Bitstamp Main";
   accounts_.push_back(default_acct);
   using namespace std::literals;
-  token_expiry_ = std::chrono::steady_clock::now() - 60 * 1s;
+  token_expiry_ = std::chrono::system_clock::now() - 60 * 1s;
   // update candles regularly
   connect(global_settings.get_global_clock_timer(), SIGNAL(timeout()), this,
     SLOT(candlestick_timer_event()), Qt::QueuedConnection);
@@ -353,21 +355,34 @@ void bitstamp_network::get_account_info()
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::get_websocket_token()
+// token is valid if it has more than (say) 5s of time left before it expires
+bool token_valid(std::atomic<std::chrono::time_point<std::chrono::system_clock>>& expiry)
 {
   using namespace std::literals;
-  auto now = std::chrono::steady_clock::now();
-  // request a new token if the current one has expired
-  while ((token_expiry_.load() - now) / 1s < 5)
+  return ((expiry.load() - std::chrono::system_clock::now()) / 1s) > 5;
+}
+
+// ----------------------------------------------------------------------------
+bool bitstamp_network::get_websocket_token()
+{
+  using namespace std::chrono;
+  using namespace std::literals;
+  if (!token_valid(token_expiry_))
   {
+    bitstamp_dbg<2>.debug(str<>("websocket_token"), "Fetching new");
     account_request("/api/v2/websockets_token/", "",
-      [this](std::string_view data) { handle_websockets_token(data); });
-    for (auto start = std::chrono::steady_clock::now(), now = start;
-         now < start + std::chrono::seconds{1}; now = std::chrono::steady_clock::now())
+      [this](std::string_view data) { handle_websocket_token(data); });
+    // spin on network until 5s has elapsed, or new valid token arrives
+    for (auto start = system_clock::now(), now = start;
+         !token_valid(token_expiry_) && now < start + 5s; now = system_clock::now())
     {
       QCoreApplication::processEvents();
     }
   }
+  bitstamp_dbg<2>.debug(str<>("websocket_token"),
+    token_valid(token_expiry_) ? "valid until" : "expired",
+    fmt::format("{:%Y-%m-%d %X}", round<seconds>(token_expiry_.load())));
+  return token_valid(token_expiry_);
 }
 
 // ----------------------------------------------------------------------------
@@ -437,10 +452,10 @@ void bitstamp_network::handle_account_info(std::string_view data)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::handle_websockets_token(std::string_view data)
+void bitstamp_network::handle_websocket_token(std::string_view data)
 {
   nlohmann::json jdata = json::parse(data);
-  bitstamp_dbg<0>.debug(str<>("websocket token"), jdata.dump());
+  bitstamp_dbg<5>.debug(str<>("websocket token"), jdata.dump());
   //
   bitstamp_account& acct = get_bitstamp_instance()->account();
   //
@@ -448,7 +463,7 @@ void bitstamp_network::handle_websockets_token(std::string_view data)
   auto valid_sec = jdata["valid_sec"].get<int>();
   websocket_token_ = jdata["token"].get<std::string>();
   websocket_user_id_ = std::to_string(jdata["user_id"].get<int>());
-  token_expiry_ = std::chrono::steady_clock::now() + valid_sec * 1s;
+  token_expiry_ = std::chrono::system_clock::now() + valid_sec * 1s;
 }
 
 // ----------------------------------------------------------------------------

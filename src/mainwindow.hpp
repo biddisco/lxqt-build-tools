@@ -82,7 +82,7 @@ class GroxMainWindow : public QMainWindow
   explicit GroxMainWindow(QWidget* parent = nullptr);
   ~GroxMainWindow() override;
 
-  void progress_events(int milliseconds);
+  void progress_events(int ms);
   void connect_gui_controls();
   bool eventFilter(QObject* obj, QEvent* event) override;
 
