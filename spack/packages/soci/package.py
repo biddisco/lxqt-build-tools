@@ -40,6 +40,15 @@ class Soci(CMakePackage):
     variant("boost", default=False, description="Build with Boost support")
     variant("sqlite", default=False, description="Build with SQLite support")
     variant("postgresql", default=False, description="Build with PostgreSQL support")
+    variant("visibility", default=False, description="Enable hiding private symbol using ELF visibility if supported by the platform")
+
+	#option(SOCI_SHARED "Enable build of shared libraries" ON)
+	#option(SOCI_STATIC "Enable build of static libraries" ON)
+	#option(SOCI_TESTS "Enable build of collection of SOCI tests" ON)
+	#option(SOCI_ASAN "Enable address sanitizer on GCC v4.8+/Clang v 3.1+" OFF)
+	#option(SOCI_LTO "Enable link time optimization" OFF)
+	#option(SOCI_VISIBILITY "Enable hiding private symbol using ELF visibility if supported by the platform" ON)
+
 
     depends_on("boost", when="+boost")
     depends_on("sqlite", when="+sqlite")
@@ -57,6 +66,7 @@ class Soci(CMakePackage):
             # SOCI_STATIC does not work with BOOL:OFF
             "-DSOCI_STATIC=" + ("ON" if "+static" in self.spec else "OFF"),
             self.define_from_variant("CMAKE_CXX_STANDARD", "cxxstd"),
+            self.define_from_variant("SOCI_VISIBILITY", "visibility"),
             self.define_from_variant("WITH_BOOST", "boost"),
             self.define_from_variant("WITH_SQLITE3", "sqlite"),
             self.define_from_variant("WITH_POSTGRESQL", "postgresql"),
