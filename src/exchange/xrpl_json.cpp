@@ -5,23 +5,16 @@
 #include <string>
 #include <vector>
 //
+#include "currency/currency.hpp"
 #include "exchange/xrpl_json.hpp"
 #include "nlohmann/json.hpp"
 
 std::ostream& operator<<(std::ostream& os, xrp_amount const& x)
 {
-  os << "Value: " << x.value << " "
-     << "Currency: ";
-  if (x.currency == currency_type::xrp)
-    os << "xrp";
-  else if (x.currency == currency_type::usd_bitstamp)
-    os << "usd_bitstamp";
-  else if (x.currency == currency_type::eur_bitstamp)
-    os << "eur_bitstamp";
-  else if (x.currency == currency_type::usd_gatehub)
-    os << "usd_gatehub";
+  if (x.currency.has_value())
+    os << x.currency.value();
   else
-    os << "other";
+    os << "ERR.invalid";
   return os;
 }
 
@@ -104,7 +97,6 @@ void from_json(nlohmann::json const& j, xrp_amount& p)
   if (j.size() == 1)
   {
     p.value = std::stod(j.get<std::string>());
-    p.currency = currency_type::xrp;
   }
   else
   {
@@ -137,8 +129,7 @@ void from_json(nlohmann::json const& j, xrp_amount& p)
       issuer = j.at("issuer").get<std::string>();
     }
     //
-    p.trustline = {issuer, currency};
-    p.currency = get_currency_type({issuer, currency});
+    p.currency = {issuer, currency};
   }
 }
 

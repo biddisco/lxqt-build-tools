@@ -63,7 +63,8 @@ void websocket_subscribe_offers()
 
   using namespace std::placeholders;
   auto ws_orderbook = net::ws::create_session(io_contexts_.ioc, io_contexts_.ctx, "s1.ripple.com",
-    "443", subscription, std::bind(new_orderbook_data, nullptr, currency_pair{}, _1));
+    "443", subscription,
+    std::bind(new_orderbook_data, nullptr, currency_pair{currency{}, currency{}}, _1));
 
   int completed = 0;
   const int sec = 8;

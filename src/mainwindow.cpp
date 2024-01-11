@@ -49,6 +49,8 @@
 #include "DockManager.h"
 #include "FloatingDockContainer.h"
 
+#define GROX_HAVE_BITSTAMP
+
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
 
@@ -113,18 +115,18 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   // Setup a menu to allow dockwindow control
   createPerspectives_Ui();
 
+#ifdef GROX_HAVE_BITSTAMP
   // ----------------------------------
   // create bitstamp exchange interface
   bitstamp_network_ = bitstamp_network::get_bitstamp_instance();
-
+  exchange_list_.push_back(bitstamp_network_);
+#endif
   // ----------------------------------
   // create xrp network interfaces
   // we do not plot the xrp testnet orderbook
   xrpl_network_ = xrpl_network::get_xrpl_instance(false);
   xrpl_testnet_ = xrpl_network::get_xrpl_instance(true);
-  //xrpl_network_->set_plot(obp_);
 
-  exchange_list_.push_back(bitstamp_network_);
   exchange_list_.push_back(xrpl_network_);
   exchange_list_.push_back(xrpl_testnet_);
 
@@ -208,17 +210,12 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
   // ----------------------------------
   // initialize networks / start websocket connections etc
-  main_dbg<0>.debug("Init bitstamp");
-  bitstamp_network_->initialize();
-  progress_events(10);
-  //
-  main_dbg<0>.debug("Init xrpl mainnet");
-  xrpl_network_->initialize();
-  progress_events(10);
-  //
-  main_dbg<0>.debug("Init xrpl testnet");
-  xrpl_testnet_->initialize();
-  progress_events(10);
+  for (auto const& e : exchange_list_)
+  {
+    main_dbg<0>.debug(str<>("Init exchange"), e->name());
+    e->initialize();
+    progress_events(10);
+  }
 
   // ----------------------------------
   // setup connections tab
@@ -285,15 +282,15 @@ void GroxMainWindow::appExitCleanupHandler()
   // block here to prevent access of temp buffers that are deleted
   // by the program/qt/etc
   //
-  bitstamp_network_->shut_down();
-  bitstamp_network_.reset();
-  //
-  xrpl_network_->shut_down();
-  xrpl_network_.reset();
-  //
-  xrpl_testnet_->shut_down();
-  xrpl_testnet_.reset();
-  main_dbg<0>.debug(str<>("websockets"), "shutdown complete");
+  for (auto& e : exchange_list_)
+  {
+    std::string name = std::string(e->name());
+    main_dbg<0>.debug(str<>("shut down"), name);
+    e->shut_down();
+    e.reset();
+    main_dbg<0>.debug(str<>("shut down"), name, "complete");
+  }
+  main_dbg<0>.debug(str<>("exchanges"), "shutdown complete");
 }
 
 // ----------------------------------------------------------------------------

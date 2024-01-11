@@ -163,17 +163,20 @@ namespace net::http {
   void qhttp_request_client::onSslErrors(
     client_ptr self, QNetworkReply* reply, const QList<QSslError>& errors)
   {
-    http_dbg<0>.debug(str<>("onSslErrors"), self);
-    QString errorString;
-    foreach (const QSslError& error, errors)
-    {
-      if (!errorString.isEmpty())
-        errorString += '\n';
-      errorString += error.errorString();
-    }
-    qDebug() << "SSL Error: " << errorString;
-    delete reply;
-    delete self;
+    reply->ignoreSslErrors();
+    return;
+
+    // http_dbg<0>.debug(str<>("onSslErrors"), self);
+    // QString errorString;
+    // foreach (const QSslError& error, errors)
+    // {
+    //   if (!errorString.isEmpty())
+    //     errorString += '\n';
+    //   errorString += error.errorString();
+    // }
+    // qDebug() << "SSL Error: " << errorString;
+    // delete reply;
+    // delete self;
   }
 
 }    // namespace net::http

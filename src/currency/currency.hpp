@@ -19,22 +19,28 @@ std::string currency_to_hex(std::string_view name);
 std::string hex_to_currency(std::string_view name);
 
 // ----------------------------------------------------------------------------
-enum currency_type : int
-{
-  xrp = 0,
-  usd_bitstamp,
-  eur_bitstamp,
-  usd_gatehub,
-  xrpl_trustline,
-  usd_unknown,
-  other,
-};
-
-// ----------------------------------------------------------------------------
 struct issued_currency
 {
   std::string issuer_;
   std::string code_;
+  //
+  bool operator==(issued_currency const& c) const
+  {
+    return (code_ == c.code_) && (issuer_ == c.issuer_);
+  }
+
+  // return true if the currency is a fiat currency such as USD, EUR etc etc
+  bool is_fiat() const
+  {
+    return (issuer_ == "");
+  }
+  bool is_xrp() const
+  {
+    return (issuer_ == "") && (code_ == "XRP");
+  }
+
+  // stream operators
+  friend std::ostream& operator<<(std::ostream&, issued_currency const&);
 };
 
 // ----------------------------------------------------------------------------
@@ -44,17 +50,42 @@ struct currency
   static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
   static inline std::vector<issued_currency> trustlines = {};
   //
+  currency()
+    : curr_({"", ""})
+  {
+  }
+  currency(std::string_view issuer, std::string_view code)
+    : curr_({std::string(issuer), std::string(code)})
+  {
+  }
+  currency(const issued_currency& c);
+  currency(
+    issued_currency curr, double balance, double avail, double reserved, currency_widget* widget);
+  //
   bool operator==(currency const& c) const
   {
-    return curr_.code_ == c.curr_.code_ && curr_.issuer_ == c.curr_.issuer_;
+    return (curr_.code_ == c.curr_.code_) && (curr_.issuer_ == c.curr_.issuer_);
   }
   bool operator<(currency const& c) const
   {
     return curr_.code_ < c.curr_.code_;
   }
+
+  // stream operators
+  friend std::ostream& operator<<(std::ostream&, currency const&);
+
+  // return true if the currency is a fiat currency such as USD, EUR etc etc
+  bool is_fiat() const
+  {
+    return curr_.is_fiat();
+  }
+  bool is_xrp() const
+  {
+    return curr_.is_fiat();
+  }
+
   //
   issued_currency curr_;
-  currency_type type_;
   double balance_;
   double avail_;
   double reserved_;
@@ -65,21 +96,13 @@ using currency_pair = std::tuple<currency, currency>;
 using currency_pairlist = std::vector<currency_pair>;
 
 // ----------------------------------------------------------------------------
-// convert a string pair, name, issuer to a currency type enum
-currency_type get_currency_type(issued_currency const& c);
-// return a currency object from a string like "USD"
-currency get_currency(std::string_view c);
-
-// ----------------------------------------------------------------------------
-// return true if the currency is a fiat currency such as USD, EUR etc etc
-bool is_fiat(currency_type c);
-bool is_fiat(issued_currency const& c);
-bool is_xrp(currency_type c);
+// return a currency object from strings like {"USD", issuer}
+currency get_currency(std::string_view issuer, std::string_view code);
+currency_pair get_currency_pair(std::string_view c1, std::string_view c2);
 
 // ----------------------------------------------------------------------------
 // convert a currency type enum to a string pair, {name, issuer}
-std::pair<std::string, std::string> to_string(currency_type const& t);
-std::pair<std::string, std::string> to_string(currency const& t);
+std::pair<std::string, std::string> to_string(currency const& c);
 std::string currency_pair_string(currency_pair const& p, std::string_view sep = "-");
 std::string currency_pair_lowercase_string(currency_pair const& p);
 currency_pair string_to_pair(std::string_view s, std::string_view delim);
@@ -87,7 +110,7 @@ currency_pair string_to_pair(std::string_view s, std::string_view delim);
 // ----------------------------------------------------------------------------
 // displays an amount such as 1.34 as a string, but uses different numbers
 // of decimal places depending on the currency type (fiat always 2)
-std::string to_string(double amount, currency_type c);
+std::string to_string(double amount, const currency& c);
 
 template <typename T>
 std::string to_string_with_precision(const T a_value, const int n = 6)
@@ -97,8 +120,3 @@ std::string to_string_with_precision(const T a_value, const int n = 6)
   out << std::fixed << a_value;
   return out.str();
 }
-
-// ----------------------------------------------------------------------------
-// stream operators
-std::ostream& operator<<(std::ostream& os, currency_type const&);
-std::ostream& operator<<(std::ostream& os, currency const&);

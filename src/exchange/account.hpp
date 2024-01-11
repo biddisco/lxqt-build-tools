@@ -49,10 +49,7 @@ struct basic_account
   {
     std::scoped_lock l(currency_mtx_);
     //
-    auto it = ranges::find_if(currencies_, [&curr](currency const& c) {
-      return c.type_ == curr.type_ && c.curr_.code_ == curr.curr_.code_ &&
-        c.curr_.issuer_ == curr.curr_.issuer_;
-    });
+    auto it = ranges::find_if(currencies_, [&curr](currency const& c) { return (c == curr); });
     if (it == currencies_.end())
     {
       currencies_.push_back(curr);
@@ -105,13 +102,13 @@ struct ledger_wallet : public basic_account
     std::scoped_lock l(currency_mtx_);
     // sort so that XRP is always first
     std::sort(currencies_.begin(), currencies_.end(),
-      [](currency const& a, currency const&) -> bool { return (a.type_ == currency_type::xrp); });
+      [](currency const& a, currency const&) -> bool { return (a.is_xrp()); });
     //
     int reserve = 0;
     currency* xrp = nullptr;
     for (auto& c : currencies_)
     {
-      if (c.type_ == currency_type::xrp)
+      if (c.is_xrp())
         xrp = &c;
       else
         reserve += 2;
@@ -138,11 +135,11 @@ struct bitstamp_account : public ledger_wallet
   // bitstamp has a different deposit address for IOUs
   virtual std::string_view get_receive_address(currency const& c) override
   {
-    if (c.type_ == currency_type::xrp)
+    if (c.is_xrp())
       return public_;
-    if (c.type_ == currency_type::usd_bitstamp)
+    if (c.curr_ == issued_currency{currency::bitstamp_trust, "USD"})
       return currency::bitstamp_trust;
-    if (c.type_ == currency_type::eur_bitstamp)
+    if (c.curr_ == issued_currency{currency::bitstamp_trust, "EUR"})
       return currency::bitstamp_trust;
     return "";
   }

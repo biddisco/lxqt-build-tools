@@ -28,8 +28,8 @@ struct trade_data
 {
   std::shared_ptr<exchange> network_;
   std::string wallet_;
-  currency_type taker_payc_;
-  currency_type taker_getc_;
+  issued_currency taker_payc_;
+  issued_currency taker_getc_;
   double taker_pay_;
   double taker_get_;
   double exchange_rate_;
@@ -82,9 +82,9 @@ struct trade_data
   {
     // if taker pays us xrp, we are buying xrp
     // if takets gets xrp from us, we are selling it
-    if (taker_payc_ == currency_type::xrp)
+    if (taker_payc_.is_xrp())
       return trade_type::buy;
-    if (taker_getc_ == currency_type::xrp)
+    if (taker_getc_.is_xrp())
       return trade_type::sell;
     return trade_type::trade;
   }

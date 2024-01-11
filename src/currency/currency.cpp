@@ -9,6 +9,28 @@
 #include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
+currency::currency(const issued_currency& c)
+{
+  curr_ = c;
+  balance_ = 0.0;
+  avail_ = 0.0;
+  reserved_ = 0.0;
+  widget_ = nullptr;
+}
+
+// ----------------------------------------------------------------------------
+currency::currency(
+  issued_currency curr, double balance, double avail, double reserved, currency_widget* widget)
+  : curr_(curr)
+  , balance_(balance)
+  , avail_(avail)
+  , reserved_(reserved)
+  , widget_(widget)
+{
+}
+
+// ----------------------------------------------------------------------------
+/*
 currency_type get_currency_type(issued_currency const& c)
 {
   if (c.code_ == "XRP")
@@ -44,44 +66,33 @@ currency_type get_currency_type(issued_currency const& c)
   //
   return currency_type::other;
 }
+*/
+// ----------------------------------------------------------------------------
+// currency get_currency(std::string_view code)
+// {
+//   auto icfn = [](std::string_view c) -> issued_currency {
+//     if (c == "USD" || c == "EUR")
+//       return issued_currency{currency::bitstamp_trust, std::string{c}};
+//     if (c == "XRP")
+//       return issued_currency{"", "XRP"};
+//     else
+//       return issued_currency{"", std::string{c}};
+//   };
+//   auto ic1 = icfn(code);
+//   return currency{ic1, get_currency_type(ic1), 0, 0, 0, nullptr};
+// }
 
 // ----------------------------------------------------------------------------
-currency get_currency(std::string_view c)
+currency get_currency(std::string_view issuer, std::string_view code)
 {
-  auto icfn = [](std::string_view c) -> issued_currency {
-    if (c == "USD" || c == "EUR")
-      return issued_currency{currency::bitstamp_trust, std::string{c}};
-    if (c == "XRP")
-      return issued_currency{"", "XRP"};
-    else
-      return issued_currency{"", std::string{c}};
-  };
-  auto ic1 = icfn(c);
-  return currency{ic1, get_currency_type(ic1), 0, 0, 0, nullptr};
+  assert(std::string(code) != std::string(""));
+  return currency(issued_currency{std::string{issuer}, std::string{code}});
 }
 
 // ----------------------------------------------------------------------------
-bool is_fiat(currency_type c)
-{
-  if (c == currency_type::usd_bitstamp || c == eur_bitstamp || c == usd_gatehub)
-    return true;
-  return false;
-}
-
-bool is_fiat(issued_currency const& c)
-{
-  return is_fiat(get_currency_type(c));
-}
 
 // ----------------------------------------------------------------------------
-bool is_xrp(currency_type c)
-{
-  if (c == currency_type::xrp)
-    return true;
-  return false;
-}
-
-// ----------------------------------------------------------------------------
+/*
 std::pair<std::string, std::string> to_string(currency_type const& t)
 {
   switch (t)
@@ -109,35 +120,37 @@ std::pair<std::string, std::string> to_string(currency_type const& t)
   }
   return std::make_pair("error", "");
 }
-
+*/
 // ----------------------------------------------------------------------------
-std::pair<std::string, std::string> to_string(currency const& t)
+std::pair<std::string, std::string> to_string(currency const& c)
 {
-  switch (t.type_)
-  {
-  case xrp:
-    return std::make_pair("XRP", "");
-    break;
-  case usd_bitstamp:
-    return std::make_pair("USD", currency::bitstamp_trust);
-    break;
-  case eur_bitstamp:
-    return std::make_pair("EUR", currency::bitstamp_trust);
-    break;
-  case usd_gatehub:
-    return std::make_pair("USD", currency::gatehub_trust);
-    break;
-  case xrpl_trustline:
-    return std::make_pair(t.curr_.code_, t.curr_.issuer_);
-    break;
-  case other:
-    return std::make_pair("other", "");
-    break;
-  default:
-    return std::make_pair("Unknown", "");
-    break;
-  }
-  return std::make_pair("error", "");
+  return std::make_pair(c.curr_.issuer_, c.curr_.code_);
+
+  // switch (t.type_)
+  // {
+  // case xrp:
+  //   return std::make_pair("XRP", "");
+  //   break;
+  // case usd_bitstamp:
+  //   return std::make_pair("USD", currency::bitstamp_trust);
+  //   break;
+  // case eur_bitstamp:
+  //   return std::make_pair("EUR", currency::bitstamp_trust);
+  //   break;
+  // case usd_gatehub:
+  //   return std::make_pair("USD", currency::gatehub_trust);
+  //   break;
+  // case xrpl_trustline:
+  //   return std::make_pair(t.curr_.code_, t.curr_.issuer_);
+  //   break;
+  // case other:
+  //   return std::make_pair("other", "");
+  //   break;
+  // default:
+  //   return std::make_pair("Unknown", "");
+  //   break;
+  // }
+  // return std::make_pair("error", "");
 }
 
 // ----------------------------------------------------------------------------
@@ -167,28 +180,47 @@ currency_pair string_to_pair(std::string_view s, std::string_view delim)
   }
   std::string_view p1 = s.substr(0, e0);
   std::string_view p2 = s.substr(e1, s.back());
-  return {::get_currency(p1), ::get_currency(p2)};
+  return {::get_currency("", p1), ::get_currency("", p2)};
 }
 
 // ----------------------------------------------------------------------------
-std::ostream& operator<<(std::ostream& os, currency_type const& t)
+// std::ostream& operator<<(std::ostream& os, currency_type const& t)
+// {
+//   os << to_string(t).first;
+//   return os;
+// }
+
+// ----------------------------------------------------------------------------
+std::ostream& operator<<(std::ostream& os, issued_currency const& c)
 {
-  os << to_string(t).first;
+  if (c.is_fiat())
+  {
+    os << c.code_;
+  }
+  else
+  {
+    if (c.issuer_ == currency::bitstamp_trust)
+      os << c.code_ << ".bitstamp";
+    else if (c.issuer_ == currency::gatehub_trust)
+      os << c.code_ << ".gatehub";
+    else
+      os << c.code_ << "." << c.issuer_;
+  }
   return os;
 }
 
 // ----------------------------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, currency const& c)
 {
-  os << c.curr_.code_ << "(" << c.curr_.issuer_ << ")" << c.balance_;
+  os << c.curr_.code_ << c.balance_;
   return os;
 }
 
 // ----------------------------------------------------------------------------
-std::string to_string(double amount, currency_type c)
+std::string to_string(double amount, currency const& c)
 {
   int dec = 6;
-  if (is_fiat(c))
+  if (c.is_fiat())
   {
     dec = 2;
   }
