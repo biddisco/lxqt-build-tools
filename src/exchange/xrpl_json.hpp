@@ -89,7 +89,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_order_book, bids, asks, timestamp, micro
 struct xrp_amount
 {
   double value;
-  std::optional<issued_currency> currency = std::nullopt;
+  std::optional<currency_code> currency = std::nullopt;
 };
 
 Q_DECLARE_METATYPE(xrp_amount)
@@ -170,9 +170,9 @@ struct xrpl_offer
   bool grox_compatible() const
   {
     return ((is_xrp(TakerGets) &&
-              (TakerPays.currency == issued_currency{currency::bitstamp_trust, "USD"})) ||
+              (TakerPays.currency == currency_code{currency::bitstamp_trust, "USD"})) ||
       (is_xrp(TakerPays) &&
-        (TakerGets.currency == issued_currency{currency::bitstamp_trust, "USD"})));
+        (TakerGets.currency == currency_code{currency::bitstamp_trust, "USD"})));
   }
 };
 

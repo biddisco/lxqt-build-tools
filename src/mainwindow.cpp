@@ -24,9 +24,9 @@
 #include <QwtAxis>
 #include <QwtScaleDraw>
 #include <QwtScaleEngine>
-#include "data/ohlctv_sample.hpp"
 // Grox
 #include "data/ohlc_heikin_ashi.hpp"
+#include "data/ohlctv_sample.hpp"
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
 #include "exchange/xrpl.hpp"
@@ -50,6 +50,7 @@
 #include "FloatingDockContainer.h"
 
 #define GROX_HAVE_BITSTAMP
+//#define GROX_HAVE_XRPL
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
@@ -121,14 +122,15 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   bitstamp_network_ = bitstamp_network::get_bitstamp_instance();
   exchange_list_.push_back(bitstamp_network_);
 #endif
+
+#ifdef GROX_HAVE_XRPL
   // ----------------------------------
   // create xrp network interfaces
-  // we do not plot the xrp testnet orderbook
   xrpl_network_ = xrpl_network::get_xrpl_instance(false);
   xrpl_testnet_ = xrpl_network::get_xrpl_instance(true);
-
   exchange_list_.push_back(xrpl_network_);
   exchange_list_.push_back(xrpl_testnet_);
+#endif
 
   // ----------------------------------
   // Create dockwidget for network connections
@@ -348,6 +350,7 @@ void GroxMainWindow::connect_gui_controls()
   // Qt::QueuedConnection to ensure they transfer to Qt main thread
   // ---------------------------------------------------------------------
 
+#ifdef GROX_HAVE_BITSTAMP
   // orderbook updates from bitstamp network connection
   // 1 Priority, arbitrage, 2 plot update, 3 text update
   connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()), this, SLOT(perform_arbitrage()),
@@ -377,7 +380,9 @@ void GroxMainWindow::connect_gui_controls()
   connect(
     bitstamp_network_.get(), &bitstamp_network::network_initialized, this,
     [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
+#endif
 
+#ifdef GROX_HAVE_XRPL
   connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)), this,
     SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
   connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)), this,
@@ -402,6 +407,7 @@ void GroxMainWindow::connect_gui_controls()
   connect(
     xrpl_testnet_.get(), &xrpl_network::network_initialized, this,
     [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
+#endif
 
   connect(
     algo_form_->exec_algo, &QAbstractButton::clicked, this,
@@ -706,8 +712,7 @@ void GroxMainWindow::loadConnectionSetups()
       if (enabled)
       {
         main_dbg<0>.debug(str<>("Enable Ticker"), currencypair);
-        auto cp = string_to_pair(currencypair, "-");
-        e->ticker_subscribe(std::get<0>(cp), std::get<1>(cp));
+        e->ticker_subscribe(string_to_pair(currencypair, "-"));
         // process messages to unblock startup waits
         progress_events(10);
       }

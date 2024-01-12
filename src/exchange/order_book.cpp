@@ -646,7 +646,7 @@ bool xrpl_order_book::update_offer(
   //
   std::vector<xrpl_offer>& acc_bids = std::get<bid_index>(it->second);
   std::vector<xrpl_offer>& acc_asks = std::get<ask_index>(it->second);
-  if (prev_offer.TakerPays.currency == currency("", "XRP"))
+  if (prev_offer.TakerPays.currency.value() == currency_code("", "XRP"))
   {
     auto it2 = std::find(acc_bids.begin(), acc_bids.end(), prev_offer);
     if (it2 == acc_bids.end())
@@ -698,7 +698,7 @@ bool xrpl_order_book::insert_offer(xrpl_offer const& offer)
   // add new order to map vectors
   std::vector<xrpl_offer>& acc_bids = std::get<bid_index>(it->second);
   std::vector<xrpl_offer>& acc_asks = std::get<ask_index>(it->second);
-  if (offer.TakerPays.currency == currency("", "XRP"))
+  if (offer.TakerPays.currency.value() == currency_code("", "XRP"))
   {
     acc_bids.push_back(offer);
     obook_dbg<5>.debug(str<>("Insert Bid:"), offer);
@@ -724,7 +724,7 @@ bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
   // remove order from map vector
   std::vector<xrpl_offer>& acc_bids = std::get<bid_index>(it->second);
   std::vector<xrpl_offer>& acc_asks = std::get<ask_index>(it->second);
-  if (offer.TakerPays.currency == currency("", "XRP"))
+  if (offer.TakerPays.currency.value() == currency_code("", "XRP"))
   {
     auto val = std::find(acc_bids.begin(), acc_bids.end(), offer);
     if (val == acc_bids.end())

@@ -215,7 +215,7 @@ class xrpl_network : public exchange
 
   void custom_functions(basic_account* acct) override;
 
-  void query_iou_fee(issued_currency const& c1);
+  void query_iou_fee(currency_code const& c1);
 
   signals:
   // Signals are emitted so that the Qt appication/GUI thread can perform

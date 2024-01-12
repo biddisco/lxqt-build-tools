@@ -137,9 +137,9 @@ struct bitstamp_account : public ledger_wallet
   {
     if (c.is_xrp())
       return public_;
-    if (c.curr_ == issued_currency{currency::bitstamp_trust, "USD"})
+    if (c == currency_code{currency::bitstamp_trust, "USD"})
       return currency::bitstamp_trust;
-    if (c.curr_ == issued_currency{currency::bitstamp_trust, "EUR"})
+    if (c == currency_code{currency::bitstamp_trust, "EUR"})
       return currency::bitstamp_trust;
     return "";
   }

@@ -275,8 +275,8 @@ bool bitstamp_network::can_send(const currency& c, exchange* dest)
   auto xrp_net = dynamic_cast<xrpl_network*>(dest);
   if (xrp_net && !xrp_net->testnet())
   {
-    if (c.is_xrp() && (c.curr_.issuer_ == currency::bitstamp_trust) &&
-      ((c.curr_.code_ == "USD") || (c.curr_.code_ == "EUR")))
+    if (c.is_xrp() && (c.issuer_ == currency::bitstamp_trust) &&
+      ((c.code_ == "USD") || (c.code_ == "EUR")))
       return true;
   }
   return false;
@@ -288,11 +288,11 @@ double bitstamp_network::get_fee_percent(currency const& c1, currency const& c2)
   std::pair<std::string, std::string> cpair;
   if (c1.is_xrp())
   {
-    cpair = std::make_pair(lowercase(to_string(c1).first), lowercase(to_string(c2).first));
+    cpair = std::make_pair(lowercase(c1.to_string().first), lowercase(c2.to_string().first));
   }
   else
   {
-    cpair = std::make_pair(lowercase(to_string(c2).first), lowercase(to_string(c1).first));
+    cpair = std::make_pair(lowercase(c2.to_string().first), lowercase(c1.to_string().first));
   }
   const auto val = fee_map_.at(cpair);
   return val;
@@ -328,7 +328,7 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
   // this is an IOU transfer
   else
   {
-    req_string << "&currency= this is wrong" << c.curr_.issuer_;
+    req_string << "&currency= this is wrong" << c.issuer_;
     //
     account_request("/api/v2/ripple_withdrawal/", req_string.str(), [](std::string_view data) {
       bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/ripple_withdrawal/", data);
@@ -571,7 +571,7 @@ void bitstamp_network::handle_open_orders(std::string_view data)
   for (auto const& [key, val] : jdata.items())
   {
     const std::string jstring = val[std::string_view("currency_pair")];
-    auto const& [c1, c2] = split_currency_pair_string(jstring);
+    auto const& [c1, c2] = split_currency_pair_string(jstring, '/');
 
     double amount = std::stod(JCHARP(val["amount"]));
     double price = std::stod(JCHARP(val["price"]));
@@ -782,9 +782,9 @@ void bitstamp_network::receive_tickers_available(std::string_view data)
   for (auto const& [key, val] : jdata.items())
   {
     json::string_t jstring = val[std::string_view("pair")];
-    auto const& [c1, c2] = split_currency_pair_string(jstring);
+    auto const& [c1, c2] = string_to_pair(jstring, "/");
     bitstamp_dbg<1>.debug(str<>("Currency pair"), jstring, c1, c2);
-    add_currency_pair(currency("", c1), currency("", c2));
+    add_currency_pair(c1, c2);
   }
 
   emit network_initialized(this);
@@ -816,15 +816,15 @@ void bitstamp_network::place_limit_order(trade_data const& t, bool update_after)
   std::string req, data;
   if (t.get_trade_type() == trade_type::buy)
   {
-    req = std::string("/api/v2/buy/") + std::string(to_string(t.taker_payc_).first) +
-      std::string(to_string(t.taker_getc_).first) + "/";
+    req = std::string("/api/v2/buy/") + std::string(t.taker_payc_.to_string().first) +
+      std::string(t.taker_getc_.to_string().first) + "/";
     data = "&amount=" + to_string(amount, t.taker_payc_) +
       "&price=" + to_string_with_precision(t.exchange_rate_, 5);
   }
   else
   {
-    req = std::string("/api/v2/sell/") + std::string(to_string(t.taker_getc_).first) +
-      std::string(to_string(t.taker_payc_).first) + "/";
+    req = std::string("/api/v2/sell/") + std::string(t.taker_getc_.to_string().first) +
+      std::string(t.taker_payc_.to_string().first) + "/";
     data = "&amount=" + to_string(amount, t.taker_getc_) +
       "&price=" + to_string_with_precision(t.exchange_rate_, 5);
   }

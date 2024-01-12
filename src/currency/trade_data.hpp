@@ -28,8 +28,8 @@ struct trade_data
 {
   std::shared_ptr<exchange> network_;
   std::string wallet_;
-  issued_currency taker_payc_;
-  issued_currency taker_getc_;
+  currency_code taker_payc_;
+  currency_code taker_getc_;
   double taker_pay_;
   double taker_get_;
   double exchange_rate_;

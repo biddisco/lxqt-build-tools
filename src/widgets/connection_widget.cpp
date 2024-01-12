@@ -69,8 +69,7 @@ void connection_widget::setup_gui()
   for (auto const& [i, cp] : exchange_->get_currency_pairs() | ranges::views::enumerate)
   {
     QStandardItem* item = new QStandardItem();
-    item->setText(
-      std::get<0>(cp).curr_.code_.c_str() + QString("/") + std::get<1>(cp).curr_.code_.c_str());
+    item->setText(currency_pair_qstring(cp, "/"));
     item->setCheckable(true);
     // initial state stored in user role to track checkbox changes
     if (exchange_->ticker_subscribed(std::get<0>(cp), std::get<1>(cp)))
@@ -131,7 +130,7 @@ void connection_widget::apply()
   for (int i = 0; i < sl->count(); ++i)
   {
     std::string s = sl->item(i)->text().toStdString();
-    auto const& [c1, c2] = split_currency_pair_string(s);
+    auto const& [c1, c2] = split_currency_pair_string(s, '/');
     exchange_->ticker_subscribe(currency("", c1), currency("", c2));
   }
   // remove any unsubscribed ones

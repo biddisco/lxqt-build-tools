@@ -4,6 +4,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+//
+#include <QString>
 
 //        {"rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg", "ELS"},
 //        {"rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz", "SOLO"},
@@ -19,14 +21,23 @@ std::string currency_to_hex(std::string_view name);
 std::string hex_to_currency(std::string_view name);
 
 // ----------------------------------------------------------------------------
-struct issued_currency
+struct currency_code
 {
+  static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+  static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
+  static inline std::vector<currency_code> trustlines = {};
+  //
   std::string issuer_;
   std::string code_;
-  //
-  bool operator==(issued_currency const& c) const
+
+  bool operator==(currency_code const& c) const
   {
     return (code_ == c.code_) && (issuer_ == c.issuer_);
+  }
+
+  std::pair<std::string, std::string> to_string() const
+  {
+    return std::make_pair(issuer_, code_);
   }
 
   // return true if the currency is a fiat currency such as USD, EUR etc etc
@@ -40,72 +51,84 @@ struct issued_currency
   }
 
   // stream operators
-  friend std::ostream& operator<<(std::ostream&, issued_currency const&);
+  friend std::ostream& operator<<(std::ostream&, currency_code const&);
 };
 
 // ----------------------------------------------------------------------------
-struct currency
+struct currency : public currency_code
 {
-  static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
-  static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
-  static inline std::vector<issued_currency> trustlines = {};
-  //
-  currency()
-    : curr_({"", ""})
-  {
-  }
+  currency() = default;
+
   currency(std::string_view issuer, std::string_view code)
-    : curr_({std::string(issuer), std::string(code)})
+    : currency_code({std::string(issuer), std::string(code)})
+    , balance_(0)
+    , avail_(0)
+    , reserved_(0)
+    , widget_(nullptr)
   {
   }
-  currency(const issued_currency& c);
+
+  currency(const currency_code& c)
+    : currency_code(c)
+    , balance_(0)
+    , avail_(0)
+    , reserved_(0)
+    , widget_(nullptr)
+  {
+  }
+
   currency(
-    issued_currency curr, double balance, double avail, double reserved, currency_widget* widget);
-  //
+    currency_code curr, double balance, double avail, double reserved, currency_widget* widget)
+    : currency_code(curr)
+    , balance_(balance)
+    , avail_(avail)
+    , reserved_(reserved)
+    , widget_(widget)
+  {
+  }
+
+  // comparison operators
   bool operator==(currency const& c) const
   {
-    return (curr_.code_ == c.curr_.code_) && (curr_.issuer_ == c.curr_.issuer_);
+    return (code_ == c.code_) && (issuer_ == c.issuer_);
   }
+
   bool operator<(currency const& c) const
   {
-    return curr_.code_ < c.curr_.code_;
+    return code_ < c.code_;
   }
 
   // stream operators
   friend std::ostream& operator<<(std::ostream&, currency const&);
 
-  // return true if the currency is a fiat currency such as USD, EUR etc etc
-  bool is_fiat() const
+  std::pair<std::string, std::string> to_string() const
   {
-    return curr_.is_fiat();
-  }
-  bool is_xrp() const
-  {
-    return curr_.is_fiat();
+    return currency_code::to_string();
   }
 
+  // const currency_code& code() const
+  // {
+  //   return *this;
+  // }
   //
-  issued_currency curr_;
   double balance_;
   double avail_;
   double reserved_;
   currency_widget* widget_;
 };
 
+// ----------------------------------------------------------------------------
 using currency_pair = std::tuple<currency, currency>;
 using currency_pairlist = std::vector<currency_pair>;
 
 // ----------------------------------------------------------------------------
-// return a currency object from strings like {"USD", issuer}
-currency get_currency(std::string_view issuer, std::string_view code);
 currency_pair get_currency_pair(std::string_view c1, std::string_view c2);
+currency_pair string_to_pair(std::string_view s, std::string_view delim);
 
 // ----------------------------------------------------------------------------
-// convert a currency type enum to a string pair, {name, issuer}
-std::pair<std::string, std::string> to_string(currency const& c);
 std::string currency_pair_string(currency_pair const& p, std::string_view sep = "-");
+QString currency_pair_qstring(currency_pair const& p, std::string_view sep = "-");
 std::string currency_pair_lowercase_string(currency_pair const& p);
-currency_pair string_to_pair(std::string_view s, std::string_view delim);
 
 // ----------------------------------------------------------------------------
 // displays an amount such as 1.34 as a string, but uses different numbers
