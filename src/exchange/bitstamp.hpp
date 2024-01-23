@@ -158,18 +158,21 @@ class bitstamp_network : public exchange
   void shut_down() override;
 
   // ---------------------------------------
-  // http: fetch account info/data
+  // http: get account info/data
   any_bytearray_sender get_account_info();
-  //  unique_any_sender<bool> get_websocket_token();
+  // http: get new websocket token to subscribe to streams
   any_bytearray_sender get_websocket_token();
+  // http: get open order data
+  any_bytearray_sender get_open_orders();
+  // http: get currency tickers available
+  any_bytearray_sender get_tickers_available();
 
   // process account info response
   void handle_account_info(std::string_view);
   void handle_websocket_token(std::string_view);
+  void handle_tickers_available(std::string_view);
 
   // ---------------------------------------
-  // http: fetch open order data
-  any_bytearray_sender get_open_orders();
   // process open order data response
   void handle_open_orders(std::string_view);
   void process_order(nlohmann::json& jdata, std::string_view event);
@@ -187,10 +190,8 @@ class bitstamp_network : public exchange
   // ----------------------------------------------------------------------------
   net::http::client_ptr account_request_sender(
     const std::string& url_path, const std::string& url_query);
-  void account_request(const std::string& url_path, const std::string& url_query,
-    net::http::rx_req_handler_type&& handler);
-  //
 
+  // ----------------------------------------------------------------------------
   void request_new_candlestick_data(
     currency_pair cp, uint64_t start_t, uint64_t samples, net::http::rx_req_handler_type fn);
 
@@ -208,9 +209,6 @@ class bitstamp_network : public exchange
   }
 
   void custom_functions(basic_account* /*acct*/) override{};
-
-  any_bytearray_sender request_tickers();
-  void receive_tickers_available(std::string_view data);
 
   void ticker_subscribe(currency const& c1, currency const& c2) override;
 
