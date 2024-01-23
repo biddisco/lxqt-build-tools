@@ -59,10 +59,8 @@ extern void generate_encrypted_ini_data(password_dialog& npw);
 using namespace grox::debug;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
-//
 template <int Level>
-static print_threshold<Level, debug_level> main_dbg("Main-win");
+static print_threshold<Level, 2> main_dbg("Main-win");
 
 using namespace ads;
 
@@ -708,6 +706,7 @@ void GroxMainWindow::loadConnectionSetups()
     for (auto const& k : childKeys)
     {
       std::string currencypair = k.toStdString();
+      main_dbg<0>.debug(str<>("Check Ticker"), currencypair);
       bool enabled = settings.value(k).toBool();
       if (enabled)
       {
@@ -1159,4 +1158,11 @@ void GroxMainWindow::LoadStyleSheet(int dark)
     global_settings.dock_manager_->setStyleSheet("");
     qApp->setStyleSheet(ts.readAll());
   }
+}
+
+// ----------------------------------------------------------------------------
+bool GroxMainWindow::schedule_function(grox::qt::experimental::detail::qt_function_type func)
+{
+  func(true);
+  return true;
 }

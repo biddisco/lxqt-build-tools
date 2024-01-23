@@ -11,8 +11,9 @@
 static std::atomic<int> pass_count{0};
 std::vector<std::string> test_list{"xrpusd", "btcusd", "xrpeur", "btceur", "xrpbtc"};
 
-void handler(std::string_view reply)
+void handler(QByteArray&& byteArray)
 {
+  std::string_view reply(byteArray.constData(), byteArray.length());
   // print the full response
   std::cerr << "Response:\n" << reply << "\n\n";
   if (reply.find("{\"data\": {\"ohlc\": [{") != std::string::npos)
@@ -39,8 +40,8 @@ int main(int argc, char* argv[])
   {
     std::string url = fmt::format("https://{}:{}/api/v2/ohlc/{}/?step=60&start=1704048480&limit=10",
       "www.bitstamp.net", 443, cp);
-    auto* client = net::http::qhttp_request_client::create(networkmanager, url, &handler);
-    client->get_request();
+    auto* client = net::http::qhttp_request_client::create(networkmanager, url);
+    client->get_request(&handler);
   }
   a.exec();
   //

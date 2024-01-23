@@ -16,6 +16,21 @@
 #include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
+//
+#include <exec/any_sender_of.hpp>
+#include <pika/execution_base/any_sender.hpp>
+
+using pika::execution::experimental::unique_any_sender;
+
+template <class... Ts>
+using any_sender_of =
+  typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
+
+using any_bool_sender = any_sender_of<stdexec::set_value_t(bool), stdexec::set_stopped_t(),
+  stdexec::set_error_t(std::exception_ptr)>;
+
+using any_bytearray_sender = any_sender_of<stdexec::set_value_t(QByteArray byteArray),
+  stdexec::set_stopped_t(), stdexec::set_error_t(std::exception_ptr)>;
 
 // ----------------------------------------------------------------------------
 class bitstamp_network : public exchange
@@ -144,8 +159,9 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // http: fetch account info/data
-  void get_account_info();
-  bool get_websocket_token();
+  any_bytearray_sender get_account_info();
+  //  unique_any_sender<bool> get_websocket_token();
+  any_bytearray_sender get_websocket_token();
 
   // process account info response
   void handle_account_info(std::string_view);
@@ -153,7 +169,7 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // http: fetch open order data
-  void get_open_orders();
+  any_bytearray_sender get_open_orders();
   // process open order data response
   void handle_open_orders(std::string_view);
   void process_order(nlohmann::json& jdata, std::string_view event);
@@ -169,6 +185,8 @@ class bitstamp_network : public exchange
   void cancel_order(trade_data const& t) override;
 
   // ----------------------------------------------------------------------------
+  net::http::client_ptr account_request_sender(
+    const std::string& url_path, const std::string& url_query);
   void account_request(const std::string& url_path, const std::string& url_query,
     net::http::rx_req_handler_type&& handler);
   //
@@ -191,7 +209,7 @@ class bitstamp_network : public exchange
 
   void custom_functions(basic_account* /*acct*/) override{};
 
-  void request_tickers_available();
+  any_bytearray_sender request_tickers();
   void receive_tickers_available(std::string_view data);
 
   void ticker_subscribe(currency const& c1, currency const& c2) override;

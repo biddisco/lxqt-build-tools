@@ -22,13 +22,11 @@
 #include "widgets/password_dialog.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
+using namespace pika::debug::detail;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 5;
-//
 template <int Level>
-static print_threshold<Level, debug_level> app_dbg("App-Main");
+static print_threshold<Level, 5> app_dbg("App-Main");
 
 // ----------------------------------------------------------------------------
 void init_settings(app_settings* settings, QNetworkAccessManager* networkmanager)
@@ -138,7 +136,7 @@ void generate_encrypted_ini_data(password_dialog& npw)
 }
 
 // ----------------------------------------------------------------------------
-std::string exec(const char* cmd)
+std::string execute_os(const char* cmd)
 {
   std::array<char, 1024> buffer;
   std::string result;
@@ -189,7 +187,7 @@ int qt_main(int argc, char* argv[])
   if (!authenticated)
   {
     std::string commandLine = "timeout 5 ssh pi@192.168.1.15 cat /home/pi/.ssh/.skey.sh";
-    auto result = exec(commandLine.c_str());
+    auto result = execute_os(commandLine.c_str());
     std::regex rgx(".*rand3=\"(.*)\".*");
     std::smatch match;
     if (std::regex_search(result, match, rgx))
@@ -224,7 +222,7 @@ int qt_main(int argc, char* argv[])
   if (!authenticated)
   {
     std::string commandLine = "pass grox";
-    auto result = exec(commandLine.c_str());
+    auto result = execute_os(commandLine.c_str());
     if (result.size() > 0)
     {
       global_settings.grox_password = result;

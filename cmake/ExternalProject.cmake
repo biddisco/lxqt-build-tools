@@ -4,14 +4,16 @@
 function(get_external_project)
   cmake_parse_arguments(
     ARGS
-    "DO_NOT_BUILD" # options
+    "DO_NOT_BUILD;DO_NOT_FIND;DEBUG;" # options
     "PROJECT_NAME;GIT_REPO;GIT_TAG;FOLDER_NAME" # 1 value args
     "" # multivalued args
     ${ARGN})
 
   string(TOUPPER ${ARGS_PROJECT_NAME} UPPER_PROJECT)
   string(TOLOWER ${ARGS_PROJECT_NAME} LOWER_PROJECT)
-  find_package(${ARGS_PROJECT_NAME} QUIET)
+  if(NOT ${ARGS_DO_NOT_FIND})
+    find_package(${ARGS_PROJECT_NAME} QUIET)
+  endif()
 
   if(NOT ${ARGS_PROJECT_NAME}_FOUND)
     # look in the current source tree

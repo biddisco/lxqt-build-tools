@@ -20,6 +20,9 @@
 # Rippled needs
 #   sudo apt install liblz4-dev libarchive-dev libsoci-dev
 # ~~~
+#
+# custom Qt installation cmake -DCMAKE_PREFIX_PATH=/usr/local/Qt-6.6.1/
+# -DQT_DEBUG_FIND_PACKAGE=ON ~/src/grox/
 
 # ------------------------------------------------------------------------------
 # CMake version requirement
@@ -175,6 +178,27 @@ get_external_project(PROJECT_NAME "qwt" GIT_REPO "$ENV{HOME}/git-repos/qwt"
                      GIT_TAG "candle-fixes")
 
 # ------------------------------------------------------------------------------
+# Build/Download stdexec std execution senders library
+# ------------------------------------------------------------------------------
+set(STDEXEC_BUILD_EXAMPLES
+    OFF
+    CACHE BOOL "Examples" FORCE)
+set(STDEXEC_BUILD_TESTS
+    OFF
+    CACHE BOOL "Tests" FORCE)
+get_external_project(
+  PROJECT_NAME
+  "STDEXEC"
+  FOLDER_NAME
+  "stdexec"
+  GIT_REPO
+  "https://github.com/NVIDIA/stdexec.git"
+  GIT_TAG
+  "main"
+  DO_NOT_FIND)
+set(STDEXEC_ROOT ${STDEXEC_BINARY_DIR})
+
+# ------------------------------------------------------------------------------
 # Build/Download Qt-Advanced-Docking-System
 # ------------------------------------------------------------------------------
 set(BUILD_EXAMPLES OFF)
@@ -262,8 +286,16 @@ get_external_project(
 # Find/Build/Download pika
 # -------------------------------------------------------------
 set(PIKA_WITH_CXX_STANDARD 20)
-get_external_project(PROJECT_NAME "pika" GIT_REPO
-                     "https://github.com/pika-org/pika" GIT_TAG "main")
+set(PIKA_WITH_STDEXEC ON)
+get_external_project(
+  PROJECT_NAME
+  "pika"
+  GIT_REPO
+  "https://github.com/pika-org/pika"
+  GIT_TAG
+  "main"
+  DO_NOT_FIND)
+
 if(pika_WITH_APEX)
   # I think something like this should be done in APEX' CMakeLists.pika
   include_directories(
@@ -346,7 +378,7 @@ set(GROX_QRC_SRC
     src/grox.qrc ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
     ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc)
 
-add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC})
+add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC} src/senders/CMakeLists.txt)
 # c++ properties
 set_property(TARGET grox PROPERTY CXX_STANDARD 20)
 # Qt properties
@@ -406,6 +438,7 @@ target_link_libraries(
          qt${QT_VERSION_MAJOR}advanceddocking
          ${Boost_LIBRARIES}
          nlohmann_json
+         STDEXEC::stdexec
          fmt::fmt
          range-v3
          Ripple::xrpl_core
