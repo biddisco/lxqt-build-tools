@@ -68,7 +68,7 @@ secure_string encryption::CalcHmacSHA256(secure_string const& key, secure_string
     reinterpret_cast<unsigned char const*>(msg.data()), static_cast<int>(msg.size()), hash.data(),
     &hashLen);
 
-  return std::string{reinterpret_cast<char const*>(hash.data()), hashLen};
+  return {reinterpret_cast<char const*>(hash.data()), hashLen};
 }
 
 void aes_encrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption::BLOCK_SIZE],

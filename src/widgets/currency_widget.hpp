@@ -2,7 +2,10 @@
 
 #include <QWidget>
 //
-#include "settings.hpp"
+#include "currency/currency.hpp"
+
+class exchange;
+class basic_account;
 
 namespace Ui {
   class currency_widget;

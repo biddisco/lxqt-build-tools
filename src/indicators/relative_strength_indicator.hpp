@@ -14,7 +14,8 @@ namespace indicators {
     // fields required for auto gui generation
     const std::string name = "RSI";
     const std::string description = "RSI default 14 period";
-    const bool price_overlay = false;
+    const overlay_type overlay = overlay_type::minmax_limit;
+    const y_limits ylimits = {0.0, 1.0};
 
     param_list params = {
       std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),
@@ -83,10 +84,10 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    double operator()(QwtOHLCSample const& val)
+    double operator()(ohlctv_sample const& val)
     {
       // closing price
-      double price = ohlc_mode_extract(1, val);
+      double price = ohlc_mode_extract(ohlc_modes::close, val);
       return operator()(price);
     }
 

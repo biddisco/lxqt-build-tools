@@ -48,25 +48,15 @@ bool exchange::ticker_subscribed(currency const& c1, currency const& c2)
 }
 
 // ----------------------------------------------------------------------------
-bool exchange::ticker_subscribed(std::string_view p1, std::string_view p2)
-{
-  currency c1 = ::get_currency(p1);
-  currency c2 = ::get_currency(p2);
-  return ticker_subscribed(c1, c2);
-}
-
-// ----------------------------------------------------------------------------
 void exchange::ticker_subscribe(currency const& c1, currency const& c2)
 {
   throw std::runtime_error("Exchange classes must implement this function");
 }
 
 // ----------------------------------------------------------------------------
-void exchange::ticker_subscribe(std::string_view p1, std::string_view p2)
+void exchange::ticker_subscribe(const currency_pair& p)
 {
-  currency c1 = ::get_currency(p1);
-  currency c2 = ::get_currency(p2);
-  ticker_subscribe(c1, c2);
+  ticker_subscribe(std::get<0>(p), std::get<1>(p));
 }
 
 // ----------------------------------------------------------------------------
@@ -76,4 +66,11 @@ void exchange::ticker_unsubscribe(currency const& c1, currency const& c2)
   {
     tickers_subscribed_.erase(currency_pair{c1, c2});
   }
+}
+
+// ----------------------------------------------------------------------------
+bool exchange::add_currency_pair(const currency& c1, const currency& c2)
+{
+  tickers_available_.push_back(std::make_pair(c1, c2));
+  return true;
 }

@@ -6,17 +6,12 @@
 // Qt
 #include <QVector>
 // Qwt
-#include <QwtOHLCSample>
+#include "data/ohlctv_sample.hpp"
 // Grox
-#include "currency.hpp"
-#include "data/ohlc_dataset_manager.hpp"
+#include "currency/currency.hpp"
 #include "data/ohlc_datasets.hpp"
 #include "data/ohlc_utils.hpp"
-#include "plot/ohlc_chart_data.hpp"
-
-class generic_dataset_view
-{
-};
+#include "data/timebased_chart_data.hpp"
 
 /// dataset_view provides functions to access the data array holding a dataset
 /// as well as other resampled arrays that hold the same data at lower resolutions.
@@ -25,9 +20,6 @@ class generic_dataset_view
 class ohlc_dataset_view
 {
   private:
-  // file io is handled by the data manager
-  std::shared_ptr<ohlc_dataset_manager> data_manager_;
-
   // a map of datasets, key is resolution
   std::map<double, ohlc_datasets*> candles_;
 
@@ -56,13 +48,14 @@ class ohlc_dataset_view
       return candles_.at(resolution);
     return nullptr;
   }
+
   ohlc_chart_data* get_samples()
   {
     return candles_.begin()->second->ohlc_samples_;
   }
 
   // Add new downloaded data to an existing dataset
-  void merge_data(double res, QVector<QwtOHLCSample> const& new_ohlc_samples_);
+  void merge_data(double res, QVector<ohlctv_sample> const& new_ohlc_samples_);
 
   // access the underlying data vector for live samples
   const ohlc_chart_data* get_live_data() const;
@@ -70,8 +63,7 @@ class ohlc_dataset_view
   void delete_live_data_up_to(double msecs);
   // add a new trade sample to build live OHLC candles, returns true when
   // a new candle is started, false when one is (only) updated
-  void add_live_data(QwtOHLCSample new_sample);
-  ohlc_chart_curve* get_live_curve();
+  void add_live_data(ohlctv_sample new_sample);
 
   // Get the min/max OHLC values for a given time range
   // Returns the lowest of the lows, and highest of the highs in the OHLC samples
@@ -93,12 +85,12 @@ class ohlc_dataset_view
   double get_time_from_index(std::uint64_t i);
 
   // compute the average price for a buy at/after time T
-  QwtOHLCSample get_trade_data_by_volume(double volume, double time, double safety = 10);
-  QwtOHLCSample get_trade_data_by_value(double dollars, double time, double safety = 10);
+  ohlctv_sample get_trade_data_by_volume(double volume, double time, double safety = 10);
+  ohlctv_sample get_trade_data_by_value(double dollars, double time, double safety = 10);
   double get_estimated_sell_price(double volume, double time, double safety = 10);
   double get_estimated_buy_price(double volume, double time, double safety = 10);
 
-  std::string const& get_ticker_string()
+  std::string_view const get_ticker_string()
   {
     return ticker_string_;
   }

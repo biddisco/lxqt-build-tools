@@ -10,6 +10,7 @@
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 #include "indicators/moving_average_exponential.hpp"
+#include "indicators/moving_average_exponential_volume_weighted.hpp"
 #include "indicators/moving_average_volume_weighted.hpp"
 #include "indicators/relative_strength_indicator.hpp"
 #include "indicators/stochastic_oscillator.hpp"
@@ -17,53 +18,31 @@
 
 namespace indicators {
 
-  //template<typename...> struct type_list;
-
-  //template <typename ... Ts>
-  //using indicator_typelist = type_list<Ts...>;
-
-  ////    moving_average,
-  ////    moving_average_volume_weighted,
-  ////    moving_average_exponential,
-  ////    relative_strength_indicator
-  ////>;
-
-  //template <template <typename... Ts> typename T>
-  //using variant_from_typelist = std::variant<Ts...>;
-
-  //    using the_typelist = indicator_typelist<
-  //      moving_average,
-  //      moving_average_volume_weighted,
-  //      moving_average_exponential,
-  //      relative_strength_indicator
-  //    >;
-
-  //inline variant_from_typelist<the_typelist> test;
-
-  //variant_from_typelist<indicator_typelist> types2;
-
-  //    // define a typelist
-  //    template <typename...> struct type_list;
-
-  //    template <template <typename...> class T, typename... Ts>
-  //    using variant_from_typelist = std::variant<Ts...>;
-
-  //    using variant_type = variant_from_typelist<indicator_typelist::template type_list>;
-
   // add each new indicator to types and variant
-  using types = std::variant<moving_average, moving_average_volume_weighted,
-    moving_average_exponential, relative_strength_indicator,
-    /*stochastic_oscillator, */ stochastic_relative_strength_indicator>;
+  // clang-format off
+  using types = std::variant<
+    moving_average,
+    moving_average_volume_weighted,
+    moving_average_exponential,
+moving_average_exponential_volume_weighted,
+    relative_strength_indicator,
+    stochastic_relative_strength_indicator
+  >;
 
   inline std::vector<types> available_indicators = {
-    moving_average{}, moving_average_volume_weighted{}, moving_average_exponential{},
+    moving_average{},
+    moving_average_volume_weighted{},
+    moving_average_exponential{},
+moving_average_exponential_volume_weighted{},
     relative_strength_indicator{},
-    /*stochastic_oscillator{}, */ stochastic_relative_strength_indicator{}
+    stochastic_relative_strength_indicator{},
+    /*stochastic_oscillator{}, */
     //    {"Heikin Ashi", 1, 0, {}},
     //    {"MA gradient", 1, 0, {}},
     //    {"MA cross",    2, 0, {}},
     //    {"MACD",        1, 3, {12, 26, 9}},
   };
+  // clang-format on
 
   static std::vector<ohlc_datasets*> get_datasets(
     param_list const& params, std::shared_ptr<ohlc_dataset_view> view)

@@ -1,0 +1,62 @@
+#include <iostream>
+//
+#include <QCoreApplication>
+#include <QDebug>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+//
+#include <nlohmann/json.hpp>
+//
+#include "network/qhttp-request-client.hpp"
+
+//const std::string server_addr = "https://s1.ripple.com:51234";
+const std::string server_addr = "https://192.168.1.10:51234";
+static std::atomic<int> pass_count{0};
+
+void handler(QByteArray&& byteArray)
+{
+  std::string_view reply(byteArray.constData(), byteArray.length());
+  // print the full response
+  std::cerr << reply << "\n\n";
+  if (reply.find("{\"result\":{\"ledger_hash\":") != std::string::npos)
+  {
+    std::cout << "json quick check ok\n\n";
+    pass_count++;
+    if (pass_count == 1)
+    {
+      QCoreApplication::quit();
+    }
+  }
+  else
+  {
+    pass_count--;
+  }
+}
+
+int main(int argc, char* argv[])
+{
+  QCoreApplication a(argc, argv);
+  QNetworkAccessManager networkmanager;
+
+  nlohmann::json content;
+  content["method"] = "book_offers";
+  //
+  nlohmann::json paramlist;
+  paramlist["taker_gets"]["currency"] = "XRP";
+  paramlist["taker_pays"]["currency"] = "USD";
+  paramlist["taker_pays"]["issuer"] = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+  paramlist["limit"] = 10;
+  //
+  content["params"] = nlohmann::json::array({paramlist});
+
+  net::http::client_ptr client =
+    net::http::qhttp_request_client::create(networkmanager, server_addr, content.dump());
+  client->post_request(handler);
+
+  a.exec();
+  std::cout << "received " << pass_count.load() << std::endl;
+  return pass_count.load() == 1 ? EXIT_SUCCESS : EXIT_FAILURE;
+}

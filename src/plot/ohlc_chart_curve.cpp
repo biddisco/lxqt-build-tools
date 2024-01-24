@@ -9,8 +9,10 @@
 #include <QwtPlot>
 #include <QwtScaleMap>
 // Grox
+#include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_heikin_ashi.hpp"
 #include "plot/ohlc_chart_curve.hpp"
+#include "plot/timebased_data_curve.hpp"
 
 constexpr double volume_reduction = 0.25;
 
@@ -86,18 +88,11 @@ void ohlc_chart_curve::drawSeries(QPainter* painter, QwtScaleMap const& xMap,
   {
     return;
   }
-  const QRectF tr = QwtScaleMap::invTransform(xMap, yMap, canvasRect);
-  double tMin = tr.left();
-  double tMax = tr.right();
-  from = std::max(int64_t(0), chartData->sample_index(tMin) + 1);
-  to = std::min(int64_t(chartData->data().size() - 1), chartData->sample_index(tMax));
-  from = std::min(from, to);
-  to = std::max(from, to);
 
-  //    if (to < 0) to = dataSize() - 1;
-  //    if (from < 0) from = 0;
-  //    if (from > to) return;
-
+  if (!compute_time_limits(chartData, xMap, yMap, canvasRect, from, to))
+  {
+    return;
+  }
   painter->save();
 
   // draw volume first so that candles are always visible over the top
@@ -148,18 +143,18 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter, QwtScaleMap const& xMap,
     symbolWidth = std::floor(0.5 * symbolWidth) * 2.0;
 
   // initialize heikin ashi functor
-  QwtOHLCSample const& init_ha = sample(from > 0 ? (from - 1) : from);
+  ohlctv_sample const& init_ha = sample(from > 0 ? (from - 1) : from);
   ohlc_heikin_ashi heikin_ashi(init_ha);
 
   for (int i = from; i <= to; i++)
   {
-    QwtOHLCSample const& s = sample(i);
-    QwtOHLCSample translatedSample;
+    ohlctv_sample const& s = sample(i);
+    ohlctv_sample translatedSample;
     int brushIndex;
 
     if (symbolStyleCopy == ohlc_chart_curve::HeikinAshi)
     {
-      const QwtOHLCSample ha = heikin_ashi(s).value();
+      const ohlctv_sample ha = heikin_ashi(s).value();
 
       brushIndex =
         (ha.open < ha.close) ? QwtPlotTradingCurve::Increasing : QwtPlotTradingCurve::Decreasing;
@@ -217,7 +212,7 @@ void ohlc_chart_curve::drawVolume(QPainter* painter, QwtScaleMap const& xMap,
 
   for (int i = from; i <= to; i++)
   {
-    QwtOHLCSample const& s = sample(i);
+    ohlctv_sample const& s = sample(i);
 
     int brushIndex =
       (s.open <= s.close) ? QwtPlotTradingCurve::Increasing : QwtPlotTradingCurve::Decreasing;
@@ -238,7 +233,7 @@ void ohlc_chart_curve::drawVolume(QPainter* painter, QwtScaleMap const& xMap,
     painter->setPen(pen);
     painter->setBrush(VolumeBrush[brushIndex]);
 
-    const QwtOHLCSample translatedSample(translatedTime, 0.0, translatedV1, translatedV0, 0.0, 0.0);
+    const ohlctv_sample translatedSample(translatedTime, 0.0, translatedV1, translatedV0, 0.0, 0.0);
 
     drawVolumeBar(painter, translatedSample, symbolWidth);
   }
@@ -246,8 +241,10 @@ void ohlc_chart_curve::drawVolume(QPainter* painter, QwtScaleMap const& xMap,
 
 // ----------------------------------------------------------------------------
 void ohlc_chart_curve::drawVolumeBar(
-  QPainter* painter, QwtOHLCSample const& sample, double width) const
+  QPainter* painter, ohlctv_sample const& sample, double width) const
 {
   QRectF rect(sample.time - 0.5 * width, sample.low, width, sample.high - sample.low);
   QwtPainter::drawRect(painter, rect);
 }
+
+// ----------------------------------------------------------------------------

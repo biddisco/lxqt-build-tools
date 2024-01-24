@@ -5,8 +5,8 @@
 // Grox
 #include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_datasets.hpp"
+#include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
-#include "plot/ohlc_chart_data.hpp"
 #include "util/datetime_utils.hpp"
 
 // ----------------------------------------------------------------------------
@@ -19,50 +19,25 @@ template <int Level>
 static print_threshold<Level, debug_level> ohlc_dbg("Datasets");
 
 // ----------------------------------------------------------------------------
-void update_QwtOHLCSample(QwtOHLCSample& ohlc, QwtOHLCSample const& other)
-{
-  if (ohlc.isValid())
-  {
-    ohlc.low = std::min(ohlc.low, other.low);
-    ohlc.high = std::max(ohlc.high, other.high);
-    ohlc.close = other.close;
-    ohlc.volume = ohlc.volume + other.volume;
-  }
-  else
-  {
-    ohlc = other;
-  }
-}
-
-// ----------------------------------------------------------------------------
 ohlc_datasets::ohlc_datasets(double res, std::string const& name)
   : ticker_str_(name)
 {
   // we do not destroy these in the destructor because they are given to the
   // plot curve object which deletes them when it is destroyed
   ohlc_samples_ = new ohlc_chart_data(res);
-  ohlc_curve_ = new ohlc_chart_curve(ohlc_samples_);
   live_samples_ = new ohlc_chart_data(res);
-  live_curve_ = new ohlc_chart_curve(live_samples_);
-  live_curve_->setSymbolPen(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));
-  live_curve_->setSymbolPen(QwtPlotTradingCurve::Decreasing, QColor("#FFBF00"));
-  live_curve_->setSymbolBrush(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));
-  live_curve_->setSymbolBrush(QwtPlotTradingCurve::Decreasing, QColor("#FFBF00"));
 }
 
 // ----------------------------------------------------------------------------
 ohlc_datasets::~ohlc_datasets()
 {
-  // curve is deleted by plot,
-  // samples are deleted by curve
-  //    delete ohlc_curve_;
-  //    delete ohlc_samples_;
-  //    delete live_curve_;
-  //    delete live_samples_;
+  // qwt curves, own the samples they plot, so we do not need to delete
+  //    ohlc_samples_;
+  //    live_samples_;
 }
 
 // ----------------------------------------------------------------------------
-uint64_t ohlc_datasets::merge_data(QVector<QwtOHLCSample> const& new_ohlc_samples_)
+uint64_t ohlc_datasets::merge_data(ohlctv_vector const& new_ohlc_samples_)
 {
   uint64_t update = 0;
   // initial data may be empty, so just copy without merge/update
@@ -80,7 +55,10 @@ uint64_t ohlc_datasets::merge_data(QVector<QwtOHLCSample> const& new_ohlc_sample
     ohlc_dbg<5>.debug(str<>("merging"), ticker_str_, "new samples offset", dec<5>(offset));
     if (first_new - last_existing != ohlc_data_resolutions::minute)
     {
-      throw std::runtime_error("Data OHLC time mismatch in merge");
+      ohlc_dbg<0>.error(str<>("merging"), ticker_str_, "last_existing", dec<12>(last_existing),
+        "first_new", dec<12>(first_new), "difference", dec<12>(first_new - last_existing));
+      if (first_new - last_existing != ohlc_data_resolutions::minute)
+        throw std::runtime_error("Data OHLC time mismatch in merge");
     }
     // add new samples
     ohlc_dbg<5>.debug(
@@ -100,7 +78,7 @@ uint64_t sample_index(double init, double time, double res)
 
 // ----------------------------------------------------------------------------
 int64_t ohlc_datasets::validate_ohlc(
-  QVector<QwtOHLCSample> const& samples, candle_res res, double time, std::string name)
+  ohlctv_vector const& samples, candle_res res, double time, std::string name)
 {
   if (samples.empty())
     return 0;
@@ -122,7 +100,7 @@ int64_t ohlc_datasets::validate_ohlc(
 
   for (int64_t index = init_index; index < samples.size(); ++index)
   {
-    QwtOHLCSample const& s1 = samples.at(index);
+    ohlctv_sample const& s1 = samples.at(index);
     //
     double expected_time = origin_time + (res * index);
     if (expected_time != s1.time)
@@ -191,12 +169,11 @@ ohlc_datasets* ohlc_datasets::resample_update(
     return this;
 
   // we will start a fresh candle from this start_T
-  QwtOHLCSample current_ohlc = other->ohlc_samples_->data()[init_sample];
+  ohlctv_sample current_ohlc = other->ohlc_samples_->data()[init_sample];
   current_ohlc.time = res1 * static_cast<uint64_t>(current_ohlc.time / res1);
 
   // iterate over all higher res samples for T onwards
-  for (QVector<QwtOHLCSample>::const_iterator it =
-         other->ohlc_samples_->data().begin() + init_sample;
+  for (ohlctv_vector::const_iterator it = other->ohlc_samples_->data().begin() + init_sample;
        it < other->ohlc_samples_->data().end(); ++it)
   {
     double quantized_time = res1 * static_cast<uint64_t>(it->time / res1);
@@ -210,7 +187,7 @@ ohlc_datasets* ohlc_datasets::resample_update(
     // overwrite the current candle with updated numbers
     else
     {
-      update_QwtOHLCSample(current_ohlc, *it);
+      update_ohlctv_sample(current_ohlc, *it);
     }
     // finalizing a new candle
     if (subsample == (subsamples - 1))

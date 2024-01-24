@@ -11,21 +11,26 @@ namespace indicators {
     // ---------------------------------------
     // fields required for auto gui generation
     const std::string name = "Moving Average (Exponential)";
-    const std::string description = "Exponential decay moving average";
-    const bool price_overlay = true;
+    const std::string description = "Exponential (Time-decay) Moving Average";
+    const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {
       std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<std::string, param_types>("Window size", 15),
+      std::make_tuple<std::string, param_types>("Window size", 14),
+      std::make_tuple<std::string, param_types>("mode", ohlc_modes::close),
       std::make_tuple<std::string, param_types>("User-defined alpha", false),
-      std::make_tuple<std::string, param_types>("Decay alpha", 0.1),
+      std::make_tuple<std::string, param_types>("Decay (1 - alpha)", 0.1),
     };
 
-    moving_average_exponential(int window_size = 7, double decay_factor = 0.1)
+    // ---------------------------------------
+    // Default constructor
+    moving_average_exponential(int window_size = 14, ohlc_modes mode = ohlc_modes::low,
+      bool user_alpha = false, double decay_factor = 0.1)
       : window_size_(window_size)
-      , user_alpha_(false)
+      , mode_(mode)
+      , mean_(0)
+      , user_alpha_(user_alpha)
       , decay_factor_(decay_factor)
-      , xma_(0)
       , first_(true)
     {
     }
@@ -35,36 +40,37 @@ namespace indicators {
     void initialize()
     {
       window_size_ = std::get<int>(std::get<1>(params[1]));
-      user_alpha_ = std::get<bool>(std::get<1>(params[2]));
-      decay_factor_ = std::get<double>(std::get<1>(params[3]));
-      xma_ = 0.0;
+      mode_ = std::get<ohlc_modes>(std::get<1>(params[2]));
+      mean_ = 0.0;
+      user_alpha_ = std::get<bool>(std::get<1>(params[3]));
+      decay_factor_ = std::get<double>(std::get<1>(params[4]));
       first_ = true;
     }
 
-    double operator()(QwtOHLCSample const& ohlc)
+    double operator()(ohlctv_sample const& ohlc)
     {
       double alpha = user_alpha_ ? decay_factor_ : 2.0 / (window_size_ + 1.0);
       //
       if (first_)
       {
-        xma_ = ohlc.open;
+        mean_ = ohlc_mode_extract(mode_, ohlc);
         first_ = false;
       }
-
-      xma_ = (alpha * ohlc.close) + ((1.0 - alpha) * xma_);
-      return xma_;
+      mean_ = (alpha * ohlc_mode_extract(mode_, ohlc)) + ((1.0 - alpha) * mean_);
+      return mean_;
     }
 
     inline double getLastResult()
     {
-      return xma_;
+      return mean_;
     }
 
 private:
     int window_size_;
+    ohlc_modes mode_;
+    double mean_;
     bool user_alpha_;
     double decay_factor_;
-    double xma_;
     bool first_;
   };
 

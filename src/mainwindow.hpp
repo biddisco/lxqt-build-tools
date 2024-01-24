@@ -7,26 +7,16 @@
 #include <QTimer>
 #include <QWidgetAction>
 //
-#ifndef Q_MOC_RUN
-// MOC chokes on keyword "signals" used by belle
-# include "include/belle.hh"
-#endif
-//
-#include "network/https-async.hpp"
-#include "network/websocket-ssl.hpp"
-//
 #include "plot/OrderBookPlot.h"
 #include "plot/ohlc_picker.hpp"
 #include "plot/ohlc_price_plot.hpp"
 //
-#include "data/ohlc_dataset_manager.hpp"
-//
 #include "ui_mainwindow.h"
 //
 #include "exchange/bitstamp.hpp"
+#include "exchange/order_book.hpp"
 #include "exchange/xrpl_network.hpp"
-#include "order_book.hpp"
-#include "settings.hpp"
+#include "senders/qt_helpers.hpp"
 #include "widgets/connection_widget.hpp"
 // generated
 #include "ui_tabbed_form.h"
@@ -78,9 +68,6 @@ class GroxMainWindow : public QMainWindow
   std::shared_ptr<xrpl_network> xrpl_network_;
   std::shared_ptr<xrpl_network> xrpl_testnet_;
 
-  // io context for websocket/https requests
-  net::contexts io_contexts_;
-  std::vector<std::thread> ioc_threads_;
   QVBoxLayout* net_layout_;
 
   // menu helpers for docking support
@@ -95,6 +82,8 @@ class GroxMainWindow : public QMainWindow
   public:
   explicit GroxMainWindow(QWidget* parent = nullptr);
   ~GroxMainWindow() override;
+
+  void progress_events(int ms);
   void connect_gui_controls();
   bool eventFilter(QObject* obj, QEvent* event) override;
 
@@ -112,8 +101,7 @@ class GroxMainWindow : public QMainWindow
   void saveConnectionSetups();
   void loadConnectionSetups();
 
-  void stream_process(QwtOHLCSample const& data);
-  void start_io_threads(int nthreads);
+  void stream_process(ohlctv_sample const& data);
 
   void execute_filter();
 
@@ -140,6 +128,8 @@ class GroxMainWindow : public QMainWindow
   // to connect to xrpl ledger signals
   void update_currency_widget(currency*);
   void update_wallet_widget(ledger_wallet*);
+
+  Q_INVOKABLE bool schedule_function(grox::qt::experimental::detail::qt_function_type func);
 
   // ----------------------------------
   //    void transfer_setup_xrp(double);

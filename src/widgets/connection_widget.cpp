@@ -5,12 +5,12 @@
 //
 #include "connection_widget.hpp"
 #include "ui_connection_widget.h"
+#include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
-connection_widget::connection_widget(QWidget* parent, net::contexts& io_contexts, exchange* ex)
+connection_widget::connection_widget(QWidget* parent, exchange* ex)
   : QWidget(parent)
   , ui(new Ui::connection_widget)
-  , io_contexts_(io_contexts)
   , exchange_(ex)
 {
   ui->setupUi(this);
@@ -47,7 +47,7 @@ void connection_widget::setup_gui()
         bx, &QCheckBox::stateChanged, this,
         [this, t, s](bool checked) {
           //
-          exchange_->stream_subscribe(io_contexts_, t.first, s, checked);
+          exchange_->stream_subscribe(t.first, s, checked);
         },
         Qt::QueuedConnection);
 
@@ -69,8 +69,7 @@ void connection_widget::setup_gui()
   for (auto const& [i, cp] : exchange_->get_currency_pairs() | ranges::views::enumerate)
   {
     QStandardItem* item = new QStandardItem();
-    item->setText(
-      std::get<0>(cp).curr_.code_.c_str() + QString("/") + std::get<1>(cp).curr_.code_.c_str());
+    item->setText(currency_pair_qstring(cp, "/"));
     item->setCheckable(true);
     // initial state stored in user role to track checkbox changes
     if (exchange_->ticker_subscribed(std::get<0>(cp), std::get<1>(cp)))
@@ -131,10 +130,8 @@ void connection_widget::apply()
   for (int i = 0; i < sl->count(); ++i)
   {
     std::string s = sl->item(i)->text().toStdString();
-    auto temp = s.find("/");
-    std::string c1 = s.substr(0, temp);
-    std::string c2 = s.substr(temp + 1, s.back());
-    exchange_->ticker_subscribe(c1, c2);
+    auto const& [c1, c2] = split_currency_pair_string(s, '/');
+    exchange_->ticker_subscribe(currency("", c1), currency("", c2));
   }
   // remove any unsubscribed ones
   auto ticker_copy = exchange_->tickers_subscribed();

@@ -24,10 +24,10 @@
 #include <QwtSymbol>
 #include <QwtTextLabel>
 // Grox
+#include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
 #include "plot/indicator_plot.hpp"
 #include "plot/ohlc_chart_curve.hpp"
-#include "plot/ohlc_chart_data.hpp"
 #include "plot/ohlc_date_scaledraw.hpp"
 #include "plot/ohlc_interactor.hpp"
 #include "plot/ohlc_picker.hpp"

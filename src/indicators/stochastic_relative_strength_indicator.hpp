@@ -22,7 +22,8 @@ namespace indicators {
     // fields required for auto gui generation
     const std::string name = "Stochastic RSI";
     const std::string description = "Stochastic RSI default 14 period";
-    const bool price_overlay = false;
+    const overlay_type overlay = overlay_type::minmax_limit;
+    const y_limits ylimits = {0.0, 1.0};
 
     param_list params = {
       std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),
@@ -61,7 +62,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    double operator()(QwtOHLCSample const& val)
+    double operator()(ohlctv_sample const& val)
     {
       double rsi = rsi_.operator()(val);
       double stoch_rsi_K_unsmoothed = osc_.operator()(rsi);

@@ -1,14 +1,62 @@
 #pragma once
 
 // STL
+#include <iostream>
 #include <optional>
 #include <vector>
-// Qwt
-#include <QwtOHLCSample>
+// extern
+#include <magic_enum.hpp>
+// grox
+#include "data/ohlctv_sample.hpp"
 
-void update_QwtOHLCSample(QwtOHLCSample& ohlc, QwtOHLCSample const& other);
+void update_ohlctv_sample(ohlctv_sample& ohlc, ohlctv_sample const& other);
 
-inline double get_time(QwtOHLCSample const& val)
+enum class ohlc_modes : int
+{
+  open = 1,
+  close = 2,
+  mid_open_close = 3,
+  high = 4,
+  low = 5,
+  mid_high_low = 6,
+  volume = 7,
+  value = 8
+};
+
+constexpr auto ohlc_mode_names = magic_enum::enum_names<ohlc_modes>();
+
+inline double ohlc_mode_extract(const ohlc_modes mode, ohlctv_sample const& ohlc)
+{
+  switch (mode)
+  {
+  case ohlc_modes::open:
+    return ohlc.open;
+  case ohlc_modes::close:
+    return ohlc.close;
+  case ohlc_modes::mid_open_close:
+    return 0.5 * (ohlc.open + ohlc.close);
+  case ohlc_modes::high:
+    return ohlc.high;
+  case ohlc_modes::low:
+    return ohlc.low;
+  case ohlc_modes::mid_high_low:
+    return 0.5 * (ohlc.low + ohlc.high);
+  case ohlc_modes::volume:
+    return ohlc.volume;
+  case ohlc_modes::value:
+    return ohlc.volume * (0.5 * (ohlc.open + ohlc.close));
+  default:
+    return 0.0;
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& os, const ohlc_modes& m)
+{
+  os << int(m);
+  return os;
+}
+
+inline double get_time(ohlctv_sample const& val)
 {
   return val.time;
 }
@@ -19,16 +67,16 @@ inline double get_time(QPointF const& val)
 
 struct ohlc_resample
 {
-  QwtOHLCSample ohlc_;
+  ohlctv_sample ohlc_;
   //
-  ohlc_resample(QwtOHLCSample const& ohlc)
+  ohlc_resample(ohlctv_sample const& ohlc)
     : ohlc_(ohlc)
   {
   }
   //
-  QwtOHLCSample operator()(QwtOHLCSample const& other)
+  ohlctv_sample operator()(ohlctv_sample const& other)
   {
-    update_QwtOHLCSample(ohlc_, other);
+    update_ohlctv_sample(ohlc_, other);
     return ohlc_;
   }
 };
@@ -72,7 +120,7 @@ struct minmax_data<QPointF>
 };
 
 template <>
-struct minmax_data<QwtOHLCSample>
+struct minmax_data<ohlctv_sample>
 {
   double min_price_;
   double max_price_;
@@ -89,7 +137,7 @@ struct minmax_data<QwtOHLCSample>
   {
   }
 
-  minmax_data(QwtOHLCSample const& init)
+  minmax_data(ohlctv_sample const& init)
     : min_price_{init.low}
     , max_price_{init.high}
     , min_volume_{init.volume}
@@ -103,7 +151,7 @@ struct minmax_data<QwtOHLCSample>
     return valid_;
   }
 
-  minmax_data<QwtOHLCSample>& update(minmax_data<QwtOHLCSample> const& other)
+  minmax_data<ohlctv_sample>& update(minmax_data<ohlctv_sample> const& other)
   {
     if (!isValid())
     {
@@ -124,14 +172,14 @@ struct minmax_data<QwtOHLCSample>
 };
 
 // ----------------------------------------------------------------------------
-using ohlcv_minmax = minmax_data<QwtOHLCSample>;
+using ohlcv_minmax = minmax_data<ohlctv_sample>;
 
 // ----------------------------------------------------------------------------
 struct ohlc_candlemaker
 {
   double to_resolution_;
   double from_resolution_;
-  QwtOHLCSample ohlc_;
+  ohlctv_sample ohlc_;
   //
   ohlc_candlemaker(double to_resolution, double from_resolution)
     : to_resolution_(to_resolution)
@@ -140,13 +188,13 @@ struct ohlc_candlemaker
   {
   }
   //
-  std::optional<QwtOHLCSample> operator()(QwtOHLCSample const& ohlc)
+  std::optional<ohlctv_sample> operator()(ohlctv_sample const& ohlc)
   {
     uint64_t candle_old = static_cast<uint64_t>(ohlc_.time / to_resolution_);
     uint64_t candle_cur = static_cast<uint64_t>(ohlc.time / to_resolution_);
     if (candle_old == candle_cur)
     {
-      update_QwtOHLCSample(ohlc_, ohlc);
+      update_ohlctv_sample(ohlc_, ohlc);
     }
     else
     {
@@ -163,5 +211,5 @@ struct ohlc_candlemaker
   }
 
   private:
-  QwtOHLCSample val_;
+  ohlctv_sample val_;
 };

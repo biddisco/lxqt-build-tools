@@ -1,23 +1,19 @@
 #pragma once
 
+#include <string>
+#include <vector>
+//
 #include <QObject>
 //
-#include <string>
-//
+#include "exchange/account.hpp"
 #include "exchange/exchange.hpp"
+#include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
-#include "network/websocket-ssl.hpp"
-#include "order_book.hpp"
-#include "settings.hpp"
+#include "network/qhttp-request-client.hpp"
+#include "network/qwebsocket_session.hpp"
 #include "widgets/currency_widget.hpp"
-//
-#ifndef Q_MOC_RUN
-// MOC chokes on keyword "signals" used by belle
-# include "include/belle.hh"
-#endif
 
-//#define GROX_USE_LOCAL_SERVER
+// #define GROX_USE_LOCAL_SERVER
 #define GROX_USE_RIPPLE_MAINNET_SERVER
 
 // ----------------------------------------------------------------------------
@@ -27,9 +23,9 @@ class xrpl_network : public exchange
 
   private:
   // websocket for order book trades
-  std::shared_ptr<net::ws::session> ws_orderbook;
+  std::shared_ptr<net::ws::qwebsocket_session> ws_orderbook;
   // websocket for account changes
-  std::shared_ptr<net::ws::session> ws_accounts;
+  std::shared_ptr<net::ws::qwebsocket_session> ws_accounts;
 
   bool testnet_;
   xrpl_order_book* orderbook_;
@@ -43,10 +39,10 @@ class xrpl_network : public exchange
 #if defined(GROX_USE_LOCAL_SERVER)
   // note that we use 6005 instead of 443 on local server to avoid
   // requiring sudo permissions to run rippled
-  static inline const std::string ripple_websocket_address = "192.168.1.147";
+  static inline const std::string ripple_websocket_address = "192.168.1.10";
   static inline const int ripple_websocket_port = 6005;
 
-  static inline const std::string ripple_jsonrpc_address = "192.168.1.147";
+  static inline const std::string ripple_jsonrpc_address = "192.168.1.10";
   static inline const int ripple_jsonrpc_port = 51234;
 
 #elif defined(GROX_USE_RIPPLE_MAINNET_SERVER)
@@ -130,7 +126,7 @@ class xrpl_network : public exchange
   std::string jsonrpc_address() const;
   int jsonrpc_port() const;
   //
-  bool can_send(currency& /*c*/, exchange* dest) override;
+  bool can_send(currency const& /*c*/, exchange* dest) override;
   //
   xrpl_order_book const& get_orderbook(currency_pair const& cp) const;
   //
@@ -139,12 +135,10 @@ class xrpl_network : public exchange
     return {network::streams::order_book, network::streams::accounts};
   }
 
+  void ticker_subscribe(currency const& c1, currency const& c2) override;
   // connect to an individual stream
-  bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
-    network::streams const stream, bool enabled) override
-  {
-    return false;
-  }
+  bool stream_subscribe(
+    currency_pair const& cp, network::streams const stream, bool enabled) override;
 
   // connect to (multiple) streams
   //  bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) override;
@@ -153,9 +147,9 @@ class xrpl_network : public exchange
   // shut down sockets/connections
   void shut_down() override;
   //
-  bool subscribe_orderbook(net::contexts& io_contexts);
+  bool subscribe_order_book(currency_pair const& cp, bool enable);
   //
-  bool subscribe_accounts(net::contexts& io_contexts);
+  bool subscribe_accounts();
   //
   void add_wallet(ledger_wallet const& w);
   void clear_wallets()
@@ -175,37 +169,35 @@ class xrpl_network : public exchange
     return accts;
   }
 
-  bool add_currency_pair(std::string_view p1, std::string_view p2) override;
+  // ----------------------------------------------------------------------------
+  static void new_orderbook_data(xrpl_network* nw, currency_pair const cp, QString);
+  // ----------------------------------------------------------------------------
+  static void new_account_data(xrpl_network* nw, QString);
 
   // ----------------------------------------------------------------------------
-  static void new_orderbook_data(xrpl_network* nw, currency_pair const cp, std::string_view);
-  // ----------------------------------------------------------------------------
-  static void new_account_data(xrpl_network* nw, std::string_view);
+  using fn_on_http = net::http::rx_req_handler_type;
 
   // ----------------------------------------------------------------------------
-  using fn_on_http = std::function<void(OB::Belle::Client::Http_Ctx&)>;
-
-  // ----------------------------------------------------------------------------
-  std::vector<currency>::iterator get_currency(std::string_view addr, currency_type t);
+  std::vector<currency>::iterator get_currency(std::string_view addr, currency c);
   void update_XRP_balance(std::string_view addr, double oldb, double newb);
   void update_IOU_balance(std::string_view addr, currency const& curr);
 
   // query account balance and info
   void get_account_info(std::string addr, fn_on_http on_http);
   void get_all_account_infos();
-  void handle_account_info(ledger_wallet& w, std::string&& data);
+  void handle_account_info(ledger_wallet& w, std::string_view data);
 
   // query account trustlines
   void get_account_lines(std::string addr, fn_on_http on_http);
   void get_all_account_lines();
-  void handle_account_lines(ledger_wallet& w, std::string&& data);
+  void handle_account_lines(ledger_wallet& w, std::string_view data);
 
   // query open orders
   void get_account_offers(std::string addr, fn_on_http on_http);
   void get_all_account_offers();
-  void handle_account_offers(ledger_wallet& w, std::string&& data);
+  void handle_account_offers(ledger_wallet& w, std::string_view data);
 
-  bool make_payment(currency& c, basic_account* src, basic_account* dest) override;
+  bool make_payment(currency const& c, basic_account* src, basic_account* dest) override;
   void cancel_order(trade_data const& t) override;
 
   // place a buy/sell order
@@ -214,8 +206,8 @@ class xrpl_network : public exchange
 
   void submit_signed_transaction(std::string&& signed_tx);
 
-  double get_fee_percent(currency_type const& c1, currency_type const& c2) override;
-  double get_fee_fixed(currency_type const& c1, currency_type const& c2) override;
+  double get_fee_percent(currency const& c1, currency const& c2) override;
+  double get_fee_fixed(currency const& c1, currency const& c2) override;
   double get_transfer_fee(currency const& c1) override;
 
   void trustline(
@@ -223,7 +215,7 @@ class xrpl_network : public exchange
 
   void custom_functions(basic_account* acct) override;
 
-  void query_iou_fee(issued_currency const& c1);
+  void query_iou_fee(currency_code const& c1);
 
   signals:
   // Signals are emitted so that the Qt appication/GUI thread can perform

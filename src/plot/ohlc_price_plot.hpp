@@ -4,12 +4,16 @@
 // Qwt
 #include <QwtPlot>
 // Grox
+#include "data/ohlctv_sample.hpp"
+#include "data/timebased_chart_data.hpp"
 #include "plot/timebased_chart_plot.hpp"
-//
+
+class ohlc_chart_curve;
 class ohlc_dataset_view;
+class ohlc_interactor;
 class ohlc_price_scaledraw;
 class ohlc_picker;
-class ohlc_interactor;
+class timebased_data_curve;
 //
 class QwtDateScaleDraw;
 class QwtDateScaleEngine;
@@ -26,6 +30,9 @@ class ohlc_price_plot : public timebased_chart_plot
   ohlc_price_scaledraw* pricescaleDraw_;
   QwtPlotDirectPainter* direct_painter_;
   std::shared_ptr<ohlc_dataset_view> ohlc_dataset_view_;
+  // a map of datasets, key is resolution
+  std::map<double, ohlc_chart_curve*> curves_;
+  std::map<double, ohlc_chart_curve*> live_curves_;
   QwtTextLabel* candle_label_;
   QwtTextLabel* candle_status_;
   double candle_resolution_;
@@ -45,7 +52,7 @@ class ohlc_price_plot : public timebased_chart_plot
   ~ohlc_price_plot();
   //
   void bind_graphs();
-  void update_live_data(QwtOHLCSample const& new_sample);
+  void update_live_data(ohlctv_sample const& new_sample);
   //
   bool adjust_candle_size(double res);
   double get_candle_resolution()
@@ -71,8 +78,11 @@ class ohlc_price_plot : public timebased_chart_plot
   void adjust_data_scaling();
   bool update_candle_size();
 
-  QwtPlotCurve* add_overlay_curve(
-    QString const& title, QVector<QPointF> const& samples, QColor const& color);
+  timebased_data_curve* add_overlay_curve(
+    QString const& title, point_chart_data* data, QColor const& color);
+
+  timebased_data_curve* add_overlay_volume_curve(
+    QString const& title, point_chart_data* data, QColor const& color);
 
   QwtPlotCurve* add_buy_sell_curve(
     QString const& title, QVector<QPointF> const& samples, QColor const& color);

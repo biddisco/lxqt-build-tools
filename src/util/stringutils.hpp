@@ -3,10 +3,20 @@
 #include <string>
 #include <string_view>
 //
+#include <QString>
+//
 #include <range/v3/algorithm.hpp>
 #include <range/v3/all.hpp>
 
 #define JCHARP(val) val.get_ptr<json::string_t*>()->c_str()
+
+/*
+struct fmt::formatter<QString> : formatter<const char*> {
+  auto format(const QString& s, format_context& ctx) {
+    return formatter<const char*>::format((const char *)value.toUtf8(), ctx);
+  }
+};
+*/
 
 // ----------------------------------------------------------------------------
 inline bool startswith(std::string_view str, std::string_view sub)
@@ -18,6 +28,12 @@ inline bool startswith(std::string_view str, std::string_view sub)
     return false;
   }
   return true;
+}
+
+// ----------------------------------------------------------------------------
+inline bool startswith(QString str, QString sub)
+{
+  return str.startsWith(sub);
 }
 
 // ----------------------------------------------------------------------------
@@ -64,16 +80,18 @@ inline void uppercase_i(std::string& data)
 }
 
 // ----------------------------------------------------------------------------
-// Function to transform a range into a std::string
-// Replace this with 'std::string_view' to make it a view instead.
-inline auto make_string = [](auto&& r) -> std::string_view {
+// Function to transform a range into a std::string or std::string_view
+template <typename Result>
+inline auto make_string = [](auto&& r) -> Result {
   const auto data = &*r.begin();
   const auto size = static_cast<std::size_t>(ranges::distance(r));
-  return std::string_view{data, size};
+  return Result{data, size};
 };
 
-inline std::pair<std::string_view, std::string_view> get_currency_pair(std::string_view str)
+inline std::pair<std::string_view, std::string_view> split_currency_pair_string(
+  std::string_view str, const char delim = '/')
 {
-  const auto range = str | ranges::views::split('/') | ranges::views::transform(make_string);
+  const auto range =
+    str | ranges::views::split(delim) | ranges::views::transform(make_string<std::string_view>);
   return std::make_pair(ranges::front(range), *next(ranges::begin(range)));
 }

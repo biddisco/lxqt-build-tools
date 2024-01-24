@@ -22,25 +22,22 @@
 #include <QStandardItemModel>
 // Qwt
 #include <QwtAxis>
-#include <QwtOHLCSample>
 #include <QwtScaleDraw>
 #include <QwtScaleEngine>
 // Grox
 #include "data/ohlc_heikin_ashi.hpp"
+#include "data/ohlctv_sample.hpp"
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
-#include "json_types.hpp"
+#include "io/hdf5_ohlc_manager.hpp"
 #include "mainwindow.hpp"
 #include "network/evp-encrypt.hpp"
-#include "network/https-async.hpp"
-#include "settings.hpp"
 #include "util/datetime_utils.hpp"
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/connection_widget.hpp"
 #include "widgets/currency_widget.hpp"
-#include "widgets/indicator_dialog.hpp"
 #include "widgets/password_dialog.hpp"
 #include "widgets/trade_widget.hpp"
 #include "widgets/wallet_widget.hpp"
@@ -52,6 +49,9 @@
 #include "DockManager.h"
 #include "FloatingDockContainer.h"
 
+#define GROX_HAVE_BITSTAMP
+//#define GROX_HAVE_XRPL
+
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
 
@@ -59,10 +59,8 @@ extern void generate_encrypted_ini_data(password_dialog& npw);
 using namespace grox::debug;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
-//
 template <int Level>
-static print_threshold<Level, debug_level> main_dbg("Main-win");
+static print_threshold<Level, 2> main_dbg("Main-win");
 
 using namespace ads;
 
@@ -75,7 +73,7 @@ QTimer* app_settings::get_global_clock_timer()
   if (!timer_)
   {
     timer_ = new QTimer(nullptr);
-    timer_->start(1000);
+    timer_->start(60000);
   }
   return timer_;
 }
@@ -96,12 +94,12 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
   // ----------------------------------
   // global persistent settings
-  app_settings* app_ini = global_settings();
-  app_ini->dockwindows_menu_ = nullptr;
+  global_settings.dockwindows_menu_ = nullptr;
 
   // ----------------------------------
-  app_ini->data_manager_ = std::make_shared<ohlc_dataset_manager>();
-  app_ini->data_manager_->init(app_ini->appDataLocation, app_ini->hdfFileName);
+  global_settings.data_manager_ =
+    std::dynamic_pointer_cast<abstract_dataset_manager>(std::make_shared<hdf5_ohlc_manager>());
+  global_settings.data_manager_->init(global_settings.appDataLocation, global_settings.hdfFileName);
 
   // ----------------------------------
   // Create Dock manager and set default flags
@@ -110,26 +108,27 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockManager::setConfigFlag(CDockManager::OpaqueSplitterResize, true);
   CDockManager::setConfigFlag(CDockManager::XmlCompressionEnabled, false);
   CDockManager::setConfigFlag(CDockManager::FocusHighlighting, true);
-  app_ini->dock_manager_ = std::make_shared<CDockManager>(this);
+  global_settings.dock_manager_ = std::make_shared<CDockManager>(this);
 
   // ----------------------------------
   // Setup a menu to allow dockwindow control
   createPerspectives_Ui();
 
+#ifdef GROX_HAVE_BITSTAMP
   // ----------------------------------
   // create bitstamp exchange interface
   bitstamp_network_ = bitstamp_network::get_bitstamp_instance();
+  exchange_list_.push_back(bitstamp_network_);
+#endif
 
+#ifdef GROX_HAVE_XRPL
   // ----------------------------------
   // create xrp network interfaces
-  // we do not plot the xrp testnet orderbook
   xrpl_network_ = xrpl_network::get_xrpl_instance(false);
   xrpl_testnet_ = xrpl_network::get_xrpl_instance(true);
-  //xrpl_network_->set_plot(obp_);
-
-  exchange_list_.push_back(bitstamp_network_);
   exchange_list_.push_back(xrpl_network_);
   exchange_list_.push_back(xrpl_testnet_);
+#endif
 
   // ----------------------------------
   // Create dockwidget for network connections
@@ -140,9 +139,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
   NetworkDockWidget->setWidget(netbox);
   NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  auto RightArea =
-    app_ini->dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
-  app_ini->dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
+  auto RightArea = global_settings.dock_manager_->addDockWidget(
+    DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
+  global_settings.dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
 
   // ----------------------------------
   // Create dockwidget for algorithmic trading
@@ -153,9 +152,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
   AlgorithmsDockWidget->setWidget(algowidget_);
   AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  app_ini->dock_manager_->addDockWidget(
+  global_settings.dock_manager_->addDockWidget(
     DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
-  app_ini->dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
+  global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
   // ----------------------------------
   // create a dock widget to hold accounts/wallets
@@ -165,9 +164,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockWidget* AccountsDockWidget = new CDockWidget("Accounts");
   AccountsDockWidget->setWidget(accounts_frame_);
   AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  app_ini->dock_manager_->addDockWidget(
+  global_settings.dock_manager_->addDockWidget(
     DockWidgetArea::RightDockWidgetArea, AccountsDockWidget, RightArea, 2);
-  app_ini->dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
+  global_settings.dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
 
   // ----------------------------------
   // create a dock widget to hold open orders
@@ -177,12 +176,12 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockWidget* OrdersDockWidget = new CDockWidget("Trades");
   OrdersDockWidget->setWidget(orders_frame_);
   OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  app_ini->dock_manager_->addDockWidget(
+  global_settings.dock_manager_->addDockWidget(
     DockWidgetArea::RightDockWidgetArea, OrdersDockWidget, RightArea, 3);
-  app_ini->dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
+  global_settings.dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
 
   // for each wallet on each network
-  for (auto network : app_ini->networks_)
+  for (auto network : global_settings.networks_)
   {
     for (auto w : network->wallets())
     {
@@ -210,19 +209,13 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   loadTrustlines();
 
   // ----------------------------------
-  // start asio threads
-  start_io_threads(2);
-
-  // ----------------------------------
-  // initialize networks / start websocket connnections etc
-  main_dbg<0>.debug("Init bitstamp");
-  bitstamp_network_->initialize();
-  //
-  main_dbg<0>.debug("Init xrpl mainnet");
-  xrpl_network_->initialize();
-  //
-  main_dbg<0>.debug("Init xrpl testnet");
-  xrpl_testnet_->initialize();
+  // initialize networks / start websocket connections etc
+  for (auto const& e : exchange_list_)
+  {
+    main_dbg<0>.debug(str<>("Init exchange"), e->name());
+    e->initialize();
+    progress_events(10);
+  }
 
   // ----------------------------------
   // setup connections tab
@@ -258,16 +251,27 @@ GroxMainWindow::~GroxMainWindow()
   delete qs_shutdown_;
   delete qs_darkmode_;
   //
-  app_settings* app_ini = global_settings();
-  app_ini->delete_global_clock_timer(app_ini->get_global_clock_timer());
+  global_settings.delete_global_clock_timer(global_settings.get_global_clock_timer());
 
   // release dockmanager
-  app_ini->dock_manager_.reset();
+  global_settings.dock_manager_.reset();
   // release all networks
-  for (auto& n : app_ini->networks_)
+  for (auto& n : global_settings.networks_)
     n.reset();
   // release datamanager
-  app_ini->data_manager_.reset();
+  global_settings.data_manager_.reset();
+}
+
+// ----------------------------------------------------------------------------
+void GroxMainWindow::progress_events(int ms)
+{
+  using namespace std::chrono;
+  // process messages to unblock startup waits
+  for (auto start = system_clock::now(), now = start; now < start + milliseconds{ms};
+       now = system_clock::now())
+  {
+    QCoreApplication::processEvents();
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -278,27 +282,15 @@ void GroxMainWindow::appExitCleanupHandler()
   // block here to prevent access of temp buffers that are deleted
   // by the program/qt/etc
   //
-  bitstamp_network_->shut_down();
-  bitstamp_network_.reset();
-  //
-  xrpl_network_->shut_down();
-  xrpl_network_.reset();
-  //
-  xrpl_testnet_->shut_down();
-  xrpl_testnet_.reset();
-  main_dbg<0>.debug(str<>("websockets"), "shutdown complete");
-
-  // remove work guard so IO threads can exit
-  io_contexts_.work_guard_->reset();
-
-  // stop boost::asio io_service
-  io_contexts_.ioc.stop();
-  for (auto& t : ioc_threads_)
+  for (auto& e : exchange_list_)
   {
-    if (t.joinable())
-      t.join();
+    std::string name = std::string(e->name());
+    main_dbg<0>.debug(str<>("shut down"), name);
+    e->shut_down();
+    e.reset();
+    main_dbg<0>.debug(str<>("shut down"), name, "complete");
   }
-  main_dbg<0>.debug(str<>("boost::asio"), "shutdown complete");
+  main_dbg<0>.debug(str<>("exchanges"), "shutdown complete");
 }
 
 // ----------------------------------------------------------------------------
@@ -356,6 +348,7 @@ void GroxMainWindow::connect_gui_controls()
   // Qt::QueuedConnection to ensure they transfer to Qt main thread
   // ---------------------------------------------------------------------
 
+#ifdef GROX_HAVE_BITSTAMP
   // orderbook updates from bitstamp network connection
   // 1 Priority, arbitrage, 2 plot update, 3 text update
   connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()), this, SLOT(perform_arbitrage()),
@@ -385,7 +378,9 @@ void GroxMainWindow::connect_gui_controls()
   connect(
     bitstamp_network_.get(), &bitstamp_network::network_initialized, this,
     [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
+#endif
 
+#ifdef GROX_HAVE_XRPL
   connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)), this,
     SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
   connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)), this,
@@ -410,6 +405,7 @@ void GroxMainWindow::connect_gui_controls()
   connect(
     xrpl_testnet_.get(), &xrpl_network::network_initialized, this,
     [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
+#endif
 
   connect(
     algo_form_->exec_algo, &QAbstractButton::clicked, this,
@@ -459,12 +455,10 @@ void GroxMainWindow::execute_xrp()
   if (reply == QMessageBox::Yes)
   {
     main_dbg<0>.debug(str<>("Yes clicked"));
-    //        app_settings* app_ini = global_settings();
-
     //        std::uint32_t tag = bitstamp_network_->account().tag_;
     //        bool test = make_xrp_payment(ripple::KeyType::secp256k1,
-    //            app_ini->xrpl_wallets[app_ini->active_wallet].private_,
-    //            app_ini->xrpl_wallets[app_ini->active_wallet].public_,
+    //                global_settings.xrpl_wallets[    global_settings.active_wallet].private_,
+    //                global_settings.xrpl_wallets[    global_settings.active_wallet].public_,
     //            bitstamp_network_->account().public_, tag, 10);
 
     QApplication::quit();
@@ -499,26 +493,6 @@ void GroxMainWindow::capture_image()
   //    auto image = algo_form_->tabWidget->grab();
   //    algo_form_->imagelabel->setPixmap(image);
   //    algo_form_->imagelabel->setScaledContents(true);
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::start_io_threads(int nthreads)
-{
-  static bool initialized = false;
-  if (!initialized)
-  {
-    ioc_threads_.reserve(nthreads);
-    // Run the I/O service on some threads.
-    for (int i = 0; i < nthreads; ++i)
-    {
-      ioc_threads_.emplace_back([&]() {
-        main_dbg<5>.debug(str<>("io_contexts"), "run : thread", std::this_thread::get_id());
-        // The call will return when the socket is closed.
-        io_contexts_.ioc.run();
-      });
-    }
-    initialized = true;
-  }
 }
 
 // ----------------------------------------------------------------------------
@@ -589,9 +563,8 @@ void GroxMainWindow::display_offers()
     }
   }
 
-  app_settings* app_ini = global_settings();
   // for each wallet on each network
-  for (auto network : app_ini->networks_)
+  for (auto network : global_settings.networks_)
   {
     for (auto w : network->wallets())
     {
@@ -624,13 +597,17 @@ void GroxMainWindow::showEvent(QShowEvent* event)
   {
     loadWindowSettings();
     only_once = false;
+    main_dbg<0>.debug(str<>("ShowEvent"), "Reset timer");
+    QTimer* timer = global_settings.get_global_clock_timer();
+    timer->stop();
+    timer->start(1000);
   }
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::saveTrustlines()
 {
-  QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   // Start Grox MainWindow section
   settings.beginGroup("Trustlines");
   for (auto const& t : currency::trustlines)
@@ -645,7 +622,7 @@ void GroxMainWindow::saveTrustlines()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::loadTrustlines()
 {
-  QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   // Start "Trustlines" section
   settings.beginGroup("Trustlines");
   QStringList childKeys = settings.childKeys();
@@ -662,7 +639,7 @@ void GroxMainWindow::loadTrustlines()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::saveConnectionSetups()
 {
-  QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
 
   // ------------------------------------
   // Start "Tickers" section and remove all existing values
@@ -718,7 +695,7 @@ void GroxMainWindow::saveConnectionSetups()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::loadConnectionSetups()
 {
-  QSettings settings(global_settings()->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
 
   // ------------------------------------
   settings.beginGroup("Tickers");
@@ -729,12 +706,14 @@ void GroxMainWindow::loadConnectionSetups()
     for (auto const& k : childKeys)
     {
       std::string currencypair = k.toStdString();
+      main_dbg<0>.debug(str<>("Check Ticker"), currencypair);
       bool enabled = settings.value(k).toBool();
       if (enabled)
       {
         main_dbg<0>.debug(str<>("Enable Ticker"), currencypair);
-        auto cp = string_to_pair(currencypair, "-");
-        e->ticker_subscribe(std::get<0>(cp), std::get<1>(cp));
+        e->ticker_subscribe(string_to_pair(currencypair, "-"));
+        // process messages to unblock startup waits
+        progress_events(10);
       }
     }
     settings.endGroup();
@@ -769,7 +748,9 @@ void GroxMainWindow::loadConnectionSetups()
         if (subscribed)
         {
           main_dbg<0>.debug(str<>("Stream"), "subscribing", settings.group().toStdString(), key);
-          e->stream_subscribe(io_contexts_, t.first, s, true);
+          e->stream_subscribe(t.first, s, true);
+          // process messages to unblock startup waits
+          progress_events(10);
         }
       }
       settings.endGroup();    // ticker
@@ -783,8 +764,7 @@ void GroxMainWindow::loadConnectionSetups()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::saveWindowSettings()
 {
-  app_settings* app_ini = global_settings();
-  QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
 
   settings.beginGroup("StyleSheet");
   settings.setValue("Dark", dark_mode_);
@@ -798,7 +778,7 @@ void GroxMainWindow::saveWindowSettings()
 
   // Dockwindow perspectives
   settings.beginGroup("DockWindow_Perspectives");
-  app_ini->dock_manager_->savePerspectives(settings);
+  global_settings.dock_manager_->savePerspectives(settings);
   settings.setValue("active", active_perspective_);
   settings.endGroup();
 
@@ -808,8 +788,7 @@ void GroxMainWindow::saveWindowSettings()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::loadWindowSettings()
 {
-  app_settings* app_ini = global_settings();
-  QSettings settings(app_ini->iniFileName, QSettings::IniFormat);
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
 
   settings.beginGroup("StyleSheet");
   dark_mode_ = settings.value("Dark").toInt();
@@ -824,7 +803,7 @@ void GroxMainWindow::loadWindowSettings()
 
   // Dockwindow perspectives
   settings.beginGroup("DockWindow_Perspectives");
-  app_ini->dock_manager_->loadPerspectives(settings);
+  global_settings.dock_manager_->loadPerspectives(settings);
   createPerspectives_Ui();
   if (settings.contains("active"))
   {
@@ -836,7 +815,7 @@ void GroxMainWindow::loadWindowSettings()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::stream_process(QwtOHLCSample const& ohlc)
+void GroxMainWindow::stream_process(ohlctv_sample const& ohlc)
 {
   main_dbg<0>.debug(str<>("New data"), msecs_unix_to_calendar_time(ohlc.time), ohlc);
   //    df_.process(ohlc);
@@ -887,7 +866,7 @@ void GroxMainWindow::execute_filter()
 
 //    base_resolution = ohlc_data_resolutions::minute;
 
-    auto dataset = app_ini->data_manager_->get_dataset(base_resolution);
+    auto dataset =     global_settings.data_manager_->get_dataset(base_resolution);
     auto data = dataset->ohlc_samples_;
 
     // NB. Inputs need to be used by reference, with the original object
@@ -895,8 +874,8 @@ void GroxMainWindow::execute_filter()
     // Other filter objects are copied during pipeline construction
 
     // initialize an ohlc input object with the first dataset value
-    input_value<QwtOHLCSample> ohlc_in(data->data().front());
-    pipeline::input<QwtOHLCSample const&> ohlc_input = std::ref(ohlc_in);
+    input_value"data/ohlctv_sample.hpp" ohlc_in(data->data().front());
+    pipeline::input<ohlctv_sample const&> ohlc_input = std::ref(ohlc_in);
 
     // initialize a time input object
     input_value<double> time_in(data->data().front().time);
@@ -981,7 +960,7 @@ void GroxMainWindow::execute_filter()
         trade_event e = pipe.operator()();
         if (e.type_ == buy_sell_type::buy_event) {
             if (funding[0].usd>0) {
-                double p = app_ini->data_manager_->get_estimated_buy_price(funding[0].usd, e.time_, 2.0);
+                double p =     global_settings.data_manager_->get_estimated_buy_price(funding[0].usd, e.time_, 2.0);
                 if (p==0) break;
 
                 // plot buy price
@@ -1002,7 +981,7 @@ void GroxMainWindow::execute_filter()
         }
         else if (e.type_ == buy_sell_type::sell_event) {
             if (funding[0].xrp>0) {
-                double p = app_ini->data_manager_->get_estimated_sell_price(funding[0].xrp, e.time_, 2.0);
+                double p =     global_settings.data_manager_->get_estimated_sell_price(funding[0].xrp, e.time_, 2.0);
                 if (p==0) break;
 
                 // plot sell price
@@ -1072,7 +1051,7 @@ void GroxMainWindow::execute_filter()
 void GroxMainWindow::build_connection_gui(exchange* ex)
 {
   // widget with panels for tickers/selected/streams
-  connection_widget* conwidget = new connection_widget(this, io_contexts_, ex);
+  connection_widget* conwidget = new connection_widget(this, ex);
   conwidget->setup_gui();
   net_layout_->insertWidget(0, conwidget);
 }
@@ -1080,17 +1059,16 @@ void GroxMainWindow::build_connection_gui(exchange* ex)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::createPerspectives_Ui()
 {
-  app_settings* app_ini = global_settings();
   // create one time setup menu items
-  if (!app_ini->dockwindows_menu_)
+  if (!global_settings.dockwindows_menu_)
   {
     // main window menu entry
     QMenu* docking_menu_ = new QMenu("Window");
     ui.menubar->addMenu(docking_menu_);
     // subsection for dockwindows
     QAction* menuentry_ = docking_menu_->addAction("Dock windows...");
-    app_ini->dockwindows_menu_ = new QMenu();
-    menuentry_->setMenu(app_ini->dockwindows_menu_);
+    global_settings.dockwindows_menu_ = new QMenu();
+    menuentry_->setMenu(global_settings.dockwindows_menu_);
     // subsection for perspectives
     QAction* menuentry2_ = docking_menu_->addAction("Perspectives...");
     perspectives_menu_ = new QMenu();
@@ -1102,7 +1080,7 @@ void GroxMainWindow::createPerspectives_Ui()
   }
   //
   perspectives_menu_->clear();
-  for (QString const& name : app_ini->dock_manager_->perspectiveNames())
+  for (QString const& name : global_settings.dock_manager_->perspectiveNames())
   {
     QAction* LoadPerspectiveAction = new QAction(name);
     LoadPerspectiveAction->setCheckable(true);
@@ -1116,12 +1094,11 @@ void GroxMainWindow::createPerspectives_Ui()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::savePerspective()
 {
-  app_settings* app_ini = global_settings();
   QString Name = QInputDialog::getText(
     this, "Save Perspective", "Enter name:", QLineEdit::Normal, active_perspective_);
   if (!Name.isEmpty())
   {
-    app_ini->dock_manager_->addPerspective(Name);
+    global_settings.dock_manager_->addPerspective(Name);
     createPerspectives_Ui();
   }
 }
@@ -1129,7 +1106,6 @@ void GroxMainWindow::savePerspective()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::openPerspective(QString const& name)
 {
-  app_settings* app_ini = global_settings();
   active_perspective_ = name;
   for (auto* action : perspectives_menu_->actions())
   {
@@ -1142,7 +1118,7 @@ void GroxMainWindow::openPerspective(QString const& name)
       action->setChecked(false);
     }
   }
-  app_ini->dock_manager_->openPerspective(name);
+  global_settings.dock_manager_->openPerspective(name);
 }
 
 // ----------------------------------------------------------------------------
@@ -1158,7 +1134,7 @@ void GroxMainWindow::LoadStyleSheet(int dark)
   QString name;
   if (dark == 0)
   {
-    global_settings()->dock_manager_->setStyleSheet("");
+    global_settings.dock_manager_->setStyleSheet("");
     qApp->setStyleSheet("");
     return;
   }
@@ -1179,7 +1155,14 @@ void GroxMainWindow::LoadStyleSheet(int dark)
   {
     f.open(QFile::ReadOnly | QFile::Text);
     QTextStream ts(&f);
-    global_settings()->dock_manager_->setStyleSheet("");
+    global_settings.dock_manager_->setStyleSheet("");
     qApp->setStyleSheet(ts.readAll());
   }
+}
+
+// ----------------------------------------------------------------------------
+bool GroxMainWindow::schedule_function(grox::qt::experimental::detail::qt_function_type func)
+{
+  func(true);
+  return true;
 }

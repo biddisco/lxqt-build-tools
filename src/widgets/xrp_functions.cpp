@@ -11,14 +11,14 @@
 #include <boost/format.hpp>
 #include <string>
 //
-#include "currency.hpp"
+#include "currency/currency.hpp"
 #include "exchange/exchange.hpp"
 #include "exchange/xrpl_network.hpp"
 // ----------------------------------------------------------------------------
 xrp_functions::xrp_functions(xrpl_network* network, basic_account* account, QWidget* parent)
   : QWidget(parent)
   , ui(new Ui::xrp_functions)
-  , currency_{}
+  , currency_(currency_code{"", ""})
   , account_(account)
   , network_(network)
 {

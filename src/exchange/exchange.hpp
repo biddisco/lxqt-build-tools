@@ -5,12 +5,12 @@
 //
 #include <QObject>
 //
-#include "currency.hpp"
+#include "currency/currency.hpp"
+#include "currency/trade_data.hpp"
 //
 #include "data/ohlc_dataset_view.hpp"
-#include "network/https-async.hpp"
-#include "network/websocket-ssl.hpp"
-#include "trade_data.hpp"
+#include "network/qwebsocket_client.hpp"
+#include "network/qwebsocket_session.hpp"
 
 class basic_account;
 
@@ -78,7 +78,7 @@ struct ticker_data
   QPlainTextEdit* orderbook_text_;
   OrderBookPlot* orderbook_plot_;
   // each ticker may subscribe to multiple streams
-  std::map<network::streams, std::shared_ptr<net::ws::session>> websockets_;
+  std::map<network::streams, std::shared_ptr<net::ws::qwebsocket_session>> websockets_;
 };
 
 // To ensure Qt can emit signals of this type
@@ -119,10 +119,9 @@ class exchange
   // ---------------------------------------
   // query which tickers (currency pairs) are subscribed
   virtual bool ticker_subscribed(currency const& c1, currency const& c2);
-  virtual bool ticker_subscribed(std::string_view p1, std::string_view p2);
   // un/subscribe to a ticker
   virtual void ticker_subscribe(currency const& c1, currency const& c2);
-  virtual void ticker_subscribe(std::string_view p1, std::string_view p2);
+  virtual void ticker_subscribe(const currency_pair& p);
   virtual void ticker_unsubscribe(currency const& c1, currency const& c2);
   // return list of subscribed tickers
   exchange_map const& tickers_subscribed();
@@ -139,8 +138,8 @@ class exchange
   // puts an entry into the stream map
   void mark_stream_subscribed(std::string const& s, bool enabled);
   // un/subscribe to an individual ticker stream
-  virtual bool stream_subscribe(net::contexts& io_contexts, currency_pair const& cp,
-    network::streams const stream, bool enabled) = 0;
+  virtual bool stream_subscribe(
+    currency_pair const& cp, network::streams const stream, bool enabled) = 0;
   //  virtual bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) = 0;
   //  virtual bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) = 0;
 
@@ -150,8 +149,8 @@ class exchange
   // ---------------------------------------
   // currency management
   // ---------------------------------------
-  virtual bool can_send(currency& c, exchange* dest) = 0;
-  virtual bool make_payment(currency& c, basic_account* src, basic_account* dest) = 0;
+  virtual bool can_send(const currency& c, exchange* dest) = 0;
+  virtual bool make_payment(const currency& c, basic_account* src, basic_account* dest) = 0;
   virtual std::string_view name() = 0;
   virtual void cancel_order(trade_data const& t) = 0;
   virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const&) = 0;
@@ -160,14 +159,14 @@ class exchange
   // ---------------------------------------
   // setup / query tickers
   // ---------------------------------------
-  virtual bool add_currency_pair(std::string_view p1, std::string_view p2) = 0;
+  virtual bool add_currency_pair(const currency& c1, const currency& c2);
   virtual currency_pairlist const& get_currency_pairs();
 
   // ---------------------------------------
   // fees
   // ---------------------------------------
-  virtual double get_fee_percent(currency_type const& c1, currency_type const& c2) = 0;
-  virtual double get_fee_fixed(currency_type const& c1, currency_type const& c2) = 0;
+  virtual double get_fee_percent(currency const& c1, currency const& c2) = 0;
+  virtual double get_fee_fixed(currency const& c1, currency const& c2) = 0;
   virtual double get_transfer_fee(currency const& c1) = 0;
   virtual void custom_functions(basic_account* acct) = 0;
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 // Grox
-#include "currency.hpp"
+#include "currency/currency.hpp"
 #include "debug/print.hpp"
 // extern
 #include <ripple/basics/StringUtilities.h>
@@ -130,7 +130,7 @@ std::string make_xrp_payment(ripple::KeyType keyType, std::string const& from_se
       obj[sfAmount] =
         STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount));
     }
-    else if (is_fiat(issued_currency{issuer, currency}))
+    else if (currency_code{issuer, currency}.is_fiat())
     {
       // amount we want to send as dollars.cents, multiply x 100, shift right 2 places
       obj[sfAmount] =

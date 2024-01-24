@@ -1,0 +1,102 @@
+//------------------------------------------------------------------------------
+//
+// Example: HTTP SSL client, asynchronous
+//
+//------------------------------------------------------------------------------
+
+#include <cstdlib>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <thread>
+//
+#include <boost/asio/strand.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/ssl.hpp>
+#include <boost/beast/websocket.hpp>
+#include <boost/beast/websocket/ssl.hpp>
+#include <openssl/ssl.h>
+//
+#include "network/test/https-async.hpp"
+
+std::atomic<int> counter{0};
+
+//
+// Creates a session using https and fetches data from bitstamp
+//
+//------------------------------------------------------------------------------
+void new_data(std::string&& data)
+{
+  if (data.find("{\"data\": {\"ohlc\":") != data.npos)
+  {
+    counter++;
+  }
+  std::cout << "\n\nReceived\n\n" << data << std::endl;
+}
+
+//------------------------------------------------------------------------------
+
+int main(int argc, char** argv)
+{
+  // Check command line arguments.
+  if (argc != 4 && argc != 5)
+  {
+    std::cerr << "Usage  : bin/test-https <host> <port> <target> [<HTTP "
+                 "version: 1.0 or 1.1(default)>]\n"
+              << "Example:\n"
+              << "bin/test-https www.bitstamp.net 443 "
+                 "\"/api/v2/ohlc/xrpusd/?step=60&limit=10\" \n";
+    return EXIT_FAILURE;
+  }
+
+  auto const host = argv[1];
+  auto const port = argv[2];
+  auto const target = argv[3];
+  std::cout << "Connecting : " << host << ":" << port << " " << target << "\n";
+  int version = argc == 5 && !std::strcmp("1.0", argv[4]) ? 10 : 11;
+
+  // The io_context is required for all I/O
+  net::contexts contexts;
+
+  std::shared_ptr<net::https::session> session =
+    net::https::create_session(contexts.ioc, contexts.ctx, host, port, new_data);
+
+  // Run the I/O service on a thread.
+  std::thread io_thread([&]() {
+    // The call will return when the socket is closed.
+    contexts.ioc.run();
+  });
+
+  // wait until connection is setup
+  while (!session->ready_)
+  {
+    std::this_thread::yield();
+  }
+
+  // invoke a post on the context thread
+  contexts.ioc.post([&]() {
+    std::cout << "IO context::post ok" << std::endl;
+    session->write(target, version);
+  });
+
+  const int sec = 5;
+  // wait 5 seconds and collect some data
+  for (int i = 0; i < sec && (counter.load() == 0); i++)
+  {
+    std::cout << "Closing in " << sec - i << " seconds " << std::endl;
+    std::chrono::seconds dura(1);
+    std::this_thread::sleep_for(dura);
+  }
+
+  session->shutdown_blocking();
+  session.reset();
+  std::cout << "Completed " << std::endl;
+  //
+  contexts.work_guard_->reset();
+  contexts.ioc.stop();
+  io_thread.join();
+
+  std::cout << "Exiting" << std::endl;
+  return (counter.load() > 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+}

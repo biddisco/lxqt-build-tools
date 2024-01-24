@@ -4,7 +4,7 @@
 #include <iostream>
 #include <optional>
 // Qwt
-#include <QwtOHLCSample>
+#include "data/ohlctv_sample.hpp"
 
 // ----------------------------------------------------------------------------
 enum buy_sell_type
@@ -25,7 +25,7 @@ struct trade_event
 struct ohlc_heikin_ashi
 {
   bool first_;
-  QwtOHLCSample prev_;
+  ohlctv_sample prev_;
 
   ohlc_heikin_ashi()
     : first_(true)
@@ -33,7 +33,7 @@ struct ohlc_heikin_ashi
   {
   }
 
-  ohlc_heikin_ashi(QwtOHLCSample const& ohlc)
+  ohlc_heikin_ashi(ohlctv_sample const& ohlc)
     : first_(false)
     , prev_(ohlc)
   {
@@ -44,12 +44,12 @@ struct ohlc_heikin_ashi
     }
   }
 
-  std::optional<QwtOHLCSample> operator()(std::optional<QwtOHLCSample> ohlc_o)
+  std::optional<ohlctv_sample> operator()(std::optional<ohlctv_sample> ohlc_o)
   {
     // exit or get the value
     if (!ohlc_o.has_value())
       return std::nullopt;
-    QwtOHLCSample const& ohlc = ohlc_o.value();
+    ohlctv_sample const& ohlc = ohlc_o.value();
 
     // first point in plot needs a prev open/close
     if (first_)
@@ -62,7 +62,7 @@ struct ohlc_heikin_ashi
     double open = 0.50 * (prev_.open + prev_.close);
     double high = std::max(std::max(ohlc.open, ohlc.close), ohlc.high);
     double low = std::min(std::min(ohlc.open, ohlc.close), ohlc.low);
-    QwtOHLCSample result(ohlc.time, open, high, low, close, ohlc.volume);
+    ohlctv_sample result(ohlc.time, open, high, low, close, ohlc.volume);
     prev_ = result;
     return result;
   }
@@ -80,12 +80,12 @@ struct heikin_ashi_transition
   {
   }
 
-  buy_sell_type operator()(std::optional<QwtOHLCSample> ha_o)
+  buy_sell_type operator()(std::optional<ohlctv_sample> ha_o)
   {
     // exit or get the value
     if (!ha_o.has_value())
       return buy_sell_type::no_event;
-    QwtOHLCSample const& ha = ha_o.value();
+    ohlctv_sample const& ha = ha_o.value();
 
     // first point in plot needs a prev open/close
     if (first_)

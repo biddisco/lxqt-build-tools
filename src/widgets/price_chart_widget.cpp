@@ -9,14 +9,15 @@
 //
 #include "ui_price_chart_widget.h"
 //
-#include "data/ohlc_dataset_manager.hpp"
+#include "config/config.hpp"
+#include "debug/print.hpp"
 #include "indicators/indicator_definitions.hpp"
+#include "indicators/indicator_types.hpp"
+#include "plot/ohlc_chart_curve.hpp"
+#include "plot/timebased_data_curve.hpp"
 #include "widgets/digital_clock.hpp"
 #include "widgets/indicator_dialog.hpp"
 #include "widgets/price_chart_widget.hpp"
-//
-#include "debug/print.hpp"
-#include "settings.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -83,7 +84,7 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   btn_indicator_->setFlat(true);
   ui->controls_layout->addWidget(btn_indicator_);
 
-  DigitalClock* clock = new DigitalClock(this, global_settings()->get_global_clock_timer());
+  DigitalClock* clock = new DigitalClock(this, global_settings.get_global_clock_timer());
   ui->controls_layout->addWidget(clock);
   //
   connect_gui();
@@ -251,19 +252,20 @@ void price_chart_widget::connect_gui()
           // convert the dataset name selections in the dialog into actual datasets
           std::vector<ohlc_datasets*> datasets = indicators::get_datasets(alg.params, hdf5_ohlc_);
 
-          QVector<QPointF> indicator_data;
+          point_chart_data* indicator_data =
+            new point_chart_data(datasets[0]->ohlc_samples_->get_resolution());
           // if the algorithm operates on a single input dataset
           if (datasets.size() == 1)
           {
             auto const& input_dataset = datasets[0]->ohlc_samples_;
-            indicator_data.reserve(input_dataset->size());
+            indicator_data->data().reserve(input_dataset->size());
 
             // iterate over the dataset, executing the algorithm for each point
             for (auto const& ohlc : input_dataset->data())
             {
               double val = alg.operator()(ohlc);
               QPointF xyval(ohlc.time, val);
-              indicator_data.push_back(xyval);
+              indicator_data->data().push_back(xyval);
             }
           }
           else
@@ -277,11 +279,27 @@ void price_chart_widget::connect_gui()
           auto colour = colours[colour_count++ % 10];
 
           QString name = QString(alg.name.c_str());
-          QwtPlotCurve* curve;
+          timebased_data_curve* curve;
           indicator_plot* plot = nullptr;
-          if (alg.price_overlay)
+          if (alg.overlay == indicators::overlay_type::price)
           {
             curve = crypto_price_plot_->add_overlay_curve(name, indicator_data, colour);
+          }
+          else if (alg.overlay == indicators::overlay_type::mode_select)
+          {
+            ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(alg.params[2]));
+            if (mode == ohlc_modes::volume)
+            {
+              curve = crypto_price_plot_->add_overlay_volume_curve(name, indicator_data, colour);
+            }
+            else if (mode == ohlc_modes::value)
+            {
+              std::tie(plot, curve) = add_indicator_plot(name, indicator_data, colour);
+            }
+            else
+            {
+              curve = crypto_price_plot_->add_overlay_curve(name, indicator_data, colour);
+            }
           }
           else
           {
@@ -409,20 +427,27 @@ void price_chart_widget::show_plot_axes()
 }
 
 // ----------------------------------------------------------------------------
-std::tuple<indicator_plot*, QwtPlotCurve*> price_chart_widget::add_indicator_plot(
-  QString const& title, QVector<QPointF> const& samples, QColor const& color)
+std::tuple<indicator_plot*, timebased_data_curve*> price_chart_widget::add_indicator_plot(
+  QString const& title, point_chart_data* data, QColor const& color, indicators::y_limits ylimits)
 {
   auto filter_plot = new indicator_plot(this);
   filter_plot->setMinimumHeight(128);
-  filter_plot->setAxisScale(QwtAxis::YRight, 0, 1);
+  if (ylimits.min == ylimits.max)
+  {
+    filter_plot->setAxisAutoScale(QwtAxis::YRight, true);
+  }
+  else
+  {
+    filter_plot->setAxisScale(QwtAxis::YRight, ylimits.min, ylimits.max);
+  }
 
-  auto m_curve = new QwtPlotCurve(title);
+  auto m_curve = new timebased_data_curve(title);
   m_curve->setYAxis(QwtPlot::yRight);
   m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
   m_curve->setStyle(QwtPlotCurve::Lines);
   m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
   m_curve->setPen(color, 2);
-  m_curve->setSamples(samples);
+  m_curve->setData(data);
   m_curve->attach(filter_plot);
 
   // Align the right axis of the indicator with the main price plot
@@ -452,7 +477,8 @@ std::tuple<indicator_plot*, QwtPlotCurve*> price_chart_widget::add_indicator_plo
 }
 
 // ----------------------------------------------------------------------------
-void price_chart_widget::remove_indicator_plot(indicator_plot* filter_plot, QwtPlotCurve* curve)
+void price_chart_widget::remove_indicator_plot(
+  indicator_plot* filter_plot, timebased_data_curve* curve)
 {
   // detach curves and autodelete them
   curve->detach();

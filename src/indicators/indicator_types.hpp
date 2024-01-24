@@ -5,30 +5,21 @@
 #include <vector>
 
 #include "data/ohlc_data_resolutions.hpp"
+#include "data/ohlc_utils.hpp"
 
 namespace indicators {
 
-  using param_types = std::variant<double, int, bool, candle_res>;
+  using param_types = std::variant<double, int, ohlc_modes, bool, candle_res>;
   using param_list = std::vector<std::tuple<std::string, param_types>>;
 
-  inline double ohlc_mode_extract(const int mode, QwtOHLCSample const& ohlc)
+  enum class overlay_type : int
   {
-    switch (mode)
-    {
-    case 0:
-      return ohlc.open;
-    case 1:
-      return ohlc.close;
-    case 2:
-      return 0.5 * (ohlc.open + ohlc.close);
-    case 3:
-      return ohlc.high;
-    case 4:
-      return ohlc.low;
-    default:
-      return 0.5 * (ohlc.low + ohlc.high);
-    }
-  }
+    price = 0,
+    volume = 1,
+    mode_select = 2,
+    minmax_limit = 3,
+    no_overlay = 4,
+  };
 
   struct y_limits
   {
