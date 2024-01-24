@@ -89,8 +89,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(live_order_book, bids, asks, timestamp, micro
 struct xrp_amount
 {
   double value;
-  currency_type currency;
-  std::optional<issued_currency> trustline = std::nullopt;
+  std::optional<currency_code> currency = std::nullopt;
 };
 
 Q_DECLARE_METATYPE(xrp_amount)
@@ -111,9 +110,16 @@ struct xrpl_offer
   xrp_amount TakerGets;
   xrp_amount TakerPays;
 
-  double amount(currency_type c) const
+  // if there is no issuer, then it must be native xrp currency
+  bool is_xrp(xrp_amount const x) const
   {
-    if (TakerPays.currency == c)
+    return !x.currency.has_value();
+  }
+
+  double amount(currency const& c) const
+  {
+    // @ todo : check if currency type of C is same as type of TakerPAys
+    if (is_xrp(TakerPays) == c.is_xrp())
     {
       return TakerPays.value;
     }
@@ -127,7 +133,7 @@ struct xrpl_offer
   // if the takes gives usd, offer is buying xrp
   double rate() const
   {
-    if (TakerPays.currency == currency_type::xrp)
+    if (is_xrp(TakerPays))
     {
       return 1E6 * TakerGets.value / TakerPays.value;
     }
@@ -163,10 +169,10 @@ struct xrpl_offer
 
   bool grox_compatible() const
   {
-    return ((TakerGets.currency == currency_type::xrp &&
-              TakerPays.currency == currency_type::usd_bitstamp) ||
-      (TakerPays.currency == currency_type::xrp &&
-        TakerGets.currency == currency_type::usd_bitstamp));
+    return ((is_xrp(TakerGets) &&
+              (TakerPays.currency == currency_code{currency::bitstamp_trust, "USD"})) ||
+      (is_xrp(TakerPays) &&
+        (TakerGets.currency == currency_code{currency::bitstamp_trust, "USD"})));
   }
 };
 

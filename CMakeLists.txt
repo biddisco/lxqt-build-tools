@@ -261,6 +261,7 @@ get_external_project(
 # -------------------------------------------------------------
 # Find/Build/Download pika
 # -------------------------------------------------------------
+set(PIKA_WITH_CXX_STANDARD 20)
 get_external_project(PROJECT_NAME "pika" GIT_REPO
                      "https://github.com/pika-org/pika" GIT_TAG "main")
 if(pika_WITH_APEX)

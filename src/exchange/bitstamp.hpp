@@ -105,11 +105,8 @@ class bitstamp_network : public exchange
     return "Bitstamp";
   }
 
-  // supported currency pairs
-  bool add_currency_pair(std::string_view c1, std::string_view c2) override;
-
   // Is sending this currency to the destination exchange supported
-  bool can_send(currency& c, exchange* dest) override;
+  bool can_send(const currency& c, exchange* dest) override;
 
   // ---------------------------------------
   // return the order book for this exchange
@@ -163,7 +160,7 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // make a payment/transfer from bitstamp
-  bool make_payment(currency& c, basic_account* src, basic_account* dest) override;
+  bool make_payment(currency const& c, basic_account* src, basic_account* dest) override;
 
   // ---------------------------------------
   // place a buy/sell order
@@ -185,8 +182,8 @@ class bitstamp_network : public exchange
   // function called from websocket subscription to live orderbook data
   static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, const QString);
 
-  double get_fee_percent(currency_type const& c1, currency_type const& c2) override;
-  double get_fee_fixed(currency_type const& c1, currency_type const& c2) override;
+  double get_fee_percent(currency const& c1, currency const& c2) override;
+  double get_fee_fixed(currency const& c1, currency const& c2) override;
   double get_transfer_fee(currency const& /*c1*/) override
   {
     return 0;

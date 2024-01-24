@@ -24,9 +24,9 @@
 #include <QwtAxis>
 #include <QwtScaleDraw>
 #include <QwtScaleEngine>
-#include "data/ohlctv_sample.hpp"
 // Grox
 #include "data/ohlc_heikin_ashi.hpp"
+#include "data/ohlctv_sample.hpp"
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
 #include "exchange/xrpl.hpp"
@@ -48,6 +48,9 @@
 #include "DockComponentsFactory.h"
 #include "DockManager.h"
 #include "FloatingDockContainer.h"
+
+#define GROX_HAVE_BITSTAMP
+//#define GROX_HAVE_XRPL
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
@@ -113,20 +116,21 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   // Setup a menu to allow dockwindow control
   createPerspectives_Ui();
 
+#ifdef GROX_HAVE_BITSTAMP
   // ----------------------------------
   // create bitstamp exchange interface
   bitstamp_network_ = bitstamp_network::get_bitstamp_instance();
+  exchange_list_.push_back(bitstamp_network_);
+#endif
 
+#ifdef GROX_HAVE_XRPL
   // ----------------------------------
   // create xrp network interfaces
-  // we do not plot the xrp testnet orderbook
   xrpl_network_ = xrpl_network::get_xrpl_instance(false);
   xrpl_testnet_ = xrpl_network::get_xrpl_instance(true);
-  //xrpl_network_->set_plot(obp_);
-
-  exchange_list_.push_back(bitstamp_network_);
   exchange_list_.push_back(xrpl_network_);
   exchange_list_.push_back(xrpl_testnet_);
+#endif
 
   // ----------------------------------
   // Create dockwidget for network connections
@@ -208,17 +212,12 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
   // ----------------------------------
   // initialize networks / start websocket connections etc
-  main_dbg<0>.debug("Init bitstamp");
-  bitstamp_network_->initialize();
-  progress_events(10);
-  //
-  main_dbg<0>.debug("Init xrpl mainnet");
-  xrpl_network_->initialize();
-  progress_events(10);
-  //
-  main_dbg<0>.debug("Init xrpl testnet");
-  xrpl_testnet_->initialize();
-  progress_events(10);
+  for (auto const& e : exchange_list_)
+  {
+    main_dbg<0>.debug(str<>("Init exchange"), e->name());
+    e->initialize();
+    progress_events(10);
+  }
 
   // ----------------------------------
   // setup connections tab
@@ -285,15 +284,15 @@ void GroxMainWindow::appExitCleanupHandler()
   // block here to prevent access of temp buffers that are deleted
   // by the program/qt/etc
   //
-  bitstamp_network_->shut_down();
-  bitstamp_network_.reset();
-  //
-  xrpl_network_->shut_down();
-  xrpl_network_.reset();
-  //
-  xrpl_testnet_->shut_down();
-  xrpl_testnet_.reset();
-  main_dbg<0>.debug(str<>("websockets"), "shutdown complete");
+  for (auto& e : exchange_list_)
+  {
+    std::string name = std::string(e->name());
+    main_dbg<0>.debug(str<>("shut down"), name);
+    e->shut_down();
+    e.reset();
+    main_dbg<0>.debug(str<>("shut down"), name, "complete");
+  }
+  main_dbg<0>.debug(str<>("exchanges"), "shutdown complete");
 }
 
 // ----------------------------------------------------------------------------
@@ -351,6 +350,7 @@ void GroxMainWindow::connect_gui_controls()
   // Qt::QueuedConnection to ensure they transfer to Qt main thread
   // ---------------------------------------------------------------------
 
+#ifdef GROX_HAVE_BITSTAMP
   // orderbook updates from bitstamp network connection
   // 1 Priority, arbitrage, 2 plot update, 3 text update
   connect(bitstamp_network_.get(), SIGNAL(orderbook_changed()), this, SLOT(perform_arbitrage()),
@@ -380,7 +380,9 @@ void GroxMainWindow::connect_gui_controls()
   connect(
     bitstamp_network_.get(), &bitstamp_network::network_initialized, this,
     [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
+#endif
 
+#ifdef GROX_HAVE_XRPL
   connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)), this,
     SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
   connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)), this,
@@ -405,6 +407,7 @@ void GroxMainWindow::connect_gui_controls()
   connect(
     xrpl_testnet_.get(), &xrpl_network::network_initialized, this,
     [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
+#endif
 
   connect(
     algo_form_->exec_algo, &QAbstractButton::clicked, this,
@@ -709,8 +712,7 @@ void GroxMainWindow::loadConnectionSetups()
       if (enabled)
       {
         main_dbg<0>.debug(str<>("Enable Ticker"), currencypair);
-        auto cp = string_to_pair(currencypair, "-");
-        e->ticker_subscribe(std::get<0>(cp), std::get<1>(cp));
+        e->ticker_subscribe(string_to_pair(currencypair, "-"));
         // process messages to unblock startup waits
         progress_events(10);
       }

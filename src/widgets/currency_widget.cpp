@@ -18,7 +18,7 @@ currency_widget::currency_widget(int decimals, QWidget* parent)
   : QWidget(parent)
   , ui(new Ui::currency_widget)
   , decimals_(decimals)
-  , currency_{}
+  , currency_(currency_code{"", ""})
 {
   ui->setupUi(this);
   ui->controls_amount->hide();
@@ -56,19 +56,19 @@ void currency_widget::set_data(
     account_ = acct;
   if (network)
     network_ = network;
-  if (c->curr_.code_.size() == 40)
+  if (c->code_.size() == 40)
   {
-    ui->currency->setText(hex_to_currency(c->curr_.code_).c_str());
+    ui->currency->setText(hex_to_currency(c->code_).c_str());
   }
   else
   {
-    ui->currency->setText(c->curr_.code_.c_str());
+    ui->currency->setText(c->code_.c_str());
   }
-  ui->issuer->setText(c->curr_.issuer_.c_str());
+  ui->issuer->setText(c->issuer_.c_str());
   //
-  ui->balance->setText(to_string(c->balance_, c->type_).c_str());
-  ui->avail->setText(to_string(c->avail_, c->type_).c_str());
-  ui->reserved->setText(to_string(c->reserved_, c->type_).c_str());
+  ui->balance->setText(to_string(c->balance_, *c).c_str());
+  ui->avail->setText(to_string(c->avail_, *c).c_str());
+  ui->reserved->setText(to_string(c->reserved_, *c).c_str());
   update();
   /*
     ui.bitstamp_xrp_fee->setText(boost::str(boost::format("fee %.4f%%") %     global_settings.bitstamp_xrp_fee).c_str());
@@ -79,7 +79,7 @@ void currency_widget::set_data(
 void currency_widget::transfer_setup_xrp(double fraction)
 {
   amount_ = fraction * currency_.avail_;
-  ui->amount_edit->setText(to_string(amount_, currency_.type_).c_str());
+  ui->amount_edit->setText(to_string(amount_, currency_).c_str());
 }
 
 // ----------------------------------------------------------------------------
@@ -148,9 +148,9 @@ void currency_widget::show_hide()
     {
       auto c1 = std::get<0>(p);
       auto c2 = std::get<1>(p);
-      if (c1.type_ == currency_.type_)
+      if (c1 == currency_)
       {
-        auto cstr = to_string(c2);
+        auto cstr = c2.to_string();
         ui->buy_sell_combo->addItem(QString(cstr.first.c_str()), QString(cstr.second.c_str()));
       }
       else
@@ -209,9 +209,9 @@ void currency_widget::execute_trade()
 {
   bool feesincluded = ui->FeesIncluded->isChecked();
   int N = ui->num_orders->value();
-  currency_type taker_payc =
-    get_currency_type({ui->buy_sell_combo->currentData().toString().toStdString(),
-      ui->buy_sell_combo->currentText().toStdString()});
+  currency_code taker_payc =
+    currency_code{ui->buy_sell_combo->currentData().toString().toStdString(),
+      ui->buy_sell_combo->currentText().toStdString()};
   //
   if (ui->amount_edit->text().isEmpty())
     return;
@@ -226,7 +226,7 @@ void currency_widget::execute_trade()
   double price_max = ui->max_price->value();
 
   // if taker pays us xrp, we are buying it
-  bool buy_order = (taker_payc == currency_type::xrp);
+  bool buy_order = (taker_payc.is_xrp());
 
   // smaller per order amount for N orders
   std::vector<trade_data> trades;
@@ -250,7 +250,7 @@ void currency_widget::execute_trade()
       taker_pay = taker_get * price;
     }
     //
-    double fee_percent = network_->get_fee_percent(taker_payc, this->currency_.type_);
+    double fee_percent = network_->get_fee_percent(taker_payc, this->currency_);
     if (feesincluded)
     {
       taker_get = (1.0 - 0.01 * fee_percent) * taker_get;
@@ -260,13 +260,13 @@ void currency_widget::execute_trade()
     trade_data t{
       network_,
       account_->name_,
-      taker_payc,               // taker pays this currency
-      this->currency_.type_,    // taker gets this currency
-      taker_pay,                // taker pays this amount (total)
-      taker_get,                // taker gets this amount (total)
-      price,                    // exchange rate
-      network_->get_fee_percent(taker_payc, this->currency_.type_),
-      network_->get_fee_percent(taker_payc, this->currency_.type_),
+      taker_payc,         // taker pays this currency
+      this->currency_,    // taker gets this currency
+      taker_pay,          // taker pays this amount (total)
+      taker_get,          // taker gets this amount (total)
+      price,              // exchange rate
+      network_->get_fee_percent(taker_payc, this->currency_),
+      network_->get_fee_percent(taker_payc, this->currency_),
       0,    // Id
       now.toStdString(),
       false,
@@ -283,21 +283,21 @@ void currency_widget::execute_trade()
 // ----------------------------------------------------------------------------
 void currency_widget::buy_sell_status()
 {
-  bool buy = is_fiat(currency_.type_);
+  bool buy = currency_.is_fiat();
   if (buy)
   {
     QPalette palette = ui->buy_sell->palette();
     palette.setColor(QPalette::WindowText, QRgb(0x00CF00));
     ui->buy_sell->setPalette(palette);
     ui->buy_sell->setText(
-      "Buy " + ui->buy_sell_combo->currentText() + " <- " + currency_.curr_.code_.c_str());
+      "Buy " + ui->buy_sell_combo->currentText() + " <- " + currency_.code_.c_str());
   }
   else
   {
     QPalette palette = ui->buy_sell->palette();
     palette.setColor(QPalette::WindowText, QRgb(0xFF4040));
     ui->buy_sell->setPalette(palette);
-    ui->buy_sell->setText(QString("Sell ") + currency_.curr_.code_.c_str() + " -> " +
-      ui->buy_sell_combo->currentText());
+    ui->buy_sell->setText(
+      QString("Sell ") + currency_.code_.c_str() + " -> " + ui->buy_sell_combo->currentText());
   }
 }

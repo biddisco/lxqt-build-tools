@@ -3,7 +3,9 @@
 // Qt
 #include <QDialog>
 #include <QHBoxLayout>
+#include <QMenu>
 #include <QObject>
+#include <QPlainTextEdit>
 #include <QString>
 // extern
 #include <fmt/format.h>
@@ -16,17 +18,22 @@
 #include "util/stringutils.hpp"
 //
 #include "widgets/currency_widget.hpp"
+#include "widgets/price_chart_widget.hpp"
 #include "widgets/xrp_functions.hpp"
 //
 #include "exchange/bitstamp.hpp"
 #include "exchange/order_book.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
+//
+#include "DockAreaWidget.h"
+#include "DockManager.h"
+#include "DockWidget.h"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
+constexpr int debug_level = 9;
 //
 template <int Level>
 static print_threshold<Level, debug_level> xrpnet_dbg("XRP-legr");
@@ -49,23 +56,16 @@ void xrpl_network::initialize()
 {
   if (!testnet())
   {
-    add_currency_pair("USD", "XRP");
-    add_currency_pair("EUR", "XRP");
+    add_currency_pair(currency_code{currency::bitstamp_trust, "USD"}, currency_code{"", "XRP"});
+    add_currency_pair(currency_code{currency::bitstamp_trust, "EUR"}, currency_code{"", "XRP"});
+    add_currency_pair(currency_code{currency::gatehub_trust, "USD"}, currency_code{"", "XRP"});
+    add_currency_pair(currency_code{currency::gatehub_trust, "EUR"}, currency_code{"", "XRP"});
   }
   get_all_account_infos();
   get_all_account_lines();
   get_all_account_offers();
   //
   emit network_initialized(this);
-}
-
-// ----------------------------------------------------------------------------
-bool xrpl_network::add_currency_pair(std::string_view p1, std::string_view p2)
-{
-  currency c1 = ::get_currency(p1);
-  currency c2 = ::get_currency(p2);
-  tickers_available_.push_back(std::make_pair(c1, c2));
-  return true;
 }
 
 // ----------------------------------------------------------------------------
@@ -108,7 +108,7 @@ int xrpl_network::jsonrpc_port() const
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::can_send(currency& c, exchange* dest)
+bool xrpl_network::can_send(currency const& c, exchange* dest)
 {
   // yes to anything if the source is also an xrpl wallet
   if (dynamic_cast<xrpl_network*>(dest))
@@ -117,8 +117,8 @@ bool xrpl_network::can_send(currency& c, exchange* dest)
   }
   else if (!testnet() && dynamic_cast<bitstamp_network*>(dest))
   {
-    if (c.type_ == currency_type::xrp || c.type_ == currency_type::usd_bitstamp ||
-      c.type_ == currency_type::eur_bitstamp || c.type_ == currency_type::xrpl_trustline)
+    if (c.is_xrp() ||
+      ((c.issuer_ == currency::bitstamp_trust) && ((c.code_ == "USD") || (c.code_ == "EUR"))))
     {
       return true;
     }
@@ -132,6 +132,107 @@ xrpl_order_book const& xrpl_network::get_orderbook(currency_pair const& cp) cons
   return *orderbook_;
 }
 
+// ----------------------------------------------------------------------------
+// connect to a single stream
+bool xrpl_network::stream_subscribe(
+  currency_pair const& cp, network::streams const stream, bool enabled)
+{
+  bool ok = true;
+  switch (stream)
+  {
+  case network::streams::accounts:
+    ok = subscribe_accounts();
+    break;
+  case network::streams::order_book:
+    ok = subscribe_order_book(cp, enabled);
+    break;
+  default:
+    ok = false;
+    throw std::runtime_error("unknown stream");
+  }
+  if (ok)
+    mark_stream_subscribed(currency_pair_string(cp) + "/" + stream_to_text(stream), enabled);
+  return ok;
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::ticker_subscribe(currency const& c1, currency const& c2)
+{
+  // exit if this exchange has already subscribed to this ticker
+  std::string cps = currency_pair_string({c1, c2});
+  if (ticker_subscribed(c1, c2))
+  {
+    xrpnet_dbg<0>.debug(str<>("subscription"), cps, "subscribed");
+    return;
+  }
+  xrpnet_dbg<0>.debug(str<>("subscribing"), cps);
+  currency_pair cp{c1, c2};
+
+  // create a new data view from hdf5
+  // std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("xrpl", c1, c2);
+
+  // create a new price plot object
+  // auto* chart_widget = new price_chart_widget(nullptr, view, shared_from_this(), cps);
+
+  // put the price plot into a dock widget
+  // using namespace ads;
+  // std::string title = cps + " price " + std::string(name());
+  // CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
+  // PlotDockWidget->setWidget(chart_widget);
+  // PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  // global_settings.dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
+  // global_settings.dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
+
+  // create a new orderbook text display
+  const size_t font_size = 8;
+  auto* orderbook_text = new QPlainTextEdit(nullptr);
+  QString txt = "X";
+  int char_size = QFontMetrics(orderbook_text->font()).horizontalAdvance(txt);
+  int calcWidth = char_size * 85 + 8;
+  orderbook_text->setMinimumWidth(calcWidth);
+  QFont font = QFont();
+  font.setPointSize(font_size);
+  font.setFamily("Courier");
+  orderbook_text->setFont(font);
+
+  // put the order book into a dock widget
+  using namespace ads;
+  std::string obtitle = cps + " text " + std::string(name());
+  CDockWidget* obPlotDockWidget = new CDockWidget(QString(obtitle.c_str()));
+  obPlotDockWidget->setWidget(orderbook_text);
+  obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  global_settings.dock_manager_->addDockWidget(
+    DockWidgetArea::LeftDockWidgetArea, obPlotDockWidget);
+  global_settings.dockwindows_menu_->addAction(obPlotDockWidget->toggleViewAction());
+
+  // ----------------------------------
+  // Create orderbook plot widget
+  OrderBookPlot* orderbook_plot = new OrderBookPlot();
+  orderbook_plot->setMinimumSize(384, 256);
+  set_plot(orderbook_plot);
+
+  // put the order book plot into a dock widget
+  std::string obptitle = cps + " depth " + std::string(name());
+  CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
+  obpDockWidget->setWidget(orderbook_plot);
+  obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  global_settings.dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, obpDockWidget);
+  global_settings.dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
+
+  xrpl_order_book* orderbook = new xrpl_order_book(orderbook_plot, false);
+  // add the subscribed ticker/data/plot to our list for tracking
+  tickers_subscribed_.insert({cp, {nullptr, nullptr, orderbook, orderbook_text, orderbook_plot}});
+
+  connect(
+    this, &xrpl_network::orderbook_changed, this,
+    [orderbook_plot, orderbook_text, cp, this]() {
+      xrpnet_dbg<0>.debug(str<>("orderbook_changed"), get_orderbook(cp).order_text);
+      QString datastring = QString::fromStdString(get_orderbook(cp).order_text);
+      orderbook_text->setPlainText(datastring);
+      orderbook_plot->update_time_and_replot();
+    },
+    Qt::QueuedConnection);
+}
 //// ----------------------------------------------------------------------------
 //bool xrpl_network::websocket_connect(net::contexts& io_contexts, streams_vector const& streams)
 //{
@@ -139,9 +240,7 @@ xrpl_order_book const& xrpl_network::get_orderbook(currency_pair const& cp) cons
 //  for (auto const& s : streams)
 //  {
 //    if (s == network::streams::order_book)
-//      ok &= subscribe_orderbook(io_contexts);
-//    if (s == network::streams::accounts)
-//      ok &= subscribe_accounts(io_contexts);
+//      ok &= subscribe_order_book(io_contexts);
 //  }
 //  return ok;
 //}
@@ -181,7 +280,7 @@ void xrpl_network::add_wallet(ledger_wallet const& w)
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::subscribe_orderbook()
+bool xrpl_network::subscribe_order_book(currency_pair const& cp, bool enable)
 {
   using namespace std::placeholders;
   //startswith
@@ -189,25 +288,25 @@ bool xrpl_network::subscribe_orderbook()
   command["command"] = "subscribe";
   // buying xrp
   nlohmann::json buy_xrp;
-  buy_xrp["taker_gets"]["currency"] = "XRP";
-  buy_xrp["taker_pays"]["currency"] = "USD";
-  buy_xrp["taker_pays"]["issuer"] = currency::bitstamp_trust;
+  buy_xrp["taker_gets"]["currency"] = std::get<0>(cp).code_;
+  buy_xrp["taker_pays"]["currency"] = std::get<1>(cp).code_;
+  buy_xrp["taker_pays"]["issuer"] = std::get<1>(cp).issuer_;
   buy_xrp["snapshot"] = true;
   // selling xrp
   nlohmann::json sell_xrp;
-  sell_xrp["taker_pays"]["currency"] = "XRP";
-  sell_xrp["taker_gets"]["currency"] = "USD";
-  sell_xrp["taker_gets"]["issuer"] = currency::bitstamp_trust;
+  buy_xrp["taker_pays"]["currency"] = std::get<0>(cp).code_;
+  buy_xrp["taker_gets"]["currency"] = std::get<1>(cp).code_;
+  buy_xrp["taker_gets"]["issuer"] = std::get<1>(cp).issuer_;
   sell_xrp["snapshot"] = true;
   // subscribe to 2 books
   command["books"] = nlohmann::json::array({buy_xrp, sell_xrp});
   std::string subscription = command.dump();
-  xrpnet_dbg<0>.debug(str<>("Subscribing"), "xrpl:XRP/USD orderbook");
+  xrpnet_dbg<0>.debug(str<>("Subscribing"), "orderbook xrpl:", currency_pair_string(cp));
   xrpnet_dbg<5>.debug(str<>("subscribe orderbook"), subscription);
 
-  ws_orderbook = net::ws::qwebsocket_session::create("xrpl::orderbook xrp/usd", websocket_address(),
-    websocket_port(), subscription,
-    std::bind(xrpl_network::new_orderbook_data, this, currency_pair{}, _1));
+  ws_orderbook = net::ws::qwebsocket_session::create("xrpl::orderbook" + currency_pair_string(cp),
+    websocket_address(), websocket_port(), subscription,
+    std::bind(xrpl_network::new_orderbook_data, this, cp, _1));
 
   return true;
 }
@@ -236,6 +335,7 @@ bool xrpl_network::subscribe_accounts()
 // ----------------------------------------------------------------------------
 void xrpl_network::new_orderbook_data(xrpl_network* nw, currency_pair const cp, QString qdata)
 {
+  xrpnet_dbg<0>.debug(str<>("new_orderbook_data"), "xrpl: orderbook");
   std::string data = qdata.toStdString();
   if (startswith(data, "{\"result\":"))
   {
@@ -293,14 +393,12 @@ void xrpl_network::new_account_data(xrpl_network* nw, QString qdata)
         else if (b.contains("issuer") &&
           (b["issuer"].get<std::string>() == "rrrrrrrrrrrrrrrrrrrrBZbvji"))
         {
-          currency curr;
           auto t = jdata["transaction"];
           std::string fm_acct = t["Account"];
           std::string to_acct = t["Destination"];
-          curr.curr_.code_ = b["currency"].get<std::string>();
-          curr.curr_.issuer_ = t["SendMax"]["issuer"].get<std::string>();
+          currency curr(
+            t["SendMax"]["issuer"].get<std::string>(), b["currency"].get<std::string>());
           curr.balance_ = std::stod(b["value"].get_ptr<json::string_t*>()->c_str());
-          curr.type_ = get_currency_type(curr.curr_);
           if (to_acct == f["LowLimit"]["issuer"].get<std::string>())
           {
             std::cout << "Acct " << to_acct << " IOU balance change " << curr.balance_ << std::endl;
@@ -364,7 +462,7 @@ ledger_wallet* xrpl_network::get_wallet_by_name(std::string_view name)
 }
 
 // ----------------------------------------------------------------------------
-std::vector<currency>::iterator xrpl_network::get_currency(std::string_view addr, currency_type t)
+std::vector<currency>::iterator xrpl_network::get_currency(std::string_view addr, currency t)
 {
   auto it = get_wallet_by_addr(addr);
   if (!it)
@@ -373,7 +471,7 @@ std::vector<currency>::iterator xrpl_network::get_currency(std::string_view addr
     return std::vector<currency>::iterator(nullptr);
   }
   auto& c_list = it->currencies_;
-  auto it2 = ranges::find_if(c_list, [t](currency const& c) { return c.type_ == t; });
+  auto it2 = ranges::find_if(c_list, [t](currency const& c) { return c == t; });
   if (it2 == c_list.end())
   {
     std::cerr << "get currency did not find ledger currency" << std::endl;
@@ -385,7 +483,7 @@ std::vector<currency>::iterator xrpl_network::get_currency(std::string_view addr
 // ----------------------------------------------------------------------------
 void xrpl_network::update_XRP_balance(std::string_view addr, double oldb, double newb)
 {
-  auto it = get_currency(addr, currency_type::xrp);
+  auto it = get_currency(addr, currency("", "XRP"));
   if (it == std::vector<currency>::iterator(nullptr))
     return;
   //
@@ -405,7 +503,7 @@ void xrpl_network::update_XRP_balance(std::string_view addr, double oldb, double
 // an IOU update sets the new balance directly - it does not add/subtract
 void xrpl_network::update_IOU_balance(std::string_view addr, currency const& curr)
 {
-  auto it = get_currency(addr, curr.type_);
+  auto it = get_currency(addr, curr);
   if (it == std::vector<currency>::iterator(nullptr))
     return;
   //
@@ -454,40 +552,51 @@ void xrpl_network::get_all_account_lines()
 // ----------------------------------------------------------------------------
 void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
 {
-  nlohmann::json jdata = json::parse(data)["result"]["lines"];
-  if (jdata.size() == 0)
+  nlohmann::json jdata;
+  try
   {
-    // no balances. Might be an inactive account
+    jdata = json::parse(data)["result"]["lines"];
+    if (jdata.size() == 0)
+    {
+      // no balances. Might be an inactive account
+      return;
+    }
+  }
+  catch (...)
+  {
+    xrpnet_dbg<0>.error(str<>("account trustline data error"));
     return;
   }
+
   xrpnet_dbg<5>.debug(str<>("account lines"), jdata.dump(4));
   std::vector<xrp_amount> balances = jdata.get<std::vector<xrp_amount>>();
   //
   for (auto const& b : balances)
   {
-    // @TODO, do not hardcode USD
-    if (b.currency == currency_type::usd_bitstamp)
+    if (b.currency.has_value())
     {
-      currency c{{currency::bitstamp_trust, "USD"}, currency_type::usd_bitstamp, b.value, b.value,
-        0, nullptr};
-      w.add_currency(c);
-    }
-    else if (b.currency == currency_type::eur_bitstamp)
-    {
-      currency c{{currency::bitstamp_trust, "EUR"}, currency_type::eur_bitstamp, b.value, b.value,
-        0, nullptr};
-      w.add_currency(c);
-    }
-    else if (b.currency == currency_type::xrp)
-    {
-      currency c{{"", "XRP"}, currency_type::xrp, b.value, b.value, 0, nullptr};
-      w.add_currency(c);
-    }
-    else if (b.currency == currency_type::xrpl_trustline)
-    {
-      currency c{b.trustline.value(), currency_type::xrpl_trustline, b.value, b.value, 0, nullptr};
-      w.add_currency(c);
-      query_iou_fee(b.trustline.value());
+      const currency_code ic = b.currency.value();
+      if (ic.is_xrp())
+      {
+        currency c{ic, b.value, b.value, 0, nullptr};
+        w.add_currency(c);
+      }
+      else if (ic.issuer_ == currency::bitstamp_trust)
+      {
+        currency c{ic, b.value, b.value, 0, nullptr};
+        w.add_currency(c);
+      }
+      else if (ic.issuer_ == currency::gatehub_trust)
+      {
+        currency c{ic, b.value, b.value, 0, nullptr};
+        w.add_currency(c);
+      }
+      else    // must be some other trustline balance
+      {
+        currency c{ic, b.value, b.value, 0, nullptr};
+        w.add_currency(c);
+        query_iou_fee(ic);
+      }
     }
     else
     {
@@ -539,7 +648,17 @@ void xrpl_network::get_all_account_infos()
 // ----------------------------------------------------------------------------
 void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
 {
-  nlohmann::json jdata = json::parse(data)["result"]["account_data"];
+  nlohmann::json jdata;
+  try
+  {
+    jdata = json::parse(data)["result"]["account_data"];
+  }
+  catch (...)
+  {
+    xrpnet_dbg<0>.error(str<>("account info data error"));
+    return;
+  }
+
   xrpnet_dbg<5>.debug(str<>("account info"), jdata.dump(4));
   //
   if (jdata.is_null())
@@ -553,7 +672,7 @@ void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
   double avail = balance;
   double reserved = 0;
   //
-  currency c{{"", "XRP"}, currency_type::xrp, balance, avail, reserved, nullptr};
+  currency c{{"", "XRP"}, balance, avail, reserved, nullptr};
   w.add_currency(c);
   w.compute_ledger_reserve();
   //
@@ -598,7 +717,17 @@ void xrpl_network::get_all_account_offers()
 // ----------------------------------------------------------------------------
 void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data)
 {
-  nlohmann::json jdata = json::parse(data)["result"];
+  nlohmann::json jdata;
+  try
+  {
+    jdata = json::parse(data)["result"];
+  }
+  catch (...)
+  {
+    xrpnet_dbg<0>.error(str<>("account offers data error"));
+    return;
+  }
+
   xrpnet_dbg<5>.debug(str<>("account offers"), jdata.dump(4));
   //
   if (jdata.is_null())
@@ -617,8 +746,8 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
     from_json(offer["taker_gets"], taker_get);
     from_json(offer["taker_pays"], taker_pay);
     //
-    trade_data t{get_instance(testnet()), w.name_, taker_pay.currency, taker_get.currency,
-      taker_pay.value, taker_get.value,
+    trade_data t{get_instance(testnet()), w.name_, taker_pay.currency.value(),
+      taker_get.currency.value(), taker_pay.value, taker_get.value,
       0.0,    // fee %
       0.0,    // fee fixed
       0,      // id
@@ -643,13 +772,13 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::make_payment(currency& c, basic_account* src, basic_account* dest)
+bool xrpl_network::make_payment(currency const& c, basic_account* src, basic_account* dest)
 {
   ledger_wallet* from = static_cast<ledger_wallet*>(src);
   ledger_wallet* to = static_cast<ledger_wallet*>(dest);
   std::string signed_tx;
   // are we sending xrp or an IOU? xrp is always sent in drops
-  if (c.type_ == currency_type::xrp)
+  if (c.is_xrp())
   {
     std::cout << "XRP payment amount " << c.balance_ << " from " << from->public_ << " to "
               << to->public_ << ((to->tag_ != 0) ? "(" + std::to_string(to->tag_) + ")" : "")
@@ -662,14 +791,14 @@ bool xrpl_network::make_payment(currency& c, basic_account* src, basic_account* 
   else
   {
     double fee = get_transfer_fee(c);
-    std::cout << "XRP IOU payment amount " << c.balance_ << " " << c.curr_.code_ << " TransferRate "
+    std::cout << "XRP IOU payment amount " << c.balance_ << " " << c.code_ << " TransferRate "
               << fee << " from " << from->public_ << " to " << to->public_ << " IOU addr "
-              << c.curr_.issuer_ << ((to->tag_ != 0) ? "(" + std::to_string(to->tag_) + ")" : "")
+              << c.issuer_ << ((to->tag_ != 0) ? "(" + std::to_string(to->tag_) + ")" : "")
               << std::endl;
 
-    signed_tx = make_xrp_payment(ripple::KeyType::secp256k1, from->private_, from->public_,
-      from->sequence_, to->get_receive_address(c).begin(), to->tag_, c.balance_, c.curr_.code_,
-      c.curr_.issuer_, fee);
+    signed_tx =
+      make_xrp_payment(ripple::KeyType::secp256k1, from->private_, from->public_, from->sequence_,
+        to->get_receive_address(c).begin(), to->tag_, c.balance_, c.code_, c.issuer_, fee);
   }
   from->sequence_++;
   submit_signed_transaction(std::move(signed_tx));
@@ -708,25 +837,25 @@ void xrpl_network::place_limit_order(basic_account* acct, trade_data const& t, b
   //
   ledger_wallet* from = static_cast<ledger_wallet*>(acct);
 
-  auto pay_pair = to_string(t.taker_payc_);
-  auto get_pair = to_string(t.taker_getc_);
+  auto pay_pair = t.taker_payc_.to_string();
+  auto get_pair = t.taker_getc_.to_string();
   ripple::STAmount taker_pays, taker_gets;
 
   // fiat currencies are multipled by 100 and shifted left by 2
   Currency curr_p = to_currency(pay_pair.first);
-  if (is_fiat(t.taker_payc_))
+  if (t.taker_payc_.is_fiat())
   {
     auto const issuer = parseBase58<AccountID>(pay_pair.second);
     taker_pays = STAmount(Issue(curr_p, *issuer), static_cast<uint64_t>(1E2 * t.taker_pay_), -2);
   }
   // non fiat IOUs are multiplied by 1E6 and shifted right by 6 places
-  else if (!is_xrp(t.taker_payc_))
+  else if (!t.taker_payc_.is_xrp())
   {
     auto const issuer = parseBase58<AccountID>(pay_pair.second);
     taker_pays = STAmount(Issue(curr_p, *issuer), static_cast<uint64_t>(1E6 * t.taker_pay_), -6);
   }
   // xrp is converted to drops by mutiplying by 1E6
-  else if (is_xrp(t.taker_payc_))
+  else if (t.taker_payc_.is_xrp())
   {
     taker_pays = STAmount(XRPAmount(1E6 * t.taker_pay_));    // drops
   }
@@ -737,18 +866,18 @@ void xrpl_network::place_limit_order(basic_account* acct, trade_data const& t, b
 
   // fiat currencies are multipled by 100 and shifted left by 2
   Currency curr_g = to_currency(get_pair.first);
-  if (is_fiat(t.taker_getc_))
+  if (t.taker_getc_.is_fiat())
   {
     auto const issuer = parseBase58<AccountID>(get_pair.second);
     taker_gets = STAmount(Issue(curr_g, *issuer), static_cast<uint64_t>(1E2 * t.taker_get_), -2);
   }
   // non fiat IOUs are multiplied by 1E6 and shifted right by 6 places
-  if (!is_xrp(t.taker_getc_))
+  if (!t.taker_getc_.is_xrp())
   {
     auto const issuer = parseBase58<AccountID>(get_pair.second);
     taker_gets = STAmount(Issue(curr_g, *issuer), static_cast<uint64_t>(1E6 * t.taker_get_), -6);
   }
-  else if (is_xrp(t.taker_getc_))
+  else if (t.taker_getc_.is_xrp())
   {
     taker_gets = STAmount(XRPAmount(1E6 * t.taker_get_));    // drops
   }
@@ -794,7 +923,7 @@ void xrpl_network::cancel_order(trade_data const& t)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::query_iou_fee(issued_currency const& c1)
+void xrpl_network::query_iou_fee(currency_code const& c1)
 {
   if (currency_fees_.find(c1.issuer_) != currency_fees_.end())
   {
@@ -825,17 +954,17 @@ void xrpl_network::query_iou_fee(issued_currency const& c1)
 // ----------------------------------------------------------------------------
 double xrpl_network::get_transfer_fee(currency const& c1)
 {
-  return currency_fees_[c1.curr_.issuer_];
+  return currency_fees_[c1.issuer_];
 }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_fee_percent(currency_type const& c1, currency_type const& c2)
+double xrpl_network::get_fee_percent(currency const& c1, currency const& c2)
 {
   return 0.0;
 }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_fee_fixed(currency_type const& c1, currency_type const& c2)
+double xrpl_network::get_fee_fixed(currency const& c1, currency const& c2)
 {
   return 0.0;
 }

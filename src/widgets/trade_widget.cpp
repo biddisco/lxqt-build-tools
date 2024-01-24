@@ -46,8 +46,8 @@ void trade_widget::set_data(trade_data const& t)
     ui->buy_sell->setPalette(palette);
     ui->buy_sell->setText("Buy");
     //
-    ui->taker_getc->setText(to_string(t.taker_getc_).first.c_str());
-    ui->taker_payc->setText(to_string(t.taker_payc_).first.c_str());
+    ui->taker_getc->setText(t.taker_getc_.to_string().first.c_str());
+    ui->taker_payc->setText(t.taker_payc_.to_string().first.c_str());
     //
     ui->taker_get->setText(to_string(t.taker_get_, t.taker_getc_).c_str());
     ui->taker_pay->setText(to_string(t.taker_pay_, t.taker_payc_).c_str());
@@ -59,8 +59,8 @@ void trade_widget::set_data(trade_data const& t)
     ui->buy_sell->setPalette(palette);
     ui->buy_sell->setText("Sell");
     //
-    ui->taker_getc->setText(to_string(t.taker_payc_).first.c_str());
-    ui->taker_payc->setText(to_string(t.taker_getc_).first.c_str());
+    ui->taker_getc->setText(t.taker_payc_.to_string().first.c_str());
+    ui->taker_payc->setText(t.taker_getc_.to_string().first.c_str());
     //
     ui->taker_get->setText(to_string(t.taker_pay_, t.taker_payc_).c_str());
     ui->taker_pay->setText(to_string(t.taker_get_, t.taker_getc_).c_str());
