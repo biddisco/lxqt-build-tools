@@ -121,11 +121,8 @@ void bitstamp_network::initialize()
         std::string_view data(byteArray.constData(), byteArray.length());
         bitstamp_dbg<6>.debug(str<>("Initialize"), "OpenOrders", data);
         handle_open_orders(data);
-      })                                                    //
-    | stdexec::transfer(grox::qt_mainthread_scheduler())    // pika -> Qt
-    | stdexec::then([this]() {                              //
-        emit network_initialized(this);
-      });
+      })    //
+    | stdexec::then([this]() { emit network_initialized(this); });
 
   // bitstamp_dbg<0>.debug(str<>("SENDER"), grox::debug::print_type<decltype(snd0)>());
   stdexec::start_detached(std::move(web));
@@ -523,6 +520,57 @@ void bitstamp_network::handle_websocket_token(std::string_view data)
 }
 
 // ----------------------------------------------------------------------------
+void bitstamp_network::handle_open_orders(std::string_view data)
+{
+  bitstamp_account& acct = get_bitstamp_instance()->account();
+  auto& trades = acct.offers_;
+  trades.clear();
+  //
+  nlohmann::json jdata = json::parse(data);
+  for (auto const& [key, val] : jdata.items())
+  {
+    const std::string jstring = val[std::string_view("currency_pair")];
+    auto const& [c1, c2] = split_currency_pair_string(jstring, '/');
+
+    double amount = std::stod(JCHARP(val["amount"]));
+    double price = std::stod(JCHARP(val["price"]));
+    double fee_percent = 0;
+    double fee_fixed = 0;
+    // 0=buy, 1=sell
+    auto trade_type_ = (val["type"] == "0") ? trade_type::buy : trade_type::sell;
+
+    if (trade_type_ == trade_type::sell)
+    {
+      trade_data t{this->get_instance(), account().name_, {"", c2.cbegin()}, {"", c1.cbegin()},
+        amount * price, amount, price, fee_percent, fee_fixed,
+        std::stoull(val["id"].get<std::string>()), val["datetime"], true};
+      trades.push_back(t);
+    }
+    else
+    {
+      trade_data t{this->get_instance(), account().name_, {"", c1.cbegin()}, {"", c2.cbegin()},
+        amount, amount * price, price, fee_percent, fee_fixed,
+        std::stoull(val["id"].get<std::string>()), val["datetime"], true};
+      trades.push_back(t);
+    }
+  }
+  emit update_wallet_widget(&acct);
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::handle_tickers_available(std::string_view data)
+{
+  nlohmann::json jdata = json::parse(data);
+  for (auto const& [key, val] : jdata.items())
+  {
+    json::string_t jstring = val[std::string_view("pair")];
+    auto const& [c1, c2] = string_to_pair(jstring, "/");
+    bitstamp_dbg<6>.debug(str<>("Currency pair"), jstring, c1, c2);
+    add_currency_pair(c1, c2);
+  }
+}
+
+// ----------------------------------------------------------------------------
 /* A typical order will have the following structure
 
 {
@@ -615,43 +663,6 @@ void bitstamp_network::process_order(nlohmann::json& jdata, std::string_view eve
 ]
 
 */
-
-void bitstamp_network::handle_open_orders(std::string_view data)
-{
-  bitstamp_account& acct = get_bitstamp_instance()->account();
-  auto& trades = acct.offers_;
-  trades.clear();
-  //
-  nlohmann::json jdata = json::parse(data);
-  for (auto const& [key, val] : jdata.items())
-  {
-    const std::string jstring = val[std::string_view("currency_pair")];
-    auto const& [c1, c2] = split_currency_pair_string(jstring, '/');
-
-    double amount = std::stod(JCHARP(val["amount"]));
-    double price = std::stod(JCHARP(val["price"]));
-    double fee_percent = 0;
-    double fee_fixed = 0;
-    // 0=buy, 1=sell
-    auto trade_type_ = (val["type"] == "0") ? trade_type::buy : trade_type::sell;
-
-    if (trade_type_ == trade_type::sell)
-    {
-      trade_data t{this->get_instance(), account().name_, {"", c2.cbegin()}, {"", c1.cbegin()},
-        amount * price, amount, price, fee_percent, fee_fixed,
-        std::stoull(val["id"].get<std::string>()), val["datetime"], true};
-      trades.push_back(t);
-    }
-    else
-    {
-      trade_data t{this->get_instance(), account().name_, {"", c1.cbegin()}, {"", c2.cbegin()},
-        amount, amount * price, price, fee_percent, fee_fixed,
-        std::stoull(val["id"].get<std::string>()), val["datetime"], true};
-      trades.push_back(t);
-    }
-  }
-  emit update_wallet_widget(&acct);
-}
 
 // ----------------------------------------------------------------------------
 net::http::client_ptr bitstamp_network::account_request_sender(
@@ -783,12 +794,87 @@ void bitstamp_network::new_live_trade_data_q(
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::request_new_candlestick_data(
-  currency_pair cp, uint64_t start_t, uint64_t samples, net::http::rx_req_handler_type fn)
+// OHLC candlestick updates
+// ----------------------------------------------------------------------------
+// typically called once per minute by the application to update data regularly
+void bitstamp_network::update_ohlc_datasets()
+{
+  for (auto& [ticker, data] : tickers_subscribed_)
+  {
+    if (!candlestick_updates_active_.contains(ticker))
+    {
+      update_ohlc_data(ticker, &data);
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data* tdata)
+{
+  // does not matter if ticker already in map, it will be cleaned out when done
+  candlestick_updates_active_.insert(cp);
+  //
+  uint64_t req_t = 0, start_t_ms = 0;
+  // what is the most recent sample we currently have
+  start_t_ms = static_cast<uint64_t>(tdata->view_->get_last_sample_time(false));
+  if (start_t_ms == 0)
+  {
+    // if no data exists, we use an arbitrary start date in 2017
+    // linux time 1496275200 = Thu Jun 01 2017 00:00:00 GMT+0000
+    start_t_ms = 1496275200ul * 1000;
+    std::string s = msecs_unix_to_calendar_time(start_t_ms);
+    bitstamp_dbg<0>.debug(
+      str<>("No Data"), tdata->view_->get_ticker_string(), "requesting from", s);
+  }
+  else
+  {
+    std::string s = msecs_unix_to_calendar_time(start_t_ms);
+    bitstamp_dbg<0>.debug(str<>("data ok up to"), tdata->view_->get_ticker_string(), s);
+  }
+
+  // we do not want a candle for the current minute, so subtract 60s
+  QDateTime currentDateTime = QDateTime::currentDateTimeUtc();
+  uint64_t unixtime_secs = currentDateTime.toSecsSinceEpoch() - 60;
+  //
+  uint64_t diff = unixtime_secs - (start_t_ms / 1000);
+  uint64_t samples = diff / 60;
+  if (samples == 0)
+  {
+    bitstamp_dbg<0>.debug(str<>("candlesticks"), tdata->view_->get_ticker_string(), "up to date");
+    candlestick_updates_active_.erase(cp);
+    return;
+  }
+
+  // convert to unix timestamp : next sample is 60s after last
+  req_t = (start_t_ms / 1000) + 60;
+
+  bitstamp_dbg<0>.debug(str<>("requesting"), tdata->view_->get_ticker_string(), samples,
+    msecs_unix_to_calendar_time(req_t * 1000));
+
+  auto snd =
+    stdexec::on(grox::qt_mainthread_scheduler(), request_new_ohlc_data(cp, req_t, samples)) |
+    stdexec::then([this, req_t, cp, tdata](QByteArray byteArray) {
+      std::string_view data(byteArray.constData(), byteArray.length());
+      bitstamp_dbg<0>.debug(str<>("OHLC (lambda)"), tdata->view_->get_ticker_string(),
+        msecs_unix_to_calendar_time(req_t * 1000));
+      handle_new_ohlc_data(tdata, data);
+    }) |
+    stdexec::then([this, cp, tdata]() { this->update_ohlc_data(cp, tdata); });
+
+  stdexec::start_detached(std::move(snd));
+}
+
+// ----------------------------------------------------------------------------
+// generate an http request for candlestick data for a single ticker
+any_bytearray_sender bitstamp_network::request_new_ohlc_data(
+  currency_pair cp, uint64_t start_t, uint64_t samples)
 {
   std::string ticker_lowercase = currency_pair_lowercase_string(cp);
-  // doesn't really matter if the key is already in the set (shouldn't be)
-  candlestick_updates_active_.insert(cp);
+  // the caller must have set the update flag already
+  if (!candlestick_updates_active_.contains(cp))
+  {
+    throw std::runtime_error("Update candlestick without map set");
+  }
 
   std::string req;
   if (start_t == 0)
@@ -813,20 +899,9 @@ void bitstamp_network::request_new_candlestick_data(
   std::string url = fmt::format("https://{}:{}{}", bitstamp_https_address, 443, req);
   net::http::client_ptr client =
     net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
-  client->get_request(std::move(fn));
-}
 
-// ----------------------------------------------------------------------------
-void bitstamp_network::handle_tickers_available(std::string_view data)
-{
-  nlohmann::json jdata = json::parse(data);
-  for (auto const& [key, val] : jdata.items())
-  {
-    json::string_t jstring = val[std::string_view("pair")];
-    auto const& [c1, c2] = string_to_pair(jstring, "/");
-    bitstamp_dbg<1>.debug(str<>("Currency pair"), jstring, c1, c2);
-    add_currency_pair(c1, c2);
-  }
+  return {stdexec::just(client) |
+    qtex::qhttp_post(grox::qt::experimental::detail::http_request_type::http_get)};
 }
 
 // ----------------------------------------------------------------------------
@@ -1003,7 +1078,7 @@ void bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::receive_ohlc_data(ticker_data* tdata, std::string_view data)
+void bitstamp_network::handle_new_ohlc_data(ticker_data* tdata, std::string_view data)
 {
   try
   {
@@ -1074,69 +1149,6 @@ void bitstamp_network::new_ohlc_data_event(ticker_data* tdata, double old_res)
   tdata->chart_widget_->replot();
 }
 
-// ----------------------------------------------------------------------------
-void bitstamp_network::update_ticker_data(currency_pair cp, ticker_data* tdata)
-{
-  std::string ticker_lowercase = currency_pair_lowercase_string(cp);
-  //
-  uint64_t req_t = 0, start_t_ms = 0;
-  // what is the most recent sample we currently have
-  start_t_ms = static_cast<uint64_t>(tdata->view_->get_last_sample_time(false));
-  if (start_t_ms == 0)
-  {
-    // if no data exists, we use an arbitrary start date in 2017
-    // linux time 1496275200 = Thu Jun 01 2017 00:00:00 GMT+0000
-    start_t_ms = 1496275200ul * 1000;
-    std::string s = msecs_unix_to_calendar_time(start_t_ms);
-    bitstamp_dbg<0>.debug(str<>("No Data"), ticker_lowercase, "requesting from", s);
-  }
-  else
-  {
-    std::string s = msecs_unix_to_calendar_time(start_t_ms);
-    bitstamp_dbg<0>.debug(str<>("data ok up to"), ticker_lowercase, s);
-  }
-
-  // we do not want a candle for the current minute, so subtract 60s
-  QDateTime currentDateTime = QDateTime::currentDateTimeUtc();
-  uint64_t unixtime_secs = currentDateTime.toSecsSinceEpoch() - 60;
-  //
-  uint64_t diff = unixtime_secs - (start_t_ms / 1000);
-  uint64_t samples = diff / 60;
-  if (samples == 0)
-  {
-    bitstamp_dbg<0>.debug(str<>("candlesticks"), ticker_lowercase, "up to date");
-    return;
-  }
-
-  // convert to unix timestamp : next sample is 60s after last
-  req_t = (start_t_ms / 1000) + 60;
-
-  bitstamp_dbg<0>.debug(
-    str<>("requesting"), ticker_lowercase, samples, msecs_unix_to_calendar_time(req_t * 1000));
-
-  request_new_candlestick_data(
-    cp, req_t, samples, [this, req_t, cp, tdata](QByteArray&& byteArray) {
-      std::string_view data(byteArray.constData(), byteArray.length());
-      bitstamp_dbg<0>.debug(str<>("OHLC (lambda)"), tdata->view_->get_ticker_string(),
-        msecs_unix_to_calendar_time(req_t * 1000));
-      receive_ohlc_data(tdata, data);
-      update_ticker_data(cp, tdata);
-      candlestick_updates_active_.erase(cp);
-    });
-}
-
-// ----------------------------------------------------------------------------
-void bitstamp_network::update_candlestick_data()
-{
-  for (auto& [ticker, data] : tickers_subscribed_)
-  {
-    if (!candlestick_updates_active_.contains(ticker))
-    {
-      update_ticker_data(ticker, &data);
-    }
-  }
-}
-
 // the bitstamp minute candle only updates around
 // 8 seconds after the minute has ended, so ignore timer until then
 // ----------------------------------------------------------------------------
@@ -1154,6 +1166,6 @@ void bitstamp_network::candlestick_timer_event()
     last_minute = utc_tm.tm_min;
     QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
     bitstamp_dbg<0>.debug(str<>("candlestick_timer"), now.toStdString());
-    update_candlestick_data();
+    update_ohlc_datasets();
   }
 }

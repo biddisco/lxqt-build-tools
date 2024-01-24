@@ -34,8 +34,14 @@
 // attach a handler to it that will pass the response over to a pika thread
 namespace grox::qt::experimental::detail {
   namespace ex = pika::execution::experimental;
-  namespace pe = pika::execution;
   using namespace pika::debug::detail;
+
+  enum http_request_type
+  {
+    http_post = 0,
+    http_get = 1,
+    http_unset = 2,
+  };
 
   // -----------------------------------------------------------------
   // route calls through an impl layer for ADL isolation
@@ -55,6 +61,7 @@ namespace grox::qt::experimental::detail {
   {
     using is_sender = void;
     std::decay_t<Sender> sender;
+    http_request_type req_type{http_request_type::http_unset};
 
     // stexec requires set_value_t to match the signature of what we call set_value on
     // when we are finished.
@@ -117,7 +124,18 @@ namespace grox::qt::experimental::detail {
                     });
                   ex::start_detached(std::move(snd0));
                 };
-                client->post_request(std::move(handler));
+                if (r.op_state.req_type_ == http_request_type::http_get)
+                {
+                  client->get_request(std::move(handler));
+                }
+                else if (r.op_state.req_type_ == http_request_type::http_post)
+                {
+                  client->post_request(std::move(handler));
+                }
+                else
+                {
+                  throw std::logic_error("Request mode should not be unset");
+                }
               }
             },
             [&](std::exception_ptr ep) {
@@ -138,13 +156,16 @@ namespace grox::qt::experimental::detail {
       std::decay_t<Receiver> receiver_;
       operation_state_type op_state;
       net::http::client_ptr client_;
+      http_request_type req_type_{http_request_type::http_unset};
+
       // -----------------------------------------------------------------
 
       template <typename Receiver_, typename Sender_>
-      operation_state(Receiver_&& receiver, Sender_&& sender)
+      operation_state(Receiver_&& receiver, Sender_&& sender, http_request_type req_type)
         : receiver_(PIKA_FORWARD(Receiver_, receiver))
         , op_state(ex::connect(PIKA_FORWARD(Sender_, sender), qhttp_post_receiver{*this}))
         , client_(nullptr)
+        , req_type_{req_type}
       {
         PIKA_DETAIL_DP(qt_trig<0>, debug(str<>("create"), client_));
       }
@@ -170,7 +191,8 @@ namespace grox::qt::experimental::detail {
     template <typename Receiver>
     friend constexpr auto tag_invoke(ex::connect_t, qhttp_post_sender_type&& s, Receiver&& receiver)
     {
-      return operation_state<Receiver>(PIKA_FORWARD(Receiver, receiver), PIKA_MOVE(s.sender));
+      return operation_state<Receiver>(
+        PIKA_FORWARD(Receiver, receiver), PIKA_MOVE(s.sender), s.req_type);
     }
   };
 
@@ -178,23 +200,24 @@ namespace grox::qt::experimental::detail {
 
 namespace grox::qt::experimental {
   namespace ex = pika::execution::experimental;
-  namespace pe = pika::execution;
 
   inline constexpr struct qhttp_post_t final : pika::functional::detail::tag_fallback<qhttp_post_t>
   {
 private:
     template <typename Sender, PIKA_CONCEPT_REQUIRES_(ex::is_sender_v<std::decay_t<Sender>>)>
-    friend constexpr PIKA_FORCEINLINE auto tag_fallback_invoke(qhttp_post_t, Sender&& sender)
+    friend constexpr PIKA_FORCEINLINE auto
+    tag_fallback_invoke(qhttp_post_t, Sender&& sender, detail::http_request_type req_type)
     {
-      return detail::qhttp_post_sender<Sender>{PIKA_FORWARD(Sender, sender)};
+      return detail::qhttp_post_sender<Sender>{PIKA_FORWARD(Sender, sender), req_type};
     }
 
     //
     // tag invoke overload for qhttp_post
     //
-    friend constexpr PIKA_FORCEINLINE auto tag_fallback_invoke(qhttp_post_t)
+    friend constexpr PIKA_FORCEINLINE auto tag_fallback_invoke(
+      qhttp_post_t, detail::http_request_type req_type = detail::http_request_type::http_post)
     {
-      return ex::detail::partial_algorithm<qhttp_post_t>{};
+      return ex::detail::partial_algorithm<qhttp_post_t, detail::http_request_type>{req_type};
     }
 
   } qhttp_post{};

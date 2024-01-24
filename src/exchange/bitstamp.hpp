@@ -192,8 +192,17 @@ class bitstamp_network : public exchange
     const std::string& url_path, const std::string& url_query);
 
   // ----------------------------------------------------------------------------
-  void request_new_candlestick_data(
-    currency_pair cp, uint64_t start_t, uint64_t samples, net::http::rx_req_handler_type fn);
+  // OHLC candlestick updating
+  // ----------------------------------------------------------------------------
+  // triggers an update for all subscribed tickers
+  // typically called once per minute by the application to update data regularly
+  void update_ohlc_datasets();
+  // triggers an update for a single ticker
+  void update_ohlc_data(currency_pair cp, ticker_data* data);
+  // http : generate a request for candlestick data for a single ticker
+  any_bytearray_sender request_new_ohlc_data(currency_pair cp, uint64_t start_t, uint64_t samples);
+  // handler for an http request containing new data
+  void handle_new_ohlc_data(ticker_data*, std::string_view);
 
   // function called from websocket subscription to live trade data
   static void new_live_trade_data_q(bitstamp_network*, currency_pair cp, const QString);
@@ -211,11 +220,6 @@ class bitstamp_network : public exchange
   void custom_functions(basic_account* /*acct*/) override{};
 
   void ticker_subscribe(currency const& c1, currency const& c2) override;
-
-  //
-  void receive_ohlc_data(ticker_data*, std::string_view);
-  void update_ticker_data(currency_pair cp, ticker_data* data);
-  void update_candlestick_data();
 
   signals:
   // Signals are emitted so that the Qt appication/GUI thread can perform
