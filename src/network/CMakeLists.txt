@@ -14,7 +14,7 @@ target_compile_definitions(grox_network PUBLIC GROX_HAVE_CURL_ENCODING
 target_link_libraries(grox_network PUBLIC grox_util fmt::fmt ${Boost_LIBRARIES}
                                           OpenSSL::SSL)
 set_property(TARGET grox_network PROPERTY AUTOMOC ON)
-target_link_libraries(grox_network PUBLIC Qt::Core Qt::WebSockets)
+target_link_libraries(grox_network PUBLIC grox_debug Qt::Core Qt::WebSockets)
 
 if(BUILD_TESTING)
   pika_add_pseudo_target(tests.network)

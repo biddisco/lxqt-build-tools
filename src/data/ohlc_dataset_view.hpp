@@ -90,7 +90,7 @@ class ohlc_dataset_view
   double get_estimated_sell_price(double volume, double time, double safety = 10);
   double get_estimated_buy_price(double volume, double time, double safety = 10);
 
-  std::string const& get_ticker_string()
+  std::string_view const get_ticker_string()
   {
     return ticker_string_;
   }

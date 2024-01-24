@@ -16,8 +16,9 @@
 const std::string server_addr = "https://192.168.1.10:51234";
 static std::atomic<int> pass_count{0};
 
-void handler(std::string_view reply)
+void handler(QByteArray&& byteArray)
 {
+  std::string_view reply(byteArray.constData(), byteArray.length());
   // print the full response
   std::cerr << reply << "\n\n";
   if (reply.find("{\"result\":{\"ledger_hash\":") != std::string::npos)
@@ -52,8 +53,8 @@ int main(int argc, char* argv[])
   content["params"] = nlohmann::json::array({paramlist});
 
   net::http::client_ptr client =
-    net::http::qhttp_request_client::create(networkmanager, server_addr, content.dump(), &handler);
-  client->post_request();
+    net::http::qhttp_request_client::create(networkmanager, server_addr, content.dump());
+  client->post_request(handler);
 
   a.exec();
   std::cout << "received " << pass_count.load() << std::endl;

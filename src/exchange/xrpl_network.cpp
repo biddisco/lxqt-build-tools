@@ -531,9 +531,9 @@ void xrpl_network::get_account_lines(std::string addr, fn_on_http on_http)
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
   xrpnet_dbg<5>.debug(str<>("account_lines"), url);
-  auto* client = net::http::qhttp_request_client::create(
-    *global_settings.networkmanager_, url, content.dump(), std::move(on_http));
-  client->post_request();
+  auto* client =
+    net::http::qhttp_request_client::create(*global_settings.networkmanager_, url, content.dump());
+  client->post_request(std::move(on_http));
 }
 
 // ----------------------------------------------------------------------------
@@ -541,7 +541,8 @@ void xrpl_network::get_all_account_lines()
 {
   for (auto& w : subscribed_wallets_)
   {
-    get_account_lines(w.public_, [this, &w](std::string_view data) {
+    get_account_lines(w.public_, [this, &w](QByteArray&& byteArray) {
+      std::string_view data(byteArray.constData(), byteArray.length());
       // debug : print the response headers and body
       xrpnet_dbg<5>.debug(str<>("Ledger response"), data);
       this->handle_account_lines(w, data);
@@ -625,9 +626,9 @@ void xrpl_network::get_account_info(std::string addr, fn_on_http on_http)
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
   xrpnet_dbg<5>.debug(str<>("account_info"), url);
-  auto* client = net::http::qhttp_request_client::create(
-    *global_settings.networkmanager_, url, content.dump(), std::move(on_http));
-  client->post_request();
+  auto* client =
+    net::http::qhttp_request_client::create(*global_settings.networkmanager_, url, content.dump());
+  client->post_request(std::move(on_http));
 }
 
 // ----------------------------------------------------------------------------
@@ -635,7 +636,8 @@ void xrpl_network::get_all_account_infos()
 {
   for (auto& w : subscribed_wallets_)
   {
-    fn_on_http func = [this, &w](std::string_view data) {
+    fn_on_http func = [this, &w](QByteArray&& byteArray) {
+      std::string_view data(byteArray.constData(), byteArray.length());
       // debug : print the response headers and body
       xrpnet_dbg<5>.debug(str<>("account_info"), w.public_, data);
       this->handle_account_info(w, data);
@@ -694,9 +696,9 @@ void xrpl_network::get_account_offers(std::string addr, fn_on_http on_http)
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
   xrpnet_dbg<5>.debug(str<>("account_offers"), url);
-  auto* client = net::http::qhttp_request_client::create(
-    *global_settings.networkmanager_, url, content.dump(), std::move(on_http));
-  client->post_request();
+  auto* client =
+    net::http::qhttp_request_client::create(*global_settings.networkmanager_, url, content.dump());
+  client->post_request(std::move(on_http));
 }
 
 // ----------------------------------------------------------------------------
@@ -704,7 +706,8 @@ void xrpl_network::get_all_account_offers()
 {
   for (auto& w : subscribed_wallets_)
   {
-    fn_on_http func = [this, &w](std::string_view data) {
+    fn_on_http func = [this, &w](QByteArray&& byteArray) {
+      std::string_view data(byteArray.constData(), byteArray.length());
       // debug : print the response headers and body
       xrpnet_dbg<5>.debug(str<>("account_offers"), w.public_, data);
       this->handle_account_offers(w, data);
@@ -815,7 +818,8 @@ void xrpl_network::submit_signed_transaction(std::string&& signed_tx)
   content["method"] = "submit";
   content["params"] = nlohmann::json::array({tx});
 
-  auto on_http = [this](std::string_view data) {
+  auto on_http = [this](QByteArray&& byteArray) {
+    std::string_view data(byteArray.constData(), byteArray.length());
     // debug : print the response headers and body
     xrpnet_dbg<5>.debug(str<>("Tx submit response"), data);
     emit transaction_event();
@@ -824,9 +828,9 @@ void xrpl_network::submit_signed_transaction(std::string&& signed_tx)
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
   xrpnet_dbg<5>.debug(str<>("signed_transaction"), url);
-  auto* client = net::http::qhttp_request_client::create(
-    *global_settings.networkmanager_, url, content.dump(), std::move(on_http));
-  client->post_request();
+  auto* client =
+    net::http::qhttp_request_client::create(*global_settings.networkmanager_, url, content.dump());
+  client->post_request(std::move(on_http));
 }
 
 // ----------------------------------------------------------------------------
@@ -931,7 +935,8 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
     return;
   }
 
-  fn_on_http func = [this, c1](std::string_view data) {
+  fn_on_http func = [this, c1](QByteArray&& byteArray) {
+    std::string_view data(byteArray.constData(), byteArray.length());
     // debug : print the response headers and body
     xrpnet_dbg<5>.debug(str<>("account_info"), c1.issuer_, data);
     nlohmann::json jdata = json::parse(data)["result"]["account_data"];

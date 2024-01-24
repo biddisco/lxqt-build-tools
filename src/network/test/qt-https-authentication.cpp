@@ -98,9 +98,9 @@ void account_request(QNetworkAccessManager& networkmanager_, const std::string& 
   request.setRawHeader("X-Auth-Timestamp", x_auth_timestamp.c_str());
   request.setRawHeader("X-Auth-Version", x_auth_version.c_str());
 
-  auto* client = net::http::qhttp_request_client::create_signed(
-    networkmanager_, request, std::move(payload), std::move(handler));
-  client->post_request();
+  auto* client =
+    net::http::qhttp_request_client::create_signed(networkmanager_, request, std::move(payload));
+  client->post_request(std::move(handler));
 }
 
 // ----------------------------------------------------------------------------
@@ -114,8 +114,9 @@ void make_request(QNetworkAccessManager& networkmanager)
   //test1_dbg<0>.debug(str<>("ref count"), client.get(), "test", client.use_count());
 
   // Run
-  account_request(networkmanager, url_path, url_query, [](std::string_view data) {
-    std::cout << "Response : " << data << std::endl;
+  account_request(networkmanager, url_path, url_query, [](QByteArray&& byteArray) {
+    std::string_view reply(byteArray.constData(), byteArray.length());
+    std::cout << "Response : " << reply << std::endl;
     reply_ready = 1;
     QCoreApplication::exit(0);
   });

@@ -16,6 +16,21 @@
 #include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
+//
+#include <exec/any_sender_of.hpp>
+#include <pika/execution_base/any_sender.hpp>
+
+using pika::execution::experimental::unique_any_sender;
+
+template <class... Ts>
+using any_sender_of =
+  typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
+
+using any_bool_sender = any_sender_of<stdexec::set_value_t(bool), stdexec::set_stopped_t(),
+  stdexec::set_error_t(std::exception_ptr)>;
+
+using any_bytearray_sender = any_sender_of<stdexec::set_value_t(QByteArray byteArray),
+  stdexec::set_stopped_t(), stdexec::set_error_t(std::exception_ptr)>;
 
 // ----------------------------------------------------------------------------
 class bitstamp_network : public exchange
@@ -143,17 +158,21 @@ class bitstamp_network : public exchange
   void shut_down() override;
 
   // ---------------------------------------
-  // http: fetch account info/data
-  void get_account_info();
-  bool get_websocket_token();
+  // http: get account info/data
+  any_bytearray_sender get_account_info();
+  // http: get new websocket token to subscribe to streams
+  any_bytearray_sender get_websocket_token();
+  // http: get open order data
+  any_bytearray_sender get_open_orders();
+  // http: get currency tickers available
+  any_bytearray_sender get_tickers_available();
 
   // process account info response
   void handle_account_info(std::string_view);
   void handle_websocket_token(std::string_view);
+  void handle_tickers_available(std::string_view);
 
   // ---------------------------------------
-  // http: fetch open order data
-  void get_open_orders();
   // process open order data response
   void handle_open_orders(std::string_view);
   void process_order(nlohmann::json& jdata, std::string_view event);
@@ -169,12 +188,21 @@ class bitstamp_network : public exchange
   void cancel_order(trade_data const& t) override;
 
   // ----------------------------------------------------------------------------
-  void account_request(const std::string& url_path, const std::string& url_query,
-    net::http::rx_req_handler_type&& handler);
-  //
+  net::http::client_ptr account_request_sender(
+    const std::string& url_path, const std::string& url_query);
 
-  void request_new_candlestick_data(
-    currency_pair cp, uint64_t start_t, uint64_t samples, net::http::rx_req_handler_type fn);
+  // ----------------------------------------------------------------------------
+  // OHLC candlestick updating
+  // ----------------------------------------------------------------------------
+  // triggers an update for all subscribed tickers
+  // typically called once per minute by the application to update data regularly
+  void update_ohlc_datasets();
+  // triggers an update for a single ticker
+  void update_ohlc_data(currency_pair cp, ticker_data* data);
+  // http : generate a request for candlestick data for a single ticker
+  any_bytearray_sender request_new_ohlc_data(currency_pair cp, uint64_t start_t, uint64_t samples);
+  // handler for an http request containing new data
+  void handle_new_ohlc_data(ticker_data*, std::string_view);
 
   // function called from websocket subscription to live trade data
   static void new_live_trade_data_q(bitstamp_network*, currency_pair cp, const QString);
@@ -191,15 +219,7 @@ class bitstamp_network : public exchange
 
   void custom_functions(basic_account* /*acct*/) override{};
 
-  void request_tickers_available();
-  void receive_tickers_available(std::string_view data);
-
   void ticker_subscribe(currency const& c1, currency const& c2) override;
-
-  //
-  void receive_ohlc_data(ticker_data*, std::string_view);
-  void update_ticker_data(currency_pair cp, ticker_data* data);
-  void update_candlestick_data();
 
   signals:
   // Signals are emitted so that the Qt appication/GUI thread can perform

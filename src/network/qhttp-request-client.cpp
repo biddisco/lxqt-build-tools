@@ -19,39 +19,38 @@ namespace net::http {
   std::atomic<int> qhttp_request_client::debug_count_ = 0;
 
   // ----------------------------------------------------------------------------
-  client_ptr qhttp_request_client::create(
-    QNetworkAccessManager& networkmanager, const std::string& url, rx_req_handler_type&& handler)
+  client_ptr qhttp_request_client::create(QNetworkAccessManager& networkmanager,
+    const std::string& url /*, rx_req_handler_type&& handler*/)
   {
     //return std::make_shared<qhttp_request_client>(networkmanager, url, move(handler));
-    return new qhttp_request_client(networkmanager, url, move(handler));
+    return new qhttp_request_client(networkmanager, url /*, move(handler)*/);
   }
 
   // ----------------------------------------------------------------------------
   client_ptr qhttp_request_client::create(QNetworkAccessManager& networkmanager,
-    const std::string& url, std::string&& content, rx_req_handler_type&& handler)
+    const std::string& url, std::string&& content /*, rx_req_handler_type&& handler*/)
   {
     // return std::make_shared<qhttp_request_client>(
     //   networkmanager, url, std::forward<std::string>(content), std::move(handler));
     return new qhttp_request_client(
-      networkmanager, url, std::forward<std::string>(content), std::move(handler));
+      networkmanager, url, std::forward<std::string>(content) /*, std::move(handler)*/);
   }
 
   // ----------------------------------------------------------------------------
   client_ptr qhttp_request_client::create_signed(QNetworkAccessManager& networkmanager,
-    QNetworkRequest request, std::string&& content, rx_req_handler_type&& handler)
+    QNetworkRequest request, std::string&& content /*, rx_req_handler_type&& handler*/)
   {
     return new qhttp_request_client(
-      networkmanager, request, std::move(content), std::move(handler));
+      networkmanager, request, std::move(content) /*, std::move(handler)*/);
     // return std::make_shared<qhttp_request_client>(
     //   networkmanager, request, std::move(content), std::move(handler));
   }
 
   // ----------------------------------------------------------------------------
-  qhttp_request_client::qhttp_request_client(
-    QNetworkAccessManager& networkmanager, const std::string& url, rx_req_handler_type&& handler)
+  qhttp_request_client::qhttp_request_client(QNetworkAccessManager& networkmanager,
+    const std::string& url /*, rx_req_handler_type&& handler*/)
     : networkmanager_(networkmanager)
     , url_(url)
-    , handler_(std::move(handler))
   {
     debug_count_++;
     request_.setUrl(QUrl(url_.c_str()));
@@ -63,11 +62,10 @@ namespace net::http {
 
   // ----------------------------------------------------------------------------
   qhttp_request_client::qhttp_request_client(QNetworkAccessManager& networkmanager,
-    const std::string& url, std::string&& content, rx_req_handler_type&& handler)
+    const std::string& url, std::string&& content /*, rx_req_handler_type&& handler*/)
     : networkmanager_(networkmanager)
     , url_(url)
     , content_(std::move(content))
-    , handler_(std::move(handler))
   {
     debug_count_++;
     request_.setUrl(QUrl(url_.c_str()));
@@ -79,11 +77,10 @@ namespace net::http {
 
   // ----------------------------------------------------------------------------
   qhttp_request_client::qhttp_request_client(QNetworkAccessManager& networkmanager,
-    QNetworkRequest request, std::string&& content, rx_req_handler_type&& handler)
+    QNetworkRequest request, std::string&& content /*, rx_req_handler_type&& handler*/)
     : networkmanager_(networkmanager)
     , request_(request)
     , content_(std::move(content))
-    , handler_(/*std::move*/ (handler))
   {
     debug_count_++;
   }
@@ -135,12 +132,26 @@ namespace net::http {
   }
 
   // ----------------------------------------------------------------------------
+  void qhttp_request_client::get_request(rx_req_handler_type&& handler)
+  {
+    handler_ = std::move(handler);
+    get_request();
+  }
+
+  // ----------------------------------------------------------------------------
   void qhttp_request_client::post_request()
   {
     // issue post request
     http_dbg<2>.debug(str<>("post_request"), this, url_, content_);
     QNetworkReply* reply = networkmanager_.post(request_, QByteArray(content_.data()));
     attach_handler(reply);
+  }
+
+  // ----------------------------------------------------------------------------
+  void qhttp_request_client::post_request(rx_req_handler_type&& handler)
+  {
+    handler_ = std::move(handler);
+    post_request();
   }
 
   // ----------------------------------------------------------------------------
@@ -152,8 +163,8 @@ namespace net::http {
     // convert raw data into std::string, this should be safe since our http traffic is utf8
     QByteArray byteArray = reply->readAll();
     std::string_view str(byteArray.constData(), byteArray.length());
-    // invoke handler with result data in string form
-    self->handler_(str);
+    // invoke handler with result data moved in
+    self->handler_(std::move(byteArray));
     //
     delete reply;
     delete self;

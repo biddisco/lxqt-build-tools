@@ -73,6 +73,7 @@ foreach(test ${TEST_SRCS})
 
   grox_add_test_and_deps("network" ${testname} EXECUTABLE ${testname}
                          ${${testname}_PARAMETERS})
+  set_tests_properties("tests.network.${testname}" PROPERTIES TIMEOUT 30)
 endforeach()
 
 target_link_libraries(ripple-sign PUBLIC Ripple::xrpl_core)

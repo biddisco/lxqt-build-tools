@@ -1,50 +1,50 @@
-/*
- * GridTools
- *
- * Copyright (c) 2014-2020, ETH Zurich
- * All rights reserved.
- *
- * Please, refer to the LICENSE file in the root directory.
- * SPDX-License-Identifier: BSD-3-Clause
- *
- */
 #pragma once
 
-#include <array>
-#include <bitset>
-#include <chrono>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <functional>
-#include <iomanip>
-#include <iostream>
-#include <iterator>
-#include <sstream>
-#include <string>
-#include <thread>
-#include <type_traits>
-#include <utility>
-#include <vector>
+#include <pika/debugging/print.hpp>
+namespace grox::debug {
+  using namespace pika::debug;
+  using namespace pika::debug::detail;
+}    // namespace grox::debug
+namespace grox::debug::detail {
+  using namespace pika::debug::detail;
+}
+
+#if 0
+# include <array>
+# include <bitset>
+# include <chrono>
+# include <cmath>
+# include <cstddef>
+# include <cstdint>
+# include <cstring>
+# include <functional>
+# include <iomanip>
+# include <iostream>
+# include <iterator>
+# include <sstream>
+# include <string>
+# include <thread>
+# include <type_traits>
+# include <utility>
+# include <vector>
 //
-#if defined(__linux) || defined(linux) || defined(__linux__)
-# include <sys/mman.h>
-# include <unistd.h>
-#elif defined(__APPLE__)
-# include <crt_externs.h>
-# include <unistd.h>
-# define environ (*_NSGetEnviron())
-#elif defined(HPX_WINDOWS)
-# include <winsock2.h>
-# define environ _environ
-#else
+# if defined(__linux) || defined(linux) || defined(__linux__)
+#  include <sys/mman.h>
+#  include <unistd.h>
+# elif defined(__APPLE__)
+#  include <crt_externs.h>
+#  include <unistd.h>
+#  define environ (*_NSGetEnviron())
+# elif defined(HPX_WINDOWS)
+#  include <winsock2.h>
+#  define environ _environ
+# else
 extern char** environ;
-#endif
+# endif
 
-#define PRINT_HAVE_CXX17_FOLD_EXPRESSIONS
+# define PRINT_HAVE_CXX17_FOLD_EXPRESSIONS
 
-#include <boost/crc.hpp>
+# include <boost/crc.hpp>
 
 // ------------------------------------------------------------
 // This file provides a simple to use printf style debugging
@@ -81,20 +81,20 @@ extern char** environ;
 
 // Used to wrap function call parameters to prevent evaluation
 // when debugging is disabled
-#define GROX_DP_LAZY(printer, Expr) printer.eval([&] { return Expr; })
-#if (__cplusplus >= 201703L)
-# define GROX_DP_ONLY(printer, Expr)                                                               \
-  if constexpr (printer.is_enabled())                                                              \
-  {                                                                                                \
-   printer.Expr;                                                                                   \
-  };
-#else
-# define GROX_DP_ONLY(printer, Expr)                                                               \
-  if (printer.is_enabled())                                                                        \
-  {                                                                                                \
-   printer.Expr;                                                                                   \
-  };
-#endif
+# define GROX_DP_LAZY(printer, Expr) printer.eval([&] { return Expr; })
+# if (__cplusplus >= 201703L)
+#  define GROX_DP_ONLY(printer, Expr)                                                              \
+   if constexpr (printer.is_enabled())                                                             \
+   {                                                                                               \
+    printer.Expr;                                                                                  \
+   };
+# else
+#  define GROX_DP_ONLY(printer, Expr)                                                              \
+   if (printer.is_enabled())                                                                       \
+   {                                                                                               \
+    printer.Expr;                                                                                  \
+   };
+# endif
 
 // ------------------------------------------------------------
 /// \cond NODETAIL
@@ -384,7 +384,7 @@ namespace grox::debug {
 
   namespace detail {
 
-#ifdef PRINT_HAVE_CXX17_FOLD_EXPRESSIONS
+# ifdef PRINT_HAVE_CXX17_FOLD_EXPRESSIONS
     template <typename TupleType, std::size_t... I>
     void tuple_print(std::ostream& os, TupleType const& t, std::index_sequence<I...>)
     {
@@ -396,7 +396,7 @@ namespace grox::debug {
     {
       tuple_print(os, t, std::make_index_sequence<sizeof...(Args)>());
     }
-#else
+# else
     // C++14 version
     // helper function to print a tuple of any size
     template <typename TupleType, std::size_t... I>
@@ -412,7 +412,7 @@ namespace grox::debug {
     {
       detail::tuple_print(os, t, std::make_index_sequence<sizeof...(Args)>{});
     }
-#endif
+# endif
 
     // print variadic list of args
     template <typename Arg, typename... Args>
@@ -437,12 +437,12 @@ namespace grox::debug {
     inline std::ostream& operator<<(std::ostream& os, current_thread_print_helper const&)
     {
       os << hex<12, std::thread::id>(std::this_thread::get_id())
-#ifdef DEBUGGING_PRINT_LINUX
+# ifdef DEBUGGING_PRINT_LINUX
          << " cpu " << debug::dec<3, int>(sched_getcpu()) << " ";
-#else
+# else
          << " cpu "
          << "--- ";
-#endif
+# endif
       return os;
     }
 
@@ -826,3 +826,4 @@ public:
   };
 }    // namespace grox::debug
 /// \endcond
+#endif
