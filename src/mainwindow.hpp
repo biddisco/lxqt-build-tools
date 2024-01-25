@@ -16,7 +16,7 @@
 #include "exchange/bitstamp.hpp"
 #include "exchange/order_book.hpp"
 #include "exchange/xrpl_network.hpp"
-#include "senders/qt_helpers.hpp"
+#include "senders/qt_mainthread_scheduler.hpp"
 #include "widgets/connection_widget.hpp"
 // generated
 #include "ui_tabbed_form.h"
@@ -129,7 +129,7 @@ class GroxMainWindow : public QMainWindow
   void update_currency_widget(currency*);
   void update_wallet_widget(ledger_wallet*);
 
-  Q_INVOKABLE bool schedule_function(grox::qt::experimental::detail::qt_function_type func);
+  Q_INVOKABLE void schedule_function(grox::senders::qt_function_type func);
 
   // ----------------------------------
   //    void transfer_setup_xrp(double);

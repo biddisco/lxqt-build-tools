@@ -18,7 +18,6 @@
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "senders/qhttp-post-sender.hpp"
-#include "senders/transfer_qt_pika.hpp"
 #include "util/datetime_utils.hpp"
 #include "util/nljson.hpp"
 #include "util/stringutils.hpp"
@@ -37,7 +36,7 @@
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
-namespace qtex = grox::qt::experimental;
+using namespace grox::senders;
 namespace ex = pika::execution::experimental;
 
 //
@@ -101,21 +100,21 @@ void bitstamp_network::initialize()
         bitstamp_dbg<6>.debug(str<>("Initialize"), "WebsocketToken", data);
         handle_websocket_token(data);
       })                                                                               //
-    | stdexec::transfer(grox::qt_mainthread_scheduler())                               // pika -> Qt
+    | stdexec::transfer(grox::senders::qt_mainthread_scheduler())                      // pika -> Qt
     | stdexec::let_value(std::bind(&bitstamp_network::get_tickers_available, this))    // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {                                     // pika
         std::string_view data(byteArray.constData(), byteArray.length());
         bitstamp_dbg<6>.debug(str<>("Initialize"), "Tickers", data);
         handle_tickers_available(data);
       })                                                                          //
-    | stdexec::transfer(grox::qt_mainthread_scheduler())                          // pika -> Qt
+    | stdexec::transfer(grox::senders::qt_mainthread_scheduler())                 // pika -> Qt
     | stdexec::let_value(std::bind(&bitstamp_network::get_account_info, this))    // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {                                // pika
         std::string_view data(byteArray.constData(), byteArray.length());
         bitstamp_dbg<6>.debug(str<>("Initialize"), "AccountInfo", data);
         handle_account_info(data);
       })                                                                         //
-    | stdexec::transfer(grox::qt_mainthread_scheduler())                         // pika -> Qt
+    | stdexec::transfer(grox::senders::qt_mainthread_scheduler())                // pika -> Qt
     | stdexec::let_value(std::bind(&bitstamp_network::get_open_orders, this))    // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {                               // pika
         std::string_view data(byteArray.constData(), byteArray.length());
@@ -373,8 +372,8 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
                << "PUT SOMETHING IN HERE";
     //
     auto* client = account_request_sender("/api/v2/xrp_withdrawal/", req_string.str());
-    auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())                // Qt
-      | stdexec::let_value(std::move(stdexec::just(client) | qtex::qhttp_post()))    // Qt -> pika
+    auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
+      | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/xrp_withdrawal/", data);
@@ -387,8 +386,8 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
     req_string << "&currency= this is wrong" << c.issuer_;
     //
     auto* client = account_request_sender("/api/v2/ripple_withdrawal/", req_string.str());
-    auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())                // Qt
-      | stdexec::let_value(std::move(stdexec::just(client) | qtex::qhttp_post()))    // Qt -> pika
+    auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
+      | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/ripple_withdrawal/", data);
@@ -403,7 +402,7 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
 any_bytearray_sender bitstamp_network::get_account_info()
 {
   auto* client = account_request_sender("/api/v2/balance/", "");
-  return any_bytearray_sender{stdexec::just(client) | qtex::qhttp_post()};
+  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
 // ----------------------------------------------------------------------------
@@ -417,21 +416,21 @@ any_bytearray_sender bitstamp_network::get_websocket_token()
   //
   bitstamp_dbg<2>.debug(str<>("websocket_token"), "Fetching new");
   auto* client = account_request_sender("/api/v2/websockets_token/", "");
-  return any_bytearray_sender{stdexec::just(client) | qtex::qhttp_post()};
+  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
 // ----------------------------------------------------------------------------
 any_bytearray_sender bitstamp_network::get_open_orders()
 {
   auto* client = account_request_sender("/api/v2/open_orders/all/", "");
-  return any_bytearray_sender{stdexec::just(client) | qtex::qhttp_post()};
+  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
 // ----------------------------------------------------------------------------
 any_bytearray_sender bitstamp_network::get_tickers_available()
 {
   auto* client = account_request_sender("/api/v2/ticker/", "");
-  return any_bytearray_sender{std::move(stdexec::just(client) | qtex::qhttp_post())};
+  return any_bytearray_sender{std::move(stdexec::just(client) | qhttp_post())};
 }
 
 // ----------------------------------------------------------------------------
@@ -851,8 +850,8 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data* tdata)
   bitstamp_dbg<0>.debug(str<>("requesting"), tdata->view_->get_ticker_string(), samples,
     msecs_unix_to_calendar_time(req_t * 1000));
 
-  auto snd =
-    stdexec::on(grox::qt_mainthread_scheduler(), request_new_ohlc_data(cp, req_t, samples)) |
+  auto snd = stdexec::on(grox::senders::qt_mainthread_scheduler(),
+               request_new_ohlc_data(cp, req_t, samples)) |
     stdexec::then([this, req_t, cp, tdata](QByteArray byteArray) {
       std::string_view data(byteArray.constData(), byteArray.length());
       bitstamp_dbg<0>.debug(str<>("OHLC (lambda)"), tdata->view_->get_ticker_string(),
@@ -900,8 +899,7 @@ any_bytearray_sender bitstamp_network::request_new_ohlc_data(
   net::http::client_ptr client =
     net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
 
-  return {stdexec::just(client) |
-    qtex::qhttp_post(grox::qt::experimental::detail::http_request_type::http_get)};
+  return {stdexec::just(client) | qhttp_post(grox::senders::http_request_type::http_get)};
 }
 
 // ----------------------------------------------------------------------------
@@ -910,8 +908,8 @@ void bitstamp_network::cancel_order(trade_data const& t)
   std::string data = "&id=" + std::to_string(t.id_);
 
   auto* client = account_request_sender("/api/v2/cancel_order/", data);
-  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())                // Qt
-    | stdexec::let_value(std::move(stdexec::just(client) | qtex::qhttp_post()))    // Qt -> pika
+  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
+    | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         nlohmann::json jdata = json::parse(data);
@@ -954,8 +952,8 @@ void bitstamp_network::place_limit_order(trade_data const& t, bool update_after)
     str<>("limit-order"), (t.get_trade_type() == trade_type::buy ? "Buy" : "Sell"), req, data);
 
   auto* client = account_request_sender(req, data);
-  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())                // Qt
-    | stdexec::let_value(std::move(stdexec::just(client) | qtex::qhttp_post()))    // Qt -> pika
+  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
+    | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
     | stdexec::then([=, this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         nlohmann::json jdata = json::parse(data);

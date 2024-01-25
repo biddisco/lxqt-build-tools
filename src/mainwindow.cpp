@@ -1161,8 +1161,7 @@ void GroxMainWindow::LoadStyleSheet(int dark)
 }
 
 // ----------------------------------------------------------------------------
-bool GroxMainWindow::schedule_function(grox::qt::experimental::detail::qt_function_type func)
+void GroxMainWindow::schedule_function(grox::senders::qt_function_type func)
 {
-  func(true);
-  return true;
+  func();
 }

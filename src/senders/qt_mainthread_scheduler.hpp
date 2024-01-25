@@ -24,31 +24,36 @@
 //
 #include <QCoreApplication>
 #include <QMainWindow>
-//
-#include "senders/qt_helpers.hpp"
 
-QMainWindow* getMainWindow()
-{
-  foreach (QWidget* w, qApp->topLevelWidgets())
-    if (QMainWindow* mainWin = qobject_cast<QMainWindow*>(w))
-      return mainWin;
-  return nullptr;
-}
+// Quick and dirty scheduler to invoke function on Qt mainwin thread
+// Mainwindow must have an invokable function with the (arbitrary) signature used here
+//
+// Q_INVOKABLE bool schedule_function(qt_function_type func);
+
+// @TODO: Remove stdexec::detail __xxx usage
+
+namespace grox::senders {
+  using qt_function_type = std::function<void(void)>;
+
+  inline QMainWindow* getMainWindow()
+  {
+    foreach (QWidget* w, qApp->topLevelWidgets())
+      if (QMainWindow* mainWin = qobject_cast<QMainWindow*>(w))
+        return mainWin;
+    return nullptr;
+  }
+}    // namespace grox::senders
 
 namespace stdexec {
 
-  namespace qtmain {
+  namespace qt_detail {
     struct qt_schedule_t
     {
     };
 
     struct scheduler
     {
-      using t = scheduler;
-      using id = scheduler;
-
       template <class Tag = qt_schedule_t>
-      STDEXEC_ATTRIBUTE((host, device))
       friend auto tag_invoke(schedule_t, scheduler)
       {
         return __make_sexpr<Tag>();
@@ -62,15 +67,15 @@ namespace stdexec {
 
       bool operator==(const scheduler&) const noexcept = default;
     };
-  }    // namespace qtmain
+  }    // namespace qt_detail
 
   template <>
-  struct __sexpr_impl<qtmain::qt_schedule_t> : __sexpr_defaults
+  struct __sexpr_impl<qt_detail::qt_schedule_t> : __sexpr_defaults
   {
     static constexpr auto get_attrs =    //
       [](__ignore) noexcept
-      -> __env::__prop<qtmain::scheduler(get_completion_scheduler_t<set_value_t>)> {
-      return __mkprop(qtmain::scheduler{}, get_completion_scheduler<set_value_t>);
+      -> __env::__with<qt_detail::scheduler, get_completion_scheduler_t<set_value_t>> {
+      return __env::__with(qt_detail::scheduler{}, get_completion_scheduler<set_value_t>);
     };
 
     static constexpr auto get_completion_signatures =    //
@@ -78,21 +83,21 @@ namespace stdexec {
 
     static constexpr auto start =    //
       []<class Receiver>(__ignore, Receiver& rcvr) noexcept -> void {
-      QMainWindow* mainwin = getMainWindow();
-      // call set_value from inside the lambda on the application thread
-      grox::qt::experimental::detail::qt_function_type func = [rcvr = std::move(rcvr)](bool x) {
+      QMainWindow* mainwin = grox::senders::getMainWindow();
+
+      // Create a lambda that calls the continuation, and then pass that to the mainwindow
+      // schedule_function member that will be called via invoke on the Qt application thread
+      grox::senders::qt_function_type func = [rcvr = std::move(rcvr)]() {
         set_value((Receiver &&) rcvr);
-        return x;
       };
 
       // Do not use DirectConnection as it will execute on the same thread
       QMetaObject::invokeMethod(mainwin, "schedule_function", Qt::AutoConnection,
-        Q_ARG(grox::qt::experimental::detail::qt_function_type, func));
+        Q_ARG(grox::senders::qt_function_type, func));
     };
   };
 }    // namespace stdexec
 
-namespace grox {
-  // A scheduler that executes its continuation on the Qt main thread
-  using qt_mainthread_scheduler = stdexec::qtmain::scheduler;
-}    // namespace grox
+namespace grox::senders {
+  using qt_mainthread_scheduler = stdexec::qt_detail::scheduler;
+}    // namespace grox::senders
