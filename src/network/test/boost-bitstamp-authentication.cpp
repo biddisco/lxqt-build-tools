@@ -13,6 +13,7 @@
 //
 #include "network/evp-encrypt.hpp"
 #include "network/test/https-async.hpp"
+#include "util/execute_os_command.hpp"
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -20,6 +21,9 @@ namespace asio = boost::asio;
 using tcp = asio::ip::tcp;
 
 static std::atomic<int> reply_ready = 0;
+static std::string api_user;
+static std::string api_key;
+static std::string api_secret;
 
 void bitstamp_reply(std::string&& data)
 {
@@ -38,15 +42,17 @@ int main(int argc, char** argv)
     return EXIT_FAILURE;
   }
 
-  const std::string api_key = std::getenv("rand2") ? std::getenv("rand2") : "";
-  const std::string api_secret = std::getenv("rand3") ? std::getenv("rand3") : "";
+  //
+  api_user = execute_os_command("pass bitstamp/user");
+  api_key = execute_os_command("pass bitstamp/api_key");
+  api_secret = execute_os_command("pass bitstamp/secret");
   if (api_key.empty() || api_secret.empty())
   {
     std::cout << "Set ENV vars for API_KEY and API_SEC " << std::endl;
     return EXIT_FAILURE;
   }
 
-  secure_string randbytes = "asd23asd234gf576cbv";
+  secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
   encryption encryptor(api_secret, randbytes);
 
   std::chrono::milliseconds timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(

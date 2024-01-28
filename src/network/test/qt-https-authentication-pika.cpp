@@ -21,6 +21,7 @@
 #include "debug/print.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
+#include "util/execute_os_command.hpp"
 
 static std::atomic<int> reply_ready = 0;
 static std::string api_user;
@@ -31,7 +32,7 @@ const int bitstamp_https_port = 443;
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
-//
+//std::getenv("rand2") ? std::getenv("rand2") : ""
 template <int Level>
 static print_threshold<Level, 2> test1_dbg("https://");
 
@@ -136,9 +137,9 @@ int qt_main(int argc, char* argv[])
   QCoreApplication a(argc, argv);
   QNetworkAccessManager networkmanager;
   //
-  api_user = std::getenv("rand1") ? std::getenv("rand1") : "";
-  api_key = std::getenv("rand2") ? std::getenv("rand2") : "";
-  api_secret = std::getenv("rand3") ? std::getenv("rand3") : "";
+  api_user = execute_os_command("pass bitstamp/user");
+  api_key = execute_os_command("pass bitstamp/api_key");
+  api_secret = execute_os_command("pass bitstamp/secret");
   if (api_user.empty() || api_key.empty() || api_secret.empty())
   {
     std::cout << "Set ENV vars for API_KEY and API_SEC " << std::endl;

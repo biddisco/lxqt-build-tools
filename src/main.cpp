@@ -17,9 +17,11 @@
 #include <pika/program_options.hpp>
 //
 #include "debug/print.hpp"
-#include "mainwindow.hpp"
 #include "network/evp-encrypt.hpp"
+#include "util/execute_os_command.hpp"
 #include "widgets/password_dialog.hpp"
+//
+#include "mainwindow.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace pika::debug::detail;
@@ -27,6 +29,10 @@ using namespace pika::debug::detail;
 // a debug level of N shows messages with priority<N
 template <int Level>
 static print_threshold<Level, 5> app_dbg("App-Main");
+
+// save these to pass to Qt init.
+static int argc;
+static char** argv;
 
 // ----------------------------------------------------------------------------
 void init_settings(app_settings* settings, QNetworkAccessManager* networkmanager)
@@ -136,25 +142,7 @@ void generate_encrypted_ini_data(password_dialog& npw)
 }
 
 // ----------------------------------------------------------------------------
-std::string execute_os(const char* cmd)
-{
-  std::array<char, 1024> buffer;
-  std::string result;
-  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
-  if (!pipe)
-  {
-    throw std::runtime_error("popen() failed!");
-  }
-  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
-  {
-    result += buffer.data();
-  }
-  result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
-  return result;
-}
-
-// ----------------------------------------------------------------------------
-int qt_main(int argc, char* argv[])
+int qt_main(pika::program_options::variables_map& vm)
 {
   // make sure networkmanager is created on this thread
   QApplication app(argc, argv);
@@ -187,7 +175,7 @@ int qt_main(int argc, char* argv[])
   if (!authenticated)
   {
     std::string commandLine = "timeout 5 ssh pi@192.168.1.15 cat /home/pi/.ssh/.skey.sh";
-    auto result = execute_os(commandLine.c_str());
+    auto result = execute_os_command(commandLine.c_str());
     std::regex rgx(".*rand3=\"(.*)\".*");
     std::smatch match;
     if (std::regex_search(result, match, rgx))
@@ -222,7 +210,7 @@ int qt_main(int argc, char* argv[])
   if (!authenticated)
   {
     std::string commandLine = "pass grox";
-    auto result = execute_os(commandLine.c_str());
+    auto result = execute_os_command(commandLine.c_str());
     if (result.size() > 0)
     {
       global_settings.grox_password = result;
@@ -365,8 +353,9 @@ int qt_main(int argc, char* argv[])
       index++;
     }
   }
-  /*
-  if ((argc > 1) && (std::string(argv[1]) == std::string("--decode")))
+#define GROX_SUPPORT_DECODE 1
+#ifdef GROX_SUPPORT_DECODE
+  if (vm["decode"].as<bool>())
   {
     auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
     app_dbg<5>.debug("\nDecrypted information\n");
@@ -396,7 +385,7 @@ int qt_main(int argc, char* argv[])
     }
     return EXIT_SUCCESS;
   }
-*/
+#endif
   GroxMainWindow mainWindow;
 
   QObject::connect(&app, SIGNAL(aboutToQuit()), &mainWindow, SLOT(appExitCleanupHandler()));
@@ -410,8 +399,9 @@ int qt_main(int argc, char* argv[])
 
 //----------------------------------------------------------------------------
 std::string qt_pool_name = "Qt:pool";
+
 //----------------------------------------------------------------------------
-int pika_main(int argc, char** argv)
+int pika_main(pika::program_options::variables_map& vm)
 {
   namespace ex = pika::execution::experimental;
   namespace tt = pika::this_thread::experimental;
@@ -420,9 +410,9 @@ int pika_main(int argc, char** argv)
   auto qt_sch = ex::thread_pool_scheduler{&pika::resource::get_thread_pool(qt_pool_name)};
 
   // create a sender to transfer work to the qt pool scheduler
-  auto snd = ex::transfer_just(qt_sch) | ex::then([argc, argv]() {
+  auto snd = ex::transfer_just(qt_sch) | ex::then([&vm]() {
     // run the main qt application entry on our thread
-    qt_main(argc, argv);
+    qt_main(vm);
   });
 
   // launch and block on completion of the Qt application thread
@@ -463,8 +453,12 @@ void init_resource_partitioner_handler(
 // the normal int main function that is called at startup and runs on an OS
 // thread the user must call pika::init to start the pika runtime which
 // will execute pika_main on an pika thread
+
 int main(int argc, char* argv[])
 {
+  ::argc = argc;
+  ::argv = argv;
+
   namespace po = pika::program_options;
 
   // Configure application-specific options.
@@ -476,12 +470,18 @@ int main(int argc, char* argv[])
     "Disable the Qt pool.");
 
   cmdline.add_options()("decode",
-    po::value<std::string>()->default_value(""),
+    pika::program_options::bool_switch(),
     "shortcut");
 
   cmdline.add_options()("disable something",
     po::value<bool>()->default_value(false),
     "placeholder for disabling some functionality");
+
+  // po::variables_map vm;
+  // po::store(po::command_line_parser(argc, argv)
+  //                                .allow_unregistered()
+  //                                .options(cmdline)
+  //                                .run(), vm);
   // clang-format on
 
   // Initialize and run pika.

@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 //
+#include "exchange/account.hpp"
 #include "ui_password_dialog.h"
 //
 

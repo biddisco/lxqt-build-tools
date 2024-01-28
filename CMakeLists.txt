@@ -73,6 +73,9 @@ include(Sanitizer)
 # ------------------------------------------------------------------------------
 # CTest testing support
 # ------------------------------------------------------------------------------
+set(DART_TESTING_TIMEOUT
+    30
+    CACHE STRING "Test Timeout" FORCE)
 include(CTest)
 enable_testing()
 
