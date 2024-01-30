@@ -50,7 +50,7 @@
 #include "FloatingDockContainer.h"
 
 #define GROX_HAVE_BITSTAMP
-//#define GROX_HAVE_XRPL
+#define GROX_HAVE_XRPL
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);

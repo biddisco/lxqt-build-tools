@@ -12,7 +12,7 @@ namespace net::http {
 
   class qhttp_request_client;
   using client_ptr = qhttp_request_client*;
-  using rx_req_handler_type = std::function<void(QByteArray&&)>;
+  using rx_req_handler_type = std::function<void(QByteArray)>;
 
   class qhttp_request_client : public QObject
   {

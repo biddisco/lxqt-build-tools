@@ -121,7 +121,7 @@ void make_request(QNetworkAccessManager& networkmanager)
   //test1_dbg<0>.debug(str<>("ref count"), client.get(), "test", client.use_count());
 
   // Run
-  account_request(networkmanager, url_path, url_query, [](QByteArray&& byteArray) {
+  account_request(networkmanager, url_path, url_query, [](QByteArray byteArray) {
     std::string_view reply(byteArray.constData(), byteArray.length());
     std::cout << "Response : " << reply << std::endl;
     reply_ready = 1;

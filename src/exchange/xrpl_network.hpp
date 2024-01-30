@@ -12,7 +12,21 @@
 #include "network/qhttp-request-client.hpp"
 #include "network/qwebsocket_session.hpp"
 #include "widgets/currency_widget.hpp"
+//
+#include <exec/any_sender_of.hpp>
 
+// ----------------------------------------------------------------------------
+template <class... Ts>
+using any_sender_of =
+  typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
+
+using any_bool_sender = any_sender_of<stdexec::set_value_t(bool), stdexec::set_stopped_t(),
+  stdexec::set_error_t(std::exception_ptr)>;
+
+using any_bytearray_sender = any_sender_of<stdexec::set_value_t(QByteArray byteArray),
+  stdexec::set_stopped_t(), stdexec::set_error_t(std::exception_ptr)>;
+
+// ----------------------------------------------------------------------------
 // #define GROX_USE_LOCAL_SERVER
 #define GROX_USE_RIPPLE_MAINNET_SERVER
 
@@ -175,25 +189,24 @@ class xrpl_network : public exchange
   static void new_account_data(xrpl_network* nw, QString);
 
   // ----------------------------------------------------------------------------
-  using fn_on_http = net::http::rx_req_handler_type;
-
-  // ----------------------------------------------------------------------------
   std::vector<currency>::iterator get_currency(std::string_view addr, currency c);
   void update_XRP_balance(std::string_view addr, double oldb, double newb);
   void update_IOU_balance(std::string_view addr, currency const& curr);
 
+  any_bytearray_sender submit_signed_transaction(std::string&& signed_tx);
+
   // query account balance and info
-  void get_account_info(std::string addr, fn_on_http on_http);
+  any_bytearray_sender get_account_info(std::string addr);
   void get_all_account_infos();
   void handle_account_info(ledger_wallet& w, std::string_view data);
 
   // query account trustlines
-  void get_account_lines(std::string addr, fn_on_http on_http);
+  any_bytearray_sender get_account_lines(std::string addr);
   void get_all_account_lines();
   void handle_account_lines(ledger_wallet& w, std::string_view data);
 
   // query open orders
-  void get_account_offers(std::string addr, fn_on_http on_http);
+  any_bytearray_sender get_account_offers(std::string addr);
   void get_all_account_offers();
   void handle_account_offers(ledger_wallet& w, std::string_view data);
 
@@ -203,8 +216,6 @@ class xrpl_network : public exchange
   // place a buy/sell order
   void place_limit_order(basic_account* acct, trade_data const& t, bool update_after);
   void place_buy_sell_orders(basic_account* acct, std::vector<trade_data> const& trades) override;
-
-  void submit_signed_transaction(std::string&& signed_tx);
 
   double get_fee_percent(currency const& c1, currency const& c2) override;
   double get_fee_fixed(currency const& c1, currency const& c2) override;

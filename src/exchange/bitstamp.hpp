@@ -18,10 +18,8 @@
 #include "network/qhttp-request-client.hpp"
 //
 #include <exec/any_sender_of.hpp>
-#include <pika/execution_base/any_sender.hpp>
 
-using pika::execution::experimental::unique_any_sender;
-
+// ----------------------------------------------------------------------------
 template <class... Ts>
 using any_sender_of =
   typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
@@ -188,8 +186,7 @@ class bitstamp_network : public exchange
   void cancel_order(trade_data const& t) override;
 
   // ----------------------------------------------------------------------------
-  net::http::client_ptr account_request_sender(
-    const std::string& url_path, const std::string& url_query);
+  net::http::client_ptr signed_request(const std::string& url_path, const std::string& url_query);
 
   // ----------------------------------------------------------------------------
   // OHLC candlestick updating

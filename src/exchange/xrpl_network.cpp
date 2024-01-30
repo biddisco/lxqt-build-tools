@@ -14,17 +14,17 @@
 #include <ripple/protocol/UintTypes.h>
 //
 #include "debug/print.hpp"
-#include "network/evp-encrypt.hpp"
-#include "util/stringutils.hpp"
-//
-#include "widgets/currency_widget.hpp"
-#include "widgets/price_chart_widget.hpp"
-#include "widgets/xrp_functions.hpp"
-//
 #include "exchange/bitstamp.hpp"
 #include "exchange/order_book.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
+#include "network/evp-encrypt.hpp"
+#include "senders/qhttp-post-sender.hpp"
+#include "senders/qt_mainthread_scheduler.hpp"
+#include "util/stringutils.hpp"
+#include "widgets/currency_widget.hpp"
+#include "widgets/price_chart_widget.hpp"
+#include "widgets/xrp_functions.hpp"
 //
 #include "DockAreaWidget.h"
 #include "DockManager.h"
@@ -32,11 +32,10 @@
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 9;
+using namespace grox::senders;
 //
 template <int Level>
-static print_threshold<Level, debug_level> xrpnet_dbg("XRP-legr");
+static print_threshold<Level, 7> xrpnet_dbg("XRP-legr");
 
 // ----------------------------------------------------------------------------
 xrpl_network::xrpl_network(bool testnet)
@@ -518,7 +517,25 @@ void xrpl_network::update_IOU_balance(std::string_view addr, currency const& cur
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::get_account_lines(std::string addr, fn_on_http on_http)
+any_bytearray_sender xrpl_network::submit_signed_transaction(std::string&& signed_tx)
+{
+  nlohmann::json tx;
+  tx["tx_blob"] = signed_tx;
+
+  nlohmann::json content;
+  content["method"] = "submit";
+  content["params"] = nlohmann::json::array({tx});
+
+  // init an http request object
+  std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
+  xrpnet_dbg<5>.debug(str<>("signed_transaction"), url);
+  auto* client =
+    net::http::qhttp_request_client::create(*global_settings.networkmanager_, url, content.dump());
+  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
+}
+
+// ----------------------------------------------------------------------------
+any_bytearray_sender xrpl_network::get_account_lines(std::string addr)
 {
   nlohmann::json params;
   params["account"] = addr;
@@ -533,7 +550,7 @@ void xrpl_network::get_account_lines(std::string addr, fn_on_http on_http)
   xrpnet_dbg<5>.debug(str<>("account_lines"), url);
   auto* client =
     net::http::qhttp_request_client::create(*global_settings.networkmanager_, url, content.dump());
-  client->post_request(std::move(on_http));
+  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
 // ----------------------------------------------------------------------------
@@ -541,13 +558,15 @@ void xrpl_network::get_all_account_lines()
 {
   for (auto& w : subscribed_wallets_)
   {
-    get_account_lines(w.public_, [this, &w](QByteArray&& byteArray) {
-      std::string_view data(byteArray.constData(), byteArray.length());
-      // debug : print the response headers and body
-      xrpnet_dbg<5>.debug(str<>("Ledger response"), data);
-      this->handle_account_lines(w, data);
-    });
-  };
+    auto snd = stdexec::on(qt_mainthread_scheduler(), get_account_lines(w.public_))    // Qt
+      | stdexec::then([this, &w](QByteArray byteArray) {                               // pika
+          std::string_view data(byteArray.constData(), byteArray.length());
+          // debug : print the response headers and body
+          xrpnet_dbg<8>.debug(str<>("Ledger response"), data);
+          this->handle_account_lines(w, data);
+        });
+    stdexec::start_detached(std::move(snd));
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -569,7 +588,7 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
     return;
   }
 
-  xrpnet_dbg<5>.debug(str<>("account lines"), jdata.dump(4));
+  xrpnet_dbg<8>.debug(str<>("account lines"), jdata.dump(4));
   std::vector<xrp_amount> balances = jdata.get<std::vector<xrp_amount>>();
   //
   for (auto const& b : balances)
@@ -611,7 +630,7 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::get_account_info(std::string addr, fn_on_http on_http)
+any_bytearray_sender xrpl_network::get_account_info(std::string addr)
 {
   nlohmann::json params;
   params["account"] = addr;
@@ -628,7 +647,7 @@ void xrpl_network::get_account_info(std::string addr, fn_on_http on_http)
   xrpnet_dbg<5>.debug(str<>("account_info"), url);
   auto* client =
     net::http::qhttp_request_client::create(*global_settings.networkmanager_, url, content.dump());
-  client->post_request(std::move(on_http));
+  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
 // ----------------------------------------------------------------------------
@@ -636,14 +655,14 @@ void xrpl_network::get_all_account_infos()
 {
   for (auto& w : subscribed_wallets_)
   {
-    fn_on_http func = [this, &w](QByteArray&& byteArray) {
-      std::string_view data(byteArray.constData(), byteArray.length());
-      // debug : print the response headers and body
-      xrpnet_dbg<5>.debug(str<>("account_info"), w.public_, data);
-      this->handle_account_info(w, data);
-    };
-
-    get_account_info(w.public_, func);
+    auto snd = stdexec::on(qt_mainthread_scheduler(), get_account_info(w.public_)) |
+      stdexec::then([this, &w](QByteArray byteArray) {
+        std::string_view data(byteArray.constData(), byteArray.length());
+        // debug : print the response headers and body
+        xrpnet_dbg<8>.debug(str<>("account_info"), w.public_, data);
+        this->handle_account_info(w, data);
+      });
+    stdexec::start_detached(std::move(snd));
   }
 }
 
@@ -661,7 +680,7 @@ void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
     return;
   }
 
-  xrpnet_dbg<5>.debug(str<>("account info"), jdata.dump(4));
+  xrpnet_dbg<8>.debug(str<>("account info"), jdata.dump(4));
   //
   if (jdata.is_null())
     return;
@@ -684,7 +703,7 @@ void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::get_account_offers(std::string addr, fn_on_http on_http)
+any_bytearray_sender xrpl_network::get_account_offers(std::string addr)
 {
   nlohmann::json params;
   params["account"] = addr;
@@ -698,7 +717,7 @@ void xrpl_network::get_account_offers(std::string addr, fn_on_http on_http)
   xrpnet_dbg<5>.debug(str<>("account_offers"), url);
   auto* client =
     net::http::qhttp_request_client::create(*global_settings.networkmanager_, url, content.dump());
-  client->post_request(std::move(on_http));
+  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
 // ----------------------------------------------------------------------------
@@ -706,14 +725,14 @@ void xrpl_network::get_all_account_offers()
 {
   for (auto& w : subscribed_wallets_)
   {
-    fn_on_http func = [this, &w](QByteArray&& byteArray) {
-      std::string_view data(byteArray.constData(), byteArray.length());
-      // debug : print the response headers and body
-      xrpnet_dbg<5>.debug(str<>("account_offers"), w.public_, data);
-      this->handle_account_offers(w, data);
-    };
-
-    get_account_offers(w.public_, func);
+    auto snd = stdexec::on(qt_mainthread_scheduler(), get_account_offers(w.public_)) |
+      stdexec::then([this, &w](QByteArray byteArray) {
+        std::string_view data(byteArray.constData(), byteArray.length());
+        // debug : print the response headers and body
+        xrpnet_dbg<8>.debug(str<>("account_offers"), w.public_, data);
+        this->handle_account_offers(w, data);
+      });
+    stdexec::start_detached(std::move(snd));
   };
 }
 
@@ -731,7 +750,7 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
     return;
   }
 
-  xrpnet_dbg<5>.debug(str<>("account offers"), jdata.dump(4));
+  xrpnet_dbg<8>.debug(str<>("account offers"), jdata.dump(4));
   //
   if (jdata.is_null())
     return;
@@ -804,33 +823,16 @@ bool xrpl_network::make_payment(currency const& c, basic_account* src, basic_acc
         to->get_receive_address(c).begin(), to->tag_, c.balance_, c.code_, c.issuer_, fee);
   }
   from->sequence_++;
-  submit_signed_transaction(std::move(signed_tx));
+
+  auto snd =
+    stdexec::on(qt_mainthread_scheduler(), submit_signed_transaction(std::move(signed_tx))) |
+    stdexec::then([this](QByteArray byteArray) {
+      std::string_view data(byteArray.constData(), byteArray.length());
+      xrpnet_dbg<8>.debug(str<>("make_payment"), data);
+      emit transaction_event();
+    });
+  stdexec::start_detached(std::move(snd));
   return true;
-}
-
-// ----------------------------------------------------------------------------
-void xrpl_network::submit_signed_transaction(std::string&& signed_tx)
-{
-  nlohmann::json tx;
-  tx["tx_blob"] = signed_tx;
-
-  nlohmann::json content;
-  content["method"] = "submit";
-  content["params"] = nlohmann::json::array({tx});
-
-  auto on_http = [this](QByteArray&& byteArray) {
-    std::string_view data(byteArray.constData(), byteArray.length());
-    // debug : print the response headers and body
-    xrpnet_dbg<5>.debug(str<>("Tx submit response"), data);
-    emit transaction_event();
-  };
-
-  // init an http request object
-  std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
-  xrpnet_dbg<5>.debug(str<>("signed_transaction"), url);
-  auto* client =
-    net::http::qhttp_request_client::create(*global_settings.networkmanager_, url, content.dump());
-  client->post_request(std::move(on_http));
 }
 
 // ----------------------------------------------------------------------------
@@ -894,7 +896,15 @@ void xrpl_network::place_limit_order(basic_account* acct, trade_data const& t, b
   std::string signed_tx = make_xrp_offer(ripple::KeyType::secp256k1, from->private_, from->public_,
     from->sequence_, taker_pays, taker_gets, 0);
   from->sequence_++;
-  submit_signed_transaction(std::move(signed_tx));
+
+  auto snd =
+    stdexec::on(qt_mainthread_scheduler(), submit_signed_transaction(std::move(signed_tx))) |
+    stdexec::then([this](QByteArray byteArray) {
+      std::string_view data(byteArray.constData(), byteArray.length());
+      xrpnet_dbg<8>.debug(str<>("place_limit_order"), data);
+      emit transaction_event();
+    });
+  stdexec::start_detached(std::move(snd));
 }
 
 // ----------------------------------------------------------------------------
@@ -923,7 +933,15 @@ void xrpl_network::cancel_order(trade_data const& t)
   std::string signed_tx = cancel_xrp_offer(
     ripple::KeyType::secp256k1, from->private_, from->public_, from->sequence_, t.id_, 0);
   from->sequence_++;
-  submit_signed_transaction(std::move(signed_tx));
+
+  auto snd =
+    stdexec::on(qt_mainthread_scheduler(), submit_signed_transaction(std::move(signed_tx))) |
+    stdexec::then([this](QByteArray byteArray) {
+      std::string_view data(byteArray.constData(), byteArray.length());
+      xrpnet_dbg<8>.debug(str<>("cancel_order"), data);
+      emit transaction_event();
+    });
+  stdexec::start_detached(std::move(snd));
 }
 
 // ----------------------------------------------------------------------------
@@ -935,25 +953,26 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
     return;
   }
 
-  fn_on_http func = [this, c1](QByteArray&& byteArray) {
-    std::string_view data(byteArray.constData(), byteArray.length());
-    // debug : print the response headers and body
-    xrpnet_dbg<5>.debug(str<>("account_info"), c1.issuer_, data);
-    nlohmann::json jdata = json::parse(data)["result"]["account_data"];
-    if (jdata.contains("TransferRate"))
-    {
-      int sfee = jdata["TransferRate"].get<int>();
-      // In the XRP Ledger protocol, the transfer fee is specified in the TransferRate
-      // field, as an integer which represents the amount you must send for the
-      // recipient to get 1 billion units of the same currency.
-      // A TransferRate of 1005000000 is equivalent to a transfer fee of 0.5%
-      double feepercent = 100.0 * (1E-9 * sfee - 1.0);
-      xrpnet_dbg<0>.debug(str<>("fee %"), c1.issuer_, feepercent);
-      currency_fees_[c1.issuer_] = feepercent;
-    }
-  };
+  auto snd = stdexec::on(qt_mainthread_scheduler(), get_account_info(c1.issuer_)) |
+    stdexec::then([this, c1](QByteArray byteArray) {
+      std::string_view data(byteArray.constData(), byteArray.length());
+      // debug : print the response headers and body
+      xrpnet_dbg<8>.debug(str<>("query_iou_fee"), c1.issuer_, data);
+      nlohmann::json jdata = json::parse(data)["result"]["account_data"];
+      if (jdata.contains("TransferRate"))
+      {
+        int sfee = jdata["TransferRate"].get<int>();
+        // In the XRP Ledger protocol, the transfer fee is specified in the TransferRate
+        // field, as an integer which represents the amount you must send for the
+        // recipient to get 1 billion units of the same currency.
+        // A TransferRate of 1005000000 is equivalent to a transfer fee of 0.5%
+        double feepercent = 100.0 * (1E-9 * sfee - 1.0);
+        xrpnet_dbg<0>.debug(str<>("fee %"), c1.issuer_, feepercent);
+        currency_fees_[c1.issuer_] = feepercent;
+      }
+    });
 
-  get_account_info(c1.issuer_, func);
+  stdexec::start_detached(std::move(snd));
 }
 
 // ----------------------------------------------------------------------------
@@ -981,7 +1000,15 @@ void xrpl_network::trustline(
   ledger_wallet* from = get_wallet_by_name(acct->name_);
   std::string signed_tx = set_trustline(ripple::KeyType::secp256k1, from->private_, from->public_,
     from->sequence_, limit, code, addr, flags);
-  submit_signed_transaction(std::move(signed_tx));
+
+  auto snd =
+    stdexec::on(qt_mainthread_scheduler(), submit_signed_transaction(std::move(signed_tx))) |
+    stdexec::then([this](QByteArray byteArray) {
+      std::string_view data(byteArray.constData(), byteArray.length());
+      xrpnet_dbg<8>.debug(str<>("trustline"), data);
+      emit transaction_event();
+    });
+  stdexec::start_detached(std::move(snd));
 }
 
 // ----------------------------------------------------------------------------

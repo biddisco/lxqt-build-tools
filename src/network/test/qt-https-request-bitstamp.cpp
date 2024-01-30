@@ -11,7 +11,7 @@
 static std::atomic<int> pass_count{0};
 std::vector<std::string> test_list{"xrpusd", "btcusd", "xrpeur", "btceur", "xrpbtc"};
 
-void handler(QByteArray&& byteArray)
+void handler(QByteArray byteArray)
 {
   std::string_view reply(byteArray.constData(), byteArray.length());
   // print the full response

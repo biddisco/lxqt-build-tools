@@ -371,7 +371,7 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
     req_string << "&destination_tag"
                << "PUT SOMETHING IN HERE";
     //
-    auto* client = account_request_sender("/api/v2/xrp_withdrawal/", req_string.str());
+    auto* client = signed_request("/api/v2/xrp_withdrawal/", req_string.str());
     auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
       | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {
@@ -385,7 +385,7 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
   {
     req_string << "&currency= this is wrong" << c.issuer_;
     //
-    auto* client = account_request_sender("/api/v2/ripple_withdrawal/", req_string.str());
+    auto* client = signed_request("/api/v2/ripple_withdrawal/", req_string.str());
     auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
       | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {
@@ -401,7 +401,7 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
 // ----------------------------------------------------------------------------
 any_bytearray_sender bitstamp_network::get_account_info()
 {
-  auto* client = account_request_sender("/api/v2/balance/", "");
+  auto* client = signed_request("/api/v2/balance/", "");
   return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
@@ -415,22 +415,24 @@ any_bytearray_sender bitstamp_network::get_websocket_token()
   }
   //
   bitstamp_dbg<2>.debug(str<>("websocket_token"), "Fetching new");
-  auto* client = account_request_sender("/api/v2/websockets_token/", "");
+  auto* client = signed_request("/api/v2/websockets_token/", "");
   return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
 // ----------------------------------------------------------------------------
 any_bytearray_sender bitstamp_network::get_open_orders()
 {
-  auto* client = account_request_sender("/api/v2/open_orders/all/", "");
+  auto* client = signed_request("/api/v2/open_orders/all/", "");
   return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
 // ----------------------------------------------------------------------------
 any_bytearray_sender bitstamp_network::get_tickers_available()
 {
-  auto* client = account_request_sender("/api/v2/ticker/", "");
-  return any_bytearray_sender{std::move(stdexec::just(client) | qhttp_post())};
+  std::string url = fmt::format("https://{}:{}{}", bitstamp_https_address, 443, "/api/v2/ticker/");
+  auto* client = net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
+  return any_bytearray_sender{
+    std::move(stdexec::just(client) | qhttp_post(grox::senders::http_request_type::http_get))};
 }
 
 // ----------------------------------------------------------------------------
@@ -664,7 +666,7 @@ void bitstamp_network::process_order(nlohmann::json& jdata, std::string_view eve
 */
 
 // ----------------------------------------------------------------------------
-net::http::client_ptr bitstamp_network::account_request_sender(
+net::http::client_ptr bitstamp_network::signed_request(
   const std::string& url_path, const std::string& url_query)
 {
   std::string api_key = get_bitstamp_instance()->account().API_key;
@@ -894,11 +896,10 @@ any_bytearray_sender bitstamp_network::request_new_ohlc_data(
     bitstamp_dbg<0>.debug(str<>("request"), ticker_lowercase, req);
   }
 
-  // @todo : add error handler
+  // @todo : add error hander
   std::string url = fmt::format("https://{}:{}{}", bitstamp_https_address, 443, req);
   net::http::client_ptr client =
     net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
-
   return {stdexec::just(client) | qhttp_post(grox::senders::http_request_type::http_get)};
 }
 
@@ -907,7 +908,7 @@ void bitstamp_network::cancel_order(trade_data const& t)
 {
   std::string data = "&id=" + std::to_string(t.id_);
 
-  auto* client = account_request_sender("/api/v2/cancel_order/", data);
+  auto* client = signed_request("/api/v2/cancel_order/", data);
   auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
     | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {
@@ -951,7 +952,7 @@ void bitstamp_network::place_limit_order(trade_data const& t, bool update_after)
   bitstamp_dbg<0>.debug(
     str<>("limit-order"), (t.get_trade_type() == trade_type::buy ? "Buy" : "Sell"), req, data);
 
-  auto* client = account_request_sender(req, data);
+  auto* client = signed_request(req, data);
   auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
     | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
     | stdexec::then([=, this](QByteArray byteArray) {
