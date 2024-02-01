@@ -12,6 +12,7 @@ set(TEST_SRCS
     boost-websocket-bitstamp.cpp
     boost-websocket-xrpl.cpp
     # qt networking tests
+    qt-https-request-price-history.cpp
     qt-https-request-bitstamp.cpp
     qt-https-request-xrpl.cpp
     qt-websocket-bitstamp.cpp)
