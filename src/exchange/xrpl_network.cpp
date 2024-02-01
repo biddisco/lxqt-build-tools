@@ -13,6 +13,10 @@
 #include <ripple/protocol/Sign.h>
 #include <ripple/protocol/UintTypes.h>
 //
+#include <exec/async_scope.hpp>
+#include <exec/inline_scheduler.hpp>
+#include <stdexec/execution.hpp>
+//
 #include "debug/print.hpp"
 #include "exchange/bitstamp.hpp"
 #include "exchange/order_book.hpp"
@@ -60,11 +64,24 @@ void xrpl_network::initialize()
     add_currency_pair(currency_code{currency::gatehub_trust, "USD"}, currency_code{"", "XRP"});
     add_currency_pair(currency_code{currency::gatehub_trust, "EUR"}, currency_code{"", "XRP"});
   }
-  get_all_account_infos();
-  get_all_account_lines();
-  get_all_account_offers();
-  //
-  emit network_initialized(this);
+
+  // spawn a task that performs init functions, we must do this on a pika thread because
+  // we can't sync_wait on the QApplication main thread
+  auto wait_for_init = [this]() {
+    exec::async_scope scope;
+    //
+    get_all_account_infos(scope);
+    get_all_account_lines(scope);
+    get_all_account_offers(scope);
+    //
+    stdexec::sync_wait(scope.on_empty());
+    xrpnet_dbg<5>.debug(str<>("initialize scope"), "complete");
+    emit network_initialized(this);
+  };
+
+  stdexec::sender auto snd =
+    stdexec::on(default_pool_scheduler(), stdexec::just()) | stdexec::then(wait_for_init);
+  stdexec::start_detached(std::move(snd));
 }
 
 // ----------------------------------------------------------------------------
@@ -554,7 +571,7 @@ any_bytearray_sender xrpl_network::get_account_lines(std::string addr)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::get_all_account_lines()
+void xrpl_network::get_all_account_lines(exec::async_scope& scope)
 {
   for (auto& w : subscribed_wallets_)
   {
@@ -565,7 +582,7 @@ void xrpl_network::get_all_account_lines()
           xrpnet_dbg<8>.debug(str<>("Ledger response"), data);
           this->handle_account_lines(w, data);
         });
-    stdexec::start_detached(std::move(snd));
+    scope.spawn(std::move(snd));
   }
 }
 
@@ -651,7 +668,7 @@ any_bytearray_sender xrpl_network::get_account_info(std::string addr)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::get_all_account_infos()
+void xrpl_network::get_all_account_infos(exec::async_scope& scope)
 {
   for (auto& w : subscribed_wallets_)
   {
@@ -662,7 +679,7 @@ void xrpl_network::get_all_account_infos()
         xrpnet_dbg<8>.debug(str<>("account_info"), w.public_, data);
         this->handle_account_info(w, data);
       });
-    stdexec::start_detached(std::move(snd));
+    scope.spawn(std::move(snd));
   }
 }
 
@@ -721,7 +738,7 @@ any_bytearray_sender xrpl_network::get_account_offers(std::string addr)
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::get_all_account_offers()
+void xrpl_network::get_all_account_offers(exec::async_scope& scope)
 {
   for (auto& w : subscribed_wallets_)
   {
@@ -732,7 +749,7 @@ void xrpl_network::get_all_account_offers()
         xrpnet_dbg<8>.debug(str<>("account_offers"), w.public_, data);
         this->handle_account_offers(w, data);
       });
-    stdexec::start_detached(std::move(snd));
+    scope.spawn(std::move(snd));
   };
 }
 

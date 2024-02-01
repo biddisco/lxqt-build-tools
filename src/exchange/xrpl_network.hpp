@@ -14,6 +14,7 @@
 #include "widgets/currency_widget.hpp"
 //
 #include <exec/any_sender_of.hpp>
+#include <exec/async_scope.hpp>
 
 // ----------------------------------------------------------------------------
 template <class... Ts>
@@ -197,17 +198,17 @@ class xrpl_network : public exchange
 
   // query account balance and info
   any_bytearray_sender get_account_info(std::string addr);
-  void get_all_account_infos();
+  void get_all_account_infos(exec::async_scope& scope);
   void handle_account_info(ledger_wallet& w, std::string_view data);
 
   // query account trustlines
   any_bytearray_sender get_account_lines(std::string addr);
-  void get_all_account_lines();
+  void get_all_account_lines(exec::async_scope& scope);
   void handle_account_lines(ledger_wallet& w, std::string_view data);
 
   // query open orders
   any_bytearray_sender get_account_offers(std::string addr);
-  void get_all_account_offers();
+  void get_all_account_offers(exec::async_scope& scope);
   void handle_account_offers(ledger_wallet& w, std::string_view data);
 
   bool make_payment(currency const& c, basic_account* src, basic_account* dest) override;

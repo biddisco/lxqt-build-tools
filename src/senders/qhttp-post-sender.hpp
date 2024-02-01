@@ -31,7 +31,8 @@ inline constexpr pika::debug::detail::print_threshold<Level, 4> qt_trig("QT_TRIG
 
 // -----------------------------------------------------------------
 namespace grox::senders {
-  namespace ex = pika::execution::experimental;
+  namespace pexec = pika::execution;
+  namespace ex = pexec::experimental;
   using namespace pika::debug::detail;
 
   enum http_request_type
@@ -42,15 +43,15 @@ namespace grox::senders {
   };
 
   // -----------------------------------------------------------------
-  namespace detail {
-    // -----------------------------------------------------------------
-    // return a scheduler on the default pool with added priority if requested
-    inline auto default_pool_scheduler(pika::execution::thread_priority p)
-    {
-      return ex::with_priority(
-        ex::thread_pool_scheduler{&pika::resource::get_thread_pool("default")}, p);
-    }
+  // return a scheduler on the default pool with added priority if requested
+  inline auto default_pool_scheduler(pexec::thread_priority p = pexec::thread_priority::normal)
+  {
+    return ex::with_priority(
+      ex::thread_pool_scheduler{&pika::resource::get_thread_pool("default")}, p);
+  }
 
+  // -----------------------------------------------------------------
+  namespace detail {
     // -----------------------------------------------------------------
     // route calls through an impl layer for ADL isolation
     template <typename Sender>
@@ -119,9 +120,7 @@ namespace grox::senders {
                   auto handler = [client = r.op_state.client_,
                                    receiver = std::move(r.op_state.receiver_)](QByteArray data) {
                     // pass the result onto a new pika task and invoke the continuation
-                    auto snd0 = ex::just(std::move(data)) |
-                      ex::transfer(
-                        default_pool_scheduler(pika::execution::thread_priority::normal)) |
+                    auto snd0 = ex::just(std::move(data)) | ex::transfer(default_pool_scheduler()) |
                       ex::then([receiver = std::move(receiver)](QByteArray byteArray) mutable {
                         std::string_view strv(byteArray.constData(), byteArray.length());
                         PIKA_DETAIL_DP(qt_trig<5>,
