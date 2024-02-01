@@ -22,7 +22,9 @@
 //
 
 // ----------------------------------------------------------------------------
+using namespace grox;
 using namespace grox::debug;
+using namespace nlohmann;
 // a debug level of N shows messages with priority<N
 constexpr int debug_level = 0;
 //
@@ -391,7 +393,7 @@ bool bitstamp_order_book::accept_json_bitstamp(const QString data)
     return false;
   //
   std::string stdstring = data.toStdString();
-  nlohmann::json jdata = json::parse(stdstring)["data"];
+  json jdata = json::parse(stdstring)["data"];
   //
   bids.clear();
   asks.clear();
@@ -415,7 +417,7 @@ bool bitstamp_order_book::accept_json_bitstamp(const QString data)
 // ----------------------------------------------------------------------------
 // bitstamp data arrives as strings instead of numbers
 // these must be converted to numeric arrays
-void bitstamp_order_book::bid_ask_string_to_number(nlohmann::json& json, offer_data& data)
+void bitstamp_order_book::bid_ask_string_to_number(json& json, offer_data& data)
 {
   auto bid_string = json.get<std::array<std::array<std::string, 2>, 100>>();
   //
@@ -444,7 +446,7 @@ void bitstamp_order_book::bid_ask_string_to_number(nlohmann::json& json, offer_d
 // This function should only be executed once : when connecting to stream
 void xrpl_order_book::accept_json_ledger_snapshot(std::string_view data)
 {
-  nlohmann::json jdata = json::parse(data);
+  json jdata = json::parse(data);
   auto joffers = jdata["result"]["offers"];
   obook_dbg<5>.debug(str<>("snapshot"), joffers.dump(4));
   //
@@ -598,15 +600,15 @@ void xrpl_order_book::ledger_map_to_order_book()
 
 void xrpl_order_book::accept_json_ledger_transaction(std::string_view data)
 {
-  nlohmann::json jdata = json::parse(data);
+  json jdata = json::parse(data);
   std::string success = jdata.at("engine_result").get<std::string>();
   if (success != "tesSUCCESS")
     return;
   //
-  nlohmann::json affected = jdata["meta"]["AffectedNodes"];
+  json affected = jdata["meta"]["AffectedNodes"];
   obook_dbg<5>.debug(str<>("Affected nodes"), affected.dump(4));
 
-  nlohmann::json transaction = jdata["transaction"];
+  json transaction = jdata["transaction"];
   obook_dbg<5>.debug(str<>("transaction"), transaction.dump(4));
 
   std::string ttype = transaction.at("TransactionType").get<std::string>();
@@ -782,14 +784,13 @@ enum node_edit
   deleted
 };
 
-void xrpl_order_book::handle_offer_change(
-  nlohmann::json const& trans, nlohmann::json const& affected)
+void xrpl_order_book::handle_offer_change(json const& trans, json const& affected)
 {
   bool ok = true;
   bool fatal = true;
   for (auto& el : affected.items())
   {
-    const nlohmann::json* node;
+    const json* node;
     node_edit edit_type;
 
     // 3 types that affect out order book

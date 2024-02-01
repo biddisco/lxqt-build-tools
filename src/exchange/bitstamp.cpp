@@ -19,7 +19,7 @@
 #include "network/qhttp-request-client.hpp"
 #include "senders/qhttp-post-sender.hpp"
 #include "util/datetime_utils.hpp"
-#include "util/nljson.hpp"
+#include "util/json_qstring.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/price_chart_widget.hpp"
 #include "widgets/wallet_widget.hpp"
@@ -35,11 +35,13 @@
 #include "senders/qt_mainthread_scheduler.hpp"
 
 // ----------------------------------------------------------------------------
+using namespace grox;
 using namespace grox::debug;
 using namespace grox::senders;
+using namespace nlohmann;
 namespace ex = pika::execution::experimental;
 
-//
+// ----------------------------------------------------------------------------
 template <int Level>
 static print_threshold<Level, 3> bitstamp_dbg("Bitstamp");
 
@@ -131,7 +133,7 @@ void bitstamp_network::initialize()
 bool bitstamp_network::subscribe_live_trades(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
-  nlohmann::json command;
+  json command;
   command["event"] = enable ? "bts:subscribe" : "bts:unsubscribe";
   command["data"]["channel"] = string_join("live_trades_", ticker);
 
@@ -158,7 +160,7 @@ bool bitstamp_network::subscribe_live_trades(currency_pair const& cp, bool enabl
 bool bitstamp_network::subscribe_order_book(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
-  nlohmann::json command;
+  json command;
   command["event"] = enable ? "bts:subscribe" : "bts:unsubscribe";
   command["data"]["channel"] = string_join("order_book_", ticker);
 
@@ -185,7 +187,7 @@ bool bitstamp_network::subscribe_order_book(currency_pair const& cp, bool enable
 bool bitstamp_network::subscribe_my_trades(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
-  nlohmann::json command;
+  json command;
   command["event"] = enable ? "bts:subscribe" : "bts:unsubscribe";
   command["data"]["channel"] = string_join("private-my_trades_", ticker) + "-" + websocket_user_id_;
   command["data"]["auth"] = websocket_token_;
@@ -215,7 +217,7 @@ bool bitstamp_network::subscribe_my_trades(currency_pair const& cp, bool enable)
 bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
 {
   std::string ticker = currency_pair_lowercase_string(cp);
-  nlohmann::json command;
+  json command;
   command["event"] = enable ? "bts:subscribe" : "bts:unsubscribe";
   command["data"]["channel"] = string_join("private-my_orders_", ticker) + "-" + websocket_user_id_;
   command["data"]["auth"] = websocket_token_;
@@ -231,7 +233,7 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
         bitstamp_websocket_port, command.dump(4), [this](const QString data) {
           std::string stdstring = data.toStdString();
           bitstamp_dbg<7>.debug(str<>("Orders data"), stdstring);
-          nlohmann::json jdata = json::parse(stdstring);
+          json jdata = json::parse(stdstring);
           if (jdata["event"] == "bts:subscription_succeeded")
           {
             bitstamp_dbg<0>.debug(str<>("Orders data"), "bts:subscription_succeeded");
@@ -438,7 +440,7 @@ any_bytearray_sender bitstamp_network::get_tickers_available()
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_account_info(std::string_view data)
 {
-  nlohmann::json jdata = json::parse(data);
+  json jdata = json::parse(data);
   bitstamp_dbg<6>.debug(str<>("account info"), jdata.dump(4));
   //
   bitstamp_account& acct = get_bitstamp_instance()->account();
@@ -504,7 +506,7 @@ void bitstamp_network::handle_account_info(std::string_view data)
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_websocket_token(std::string_view data)
 {
-  nlohmann::json jdata = json::parse(data);
+  json jdata = json::parse(data);
   bitstamp_dbg<5>.debug(str<>("websocket token"), jdata.dump());
   //
   bitstamp_account& acct = get_bitstamp_instance()->account();
@@ -527,7 +529,7 @@ void bitstamp_network::handle_open_orders(std::string_view data)
   auto& trades = acct.offers_;
   trades.clear();
   //
-  nlohmann::json jdata = json::parse(data);
+  json jdata = json::parse(data);
   for (auto const& [key, val] : jdata.items())
   {
     const std::string jstring = val[std::string_view("currency_pair")];
@@ -561,7 +563,7 @@ void bitstamp_network::handle_open_orders(std::string_view data)
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_tickers_available(std::string_view data)
 {
-  nlohmann::json jdata = json::parse(data);
+  json jdata = json::parse(data);
   for (auto const& [key, val] : jdata.items())
   {
     json::string_t jstring = val[std::string_view("pair")];
@@ -606,7 +608,7 @@ void bitstamp_network::handle_tickers_available(std::string_view data)
 }
 
 */
-void bitstamp_network::process_order(nlohmann::json& jdata, std::string_view event)
+void bitstamp_network::process_order(json& jdata, std::string_view event)
 {
   bitstamp_account& acct = get_bitstamp_instance()->account();
   auto& trades = acct.offers_;
@@ -785,7 +787,7 @@ void bitstamp_network::new_live_trade_data_q(
   //
   std::string stdstring = data.toStdString();
   //
-  nlohmann::json jdata = json::parse(stdstring);
+  json jdata = json::parse(stdstring);
   // extract the main subgroup
   jdata = jdata["data"];
   bitstamp_dbg<7>.debug(str<>("Trade data parsed"), jdata.dump(4));
@@ -913,7 +915,7 @@ void bitstamp_network::cancel_order(trade_data const& t)
     | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
-        nlohmann::json jdata = json::parse(data);
+        json jdata = json::parse(data);
         bitstamp_dbg<0>.debug(str<>("Cancel Order response"), jdata.dump(4));
         // refresh order status
         throw std::runtime_error("Fix this websocket changed");
@@ -957,7 +959,7 @@ void bitstamp_network::place_limit_order(trade_data const& t, bool update_after)
     | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
     | stdexec::then([=, this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
-        nlohmann::json jdata = json::parse(data);
+        json jdata = json::parse(data);
         bitstamp_dbg<0>.debug(str<>("limit-order response"), jdata.dump(4));
         // refresh order status if we don't have orders websocket
         throw std::runtime_error("Fix this websocket changed");
@@ -1082,7 +1084,7 @@ void bitstamp_network::handle_new_ohlc_data(ticker_data* tdata, std::string_view
   try
   {
     // convert json data into vectors of actual data
-    nlohmann::json jdata = json::parse(data)["data"]["ohlc"];
+    json jdata = json::parse(data)["data"]["ohlc"];
     bitstamp_dbg<0>.debug(str<>("OHLC received"), tdata->view_->get_ticker_string(),
       dec<4>(jdata.size()), "json OHLC samples");
     QVector<ohlctv_sample> new_ohlc_samples;

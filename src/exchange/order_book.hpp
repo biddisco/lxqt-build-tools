@@ -10,14 +10,15 @@
 //
 #include "nlohmann/json.hpp"
 //
-#include "exchange/xrpl_json.hpp"
+#include "currency/json_data_types.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
 
 //
 constexpr static int bid_index = 0;
 constexpr static int ask_index = 1;
-using account_bid_ask_data = std::tuple<std::vector<xrpl_offer>, std::vector<xrpl_offer>>;
+using account_bid_ask_data =
+  std::tuple<std::vector<grox::xrpl_offer>, std::vector<grox::xrpl_offer>>;
 using offer_map = std::unordered_map<std::string, account_bid_ask_data>;
 using offer_pair = std::pair<std::string, account_bid_ask_data>;
 //
@@ -137,11 +138,12 @@ struct xrpl_order_book : order_book_base
 
   void accept_json_ledger_transaction(std::string_view data);
 
-  bool update_offer(xrpl_offer const& prev_offer, xrpl_offer& final_offer, double owner_funds = -1);
+  bool update_offer(
+    grox::xrpl_offer const& prev_offer, grox::xrpl_offer& final_offer, double owner_funds = -1);
 
-  bool insert_offer(xrpl_offer const& offer);
+  bool insert_offer(grox::xrpl_offer const& offer);
 
-  bool delete_offer(xrpl_offer const& offer);
+  bool delete_offer(grox::xrpl_offer const& offer);
 
   enum node_edit
   {

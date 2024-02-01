@@ -8,7 +8,7 @@
 //
 #include "debug/print.hpp"
 #include "network/qwebsocket_session.hpp"
-#include "util/nljson.hpp"
+#include "util/json_qstring.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

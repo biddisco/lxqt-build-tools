@@ -354,7 +354,6 @@ set(GROX_SRC
     src/main.cpp
     src/mainwindow.cpp
     # exchange APIs
-    src/exchange/xrpl_json.cpp
     src/exchange/xrpl.cpp
     src/exchange/exchange.cpp
     src/exchange/xrpl_network.cpp

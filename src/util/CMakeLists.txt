@@ -1,8 +1,8 @@
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
-set(grox_util_HDRS datetime_utils.hpp nljson.hpp stringutils.hpp)
+set(grox_util_HDRS datetime_utils.hpp json_qstring.hpp stringutils.hpp)
 
-set(grox_util_SRCS nljson.cpp)
+set(grox_util_SRCS json_qstring.cpp)
 
 add_library(grox_util ${grox_util_SRCS} ${grox_util_HDRS})
 

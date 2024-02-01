@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 //
-#include "data/ohlctv_sample.hpp"
+#include "currency/ohlctv_sample.hpp"
 
 class abstract_dataset_manager
 {

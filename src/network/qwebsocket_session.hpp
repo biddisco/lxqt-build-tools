@@ -7,7 +7,7 @@
 #include "nlohmann/json.hpp"
 //
 #include "network/qwebsocket_client.hpp"
-#include "util/nljson.hpp"
+#include "util/json_qstring.hpp"
 
 namespace net::ws {
 

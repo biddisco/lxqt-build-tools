@@ -226,7 +226,7 @@ class bitstamp_network : public exchange
   void orderbook_changed();
 
   // emitted when data for new trades is ready
-  void new_live_trade_data_ui(currency_pair, live_trades);
+  void new_live_trade_data_ui(currency_pair, grox::live_trades);
 
   // when the wallet widget needs to be updated with new data/currencies
   void update_wallet_widget(bitstamp_account*);

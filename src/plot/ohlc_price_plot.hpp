@@ -4,7 +4,7 @@
 // Qwt
 #include <QwtPlot>
 // Grox
-#include "data/ohlctv_sample.hpp"
+#include "currency/ohlctv_sample.hpp"
 #include "data/timebased_chart_data.hpp"
 #include "plot/timebased_chart_plot.hpp"
 

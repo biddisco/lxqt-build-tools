@@ -3,8 +3,8 @@
 // STL
 #include <iostream>
 #include <optional>
-// Qwt
-#include "data/ohlctv_sample.hpp"
+//
+#include "currency/ohlctv_sample.hpp"
 
 // ----------------------------------------------------------------------------
 enum buy_sell_type

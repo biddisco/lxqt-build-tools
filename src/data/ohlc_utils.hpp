@@ -7,7 +7,7 @@
 // extern
 #include <magic_enum.hpp>
 // grox
-#include "data/ohlctv_sample.hpp"
+#include "currency/ohlctv_sample.hpp"
 
 void update_ohlctv_sample(ohlctv_sample& ohlc, ohlctv_sample const& other);
 

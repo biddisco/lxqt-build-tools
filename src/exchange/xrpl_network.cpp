@@ -35,8 +35,10 @@
 #include "DockWidget.h"
 
 // ----------------------------------------------------------------------------
+using namespace grox;
 using namespace grox::debug;
 using namespace grox::senders;
+using namespace nlohmann;
 //
 template <int Level>
 static print_threshold<Level, 7> xrpnet_dbg("XRP-legr");
@@ -300,22 +302,22 @@ bool xrpl_network::subscribe_order_book(currency_pair const& cp, bool enable)
 {
   using namespace std::placeholders;
   //startswith
-  nlohmann::json command;
+  json command;
   command["command"] = "subscribe";
   // buying xrp
-  nlohmann::json buy_xrp;
+  json buy_xrp;
   buy_xrp["taker_gets"]["currency"] = std::get<0>(cp).code_;
   buy_xrp["taker_pays"]["currency"] = std::get<1>(cp).code_;
   buy_xrp["taker_pays"]["issuer"] = std::get<1>(cp).issuer_;
   buy_xrp["snapshot"] = true;
   // selling xrp
-  nlohmann::json sell_xrp;
+  json sell_xrp;
   buy_xrp["taker_pays"]["currency"] = std::get<0>(cp).code_;
   buy_xrp["taker_gets"]["currency"] = std::get<1>(cp).code_;
   buy_xrp["taker_gets"]["issuer"] = std::get<1>(cp).issuer_;
   sell_xrp["snapshot"] = true;
   // subscribe to 2 books
-  command["books"] = nlohmann::json::array({buy_xrp, sell_xrp});
+  command["books"] = json::array({buy_xrp, sell_xrp});
   std::string subscription = command.dump();
   xrpnet_dbg<0>.debug(str<>("Subscribing"), "orderbook xrpl:", currency_pair_string(cp));
   xrpnet_dbg<5>.debug(str<>("subscribe orderbook"), subscription);
@@ -380,9 +382,9 @@ void xrpl_network::new_account_data(xrpl_network* nw, QString qdata)
   }
   else if (startswith(data, "{\"engine_result\":\"tesSUCCESS\""))
   {
-    nlohmann::json jdata = json::parse(data);
+    json jdata = json::parse(data);
     xrpnet_dbg<5>.debug(str<>("Account changes"), jdata.dump(4));
-    nlohmann::json adata = jdata["meta"]["AffectedNodes"];
+    json adata = jdata["meta"]["AffectedNodes"];
     for (auto const& a : adata)
     {
       //            try {
@@ -536,12 +538,12 @@ void xrpl_network::update_IOU_balance(std::string_view addr, currency const& cur
 // ----------------------------------------------------------------------------
 any_bytearray_sender xrpl_network::submit_signed_transaction(std::string&& signed_tx)
 {
-  nlohmann::json tx;
+  json tx;
   tx["tx_blob"] = signed_tx;
 
-  nlohmann::json content;
+  json content;
   content["method"] = "submit";
-  content["params"] = nlohmann::json::array({tx});
+  content["params"] = json::array({tx});
 
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
@@ -554,13 +556,13 @@ any_bytearray_sender xrpl_network::submit_signed_transaction(std::string&& signe
 // ----------------------------------------------------------------------------
 any_bytearray_sender xrpl_network::get_account_lines(std::string addr)
 {
-  nlohmann::json params;
+  json params;
   params["account"] = addr;
   params["validated"] = true;
 
-  nlohmann::json content;
+  json content;
   content["method"] = "account_lines";
-  content["params"] = nlohmann::json::array({params});
+  content["params"] = json::array({params});
 
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
@@ -589,7 +591,7 @@ void xrpl_network::get_all_account_lines(exec::async_scope& scope)
 // ----------------------------------------------------------------------------
 void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
 {
-  nlohmann::json jdata;
+  json jdata;
   try
   {
     jdata = json::parse(data)["result"]["lines"];
@@ -649,15 +651,15 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
 // ----------------------------------------------------------------------------
 any_bytearray_sender xrpl_network::get_account_info(std::string addr)
 {
-  nlohmann::json params;
+  json params;
   params["account"] = addr;
   params["ledger_index"] = "current";
   params["strict"] = true;
   params["queue"] = true;
 
-  nlohmann::json content;
+  json content;
   content["method"] = "account_info";
-  content["params"] = nlohmann::json::array({params});
+  content["params"] = json::array({params});
 
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
@@ -686,7 +688,7 @@ void xrpl_network::get_all_account_infos(exec::async_scope& scope)
 // ----------------------------------------------------------------------------
 void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
 {
-  nlohmann::json jdata;
+  json jdata;
   try
   {
     jdata = json::parse(data)["result"]["account_data"];
@@ -722,12 +724,12 @@ void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
 // ----------------------------------------------------------------------------
 any_bytearray_sender xrpl_network::get_account_offers(std::string addr)
 {
-  nlohmann::json params;
+  json params;
   params["account"] = addr;
 
-  nlohmann::json content;
+  json content;
   content["method"] = "account_offers";
-  content["params"] = nlohmann::json::array({params});
+  content["params"] = json::array({params});
 
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
@@ -756,7 +758,7 @@ void xrpl_network::get_all_account_offers(exec::async_scope& scope)
 // ----------------------------------------------------------------------------
 void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data)
 {
-  nlohmann::json jdata;
+  json jdata;
   try
   {
     jdata = json::parse(data)["result"];
@@ -782,8 +784,8 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
     //
     xrp_amount taker_get;
     xrp_amount taker_pay;
-    from_json(offer["taker_gets"], taker_get);
-    from_json(offer["taker_pays"], taker_pay);
+    grox::from_json(offer["taker_gets"], taker_get);
+    grox::from_json(offer["taker_pays"], taker_pay);
     //
     trade_data t{get_instance(testnet()), w.name_, taker_pay.currency.value(),
       taker_get.currency.value(), taker_pay.value, taker_get.value,
@@ -975,7 +977,7 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
       std::string_view data(byteArray.constData(), byteArray.length());
       // debug : print the response headers and body
       xrpnet_dbg<8>.debug(str<>("query_iou_fee"), c1.issuer_, data);
-      nlohmann::json jdata = json::parse(data)["result"]["account_data"];
+      json jdata = json::parse(data)["result"]["account_data"];
       if (jdata.contains("TransferRate"))
       {
         int sfee = jdata["TransferRate"].get<int>();

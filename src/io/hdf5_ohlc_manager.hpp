@@ -5,10 +5,9 @@
 #include <vector>
 // Qt
 #include <QVector>
-// Qwt
-#include "data/ohlctv_sample.hpp"
 // Grox
 #include "currency/currency.hpp"
+#include "currency/ohlctv_sample.hpp"
 #include "data/abstract_data_manager.hpp"
 #include "data/ohlc_datasets.hpp"
 

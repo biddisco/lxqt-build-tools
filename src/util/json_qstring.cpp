@@ -3,8 +3,8 @@
 #include <QByteArray>
 #include <QString>
 //
-#include "nljson.hpp"
 #include "nlohmann/json.hpp"
+#include "util/json_qstring.hpp"
 
 namespace util {
 
