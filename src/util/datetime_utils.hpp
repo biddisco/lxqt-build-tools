@@ -10,3 +10,9 @@ static std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
   QDateTime dt = QDateTime::fromMSecsSinceEpoch(unixmsecs);
   return QLocale().toString(dt, "yyyy-MM-dd hh:mm:ss").toStdString();
 }
+
+static std::string secs_unix_to_calendar_time(uint64_t unixsecs)
+{
+  QDateTime dt = QDateTime::fromSecsSinceEpoch(unixsecs);
+  return QLocale().toString(dt, "yyyy-MM-dd hh:mm:ss").toStdString();
+}

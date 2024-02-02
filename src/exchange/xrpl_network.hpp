@@ -5,27 +5,18 @@
 //
 #include <QObject>
 //
+#include <exec/any_sender_of.hpp>
+#include <exec/async_scope.hpp>
+#include <stdexec/execution.hpp>
+//
 #include "exchange/account.hpp"
 #include "exchange/exchange.hpp"
 #include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "network/qwebsocket_session.hpp"
+#include "senders/sender_defs.hpp"
 #include "widgets/currency_widget.hpp"
-//
-#include <exec/any_sender_of.hpp>
-#include <exec/async_scope.hpp>
-
-// ----------------------------------------------------------------------------
-template <class... Ts>
-using any_sender_of =
-  typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
-
-using any_bool_sender = any_sender_of<stdexec::set_value_t(bool), stdexec::set_stopped_t(),
-  stdexec::set_error_t(std::exception_ptr)>;
-
-using any_bytearray_sender = any_sender_of<stdexec::set_value_t(QByteArray byteArray),
-  stdexec::set_stopped_t(), stdexec::set_error_t(std::exception_ptr)>;
 
 // ----------------------------------------------------------------------------
 // #define GROX_USE_LOCAL_SERVER

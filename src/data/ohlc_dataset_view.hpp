@@ -78,8 +78,8 @@ class ohlc_dataset_view
   // can be used to repair data by deleting items after date, (then redownloading them)
   void truncate_from_time(double t);
 
-  // Get first/last sample time, value is returned as UTC = unix time stamp * 1000
-  double get_last_sample_time(bool include_live);
+  // Get first/last sample time, value is returned as UTC msecs = unix time stamp * 1000
+  double get_last_sample_time_msec(bool include_live);
   double get_first_sample_time();
   double get_time_from_index(std::uint64_t i);
 

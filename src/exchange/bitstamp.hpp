@@ -10,25 +10,17 @@
 //
 #include <QString>
 //
+#include <exec/any_sender_of.hpp>
+#include <exec/async_scope.hpp>
+#include <stdexec/execution.hpp>
+//
 #include "currency/trade_data.hpp"
 #include "exchange/account.hpp"
 #include "exchange/exchange.hpp"
 #include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
-//
-#include <exec/any_sender_of.hpp>
-
-// ----------------------------------------------------------------------------
-template <class... Ts>
-using any_sender_of =
-  typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
-
-using any_bool_sender = any_sender_of<stdexec::set_value_t(bool), stdexec::set_stopped_t(),
-  stdexec::set_error_t(std::exception_ptr)>;
-
-using any_bytearray_sender = any_sender_of<stdexec::set_value_t(QByteArray byteArray),
-  stdexec::set_stopped_t(), stdexec::set_error_t(std::exception_ptr)>;
+#include "senders/sender_defs.hpp"
 
 // ----------------------------------------------------------------------------
 class bitstamp_network : public exchange
@@ -49,6 +41,7 @@ class bitstamp_network : public exchange
   // map of fees for trading of currency pairs
   std::map<std::pair<std::string, std::string>, double> fee_map_;
 
+  std::mutex candlestick_mutex_;
   std::set<currency_pair> candlestick_updates_active_;
 
   public:
@@ -157,13 +150,13 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // http: get account info/data
-  any_bytearray_sender get_account_info();
+  any_bytearray_sender request_account_info();
   // http: get new websocket token to subscribe to streams
-  any_bytearray_sender get_websocket_token();
+  any_bytearray_sender request_websocket_token();
   // http: get open order data
-  any_bytearray_sender get_open_orders();
+  any_bytearray_sender request_open_orders();
   // http: get currency tickers available
-  any_bytearray_sender get_tickers_available();
+  any_bytearray_sender request_tickers_available();
 
   // process account info response
   void handle_account_info(std::string_view);
@@ -200,6 +193,9 @@ class bitstamp_network : public exchange
   any_bytearray_sender request_new_ohlc_data(currency_pair cp, uint64_t start_t, uint64_t samples);
   // handler for an http request containing new data
   void handle_new_ohlc_data(ticker_data*, std::string_view);
+  //
+  any_bytearray_sender request_price_history(currency_pair cp);
+  std::uint64_t handle_price_history(std::string_view data);
 
   // function called from websocket subscription to live trade data
   static void new_live_trade_data_q(bitstamp_network*, currency_pair cp, const QString);

@@ -380,7 +380,8 @@ set(GROX_QRC_SRC
     src/grox.qrc ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
     ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc)
 
-add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC} src/senders/CMakeLists.txt)
+add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC} src/senders/CMakeLists.txt
+                    src/senders/sender_defs.hpp)
 # c++ properties
 set_property(TARGET grox PROPERTY CXX_STANDARD 20)
 # Qt properties

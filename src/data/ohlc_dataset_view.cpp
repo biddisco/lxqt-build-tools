@@ -137,7 +137,7 @@ double ohlc_dataset_view::get_time_from_index(std::uint64_t i)
 }
 
 // ----------------------------------------------------------------------------
-double ohlc_dataset_view::get_last_sample_time(bool include_live)
+double ohlc_dataset_view::get_last_sample_time_msec(bool include_live)
 {
   double last = 0;
   if (!candles_.begin()->second->ohlc_samples_->data().empty())

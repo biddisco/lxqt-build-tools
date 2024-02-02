@@ -343,7 +343,7 @@ void price_chart_widget::connect_gui()
 // slot to ensure widget updates on GUI thread
 void price_chart_widget::graph_rescale(int range)
 {
-  auto last_time = hdf5_ohlc_->get_last_sample_time(true);
+  auto last_time = hdf5_ohlc_->get_last_sample_time_msec(true);
   double t1 = 0, t2 = last_time;
   if (range == -2)
   {

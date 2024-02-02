@@ -14,7 +14,6 @@
 
 // ----------------------------------------------------------------------------
 static std::atomic<int> counter{0};
-std::vector<std::string> test_list{"xrpusd", "btcusd", "xrpeur", "btceur", "xrpbtc"};
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -44,7 +43,7 @@ void from_json(nlohmann::json const& j, price& p)
 }
 
 // ----------------------------------------------------------------------------
-void handler(QByteArray byteArray)
+void handle_price_history(QByteArray byteArray)
 {
   std::string_view data(byteArray.constData(), byteArray.length());
   nlohmann::json jdata = nlohmann::json::parse(data);
@@ -75,7 +74,7 @@ int main(int argc, char* argv[])
   std::string url =
     fmt::format("https://{}:{}/api-internal/price-history/xrpgbp/", "www.bitstamp.net", 443);
   auto* client = net::http::qhttp_request_client::create(networkmanager, url);
-  client->get_request(&handler);
+  client->get_request(&handle_price_history);
   //
   a.exec();
   //

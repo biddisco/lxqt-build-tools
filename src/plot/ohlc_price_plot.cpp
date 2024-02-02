@@ -171,7 +171,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   setAxisLabelAlignment(QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom);
 
   ohlcv_minmax minmax = data->get_min_max(ohlc_data_resolutions::minute,
-    data->get_first_sample_time(), data->get_last_sample_time(false));
+    data->get_first_sample_time(), data->get_last_sample_time_msec(false));
 
   // Y axis : setup price axis scaling and tick draw
   // NB : We do not need to explicitly set a left Y axis (volume)
