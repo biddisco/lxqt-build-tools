@@ -58,8 +58,6 @@ class bitstamp_network : public exchange
   //
   static inline const std::string bitstamp_websocket_address = "ws.bitstamp.net";
   static inline const int bitstamp_websocket_port = 443;
-  //
-  using request_callback = std::function<void(std::string&&)>;
 
   public:
   // ---------------------------------------

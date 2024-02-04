@@ -95,15 +95,15 @@ bool token_valid(std::atomic<std::chrono::time_point<std::chrono::system_clock>>
 // ----------------------------------------------------------------------------
 void bitstamp_network::initialize()
 {
-  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())    // Qt
+  auto web = stdexec::on(qt_mainthread_scheduler(), stdexec::just())    // Qt
     |
     stdexec::let_value(std::bind(&bitstamp_network::request_websocket_token, this))    // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {                                     // pika
         std::string_view data(byteArray.constData(), byteArray.length());
         bitstamp_dbg<6>.debug(str<>("Initialize"), "WebsocketToken", data);
         handle_websocket_token(data);
-      })                                                             //
-    | stdexec::transfer(grox::senders::qt_mainthread_scheduler())    // pika -> Qt
+      })                                              //
+    | stdexec::transfer(qt_mainthread_scheduler())    // pika -> Qt
     | stdexec::let_value(
         std::bind(&bitstamp_network::request_tickers_available, this))    // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {                        // pika
@@ -111,14 +111,14 @@ void bitstamp_network::initialize()
         bitstamp_dbg<6>.debug(str<>("Initialize"), "Tickers", data);
         handle_tickers_available(data);
       })                                                                              //
-    | stdexec::transfer(grox::senders::qt_mainthread_scheduler())                     // pika -> Qt
+    | stdexec::transfer(qt_mainthread_scheduler())                                    // pika -> Qt
     | stdexec::let_value(std::bind(&bitstamp_network::request_account_info, this))    // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {                                    // pika
         std::string_view data(byteArray.constData(), byteArray.length());
         bitstamp_dbg<6>.debug(str<>("Initialize"), "AccountInfo", data);
         handle_account_info(data);
       })                                                                             //
-    | stdexec::transfer(grox::senders::qt_mainthread_scheduler())                    // pika -> Qt
+    | stdexec::transfer(qt_mainthread_scheduler())                                   // pika -> Qt
     | stdexec::let_value(std::bind(&bitstamp_network::request_open_orders, this))    // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {                                   // pika
         std::string_view data(byteArray.constData(), byteArray.length());
@@ -260,30 +260,43 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
 bool bitstamp_network::stream_subscribe(
   currency_pair const& cp, network::streams const stream, bool enabled)
 {
-  request_websocket_token();
-  //
-  bool ok = true;
-  switch (stream)
-  {
-  case network::streams::my_trades:
-    ok = subscribe_my_trades(cp, enabled);
-    break;
-  case network::streams::my_orders:
-    ok = subscribe_my_orders(cp, enabled);
-    break;
-  case network::streams::live_trades:
-    ok = subscribe_live_trades(cp, enabled);
-    break;
-  case network::streams::order_book:
-    ok = subscribe_order_book(cp, enabled);
-    break;
-  default:
-    ok = false;
-    throw std::runtime_error("unknown stream");
-  }
-  if (ok)
-    mark_stream_subscribed(currency_pair_string(cp) + "/" + stream_to_text(stream), enabled);
-  return ok;
+  auto snd = stdexec::on(qt_mainthread_scheduler(), request_websocket_token())    //
+    | stdexec::then([this](QByteArray byteArray) {                                // pika
+        std::string_view data(byteArray.constData(), byteArray.length());
+        bitstamp_dbg<6>.debug(str<>("Initialize"), "WebsocketToken", data);
+        handle_websocket_token(data);
+      })    //
+    | stdexec::let_stopped([this]() {
+        bitstamp_dbg<0>.debug(str<>("Stopped"), "WebsocketToken already up-to-date");
+        return stdexec::just();
+      })                                               //
+    | stdexec::then([this, cp, stream, enabled]() {    //
+        bool ok = true;
+        switch (stream)
+        {
+        case network::streams::my_trades:
+          ok = subscribe_my_trades(cp, enabled);
+          break;
+        case network::streams::my_orders:
+          ok = subscribe_my_orders(cp, enabled);
+          break;
+        case network::streams::live_trades:
+          ok = subscribe_live_trades(cp, enabled);
+          break;
+        case network::streams::order_book:
+          ok = subscribe_order_book(cp, enabled);
+          break;
+        default:
+          ok = false;
+          throw std::runtime_error("unknown stream");
+        }
+        if (ok)
+          mark_stream_subscribed(currency_pair_string(cp) + "/" + stream_to_text(stream), enabled);
+        return ok;
+      });
+  stdexec::start_detached(std::move(snd));
+  // @todo : must return a sender here
+  return true;
 }
 
 // ----------------------------------------------------------------------------
@@ -436,7 +449,7 @@ any_bytearray_sender bitstamp_network::request_tickers_available()
   std::string url = fmt::format("https://{}:{}{}", bitstamp_https_address, 443, "/api/v2/ticker/");
   auto* client = net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
   return any_bytearray_sender{
-    std::move(stdexec::just(client) | qhttp_post(grox::senders::http_request_type::http_get))};
+    std::move(stdexec::just(client) | qhttp_post(http_request_type::http_get))};
 }
 
 // ----------------------------------------------------------------------------
@@ -765,8 +778,15 @@ void bitstamp_network::new_orderbook_data_q(
   if (!tdata.orderbook_)
     return;    // @todo probably called during destruction
 
-  if (!dynamic_cast<bitstamp_order_book*>(tdata.orderbook_)->accept_json_bitstamp(data))
-    return;
+  try
+  {
+    if (!dynamic_cast<bitstamp_order_book*>(tdata.orderbook_)->accept_json_bitstamp(data))
+      return;
+  }
+  catch (...)
+  {
+    std::cout << "Problem here " << std::endl;
+  }
 
   emit n->orderbook_changed();
 }
@@ -885,7 +905,7 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data* tdata)
       | stdexec::transfer(qt_mainthread_scheduler())};
   }
 
-  auto snd2 = stdexec::on(grox::senders::qt_mainthread_scheduler(), std::move(snd))    //
+  auto snd2 = stdexec::on(qt_mainthread_scheduler(), std::move(snd))    //
     | stdexec::let_value([this, cp, tdata](std::uint64_t start_t_sec) {
         // we do not want a candle for the current minute, round to prev 60s
         std::uint64_t unixtime_secs = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
@@ -952,7 +972,7 @@ any_bytearray_sender bitstamp_network::request_new_ohlc_data(
   std::string url = fmt::format("https://{}:{}{}", bitstamp_https_address, 443, req);
   net::http::client_ptr client =
     net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
-  return {stdexec::just(client) | qhttp_post(grox::senders::http_request_type::http_get)};
+  return {stdexec::just(client) | qhttp_post(http_request_type::http_get)};
 }
 
 // ----------------------------------------------------------------------------
@@ -963,8 +983,7 @@ any_bytearray_sender bitstamp_network::request_price_history(currency_pair cp)
     "https://{}:{}/api-internal/price-history/{}/", "www.bitstamp.net", 443, ticker_lowercase);
   bitstamp_dbg<0>.debug(str<>("request"), ticker_lowercase, url);
   auto* client = net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
-  return any_bytearray_sender{
-    stdexec::just(client) | qhttp_post(grox::senders::http_request_type::http_get)};
+  return any_bytearray_sender{stdexec::just(client) | qhttp_post(http_request_type::http_get)};
 }
 
 // ----------------------------------------------------------------------------
