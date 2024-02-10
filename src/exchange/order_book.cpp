@@ -391,17 +391,12 @@ bool bitstamp_order_book::accept_json_bitstamp(const QString data)
   }
   if (!startswith(data, QStringLiteral("{\"data\":")))
     return false;
-  //
+
+  // convert orders into a layout we can visualize nicely
   std::string stdstring = data.toStdString();
   json jdata = json::parse(stdstring)["data"];
-  //
-  bids.clear();
-  asks.clear();
-  //
-  // convert orders into a layout we can visualize nicely
   bid_ask_string_to_number(jdata["bids"], bids);
   bid_ask_string_to_number(jdata["asks"], asks);
-  //
   std::partial_sum(bids.size.begin(), bids.size.end(), bids.total.begin());
   std::partial_sum(asks.size.begin(), asks.size.end(), asks.total.begin());
 
@@ -417,21 +412,24 @@ bool bitstamp_order_book::accept_json_bitstamp(const QString data)
 // ----------------------------------------------------------------------------
 // bitstamp data arrives as strings instead of numbers
 // these must be converted to numeric arrays
-void bitstamp_order_book::bid_ask_string_to_number(json& json, offer_data& data)
+void bitstamp_order_book::bid_ask_string_to_number(json& jdata, offer_data& data)
 {
-  auto bid_string = json.get<std::array<std::array<std::string, 2>, 100>>();
+  obook_dbg<5>.debug(str<>("bid_ask_string_to_number"), jdata.size());
   //
-  data.rate.resize(bid_string.size(), 0);
-  data.size.resize(bid_string.size(), 0);
-  data.total.resize(bid_string.size(), 0);
+  data.rate.resize(jdata.size(), 0);
+  data.size.resize(jdata.size(), 0);
+  data.total.resize(jdata.size(), 0);
   //
-  std::transform(bid_string.begin(), bid_string.end(),
-    ranges::view::zip(data.rate, data.size).begin(), [](auto const& i) {
+  std::transform(jdata.begin(), jdata.end(), ranges::view::zip(data.rate, data.size).begin(),
+    [](const auto& entry)    //
+    {
+      std::string s1 = entry[0];
+      std::string s2 = entry[1];
 #ifdef GROX_ARBITRAGE_TEST_MODE
       // increase the price on the exchange to test our buy/sell algorithm
-      return std::pair<double, double>{std::stod(i[0]) + GROX_ARBITRAGE_TEST_MODE, std::stod(i[1])};
+      return std::pair<double, double>{std::stod(s1) + GROX_ARBITRAGE_TEST_MODE, std::stod(s2)};
 #else
-            return std::pair<double, double>{ std::stod(i[0]), std::stod(i[1]) };
+      return std::pair<double, double>{ std::stod(s1), std::stod(s2) };
 #endif
     });
 }

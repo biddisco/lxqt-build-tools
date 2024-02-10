@@ -763,32 +763,37 @@ net::http::client_ptr bitstamp_network::signed_request(
 void bitstamp_network::new_orderbook_data_q(
   bitstamp_network* n, currency_pair const cp, const QString data)
 {
-  bitstamp_dbg<5>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
-  bitstamp_dbg<7>.debug(str<>("Orderbook data"), data);
-  //
   std::lock_guard l(n->async_mutex_);
   if (closing_down_)
   {
     bitstamp_dbg<0>.error(str<>("Orderbook data"), "Shutdown in progress: ignoring data");
     return;
   }
-  //
-  const ticker_data tdata = n->tickers_subscribed_.at(cp);
-  //
-  if (!tdata.orderbook_)
-    return;    // @todo probably called during destruction
 
-  try
-  {
-    if (!dynamic_cast<bitstamp_order_book*>(tdata.orderbook_)->accept_json_bitstamp(data))
-      return;
-  }
-  catch (...)
-  {
-    std::cout << "Problem here " << std::endl;
-  }
+  auto process = [n, cp, data]() {
+    bitstamp_dbg<5>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
+    bitstamp_dbg<7>.debug(str<>("Orderbook data"), data);
+    //
+    const ticker_data tdata = n->tickers_subscribed_.at(cp);
+    //
+    if (!tdata.orderbook_)
+      return;    // @todo probably called during destruction
 
-  emit n->orderbook_changed();
+    try
+    {
+      if (!dynamic_cast<bitstamp_order_book*>(tdata.orderbook_)->accept_json_bitstamp(data))
+        return;
+      emit n->orderbook_changed();
+    }
+    catch (...)
+    {
+      bitstamp_dbg<0>.error(str<>("Orderbook error"), currency_pair_string(cp), data.toStdString());
+    }
+  };
+
+  stdexec::sender auto snd =
+    stdexec::on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
+  stdexec::start_detached(std::move(snd));
 }
 
 // ----------------------------------------------------------------------------
