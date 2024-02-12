@@ -26,10 +26,6 @@
 #include <QMainWindow>
 
 // Quick and dirty scheduler to invoke function on Qt mainwin thread
-// Mainwindow must have an invokable function with the (arbitrary) signature used here
-//
-// Q_INVOKABLE bool schedule_function(qt_function_type func);
-
 // @TODO: Remove stdexec::detail __xxx usage
 
 namespace grox::senders {
@@ -83,8 +79,6 @@ namespace stdexec {
 
     static constexpr auto start =    //
       []<class Receiver>(__ignore, Receiver& rcvr) noexcept -> void {
-      QMainWindow* mainwin = grox::senders::getMainWindow();
-
       // Create a lambda that calls the continuation, and then pass that to the mainwindow
       // schedule_function member that will be called via invoke on the Qt application thread
       grox::senders::qt_function_type func = [rcvr = std::move(rcvr)]() {
@@ -92,8 +86,8 @@ namespace stdexec {
       };
 
       // Do not use DirectConnection as it will execute on the same thread
-      QMetaObject::invokeMethod(mainwin, "schedule_function", Qt::AutoConnection,
-        Q_ARG(grox::senders::qt_function_type, func));
+      QMetaObject::invokeMethod(
+        grox::senders::getMainWindow(), [=] { func(); }, Qt::AutoConnection);
     };
   };
 }    // namespace stdexec

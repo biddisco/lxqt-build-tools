@@ -1159,9 +1159,3 @@ void GroxMainWindow::LoadStyleSheet(int dark)
     qApp->setStyleSheet(ts.readAll());
   }
 }
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::schedule_function(grox::senders::qt_function_type func)
-{
-  func();
-}

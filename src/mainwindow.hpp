@@ -129,8 +129,6 @@ class GroxMainWindow : public QMainWindow
   void update_currency_widget(currency*);
   void update_wallet_widget(ledger_wallet*);
 
-  Q_INVOKABLE void schedule_function(grox::senders::qt_function_type func);
-
   // ----------------------------------
   //    void transfer_setup_xrp(double);
   //    void transfer_setup_usd(double);
