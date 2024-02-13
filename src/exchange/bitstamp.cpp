@@ -216,7 +216,7 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
         bitstamp_websocket_port, command.dump(4), [this](const QString data) {
           std::string stdstring = data.toStdString();
           bitstamp_dbg<7>.debug(str<>("Orders data"), stdstring);
-          json jdata = json::parse(stdstring);
+          nlohmann::json jdata = nlohmann::json::parse(stdstring);
           if (jdata["event"] == "bts:subscription_succeeded")
           {
             bitstamp_dbg<0>.debug(str<>("Orders data"), "bts:subscription_succeeded");
@@ -436,7 +436,7 @@ any_bytearray_sender bitstamp_network::request_tickers_available()
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_account_info(std::string_view data)
 {
-  json jdata = json::parse(data);
+  nlohmann::json jdata = nlohmann::json::parse(data);
   bitstamp_dbg<6>.debug(str<>("account info"), jdata.dump(4));
   //
   bitstamp_account& acct = get_bitstamp_instance()->account();
@@ -502,7 +502,7 @@ void bitstamp_network::handle_account_info(std::string_view data)
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_websocket_token(std::string_view data)
 {
-  json jdata = json::parse(data);
+  nlohmann::json jdata = nlohmann::json::parse(data);
   bitstamp_dbg<5>.debug(str<>("websocket token"), jdata.dump());
   //
   bitstamp_account& acct = get_bitstamp_instance()->account();
@@ -525,7 +525,7 @@ void bitstamp_network::handle_open_orders(std::string_view data)
   auto& trades = acct.offers_;
   trades.clear();
   //
-  json jdata = json::parse(data);
+  nlohmann::json jdata = nlohmann::json::parse(data);
   for (auto const& [key, val] : jdata.items())
   {
     const std::string jstring = val[std::string_view("currency_pair")];
@@ -559,7 +559,7 @@ void bitstamp_network::handle_open_orders(std::string_view data)
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_tickers_available(std::string_view data)
 {
-  json jdata = json::parse(data);
+  nlohmann::json jdata = nlohmann::json::parse(data);
   for (auto const& [key, val] : jdata.items())
   {
     json::string_t jstring = val[std::string_view("pair")];
@@ -800,7 +800,7 @@ void bitstamp_network::new_live_trade_data_q(
 
   auto process = [exchange, data, cp]() {
     std::string stdstring = data.toStdString();
-    json jdata = json::parse(stdstring)["data"];
+    nlohmann::json jdata = nlohmann::json::parse(stdstring)["data"];
     bitstamp_dbg<7>.debug(str<>("Trade data parsed"), jdata.dump(4));
     live_trade_data trade_data = jdata.get<live_trade_data>();
     //

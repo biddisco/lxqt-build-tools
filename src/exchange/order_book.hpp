@@ -58,9 +58,12 @@ class order_book_base : QObject
     std::tuple<double, double, double, double, double, double, double, double, double, double>;
   using arb_vector = std::vector<trade_set>;
 
+  // a websocket thread might deliver bid/ask data as we are reading it, keep a lock
+  mutable std::mutex bidask_mtx_;
+
   // Sorted order book entries
-  offer_data bids;
-  offer_data asks;
+  offer_data bids_;
+  offer_data asks_;
 
   // Graph min/max control
   double prev_xmin[2];
@@ -76,12 +79,6 @@ class order_book_base : QObject
   // clean up
   virtual ~order_book_base();
 
-  void update_graph_limits(bool primary);
-
-  // produces a simple string representation of the order book
-  // from the bid/ask lists
-  std::string order_book_string();
-
   // given a max amount to spend, how much of this ask to take
   std::pair<double, double> buy_nibble(
     double max_spend, double fee_percent, double fee_fixed, double size, double rate) const;
@@ -95,9 +92,21 @@ class order_book_base : QObject
   arb_vector compute_arbitrage(order_book_base const& other, double budget, fee_data buy_fee,
     fee_data sell_fee, double test_offset, std::string& string_output) const;
 
+  std::string get_orderbook_string()
+  {
+    return order_text;
+  }
+
   Q_SIGNALS:
   // emitted when new orderbook data has been received and processed
   void orderbook_changed();
+
+  protected:
+  // these are not protected by a mutex and should only be accessed internally
+  void update_graph_limits(bool primary);
+  // produces a simple string representation of the order book
+  // from the bid/ask lists
+  std::string make_order_book_string();
 };
 
 // ----------------------------------------------------------------------------

@@ -215,6 +215,6 @@ void OrderBookPlot::update_graph_limits()
 void OrderBookPlot::new_data_event()
 {
   // push this data into the graph object
-  bid_curve_->setRawSamples_locked(order_book_->bids.rate, order_book_->bids.total);
-  ask_curve_->setRawSamples_locked(order_book_->asks.rate, order_book_->asks.total);
+  bid_curve_->setRawSamples_locked(order_book_->bids_.rate, order_book_->bids_.total);
+  ask_curve_->setRawSamples_locked(order_book_->asks_.rate, order_book_->asks_.total);
 }

@@ -804,7 +804,7 @@ void GroxMainWindow::loadConnectionSetups()
 
         auto orderbook_text_sub = [this, tdata, orderbook_text](currency_pair cp) {
           QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
-            QString datastring = QString::fromStdString(tdata.orderbook_->order_book_string());
+            QString datastring = QString::fromStdString(tdata.orderbook_->get_orderbook_string());
             orderbook_text->setPlainText(datastring);
           });
         };

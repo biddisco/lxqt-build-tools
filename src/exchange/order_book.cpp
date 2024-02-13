@@ -19,7 +19,6 @@
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
 #include "util/stringutils.hpp"
-//
 
 // ----------------------------------------------------------------------------
 using namespace grox;
@@ -39,7 +38,7 @@ static print_threshold<Level, debug_level> obook_dbg("ord-book");
 //#define GROX_ARBITRAGE_TEST_MODE 0.005
 
 // ----------------------------------------------------------------------------
-// Base order book class provides access to top bids/asks
+// Base order book class provides access to top bids_/asks_
 // plotting and other representations of the orders
 // ----------------------------------------------------------------------------
 order_book_base::order_book_base()
@@ -58,11 +57,14 @@ order_book_base::order_book_base()
   }
 }
 
+// ----------------------------------------------------------------------------
 order_book_base::~order_book_base()
 {
   obook_dbg<0>.debug(str<>("order_book_base"), "destructing");
 }
 
+// ----------------------------------------------------------------------------
+// no mutex because it should only be called when accepting new data
 void order_book_base::update_graph_limits(bool primary)
 {
   // just in case multiple invocations overlap, not critical
@@ -71,20 +73,20 @@ void order_book_base::update_graph_limits(bool primary)
     return;
   //
   in_function = true;
-  if (asks.rate.empty() || bids.rate.empty())
+  if (asks_.rate.empty() || bids_.rate.empty())
     return;
   double scale = primary ? 0.05 : 0.05;
   double tscale = primary ? 10 : 25;
   int index = primary ? 0 : 1;
 
   // pick x min max limits so they don't jump around constantly
-  double xrange = asks.rate.back() - bids.rate.back();
+  double xrange = asks_.rate.back() - bids_.rate.back();
   double xscale = scale * std::pow(10, static_cast<int>(std::log10(xrange)));
-  double xmin = std::floor(bids.rate.back() / xscale) * xscale;
-  double xmax = std::ceil(asks.rate.back() / xscale) * xscale;
+  double xmin = std::floor(bids_.rate.back() / xscale) * xscale;
+  double xmax = std::ceil(asks_.rate.back() / xscale) * xscale;
   //
   // pick y min max limits so they don't jump around constantly
-  double yrange = std::max(bids.total.back(), asks.total.back());
+  double yrange = std::max(bids_.total.back(), asks_.total.back());
   double yscale = scale * std::pow(10, static_cast<int64_t>(std::log10(yrange)));
   double ymax = (std::ceil(yrange / yscale)) * yscale;
   //
@@ -108,20 +110,21 @@ void order_book_base::update_graph_limits(bool primary)
   in_function = false;
 }
 
-// produces a simple string representation of the order book
-// from the bid/ask lists
-std::string order_book_base::order_book_string()
+// ----------------------------------------------------------------------------
+// produces a simple string representation of the order book from the bid/ask lists
+// no mutex because it should only be called when accepting new data
+std::string order_book_base::make_order_book_string()
 {
   // string header line
   std::stringstream temp;
-  if (bids.orig.size() == 0)
+  if (bids_.orig.size() == 0)
   {
     // title format string
     temp << fmt::format("{:8s} {:10s} {:10s} | {:10s} {:10s} {:8s}\n", "Total", "Size", "Bid",
       "Ask", "Size", "Total");
-    // iterate over bids/asks
+    // iterate over bids_/asks_
     auto zipped =
-      ranges::views::zip(bids.total, bids.size, bids.rate, asks.rate, asks.size, asks.total);
+      ranges::views::zip(bids_.total, bids_.size, bids_.rate, asks_.rate, asks_.size, asks_.total);
     for (auto const& z : zipped)
     {
       temp << fmt::format("{:8.0f} {:10.2f} {:10.4f} | {:10.4f} {:10.2f} {:8.0f}\n", std::get<0>(z),
@@ -133,9 +136,9 @@ std::string order_book_base::order_book_string()
     // title format string
     temp << fmt::format("{:8s} {:10s} {:10s} {:10s} | {:10s} {:10s} {:10s} {:8s}\n", "Total",
       "Size", "Orig", "Bid", "Ask", "Size", "Orig", "Total");
-    // iterate over bids/asks
-    auto zipped = ranges::views::zip(
-      bids.total, bids.size, bids.orig, bids.rate, asks.rate, asks.size, asks.orig, asks.total);
+    // iterate over bids_/asks_
+    auto zipped = ranges::views::zip(bids_.total, bids_.size, bids_.orig, bids_.rate, asks_.rate,
+      asks_.size, asks_.orig, asks_.total);
     for (auto const& z : zipped)
     {
       temp << fmt::format(
@@ -148,6 +151,7 @@ std::string order_book_base::order_book_string()
   return temp.str();
 }
 
+// ----------------------------------------------------------------------------
 // given a max amount to spend, how much of this ask to take
 std::pair<double, double> order_book_base::buy_nibble(
   double max_spend, double fee_percent, double fee_fixed, double size, double rate) const
@@ -168,6 +172,7 @@ std::pair<double, double> order_book_base::buy_nibble(
   }
 }
 
+// ----------------------------------------------------------------------------
 // given some tokens to sell, how much of this bid to take
 std::pair<double, double> order_book_base::sell_nibble(
   double max_tokens, double fee_percent, double fee_fixed, double size, double rate) const
@@ -179,16 +184,19 @@ std::pair<double, double> order_book_base::sell_nibble(
   return std::make_pair(t_recv, a_recv);
 }
 
+// ----------------------------------------------------------------------------
 // buy on this orderbook, sell on the other - can we earn from arbitrage
 order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base const& other,
   double budget, fee_data buy_fee, fee_data sell_fee, double test_offset,
   std::string& string_output) const
 {
-  if (asks.size.size() == 0 || other.bids.size.size() == 0)
+  std::lock_guard<std::mutex> lock(bidask_mtx_);
+  //
+  if (asks_.size.size() == 0 || other.bids_.size.size() == 0)
     return {};
   //
-  auto here_ask_zipped = ranges::views::zip(asks.size, asks.rate);
-  auto there_bid_zipped = ranges::views::zip(other.bids.total, other.bids.rate);
+  auto here_ask_zipped = ranges::views::zip(asks_.size, asks_.rate);
+  auto there_bid_zipped = ranges::views::zip(other.bids_.total, other.bids_.rate);
   auto sell_point = there_bid_zipped.begin();
   //
   double sell_size, sell_rate;
@@ -339,19 +347,19 @@ void bitstamp_order_book::accept_json_bitstamp(const QString data)
 {
   if (!startswith(data, QStringLiteral("{\"data\":")))
     return;
+  //
+  std::lock_guard<std::mutex> lock(bidask_mtx_);
 
   // convert orders into a layout we can visualize nicely
   std::string stdstring = data.toStdString();
   json jdata = json::parse(stdstring)["data"];
-  bid_ask_string_to_number(jdata["bids"], bids);
-  bid_ask_string_to_number(jdata["asks"], asks);
-  std::partial_sum(bids.size.begin(), bids.size.end(), bids.total.begin());
-  std::partial_sum(asks.size.begin(), asks.size.end(), asks.total.begin());
+  bid_ask_string_to_number(jdata["bids"], bids_);
+  bid_ask_string_to_number(jdata["asks"], asks_);
+  std::partial_sum(bids_.size.begin(), bids_.size.end(), bids_.total.begin());
+  std::partial_sum(asks_.size.begin(), asks_.size.end(), asks_.total.begin());
   //
-  update_graph_limits(true);
-  order_text = order_book_string();
-  //
-  emit orderbook_changed();
+  order_text = make_order_book_string();
+  order_book_base::update_graph_limits(true);
 }
 
 // ----------------------------------------------------------------------------
@@ -420,12 +428,14 @@ void xrpl_order_book::accept_json_ledger_snapshot(std::string_view data)
   }
 }
 
+// ----------------------------------------------------------------------------
 // This function converts an existing order book into
 // plot and txt display forms
 void xrpl_order_book::ledger_map_to_order_book()
 {
-  bids.clear();
-  asks.clear();
+  std::lock_guard<std::mutex> lock(bidask_mtx_);
+  bids_.clear();
+  asks_.clear();
   //
   auto clamp_offers_to_funds = [](std::vector<xrpl_offer>& offers, currency const& curr) {
     // for debugging
@@ -459,19 +469,20 @@ void xrpl_order_book::ledger_map_to_order_book()
 
   for (auto& [acct, bid_ask] : orders)
   {
-    std::vector<xrpl_offer>& acc_bids = std::get<bid_index>(bid_ask);
-    std::vector<xrpl_offer>& acc_asks = std::get<ask_index>(bid_ask);
+    std::vector<xrpl_offer>& acc_bids_ = std::get<bid_index>(bid_ask);
+    std::vector<xrpl_offer>& acc_asks_ = std::get<ask_index>(bid_ask);
     //
-    obook_dbg<5>.debug(str<>("bid/ask"), acct, "bids:", acc_bids.size(), "asks:", acc_asks.size());
+    obook_dbg<5>.debug(
+      str<>("bid/ask"), acct, "bids:", acc_bids_.size(), "asks:", acc_asks_.size());
 
     // the account may not be fully funded, so the offers may be invalid
-    if (acc_bids.size() > 0)
+    if (acc_bids_.size() > 0)
     {
-      std::sort(acc_bids.begin(), acc_bids.end(), std::greater<xrpl_offer>{});
-      clamp_offers_to_funds(acc_bids, currency(currency::bitstamp_trust, "USD"));
+      std::sort(acc_bids_.begin(), acc_bids_.end(), std::greater<xrpl_offer>{});
+      clamp_offers_to_funds(acc_bids_, currency(currency::bitstamp_trust, "USD"));
     }
     double tiny_offers = 0;
-    for (auto const& o : acc_bids)
+    for (auto const& o : acc_bids_)
     {
       auto xrp_amount = o.amount(currency("", "XRP")) * 1E-6;
       // skip unfunded or very small offers
@@ -481,19 +492,19 @@ void xrpl_order_book::ledger_map_to_order_book()
         continue;
       }
       //
-      bids.rate.push_back(o.rate());
-      bids.orig.push_back(xrp_amount + tiny_offers);
-      bids.size.push_back(o.funded_offer / o.rate());
+      bids_.rate.push_back(o.rate());
+      bids_.orig.push_back(xrp_amount + tiny_offers);
+      bids_.size.push_back(o.funded_offer / o.rate());
       tiny_offers = 0;
     }
 
-    if (acc_asks.size() > 0)
+    if (acc_asks_.size() > 0)
     {
-      std::sort(acc_asks.begin(), acc_asks.end(), std::less<xrpl_offer>{});
-      clamp_offers_to_funds(acc_asks, currency("", "XRP"));
+      std::sort(acc_asks_.begin(), acc_asks_.end(), std::less<xrpl_offer>{});
+      clamp_offers_to_funds(acc_asks_, currency("", "XRP"));
     }
     tiny_offers = 0;
-    for (auto const& o : acc_asks)
+    for (auto const& o : acc_asks_)
     {
       auto xrp_amount = o.amount(currency("", "XRP")) * 1E-6;
       // skip unfunded or very small offers
@@ -506,36 +517,35 @@ void xrpl_order_book::ledger_map_to_order_book()
       if (o.unfunded(0.1 * 1E6))
         continue;
       //
-      asks.rate.push_back(o.rate());
-      asks.orig.push_back(xrp_amount + tiny_offers);
-      asks.size.push_back(o.funded_offer * 1E-6);
+      asks_.rate.push_back(o.rate());
+      asks_.orig.push_back(xrp_amount + tiny_offers);
+      asks_.size.push_back(o.funded_offer * 1E-6);
       tiny_offers = 0;
     }
   }
 
-  // sort zipped X/Y bids from high to low, sort based on rate
-  ranges::sort(ranges::views::zip(bids.rate, bids.size, bids.orig),
+  // sort zipped X/Y bids_ from high to low, sort based on rate
+  ranges::sort(ranges::views::zip(bids_.rate, bids_.size, bids_.orig),
     [](auto&& a, auto&& b) { return std::get<0>(a) > std::get<0>(b); });
 
-  // sort zipped X/Y asks from low to high, sort based on X=conv
-  ranges::sort(ranges::views::zip(asks.rate, asks.size, asks.orig),
+  // sort zipped X/Y asks_ from low to high, sort based on X=conv
+  ranges::sort(ranges::views::zip(asks_.rate, asks_.size, asks_.orig),
     [](auto&& a, auto&& b) { return std::get<0>(a) < std::get<0>(b); });
 
-  // partial sum the bids
-  bids.total.resize(bids.size.size());
-  std::partial_sum(bids.size.begin(), bids.size.end(), bids.total.begin());
+  // partial sum the bids_
+  bids_.total.resize(bids_.size.size());
+  std::partial_sum(bids_.size.begin(), bids_.size.end(), bids_.total.begin());
 
-  // partial sum the asks
-  asks.total.resize(asks.size.size());
-  std::partial_sum(asks.size.begin(), asks.size.end(), asks.total.begin());
+  // partial sum the asks_
+  asks_.total.resize(asks_.size.size());
+  std::partial_sum(asks_.size.begin(), asks_.size.end(), asks_.total.begin());
 
   // push this data into the graph object
-  update_graph_limits(false);
-  order_text = order_book_string();
-  //
-  emit orderbook_changed();
+  order_book_base::update_graph_limits(false);
+  order_text = make_order_book_string();
 }
 
+// ----------------------------------------------------------------------------
 void xrpl_order_book::accept_json_ledger_transaction(std::string_view data)
 {
   json jdata = json::parse(data);
@@ -572,6 +582,7 @@ void xrpl_order_book::accept_json_ledger_transaction(std::string_view data)
   ledger_map_to_order_book();
 }
 
+// ----------------------------------------------------------------------------
 bool xrpl_order_book::update_offer(
   xrpl_offer const& prev_offer, xrpl_offer& final_offer, double owner_funds)
 {
@@ -584,12 +595,12 @@ bool xrpl_order_book::update_offer(
     return false;
   }
   //
-  std::vector<xrpl_offer>& acc_bids = std::get<bid_index>(it->second);
-  std::vector<xrpl_offer>& acc_asks = std::get<ask_index>(it->second);
+  std::vector<xrpl_offer>& acc_bids_ = std::get<bid_index>(it->second);
+  std::vector<xrpl_offer>& acc_asks_ = std::get<ask_index>(it->second);
   if (prev_offer.TakerPays.currency.value() == currency_code("", "XRP"))
   {
-    auto it2 = std::find(acc_bids.begin(), acc_bids.end(), prev_offer);
-    if (it2 == acc_bids.end())
+    auto it2 = std::find(acc_bids_.begin(), acc_bids_.end(), prev_offer);
+    if (it2 == acc_bids_.end())
     {
       std::cerr << prev_offer.Account << " update_offer bid not found" << std::endl;
       return false;
@@ -605,8 +616,8 @@ bool xrpl_order_book::update_offer(
   }
   else
   {
-    auto it2 = std::find(acc_asks.begin(), acc_asks.end(), prev_offer);
-    if (it2 == acc_asks.end())
+    auto it2 = std::find(acc_asks_.begin(), acc_asks_.end(), prev_offer);
+    if (it2 == acc_asks_.end())
     {
       std::cerr << prev_offer.Account << " update_offer ask not found" << std::endl;
       return false;
@@ -618,6 +629,7 @@ bool xrpl_order_book::update_offer(
   return true;
 }
 
+// ----------------------------------------------------------------------------
 bool xrpl_order_book::insert_offer(xrpl_offer const& offer)
 {
   std::string const& acct = offer.Account;
@@ -636,21 +648,22 @@ bool xrpl_order_book::insert_offer(xrpl_offer const& offer)
     }
   }
   // add new order to map vectors
-  std::vector<xrpl_offer>& acc_bids = std::get<bid_index>(it->second);
-  std::vector<xrpl_offer>& acc_asks = std::get<ask_index>(it->second);
+  std::vector<xrpl_offer>& acc_bids_ = std::get<bid_index>(it->second);
+  std::vector<xrpl_offer>& acc_asks_ = std::get<ask_index>(it->second);
   if (offer.TakerPays.currency.value() == currency_code("", "XRP"))
   {
-    acc_bids.push_back(offer);
+    acc_bids_.push_back(offer);
     obook_dbg<5>.debug(str<>("Insert Bid:"), offer);
   }
   else
   {
-    acc_asks.push_back(offer);
+    acc_asks_.push_back(offer);
     obook_dbg<5>.debug(str<>("Insert Ask:"), offer);
   }
   return true;
 }
 
+// ----------------------------------------------------------------------------
 bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
 {
   std::string const& acct = offer.Account;
@@ -662,18 +675,18 @@ bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
     return false;
   }
   // remove order from map vector
-  std::vector<xrpl_offer>& acc_bids = std::get<bid_index>(it->second);
-  std::vector<xrpl_offer>& acc_asks = std::get<ask_index>(it->second);
+  std::vector<xrpl_offer>& acc_bids_ = std::get<bid_index>(it->second);
+  std::vector<xrpl_offer>& acc_asks_ = std::get<ask_index>(it->second);
   if (offer.TakerPays.currency.value() == currency_code("", "XRP"))
   {
-    auto val = std::find(acc_bids.begin(), acc_bids.end(), offer);
-    if (val == acc_bids.end())
+    auto val = std::find(acc_bids_.begin(), acc_bids_.end(), offer);
+    if (val == acc_bids_.end())
     {
       std::cerr << "Error : Bid delete not found" << std::endl;
       std::cerr << "Bid: " << offer << std::endl;
       return false;
     }
-    else if (val != std::prev(acc_bids.end()))
+    else if (val != std::prev(acc_bids_.end()))
     {
       // update tracking of account funds
       if (val->owner_funds != -1)
@@ -683,18 +696,18 @@ bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
       }
     }
     obook_dbg<5>.debug(str<>("Delete Bid:"), offer);
-    acc_bids.erase(val);
+    acc_bids_.erase(val);
   }
   else
   {
-    auto val = std::find(acc_asks.begin(), acc_asks.end(), offer);
-    if (val == acc_asks.end())
+    auto val = std::find(acc_asks_.begin(), acc_asks_.end(), offer);
+    if (val == acc_asks_.end())
     {
       std::cerr << "Ask: " << offer << std::endl;
       std::cerr << "Error : Ask delete not found" << std::endl;
       return false;
     }
-    else if (val != std::prev(acc_asks.end()))
+    else if (val != std::prev(acc_asks_.end()))
     {
       // update tracking of account funds
       if (val->owner_funds != -1)
@@ -704,9 +717,9 @@ bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
       }
     }
     obook_dbg<5>.debug(str<>("Delete Ask:"), offer);
-    acc_asks.erase(val);
+    acc_asks_.erase(val);
   }
-  if (acc_bids.size() == 0 && acc_asks.size() == 0)
+  if (acc_bids_.size() == 0 && acc_asks_.size() == 0)
   {
     // we can safely remove the account
     obook_dbg<5>.debug(str<>("Account"), offer.Account, "can be removed");
@@ -715,6 +728,7 @@ bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
   return true;
 }
 
+// ----------------------------------------------------------------------------
 enum node_edit
 {
   created = 0,
@@ -722,6 +736,7 @@ enum node_edit
   deleted
 };
 
+// ----------------------------------------------------------------------------
 void xrpl_order_book::handle_offer_change(json const& trans, json const& affected)
 {
   bool ok = true;
