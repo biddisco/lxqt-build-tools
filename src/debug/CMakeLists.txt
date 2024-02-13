@@ -1,5 +1,5 @@
 # Currently there are no source files for this library
-set(grox_debug_SRCS)
+set(grox_debug_SRCS demangle_helper.hpp print.hpp)
 
 # debug library is header only, so declare an interface library
 add_library(grox_debug INTERFACE)

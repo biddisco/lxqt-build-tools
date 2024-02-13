@@ -25,6 +25,7 @@
 #include <QwtScaleDraw>
 #include <QwtScaleEngine>
 // Grox
+#include "currency/json_data_types.hpp"
 #include "currency/ohlctv_sample.hpp"
 #include "data/ohlc_heikin_ashi.hpp"
 #include "debug/demangle_helper.hpp"
@@ -39,8 +40,10 @@
 #include "widgets/connection_widget.hpp"
 #include "widgets/currency_widget.hpp"
 #include "widgets/password_dialog.hpp"
+#include "widgets/price_chart_widget.hpp"
 #include "widgets/trade_widget.hpp"
 #include "widgets/wallet_widget.hpp"
+
 // Qt Advanced Docking System
 #include "DockAreaTabBar.h"
 #include "DockAreaTitleBar.h"
@@ -605,6 +608,70 @@ void GroxMainWindow::showEvent(QShowEvent* event)
 }
 
 // ----------------------------------------------------------------------------
+std::shared_ptr<price_chart_widget> create_price_chart_widget(
+  std::shared_ptr<ohlc_dataset_view> view, std::shared_ptr<exchange> exch, std::string cps,
+  std::string name)
+{
+  // create a new price plot object
+  std::shared_ptr<price_chart_widget> chart_widget =
+    std::make_shared<price_chart_widget>(nullptr, view, exch, cps);
+
+  // put the price plot into a dock widget
+  using namespace ads;
+  std::string title = cps + " price " + name;
+  CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
+  PlotDockWidget->setWidget(chart_widget.get());
+  PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  global_settings.dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
+  global_settings.dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
+  return chart_widget;
+}
+
+QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
+{
+  // create a new orderbook text display
+  const size_t font_size = 8;
+  auto* orderbook_text = new QPlainTextEdit(nullptr);
+  QString txt = "X";
+  int char_size = QFontMetrics(orderbook_text->font()).horizontalAdvance(txt);
+  int calcWidth = char_size * 85 + 8;
+  orderbook_text->setMinimumWidth(calcWidth);
+  QFont font = QFont();
+  font.setPointSize(font_size);
+  font.setFamily("Courier");
+  orderbook_text->setFont(font);
+
+  // put the order book into a dock widget
+  using namespace ads;
+  std::string obtitle = cps + " text " + name;
+  CDockWidget* obPlotDockWidget = new CDockWidget(QString(obtitle.c_str()));
+  obPlotDockWidget->setWidget(orderbook_text);
+  obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  global_settings.dock_manager_->addDockWidget(
+    DockWidgetArea::LeftDockWidgetArea, obPlotDockWidget);
+  global_settings.dockwindows_menu_->addAction(obPlotDockWidget->toggleViewAction());
+
+  return orderbook_text;
+}
+
+OrderBookPlot* create_order_book_plot_widget(
+  std::string cps, std::string name, std::shared_ptr<order_book_base> orderbook)
+{
+  using namespace ads;
+
+  OrderBookPlot* orderbook_plot = new OrderBookPlot(nullptr, orderbook);
+  orderbook_plot->setMinimumSize(384, 256);
+  //
+  std::string obptitle = cps + " depth " + name;
+  CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
+  obpDockWidget->setWidget(orderbook_plot);
+  obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  global_settings.dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, obpDockWidget);
+  global_settings.dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
+  return orderbook_plot;
+}
+
+// ----------------------------------------------------------------------------
 void GroxMainWindow::saveTrustlines()
 {
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
@@ -711,7 +778,47 @@ void GroxMainWindow::loadConnectionSetups()
       if (enabled)
       {
         main_dbg<0>.debug(str<>("Enable Ticker"), currencypair);
-        e->ticker_subscribe(string_to_pair(currencypair, "-"));
+        auto cp = string_to_pair(currencypair, "-");
+        std::string cps = currency_pair_string(cp);
+        streams_vector s = e->ticker_subscribe(cp);
+        auto& tdata = e->tickers_subscribed().at(cp);
+        std::string exch_name = std::string(e->name());
+        tdata.chart_widget_ =
+          create_price_chart_widget(tdata.view_, e->shared_from_this(), cps, exch_name);
+        auto* orderbook_text = create_order_book_text_widget(cps, exch_name);
+        auto* orderbook_plot = create_order_book_plot_widget(cps, exch_name, tdata.orderbook_);
+        // start by displaying 1 day of data
+        tdata.chart_widget_->graph_rescale(0);
+
+        auto live_trade_subscription = [this, tdata](currency_pair cp, grox::live_trade_data t) {
+          auto p = t.price;
+          auto v = t.amount;
+          ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
+          tdata.view_->add_live_data(new_sample);
+          QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
+            tdata.chart_widget_->update_live_data(new_sample);
+            // stream_process(new_sample);
+          });
+        };
+        tdata.live_trade_subscribers_.push_back(live_trade_subscription);
+
+        auto orderbook_text_sub = [this, tdata, orderbook_text](currency_pair cp) {
+          QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
+            QString datastring = QString::fromStdString(tdata.orderbook_->order_book_string());
+            orderbook_text->setPlainText(datastring);
+          });
+        };
+        tdata.orderbook_subscribers_.push_back(orderbook_text_sub);
+
+        auto orderbook_plot_sub = [this, tdata, orderbook_plot](currency_pair cp) {
+          QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
+            orderbook_plot->update_graph_limits();
+            orderbook_plot->new_data_event();
+            orderbook_plot->update_time_and_replot();
+          });
+        };
+        tdata.orderbook_subscribers_.push_back(orderbook_plot_sub);
+
         // process messages to unblock startup waits
         progress_events(10);
       }

@@ -45,9 +45,9 @@ void connection_widget::setup_gui()
       bx->setChecked(exchange_->stream_subscribed(key));
       connect(
         bx, &QCheckBox::stateChanged, this,
-        [this, t, s](bool checked) {
+        [this, cp = t.first, s](bool checked) {
           //
-          exchange_->stream_subscribe(t.first, s, checked);
+          exchange_->stream_subscribe(cp, s, checked);
         },
         Qt::QueuedConnection);
 

@@ -1,4 +1,4 @@
-set(grox_io_SRCS hdf5_ohlc_manager.cpp)
+set(grox_io_SRCS hdf5_ohlc_manager.hpp hdf5_ohlc_manager.cpp)
 
 add_library(grox_io ${grox_io_SRCS})
 

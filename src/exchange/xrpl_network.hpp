@@ -16,7 +16,6 @@
 #include "network/qhttp-request-client.hpp"
 #include "network/qwebsocket_session.hpp"
 #include "senders/sender_defs.hpp"
-#include "widgets/currency_widget.hpp"
 
 // ----------------------------------------------------------------------------
 // #define GROX_USE_LOCAL_SERVER
@@ -121,8 +120,6 @@ class xrpl_network : public exchange
   //
 
   void initialize() override;
-
-  void set_plot(OrderBookPlot* obp);
   //
   bool testnet() const;
   //
@@ -141,7 +138,8 @@ class xrpl_network : public exchange
     return {network::streams::order_book, network::streams::accounts};
   }
 
-  void ticker_subscribe(currency const& c1, currency const& c2) override;
+  streams_vector ticker_subscribe(currency const& c1, currency const& c2) override;
+
   // connect to an individual stream
   bool stream_subscribe(
     currency_pair const& cp, network::streams const stream, bool enabled) override;
@@ -223,9 +221,6 @@ class xrpl_network : public exchange
   signals:
   // Signals are emitted so that the Qt appication/GUI thread can perform
   // procesing operations that affect Qt/GUI managed items in a thread safe way
-
-  // emitted when new orderbook data has been received and processed
-  void orderbook_changed();
 
   // emitted when a single currency balance changes and GUI needs updating
   void update_currency_widget(currency*);

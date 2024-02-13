@@ -6,6 +6,7 @@
 #include <QObject>
 //
 #include "currency/currency.hpp"
+#include "currency/json_data_types.hpp"
 #include "currency/trade_data.hpp"
 //
 #include "data/ohlc_dataset_view.hpp"
@@ -67,18 +68,19 @@ static network::streams stream_from_text(std::string_view txt)
 // ----------------------------------------------------------------------------
 class price_chart_widget;
 class order_book_base;
-class OrderBookPlot;
-class QPlainTextEdit;
 
+using live_trade_function = std::function<void(currency_pair cp, grox::live_trade_data t)>;
+using orderbook_function = std::function<void(currency_pair cp)>;
 struct ticker_data
 {
   std::shared_ptr<ohlc_dataset_view> view_;
-  price_chart_widget* chart_widget_;
-  order_book_base* orderbook_;
-  QPlainTextEdit* orderbook_text_;
-  OrderBookPlot* orderbook_plot_;
+  std::shared_ptr<order_book_base> orderbook_;
+  std::shared_ptr<price_chart_widget> chart_widget_;
   // each ticker may subscribe to multiple streams
   std::map<network::streams, std::shared_ptr<net::ws::qwebsocket_session>> websockets_;
+  //
+  std::vector<live_trade_function> live_trade_subscribers_;
+  std::vector<orderbook_function> orderbook_subscribers_;
 };
 
 // To ensure Qt can emit signals of this type
@@ -105,26 +107,15 @@ class exchange
   exchange_map tickers_subscribed_;
 
   // obligatory virtual destructor
-  virtual ~exchange() {}
+  virtual ~exchange()
+  {
+    tickers_available_.clear();
+  }
 
   // ---------------------------------------
   // concreate exchange instantiations must override the initialization
   // ---------------------------------------
   virtual void initialize() = 0;
-
-  // ---------------------------------------
-  // subscription to tickers
-  // a ticker may be monitored via http get requests for candles
-  // withut subscribing to any streams for live trades/other
-  // ---------------------------------------
-  // query which tickers (currency pairs) are subscribed
-  virtual bool ticker_subscribed(currency const& c1, currency const& c2);
-  // un/subscribe to a ticker
-  virtual void ticker_subscribe(currency const& c1, currency const& c2);
-  virtual void ticker_subscribe(const currency_pair& p);
-  virtual void ticker_unsubscribe(currency const& c1, currency const& c2);
-  // return list of subscribed tickers
-  exchange_map const& tickers_subscribed();
 
   // ---------------------------------------
   // websocket/stream connection management
@@ -140,11 +131,30 @@ class exchange
   // un/subscribe to an individual ticker stream
   virtual bool stream_subscribe(
     currency_pair const& cp, network::streams const stream, bool enabled) = 0;
+
   //  virtual bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) = 0;
   //  virtual bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) = 0;
 
-  //
-  virtual void shut_down() = 0;
+  // ---------------------------------------
+  // subscription to tickers
+  // a ticker may be monitored via http get requests for candles
+  // withut subscribing to any streams for live trades/other
+  // ---------------------------------------
+  // query which tickers (currency pairs) are subscribed
+  virtual bool ticker_subscribed(currency const& c1, currency const& c2);
+  // un/subscribe to a ticker
+  virtual streams_vector ticker_subscribe(currency const& c1, currency const& c2);
+  virtual streams_vector ticker_subscribe(const currency_pair& p);
+  virtual void ticker_unsubscribe(currency const& c1, currency const& c2);
+  // return list of subscribed tickers
+  exchange_map const& tickers_subscribed() const;
+  exchange_map& tickers_subscribed();
+
+  // ---------------------------------------
+  // setup / query tickers
+  // ---------------------------------------
+  virtual bool add_currency_pair(const currency& c1, const currency& c2);
+  virtual currency_pairlist const& get_currency_pairs();
 
   // ---------------------------------------
   // currency management
@@ -157,10 +167,9 @@ class exchange
   virtual std::vector<basic_account*> wallets() = 0;
 
   // ---------------------------------------
-  // setup / query tickers
+  // shut down
   // ---------------------------------------
-  virtual bool add_currency_pair(const currency& c1, const currency& c2);
-  virtual currency_pairlist const& get_currency_pairs();
+  virtual void shut_down() = 0;
 
   // ---------------------------------------
   // fees
@@ -170,7 +179,7 @@ class exchange
   virtual double get_transfer_fee(currency const& c1) = 0;
   virtual void custom_functions(basic_account* acct) = 0;
 
-  signals:
+  Q_SIGNALS:
   // emitted when a transaction might cause a change in data
   void transaction_event();
   void network_initialized(exchange* ex);

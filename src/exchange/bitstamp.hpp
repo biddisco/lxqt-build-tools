@@ -140,8 +140,9 @@ class bitstamp_network : public exchange
     currency_pair const& cp, network::streams const stream, bool enabled) override;
 
   // connect to (multiple) streams
-  //  bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) override;
-  //  bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) override;
+  //  bool websocket_connect(net::contexts& io_contexts, streams_vector const&
+  //  streams) override; bool websocket_disconnect(net::contexts& io_contexts,
+  //  streams_vector const& streams) override;
 
   // shut down sockets/connections
   void shut_down() override;
@@ -183,7 +184,8 @@ class bitstamp_network : public exchange
   // OHLC candlestick updating
   // ----------------------------------------------------------------------------
   // triggers an update for all subscribed tickers
-  // typically called once per minute by the application to update data regularly
+  // typically called once per minute by the application to update data
+  // regularly
   void update_ohlc_datasets();
   // triggers an update for a single ticker
   void update_ohlc_data(currency_pair cp, ticker_data* data);
@@ -210,17 +212,9 @@ class bitstamp_network : public exchange
 
   void custom_functions(basic_account* /*acct*/) override{};
 
-  void ticker_subscribe(currency const& c1, currency const& c2) override;
+  streams_vector ticker_subscribe(currency const& c1, currency const& c2) override;
 
   signals:
-  // Signals are emitted so that the Qt appication/GUI thread can perform
-  // procesing operations that affect Qt/GUI managed items in a thread safe way
-
-  // emitted when new orderbook data has been received and processed
-  void orderbook_changed();
-
-  // emitted when data for new trades is ready
-  void new_live_trade_data_ui(currency_pair, grox::live_trades);
 
   // when the wallet widget needs to be updated with new data/currencies
   void update_wallet_widget(bitstamp_account*);

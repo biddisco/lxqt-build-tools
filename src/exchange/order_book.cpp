@@ -42,60 +42,30 @@ static print_threshold<Level, debug_level> obook_dbg("ord-book");
 // Base order book class provides access to top bids/asks
 // plotting and other representations of the orders
 // ----------------------------------------------------------------------------
-order_book_base::order_book_base(OrderBookPlot* obp, bool secondaxis)
+order_book_base::order_book_base()
+  : QObject(nullptr)
 {
 #ifdef GROX_ARBITRAGE_TEST_MODE
   std::cerr << "**********************************************\n"
             << "Warning TEST_MODE enabled, price data invalid\n"
             << "**********************************************\n";
 #endif
-  OrderBookPlot_ = obp;
-  //
   for (int i = 0; i < 2; i++)
   {
     prev_xmin[i] = 0;
     prev_xmax[i] = 0;
     prev_ymax[i] = 0;
   }
-  //
-  bid_curve_ = new OrderBookCurve();
-  ask_curve_ = new OrderBookCurve();
-  //
-  if (secondaxis)
-  {
-    bid_curve_->setSegmentInfo(0, 0, Qt::darkYellow, 3);
-    ask_curve_->setSegmentInfo(0, 0, Qt::darkMagenta, 3);
-    bid_curve_->setYAxis(QwtPlot::yRight);
-    ask_curve_->setYAxis(QwtPlot::yRight);
-  }
-  else
-  {
-    bid_curve_->setSegmentInfo(0, 0, Qt::green, 3);
-    ask_curve_->setSegmentInfo(0, 0, Qt::red, 3);
-    bid_curve_->setYAxis(QwtPlot::yLeft);
-    ask_curve_->setYAxis(QwtPlot::yLeft);
-  }
-  bid_curve_->attach(obp /*.get()*/);
-  ask_curve_->attach(obp /*.get()*/);
 }
 
 order_book_base::~order_book_base()
 {
   obook_dbg<0>.debug(str<>("order_book_base"), "destructing");
-  // curves are owned by plot, so no need to delete
-  bid_curve_ = nullptr;
-  ask_curve_ = nullptr;
-  // explicity release shared_ptr reference
-  OrderBookPlot_ = nullptr;
 }
 
 void order_book_base::update_graph_limits(bool primary)
 {
-  if (!OrderBookPlot_)
-    return;
-
-  //    if (!primary) return;
-  // just in case multiple iinvocations overlap, not critical
+  // just in case multiple invocations overlap, not critical
   static std::atomic<bool> in_function = false;
   if (in_function)
     return;
@@ -116,7 +86,6 @@ void order_book_base::update_graph_limits(bool primary)
   // pick y min max limits so they don't jump around constantly
   double yrange = std::max(bids.total.back(), asks.total.back());
   double yscale = scale * std::pow(10, static_cast<int64_t>(std::log10(yrange)));
-  double ymin = 0.0;
   double ymax = (std::ceil(yrange / yscale)) * yscale;
   //
   static bool first_time[2] = {true, true};
@@ -135,21 +104,6 @@ void order_book_base::update_graph_limits(bool primary)
     prev_xmin[index] += x1;
     prev_xmax[index] -= x2;
     prev_ymax[index] -= y2;
-  }
-  //
-  if (primary)
-  {
-    OrderBookPlot_->setAxisScale(QwtPlot::xBottom, prev_xmin[index], prev_xmax[index]);
-    OrderBookPlot_->setAxisScale(QwtPlot::yLeft, ymin, prev_ymax[index]);
-  }
-  else
-  {
-    if (first_time[0])
-    {
-      OrderBookPlot_->setAxisScale(QwtPlot::xBottom, prev_xmin[index], prev_xmax[index]);
-      OrderBookPlot_->setAxisScale(QwtPlot::yLeft, ymin, prev_ymax[index]);
-    }
-    OrderBookPlot_->setAxisScale(QwtPlot::yRight, ymin, prev_ymax[index]);
   }
   in_function = false;
 }
@@ -381,16 +335,10 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 // accept json reply from bitstamp order book query and turn into numeric arrays
-bool bitstamp_order_book::accept_json_bitstamp(const QString data)
+void bitstamp_order_book::accept_json_bitstamp(const QString data)
 {
-  if (!bid_curve_ || !ask_curve_)
-  {
-    // late websocket data arriving after destruction started
-    obook_dbg<0>.error(str<>("accept_json_bitstamp"), "destructing");
-    return false;
-  }
   if (!startswith(data, QStringLiteral("{\"data\":")))
-    return false;
+    return;
 
   // convert orders into a layout we can visualize nicely
   std::string stdstring = data.toStdString();
@@ -399,14 +347,11 @@ bool bitstamp_order_book::accept_json_bitstamp(const QString data)
   bid_ask_string_to_number(jdata["asks"], asks);
   std::partial_sum(bids.size.begin(), bids.size.end(), bids.total.begin());
   std::partial_sum(asks.size.begin(), asks.size.end(), asks.total.begin());
-
-  // push this data into the graph object
-  bid_curve_->setRawSamples_locked(bids.rate, bids.total);
-  ask_curve_->setRawSamples_locked(asks.rate, asks.total);
-  update_graph_limits(true);
   //
+  update_graph_limits(true);
   order_text = order_book_string();
-  return true;
+  //
+  emit orderbook_changed();
 }
 
 // ----------------------------------------------------------------------------
@@ -479,10 +424,6 @@ void xrpl_order_book::accept_json_ledger_snapshot(std::string_view data)
 // plot and txt display forms
 void xrpl_order_book::ledger_map_to_order_book()
 {
-  // make sure graph doesn't try to plot data during an update
-  bid_curve_->clear_samples();
-  ask_curve_->clear_samples();
-  //
   bids.clear();
   asks.clear();
   //
@@ -589,11 +530,10 @@ void xrpl_order_book::ledger_map_to_order_book()
   std::partial_sum(asks.size.begin(), asks.size.end(), asks.total.begin());
 
   // push this data into the graph object
-  bid_curve_->setRawSamples_locked(bids.rate, bids.total);
-  ask_curve_->setRawSamples_locked(asks.rate, asks.total);
   update_graph_limits(false);
-  //
   order_text = order_book_string();
+  //
+  emit orderbook_changed();
 }
 
 void xrpl_order_book::accept_json_ledger_transaction(std::string_view data)

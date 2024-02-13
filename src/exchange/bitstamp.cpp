@@ -8,6 +8,10 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 //
+#include <exec/inline_scheduler.hpp>
+#include <exec/variant_sender.hpp>
+#include <stdexec/execution.hpp>
+//
 #include <pika/execution/algorithms/just.hpp>
 #include <pika/execution/algorithms/transfer_just.hpp>
 //
@@ -18,21 +22,11 @@
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "senders/qhttp-post-sender.hpp"
+#include "senders/qt_mainthread_scheduler.hpp"
 #include "util/datetime_utils.hpp"
 #include "util/json_qstring.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/price_chart_widget.hpp"
-#include "widgets/wallet_widget.hpp"
-//
-#include "DockAreaWidget.h"
-#include "DockManager.h"
-#include "DockWidget.h"
-//
-#include <exec/inline_scheduler.hpp>
-#include <exec/variant_sender.hpp>
-#include <stdexec/execution.hpp>
-//
-#include "senders/qt_mainthread_scheduler.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox;
@@ -61,19 +55,6 @@ bitstamp_network::bitstamp_network()
   // after new data has been received, trigger this to process new candles and replot
   connect(this, SIGNAL(new_ohlc_data(ticker_data*, double)), this,
     SLOT(new_ohlc_data_event(ticker_data*, double)));
-
-  connect(
-    this, &bitstamp_network::new_live_trade_data_ui, this,
-    [this](currency_pair cp, live_trades t) {
-      auto p = t.price;
-      auto v = t.amount;
-      ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
-      const ticker_data tdata = tickers_subscribed_.at(cp);
-      tdata.view_->add_live_data(new_sample);
-      tdata.chart_widget_->update_live_data(new_sample);
-      // stream_process(new_sample);
-    },
-    Qt::QueuedConnection);
   //
   closing_down_ = false;
 }
@@ -324,7 +305,7 @@ void bitstamp_network::shut_down()
       }
     }
     // delete orderbook _after_ closing websocket to avoid some late async data arrivals
-    delete tdata.orderbook_;
+    tdata.orderbook_ = nullptr;
   }
   tickers_subscribed_.clear();
 }
@@ -333,7 +314,7 @@ void bitstamp_network::shut_down()
 bitstamp_order_book const& bitstamp_network::get_orderbook(currency_pair const& cp) const
 {
   const ticker_data tdata = tickers_subscribed_.at(cp);
-  return *dynamic_cast<bitstamp_order_book*>(tdata.orderbook_);
+  return *dynamic_pointer_cast<bitstamp_order_book const>(tdata.orderbook_);
 }
 
 // ----------------------------------------------------------------------------
@@ -761,33 +742,36 @@ net::http::client_ptr bitstamp_network::signed_request(
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::new_orderbook_data_q(
-  bitstamp_network* n, currency_pair const cp, const QString data)
+  bitstamp_network* exchange, currency_pair const cp, const QString data)
 {
-  std::lock_guard l(n->async_mutex_);
+  bitstamp_dbg<5>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
+  bitstamp_dbg<7>.debug(str<>("Orderbook data"), data);
+
+  // if shutdown was started after this data was sent by the remote source
+  // then it can be ignored/dropped as we will not handle it anyway
+  std::lock_guard l(exchange->async_mutex_);
   if (closing_down_)
   {
     bitstamp_dbg<0>.error(str<>("Orderbook data"), "Shutdown in progress: ignoring data");
     return;
   }
 
-  auto process = [n, cp, data]() {
-    bitstamp_dbg<5>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
-    bitstamp_dbg<7>.debug(str<>("Orderbook data"), data);
-    //
-    const ticker_data tdata = n->tickers_subscribed_.at(cp);
-    //
-    if (!tdata.orderbook_)
-      return;    // @todo probably called during destruction
-
+  auto process = [exchange, cp, data]() {
+    const ticker_data& tdata = exchange->tickers_subscribed_.at(cp);
     try
     {
-      if (!dynamic_cast<bitstamp_order_book*>(tdata.orderbook_)->accept_json_bitstamp(data))
-        return;
-      emit n->orderbook_changed();
+      dynamic_pointer_cast<bitstamp_order_book>(tdata.orderbook_)->accept_json_bitstamp(data);
     }
     catch (...)
     {
-      bitstamp_dbg<0>.error(str<>("Orderbook error"), currency_pair_string(cp), data.toStdString());
+      bitstamp_dbg<0>.error(
+        str<>("Orderbook error"), currency_pair_string(cp), tdata.orderbook_, data.toStdString());
+    }
+    //
+    for (auto subscriber : tdata.orderbook_subscribers_)
+    {
+      bitstamp_dbg<4>.debug(str<>("orderbook subscribe"), currency_pair_string(cp));
+      subscriber(cp);
     }
   };
 
@@ -798,12 +782,14 @@ void bitstamp_network::new_orderbook_data_q(
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::new_live_trade_data_q(
-  bitstamp_network* n, currency_pair cp, const QString data)
+  bitstamp_network* exchange, currency_pair cp, const QString data)
 {
   bitstamp_dbg<4>.debug(str<>("Live Trade"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<5>.debug(str<>("Trade data"), data);
-  //
-  std::lock_guard l(n->async_mutex_);
+
+  // if shutdown was started after this data was sent by the remote source
+  // then it can be ignored/dropped as we will not handle it anyway
+  std::lock_guard l(exchange->async_mutex_);
   if (closing_down_)
   {
     bitstamp_dbg<0>.error(str<>("trade data"), "Shutdown in progress: ignoring data");
@@ -811,16 +797,24 @@ void bitstamp_network::new_live_trade_data_q(
   }
   if (!startswith(data, "{\"data\":"))
     return;
-  //
-  std::string stdstring = data.toStdString();
-  //
-  json jdata = json::parse(stdstring);
-  // extract the main subgroup
-  jdata = jdata["data"];
-  bitstamp_dbg<7>.debug(str<>("Trade data parsed"), jdata.dump(4));
-  live_trades trade_data = jdata.get<live_trades>();
-  //
-  emit n->new_live_trade_data_ui(cp, trade_data);
+
+  auto process = [exchange, data, cp]() {
+    std::string stdstring = data.toStdString();
+    json jdata = json::parse(stdstring)["data"];
+    bitstamp_dbg<7>.debug(str<>("Trade data parsed"), jdata.dump(4));
+    live_trade_data trade_data = jdata.get<live_trade_data>();
+    //
+    const ticker_data& tdata = exchange->tickers_subscribed_.at(cp);
+    for (auto subscriber : tdata.live_trade_subscribers_)
+    {
+      bitstamp_dbg<4>.debug(str<>("live_trade subscribe"), currency_pair_string(cp));
+      subscriber(cp, trade_data);
+    }
+  };
+
+  stdexec::sender auto snd =
+    stdexec::on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
+  stdexec::start_detached(std::move(snd));
 }
 
 // ----------------------------------------------------------------------------
@@ -1086,82 +1080,24 @@ void bitstamp_network::place_buy_sell_orders(
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
+streams_vector bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
 {
   // exit if this exchange has already subscribed to this ticker
   std::string cps = currency_pair_string({c1, c2});
   if (ticker_subscribed(c1, c2))
   {
     bitstamp_dbg<0>.debug(str<>("subscription"), cps, "subscribed");
-    return;
+    return streams_vector{};
   }
   bitstamp_dbg<0>.debug(str<>("subscribing"), cps);
   currency_pair cp{c1, c2};
 
   // create a new data view from hdf5
   std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("bitstamp", c1, c2);
-
-  // create a new price plot object
-  auto* chart_widget = new price_chart_widget(nullptr, view, shared_from_this(), cps);
-
-  // put the price plot into a dock widget
-  using namespace ads;
-  std::string title = cps + " price " + std::string(name());
-  CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
-  PlotDockWidget->setWidget(chart_widget);
-  PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
-  global_settings.dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
-
-  // create a new orderbook text display
-  const size_t font_size = 8;
-  auto* orderbook_text = new QPlainTextEdit(nullptr);
-  QString txt = "X";
-  int char_size = QFontMetrics(orderbook_text->font()).horizontalAdvance(txt);
-  int calcWidth = char_size * 85 + 8;
-  orderbook_text->setMinimumWidth(calcWidth);
-  QFont font = QFont();
-  font.setPointSize(font_size);
-  font.setFamily("Courier");
-  orderbook_text->setFont(font);
-
-  // put the order book into a dock widget
-  using namespace ads;
-  std::string obtitle = cps + " text " + std::string(name());
-  CDockWidget* obPlotDockWidget = new CDockWidget(QString(obtitle.c_str()));
-  obPlotDockWidget->setWidget(orderbook_text);
-  obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(
-    DockWidgetArea::LeftDockWidgetArea, obPlotDockWidget);
-  global_settings.dockwindows_menu_->addAction(obPlotDockWidget->toggleViewAction());
-
-  // ----------------------------------
-  // Create orderbook plot widget
-  OrderBookPlot* orderbook_plot = new OrderBookPlot();
-  orderbook_plot->setMinimumSize(384, 256);
-  //
-  std::string obptitle = cps + " depth " + std::string(name());
-  CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
-  obpDockWidget->setWidget(orderbook_plot);
-  obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, obpDockWidget);
-  global_settings.dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
-
-  bitstamp_order_book* orderbook = new bitstamp_order_book(orderbook_plot, false);
+  std::shared_ptr<bitstamp_order_book> orderbook = std::make_shared<bitstamp_order_book>();
   // add the subscribed ticker/data/plot to our list for tracking
-  tickers_subscribed_.insert({cp, {view, chart_widget, orderbook, orderbook_text, orderbook_plot}});
-
-  connect(
-    this, &bitstamp_network::orderbook_changed, this,
-    [orderbook_plot, orderbook_text, cp, this]() {
-      QString datastring = QString::fromStdString(get_orderbook(cp).order_text);
-      orderbook_text->setPlainText(datastring);
-      orderbook_plot->update_time_and_replot();
-    },
-    Qt::QueuedConnection);
-
-  // start by displaying 1 day of data
-  chart_widget->graph_rescale(0);
+  tickers_subscribed_.insert({cp, {view, orderbook, nullptr}});
+  return websocket_streams();
 }
 
 // ----------------------------------------------------------------------------

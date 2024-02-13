@@ -13,7 +13,7 @@ namespace grox {
   // ----------------------------------------------------------------------------
   // bitstamp websocket ticker data
   // ----------------------------------------------------------------------------
-  struct live_trades
+  struct live_trade_data
   {
     double amount;
     std::string amount_str;
@@ -26,9 +26,9 @@ namespace grox {
     std::string timestamp;
     std::uint64_t type;
     //
-    live_trades() = default;
+    live_trade_data() = default;
   };
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(grox::live_trades, amount, amount_str, buy_order_id, id,
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(grox::live_trade_data, amount, amount_str, buy_order_id, id,
     microtimestamp, price, price_str, sell_order_id, timestamp, type);
 
   // ----------------------------------------------------------------------------

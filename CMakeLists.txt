@@ -344,6 +344,7 @@ add_subdirectory(src/util)
 add_subdirectory(src/data)
 add_subdirectory(src/currency)
 add_subdirectory(src/debug)
+add_subdirectory(src/exchange)
 add_subdirectory(src/indicators)
 add_subdirectory(src/io)
 add_subdirectory(src/network)
@@ -353,12 +354,6 @@ set(GROX_SRC
     # main application
     src/main.cpp
     src/mainwindow.cpp
-    # exchange APIs
-    src/exchange/xrpl.cpp
-    src/exchange/exchange.cpp
-    src/exchange/xrpl_network.cpp
-    src/exchange/bitstamp.cpp
-    src/exchange/order_book.cpp
     # widgets and dialogs
     src/widgets/check_trades_dialog.cpp
     src/widgets/connection_widget.cpp
@@ -381,7 +376,7 @@ set(GROX_QRC_SRC
     ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc)
 
 add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC} src/senders/CMakeLists.txt
-                    src/senders/sender_defs.hpp)
+                    src/senders/sender_defs.hpp src/exchange/CMakeLists.txt)
 # c++ properties
 set_property(TARGET grox PROPERTY CXX_STANDARD 20)
 # Qt properties
@@ -428,17 +423,20 @@ target_link_libraries(
   PUBLIC grox_util
          grox_data
          grox_currency
+         grox_debug
+         grox_exchange
+         grox_indicators
          grox_io
-         grox_plot
          grox_network
+         grox_plot
          qwt
          Qt::Core
          Qt::Gui
          Qt::OpenGL
          Qt::Svg
          Qt::Widgets
-         $<$<EQUAL:${QT_DEFAULT_MAJOR_VERSION},6>:Qt::OpenGLWidgets>
-         qt${QT_VERSION_MAJOR}advanceddocking
+         Qt::OpenGLWidgets
+         qt6advanceddocking
          ${Boost_LIBRARIES}
          nlohmann_json
          STDEXEC::stdexec

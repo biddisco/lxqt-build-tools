@@ -26,8 +26,9 @@ template <int Level>
 static print_threshold<Level, debug_level> book_dbg("ord-plot");
 
 // ----------------------------------------------------------------------------
-OrderBookPlot::OrderBookPlot(QWidget* parent)
+OrderBookPlot::OrderBookPlot(QWidget* parent, std::shared_ptr<order_book_base> order_book)
   : QwtPlot(parent)
+  , order_book_(order_book)
 {
   //setTitle("a title");
 
@@ -123,12 +124,32 @@ OrderBookPlot::OrderBookPlot(QWidget* parent)
   this->setAxisTitle(QwtPlot::yRight, axisTitleY2);
 
   enableAxis(QwtPlot::yRight);
+
+  bid_curve_ = new OrderBookCurve();
+  ask_curve_ = new OrderBookCurve();
+  //
+  // if (secondaxis)
+  // {
+  //   bid_curve_->setSegmentInfo(0, 0, Qt::darkYellow, 3);
+  //   ask_curve_->setSegmentInfo(0, 0, Qt::darkMagenta, 3);
+  //   bid_curve_->setYAxis(QwtPlot::yRight);
+  //   ask_curve_->setYAxis(QwtPlot::yRight);
+  // }
+  // else
+  {
+    bid_curve_->setSegmentInfo(0, 0, Qt::green, 3);
+    ask_curve_->setSegmentInfo(0, 0, Qt::red, 3);
+    bid_curve_->setYAxis(QwtPlot::yLeft);
+    ask_curve_->setYAxis(QwtPlot::yLeft);
+  }
+  bid_curve_->attach(this /*.get()*/);
+  ask_curve_->attach(this /*.get()*/);
 }
 
 // ----------------------------------------------------------------------------
 OrderBookPlot::~OrderBookPlot()
 {
-  // dummy destructor;
+  order_book_.reset();
   book_dbg<0>.debug(str<>("Destroying"), "orderbook plot");
 }
 
@@ -165,4 +186,35 @@ void OrderBookPlot::update_time_and_replot()
   this->setAxisTitle(QwtPlot::xBottom, axisTitleX);
   //
   this->replot();
+}
+
+// ----------------------------------------------------------------------------
+void OrderBookPlot::update_graph_limits()
+{
+  bool primary = true;
+  //
+  double ymin = 0.0;
+  int index = primary ? 0 : 1;
+  // if (primary)
+  {
+    setAxisScale(QwtPlot::xBottom, order_book_->prev_xmin[index], order_book_->prev_xmax[index]);
+    setAxisScale(QwtPlot::yLeft, ymin, order_book_->prev_ymax[index]);
+  }
+  // else
+  // {
+  //   if (first_time[0])
+  //   {
+  //     setAxisScale(QwtPlot::xBottom, prev_xmin[index], prev_xmax[index]);
+  //     setAxisScale(QwtPlot::yLeft, ymin, prev_ymax[index]);
+  //   }
+  //   setAxisScale(QwtPlot::yRight, ymin, prev_ymax[index]);
+  // }
+}
+
+// ----------------------------------------------------------------------------
+void OrderBookPlot::new_data_event()
+{
+  // push this data into the graph object
+  bid_curve_->setRawSamples_locked(order_book_->bids.rate, order_book_->bids.total);
+  ask_curve_->setRawSamples_locked(order_book_->asks.rate, order_book_->asks.total);
 }

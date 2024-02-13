@@ -29,13 +29,12 @@ void exchange::mark_stream_subscribed(std::string const& s, bool enabled)
 }
 
 // ----------------------------------------------------------------------------
-currency_pairlist const& exchange::get_currency_pairs()
+exchange::exchange_map const& exchange::tickers_subscribed() const
 {
-  return tickers_available_;
+  return tickers_subscribed_;
 }
 
-// ----------------------------------------------------------------------------
-exchange::exchange_map const& exchange::tickers_subscribed()
+exchange::exchange_map& exchange::tickers_subscribed()
 {
   return tickers_subscribed_;
 }
@@ -48,15 +47,15 @@ bool exchange::ticker_subscribed(currency const& c1, currency const& c2)
 }
 
 // ----------------------------------------------------------------------------
-void exchange::ticker_subscribe(currency const& c1, currency const& c2)
+streams_vector exchange::ticker_subscribe(currency const& c1, currency const& c2)
 {
   throw std::runtime_error("Exchange classes must implement this function");
 }
 
 // ----------------------------------------------------------------------------
-void exchange::ticker_subscribe(const currency_pair& p)
+streams_vector exchange::ticker_subscribe(const currency_pair& p)
 {
-  ticker_subscribe(std::get<0>(p), std::get<1>(p));
+  return ticker_subscribe(std::get<0>(p), std::get<1>(p));
 }
 
 // ----------------------------------------------------------------------------
@@ -66,6 +65,12 @@ void exchange::ticker_unsubscribe(currency const& c1, currency const& c2)
   {
     tickers_subscribed_.erase(currency_pair{c1, c2});
   }
+}
+
+// ----------------------------------------------------------------------------
+currency_pairlist const& exchange::get_currency_pairs()
+{
+  return tickers_available_;
 }
 
 // ----------------------------------------------------------------------------

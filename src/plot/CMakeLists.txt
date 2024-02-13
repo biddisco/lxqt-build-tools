@@ -1,13 +1,23 @@
 set(grox_plot_SRCS
     indicator_plot.cpp
-    ohlc_date_scaledraw.cpp
-    ohlc_price_plot.cpp
-    OrderBookPlot.cpp
-    timebased_data_curve.cpp
+    indicator_plot.hpp
     ohlc_chart_curve.cpp
+    ohlc_chart_curve.hpp
+    ohlc_date_scaledraw.cpp
+    ohlc_date_scaledraw.hpp
     ohlc_interactor.cpp
+    ohlc_interactor.hpp
+    ohlc_picker.hpp
+    ohlc_price_plot.cpp
+    ohlc_price_plot.hpp
     OrderBookCurve.cpp
-    timebased_chart_plot.cpp)
+    OrderBookCurve.h
+    OrderBookPlot.cpp
+    OrderBookPlot.h
+    timebased_chart_plot.cpp
+    timebased_chart_plot.hpp
+    timebased_data_curve.cpp
+    timebased_data_curve.hpp)
 
 add_library(grox_plot ${grox_plot_SRCS})
 
@@ -15,4 +25,15 @@ set_property(TARGET grox_plot PROPERTY AUTOMOC ON)
 
 target_include_directories(grox_plot PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-target_link_libraries(grox_plot PUBLIC qwt grox_data fmt::fmt)
+target_link_libraries(
+  grox_plot
+  PUBLIC qwt
+         grox_data
+         grox_debug
+         grox_util
+         grox_currency
+         grox_exchange
+         fmt::fmt
+         nlohmann_json
+         range-v3
+         Qt::Core)

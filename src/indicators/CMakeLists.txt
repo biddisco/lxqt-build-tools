@@ -1,4 +1,13 @@
-set(grox_indicators_SRCS)
+set(grox_indicators_SRCS
+    indicator_definitions.hpp
+    indicator_types.hpp
+    moving_average_exponential.hpp
+    moving_average_exponential_volume_weighted.hpp
+    moving_average.hpp
+    moving_average_volume_weighted.hpp
+    relative_strength_indicator.hpp
+    stochastic_oscillator.hpp
+    stochastic_relative_strength_indicator.hpp)
 
 add_library(grox_indicators INTERFACE)
 

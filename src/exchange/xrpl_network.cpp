@@ -26,13 +26,7 @@
 #include "senders/qhttp-post-sender.hpp"
 #include "senders/qt_mainthread_scheduler.hpp"
 #include "util/stringutils.hpp"
-#include "widgets/currency_widget.hpp"
-#include "widgets/price_chart_widget.hpp"
 #include "widgets/xrp_functions.hpp"
-//
-#include "DockAreaWidget.h"
-#include "DockManager.h"
-#include "DockWidget.h"
 
 // ----------------------------------------------------------------------------
 using namespace grox;
@@ -84,12 +78,6 @@ void xrpl_network::initialize()
   stdexec::sender auto snd =
     stdexec::on(default_pool_scheduler(), stdexec::just()) | stdexec::then(wait_for_init);
   stdexec::start_detached(std::move(snd));
-}
-
-// ----------------------------------------------------------------------------
-void xrpl_network::set_plot(OrderBookPlot* obp)
-{
-  orderbook_ = new xrpl_order_book(obp, true);
 }
 
 // ----------------------------------------------------------------------------
@@ -174,14 +162,14 @@ bool xrpl_network::stream_subscribe(
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::ticker_subscribe(currency const& c1, currency const& c2)
+streams_vector xrpl_network::ticker_subscribe(currency const& c1, currency const& c2)
 {
   // exit if this exchange has already subscribed to this ticker
   std::string cps = currency_pair_string({c1, c2});
   if (ticker_subscribed(c1, c2))
   {
     xrpnet_dbg<0>.debug(str<>("subscription"), cps, "subscribed");
-    return;
+    return streams_vector{};
   }
   xrpnet_dbg<0>.debug(str<>("subscribing"), cps);
   currency_pair cp{c1, c2};
@@ -189,67 +177,10 @@ void xrpl_network::ticker_subscribe(currency const& c1, currency const& c2)
   // create a new data view from hdf5
   // std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("xrpl", c1, c2);
 
-  // create a new price plot object
-  // auto* chart_widget = new price_chart_widget(nullptr, view, shared_from_this(), cps);
-
-  // put the price plot into a dock widget
-  // using namespace ads;
-  // std::string title = cps + " price " + std::string(name());
-  // CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
-  // PlotDockWidget->setWidget(chart_widget);
-  // PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  // global_settings.dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
-  // global_settings.dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
-
-  // create a new orderbook text display
-  const size_t font_size = 8;
-  auto* orderbook_text = new QPlainTextEdit(nullptr);
-  QString txt = "X";
-  int char_size = QFontMetrics(orderbook_text->font()).horizontalAdvance(txt);
-  int calcWidth = char_size * 85 + 8;
-  orderbook_text->setMinimumWidth(calcWidth);
-  QFont font = QFont();
-  font.setPointSize(font_size);
-  font.setFamily("Courier");
-  orderbook_text->setFont(font);
-
-  // put the order book into a dock widget
-  using namespace ads;
-  std::string obtitle = cps + " text " + std::string(name());
-  CDockWidget* obPlotDockWidget = new CDockWidget(QString(obtitle.c_str()));
-  obPlotDockWidget->setWidget(orderbook_text);
-  obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(
-    DockWidgetArea::LeftDockWidgetArea, obPlotDockWidget);
-  global_settings.dockwindows_menu_->addAction(obPlotDockWidget->toggleViewAction());
-
-  // ----------------------------------
-  // Create orderbook plot widget
-  OrderBookPlot* orderbook_plot = new OrderBookPlot();
-  orderbook_plot->setMinimumSize(384, 256);
-  set_plot(orderbook_plot);
-
-  // put the order book plot into a dock widget
-  std::string obptitle = cps + " depth " + std::string(name());
-  CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
-  obpDockWidget->setWidget(orderbook_plot);
-  obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, obpDockWidget);
-  global_settings.dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
-
-  xrpl_order_book* orderbook = new xrpl_order_book(orderbook_plot, false);
+  std::shared_ptr<xrpl_order_book> orderbook = std::make_shared<xrpl_order_book>();
   // add the subscribed ticker/data/plot to our list for tracking
-  tickers_subscribed_.insert({cp, {nullptr, nullptr, orderbook, orderbook_text, orderbook_plot}});
-
-  connect(
-    this, &xrpl_network::orderbook_changed, this,
-    [orderbook_plot, orderbook_text, cp, this]() {
-      xrpnet_dbg<0>.debug(str<>("orderbook_changed"), get_orderbook(cp).order_text);
-      QString datastring = QString::fromStdString(get_orderbook(cp).order_text);
-      orderbook_text->setPlainText(datastring);
-      orderbook_plot->update_time_and_replot();
-    },
-    Qt::QueuedConnection);
+  tickers_subscribed_.insert({cp, {nullptr, orderbook, nullptr}});
+  return websocket_streams();
 }
 //// ----------------------------------------------------------------------------
 //bool xrpl_network::websocket_connect(net::contexts& io_contexts, streams_vector const& streams)
@@ -365,9 +296,6 @@ void xrpl_network::new_orderbook_data(xrpl_network* nw, currency_pair const cp, 
     xrpnet_dbg<5>.debug(str<>("ledger_transaction"));
     nw->orderbook_->accept_json_ledger_transaction(data);
   }
-
-  // Send signal to mainwindow
-  emit nw->orderbook_changed();
 }
 
 // ----------------------------------------------------------------------------

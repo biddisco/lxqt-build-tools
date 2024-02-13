@@ -1,20 +1,16 @@
 #pragma once
-
-// to pass structs as params we must declare metatypes to Qt
-#include <QtCore>
 //
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 //
+#include <QtCore>
+//
 #include "nlohmann/json.hpp"
 //
 #include "currency/json_data_types.hpp"
-#include "plot/OrderBookCurve.h"
-#include "plot/OrderBookPlot.h"
 
-//
 constexpr static int bid_index = 0;
 constexpr static int ask_index = 1;
 using account_bid_ask_data =
@@ -53,8 +49,11 @@ struct fee_data
 // Base order book class provides access to top bids/asks
 // plotting and other representations of the orders
 // ----------------------------------------------------------------------------
-struct order_book_base
+class order_book_base : QObject
 {
+  Q_OBJECT
+
+  public:
   using trade_set =
     std::tuple<double, double, double, double, double, double, double, double, double, double>;
   using arb_vector = std::vector<trade_set>;
@@ -62,11 +61,6 @@ struct order_book_base
   // Sorted order book entries
   offer_data bids;
   offer_data asks;
-
-  // Graph plotting objects
-  OrderBookPlot* OrderBookPlot_;
-  OrderBookCurve* bid_curve_;
-  OrderBookCurve* ask_curve_;
 
   // Graph min/max control
   double prev_xmin[2];
@@ -77,7 +71,7 @@ struct order_book_base
   std::string order_text;
 
   // construct, passing plot object in
-  order_book_base(OrderBookPlot* obp, bool secondaxis);
+  order_book_base();
 
   // clean up
   virtual ~order_book_base();
@@ -100,18 +94,23 @@ struct order_book_base
   // are there arbitrage opportunities between the two
   arb_vector compute_arbitrage(order_book_base const& other, double budget, fee_data buy_fee,
     fee_data sell_fee, double test_offset, std::string& string_output) const;
+
+  Q_SIGNALS:
+  // emitted when new orderbook data has been received and processed
+  void orderbook_changed();
 };
 
 // ----------------------------------------------------------------------------
 // Bitstamp specific order book processing routines
 // ----------------------------------------------------------------------------
-struct bitstamp_order_book : order_book_base
+class bitstamp_order_book : public order_book_base
 {
+  public:
   using order_book_base::order_book_base;
 
   // ----------------------------------------------------------------------------
   // accept json reply from bitstamp order book query and turn into numeric arrays
-  bool accept_json_bitstamp(const QString data);
+  void accept_json_bitstamp(const QString data);
 
   private:
   // ----------------------------------------------------------------------------
@@ -123,8 +122,9 @@ struct bitstamp_order_book : order_book_base
 // ----------------------------------------------------------------------------
 // XRP ledger specific order book processing routines
 // ----------------------------------------------------------------------------
-struct xrpl_order_book : order_book_base
+class xrpl_order_book : public order_book_base
 {
+  public:
   using order_book_base::order_book_base;
   //
   offer_map orders;

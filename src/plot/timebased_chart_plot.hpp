@@ -50,7 +50,7 @@ class timebased_chart_plot : public QwtPlot
     return crosshairs_;
   }
 
-  signals:
+  Q_SIGNALS:
   void timeAxisChanged(double, double, bool);
 
   public slots:
