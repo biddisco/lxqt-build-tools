@@ -1080,14 +1080,14 @@ void bitstamp_network::place_buy_sell_orders(
 }
 
 // ----------------------------------------------------------------------------
-streams_vector bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
+stream_set bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
 {
   // exit if this exchange has already subscribed to this ticker
   std::string cps = currency_pair_string({c1, c2});
   if (ticker_subscribed(c1, c2))
   {
     bitstamp_dbg<0>.debug(str<>("subscription"), cps, "subscribed");
-    return streams_vector{};
+    return stream_set{};
   }
   bitstamp_dbg<0>.debug(str<>("subscribing"), cps);
   currency_pair cp{c1, c2};
@@ -1097,7 +1097,10 @@ streams_vector bitstamp_network::ticker_subscribe(currency const& c1, currency c
   std::shared_ptr<bitstamp_order_book> orderbook = std::make_shared<bitstamp_order_book>();
   // add the subscribed ticker/data/plot to our list for tracking
   tickers_subscribed_.insert({cp, {view, orderbook, nullptr}});
-  return websocket_streams();
+  return stream_set{
+    network::streams::order_book,
+    network::streams::price_data,
+  };
 }
 
 // ----------------------------------------------------------------------------

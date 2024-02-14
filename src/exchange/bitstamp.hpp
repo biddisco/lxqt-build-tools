@@ -125,13 +125,14 @@ class bitstamp_network : public exchange
   //  bool unsubscribe_my_trades(currency_pair const& cp);
   //  bool unsubscribe_my_orders(currency_pair const& cp);
 
-  streams_vector websocket_streams() override
+  stream_set websocket_streams() override
   {
     return {
       network::streams::my_orders,      // private orders
       network::streams::my_trades,      // private trades
-      network::streams::order_book,     // all orders
       network::streams::live_trades,    // all trades
+      network::streams::order_book,     // all orders
+      network::streams::price_data,     // ticker price feeds
     };
   }
 
@@ -140,9 +141,9 @@ class bitstamp_network : public exchange
     currency_pair const& cp, network::streams const stream, bool enabled) override;
 
   // connect to (multiple) streams
-  //  bool websocket_connect(net::contexts& io_contexts, streams_vector const&
+  //  bool websocket_connect(net::contexts& io_contexts, stream_set const&
   //  streams) override; bool websocket_disconnect(net::contexts& io_contexts,
-  //  streams_vector const& streams) override;
+  //  stream_set const& streams) override;
 
   // shut down sockets/connections
   void shut_down() override;
@@ -212,7 +213,7 @@ class bitstamp_network : public exchange
 
   void custom_functions(basic_account* /*acct*/) override{};
 
-  streams_vector ticker_subscribe(currency const& c1, currency const& c2) override;
+  stream_set ticker_subscribe(currency const& c1, currency const& c2) override;
 
   signals:
 

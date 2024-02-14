@@ -780,44 +780,52 @@ void GroxMainWindow::loadConnectionSetups()
         main_dbg<0>.debug(str<>("Enable Ticker"), currencypair);
         auto cp = string_to_pair(currencypair, "-");
         std::string cps = currency_pair_string(cp);
-        streams_vector s = e->ticker_subscribe(cp);
+        stream_set s = e->ticker_subscribe(cp);
         auto& tdata = e->tickers_subscribed().at(cp);
         std::string exch_name = std::string(e->name());
-        tdata.chart_widget_ =
-          create_price_chart_widget(tdata.view_, e->shared_from_this(), cps, exch_name);
-        auto* orderbook_text = create_order_book_text_widget(cps, exch_name);
-        auto* orderbook_plot = create_order_book_plot_widget(cps, exch_name, tdata.orderbook_);
-        // start by displaying 1 day of data
-        tdata.chart_widget_->graph_rescale(0);
 
-        auto live_trade_subscription = [this, tdata](currency_pair cp, grox::live_trade_data t) {
-          auto p = t.price;
-          auto v = t.amount;
-          ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
-          tdata.view_->add_live_data(new_sample);
-          QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
-            tdata.chart_widget_->update_live_data(new_sample);
-            // stream_process(new_sample);
-          });
-        };
-        tdata.live_trade_subscribers_.push_back(live_trade_subscription);
+        // price plot
+        if (s.contains(network::streams::price_data))
+        {
+          tdata.chart_widget_ =
+            create_price_chart_widget(tdata.view_, e->shared_from_this(), cps, exch_name);
+          // start by displaying 1 day of data
+          tdata.chart_widget_->graph_rescale(0);
 
-        auto orderbook_text_sub = [this, tdata, orderbook_text](currency_pair cp) {
-          QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
-            QString datastring = QString::fromStdString(tdata.orderbook_->get_orderbook_string());
-            orderbook_text->setPlainText(datastring);
-          });
-        };
-        tdata.orderbook_subscribers_.push_back(orderbook_text_sub);
+          auto live_trade_subscription = [this, tdata](currency_pair cp, grox::live_trade_data t) {
+            auto p = t.price;
+            auto v = t.amount;
+            ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
+            tdata.view_->add_live_data(new_sample);
+            QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
+              tdata.chart_widget_->update_live_data(new_sample);
+              // stream_process(new_sample);
+            });
+          };
+          tdata.live_trade_subscribers_.push_back(live_trade_subscription);
+        }
+        if (s.contains(network::streams::order_book))
+        {
+          auto* orderbook_text = create_order_book_text_widget(cps, exch_name);
+          auto* orderbook_plot = create_order_book_plot_widget(cps, exch_name, tdata.orderbook_);
 
-        auto orderbook_plot_sub = [this, tdata, orderbook_plot](currency_pair cp) {
-          QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
-            orderbook_plot->update_graph_limits();
-            orderbook_plot->new_data_event();
-            orderbook_plot->update_time_and_replot();
-          });
-        };
-        tdata.orderbook_subscribers_.push_back(orderbook_plot_sub);
+          auto orderbook_text_sub = [this, tdata, orderbook_text](currency_pair cp) {
+            QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
+              QString datastring = QString::fromStdString(tdata.orderbook_->get_orderbook_string());
+              orderbook_text->setPlainText(datastring);
+            });
+          };
+          tdata.orderbook_subscribers_.push_back(orderbook_text_sub);
+
+          auto orderbook_plot_sub = [this, tdata, orderbook_plot](currency_pair cp) {
+            QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
+              orderbook_plot->update_graph_limits();
+              orderbook_plot->new_data_event();
+              orderbook_plot->update_time_and_replot();
+            });
+          };
+          tdata.orderbook_subscribers_.push_back(orderbook_plot_sub);
+        }
 
         // process messages to unblock startup waits
         progress_events(10);

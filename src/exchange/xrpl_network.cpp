@@ -162,14 +162,14 @@ bool xrpl_network::stream_subscribe(
 }
 
 // ----------------------------------------------------------------------------
-streams_vector xrpl_network::ticker_subscribe(currency const& c1, currency const& c2)
+stream_set xrpl_network::ticker_subscribe(currency const& c1, currency const& c2)
 {
   // exit if this exchange has already subscribed to this ticker
   std::string cps = currency_pair_string({c1, c2});
   if (ticker_subscribed(c1, c2))
   {
     xrpnet_dbg<0>.debug(str<>("subscription"), cps, "subscribed");
-    return streams_vector{};
+    return stream_set{};
   }
   xrpnet_dbg<0>.debug(str<>("subscribing"), cps);
   currency_pair cp{c1, c2};
@@ -183,7 +183,7 @@ streams_vector xrpl_network::ticker_subscribe(currency const& c1, currency const
   return websocket_streams();
 }
 //// ----------------------------------------------------------------------------
-//bool xrpl_network::websocket_connect(net::contexts& io_contexts, streams_vector const& streams)
+//bool xrpl_network::websocket_connect(net::contexts& io_contexts, stream_set const& streams)
 //{
 //  bool ok = true;
 //  for (auto const& s : streams)
@@ -196,7 +196,7 @@ streams_vector xrpl_network::ticker_subscribe(currency const& c1, currency const
 
 //// ----------------------------------------------------------------------------
 //bool xrpl_network::websocket_disconnect(
-//  net::contexts& /*io_contexts*/, streams_vector const& streams)
+//  net::contexts& /*io_contexts*/, stream_set const& streams)
 //{
 //  bool ok = true;
 //  for (auto const& s : streams)

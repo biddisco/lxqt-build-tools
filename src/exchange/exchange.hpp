@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <string>
 #include <vector>
 //
@@ -23,11 +24,12 @@ namespace network {
     my_orders,
     live_trades,
     order_book,
+    price_data,
     accounts,
     invalid,
   };
 }
-using streams_vector = std::vector<network::streams>;
+using stream_set = std::set<network::streams>;
 
 // ----------------------------------------------------------------------------
 static std::string stream_to_text(network::streams stype)
@@ -122,7 +124,7 @@ class exchange
   // a ticker may provide streams of dat which are subscribed to individually
   // ---------------------------------------
   // return a list of all streams available at the exchange level
-  virtual streams_vector websocket_streams() = 0;
+  virtual stream_set websocket_streams() = 0;
 
   // check if a particular ticker/stream is subscribed to
   virtual bool stream_subscribed(std::string const& s);
@@ -132,8 +134,8 @@ class exchange
   virtual bool stream_subscribe(
     currency_pair const& cp, network::streams const stream, bool enabled) = 0;
 
-  //  virtual bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) = 0;
-  //  virtual bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) = 0;
+  //  virtual bool websocket_connect(net::contexts& io_contexts, stream_set const& streams) = 0;
+  //  virtual bool websocket_disconnect(net::contexts& io_contexts, stream_set const& streams) = 0;
 
   // ---------------------------------------
   // subscription to tickers
@@ -143,8 +145,8 @@ class exchange
   // query which tickers (currency pairs) are subscribed
   virtual bool ticker_subscribed(currency const& c1, currency const& c2);
   // un/subscribe to a ticker
-  virtual streams_vector ticker_subscribe(currency const& c1, currency const& c2);
-  virtual streams_vector ticker_subscribe(const currency_pair& p);
+  virtual stream_set ticker_subscribe(currency const& c1, currency const& c2);
+  virtual stream_set ticker_subscribe(const currency_pair& p);
   virtual void ticker_unsubscribe(currency const& c1, currency const& c2);
   // return list of subscribed tickers
   exchange_map const& tickers_subscribed() const;

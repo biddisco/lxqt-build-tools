@@ -47,13 +47,13 @@ bool exchange::ticker_subscribed(currency const& c1, currency const& c2)
 }
 
 // ----------------------------------------------------------------------------
-streams_vector exchange::ticker_subscribe(currency const& c1, currency const& c2)
+stream_set exchange::ticker_subscribe(currency const& c1, currency const& c2)
 {
   throw std::runtime_error("Exchange classes must implement this function");
 }
 
 // ----------------------------------------------------------------------------
-streams_vector exchange::ticker_subscribe(const currency_pair& p)
+stream_set exchange::ticker_subscribe(const currency_pair& p)
 {
   return ticker_subscribe(std::get<0>(p), std::get<1>(p));
 }

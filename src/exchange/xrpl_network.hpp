@@ -133,20 +133,20 @@ class xrpl_network : public exchange
   //
   xrpl_order_book const& get_orderbook(currency_pair const& cp) const;
   //
-  streams_vector websocket_streams() override
+  stream_set websocket_streams() override
   {
     return {network::streams::order_book, network::streams::accounts};
   }
 
-  streams_vector ticker_subscribe(currency const& c1, currency const& c2) override;
+  stream_set ticker_subscribe(currency const& c1, currency const& c2) override;
 
   // connect to an individual stream
   bool stream_subscribe(
     currency_pair const& cp, network::streams const stream, bool enabled) override;
 
   // connect to (multiple) streams
-  //  bool websocket_connect(net::contexts& io_contexts, streams_vector const& streams) override;
-  //  bool websocket_disconnect(net::contexts& io_contexts, streams_vector const& streams) override;
+  //  bool websocket_connect(net::contexts& io_contexts, stream_set const& streams) override;
+  //  bool websocket_disconnect(net::contexts& io_contexts, stream_set const& streams) override;
 
   // shut down sockets/connections
   void shut_down() override;
