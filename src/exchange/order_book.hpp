@@ -98,8 +98,6 @@ class order_book_base : QObject
   }
 
   Q_SIGNALS:
-  // emitted when new orderbook data has been received and processed
-  void orderbook_changed();
 
   protected:
   // these are not protected by a mutex and should only be accessed internally

@@ -146,7 +146,7 @@ bool xrpl_network::stream_subscribe(
   bool ok = true;
   switch (stream)
   {
-  case network::streams::accounts:
+  case network::streams::account_changes:
     ok = subscribe_accounts();
     break;
   case network::streams::order_book:
@@ -157,7 +157,7 @@ bool xrpl_network::stream_subscribe(
     throw std::runtime_error("unknown stream");
   }
   if (ok)
-    mark_stream_subscribed(currency_pair_string(cp) + "/" + stream_to_text(stream), enabled);
+    mark_stream_subscribed(cp, stream, enabled);
   return ok;
 }
 

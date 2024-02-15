@@ -40,13 +40,12 @@ void connection_widget::setup_gui()
   {
     for (auto const& s : streams)
     {
-      std::string key = currency_pair_string(t.first) + "/" + stream_to_text(s);
-      QCheckBox* bx = new QCheckBox(QString(key.c_str()), ui->stream_box);
-      bx->setChecked(exchange_->stream_subscribed(key));
+      currency_pair cp = t.first;
+      QCheckBox* bx = new QCheckBox(QString(stream_to_pretty_text(s).c_str()), ui->stream_box);
+      bx->setChecked(exchange_->is_stream_subscribed(cp, s));
       connect(
         bx, &QCheckBox::stateChanged, this,
-        [this, cp = t.first, s](bool checked) {
-          //
+        [this, cp, s](bool checked) {    //
           exchange_->stream_subscribe(cp, s, checked);
         },
         Qt::QueuedConnection);

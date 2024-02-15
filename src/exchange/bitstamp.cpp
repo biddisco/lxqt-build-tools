@@ -267,12 +267,16 @@ bool bitstamp_network::stream_subscribe(
         case network::streams::order_book:
           ok = subscribe_order_book(cp, enabled);
           break;
+        case network::streams::price_data:
+          std::cout << "Price data is a fake stream, please fix this for consistency" << std::endl;
+          ok = true;
+          break;
         default:
           ok = false;
           throw std::runtime_error("unknown stream");
         }
         if (ok)
-          mark_stream_subscribed(currency_pair_string(cp) + "/" + stream_to_text(stream), enabled);
+          mark_stream_subscribed(cp, stream, enabled);
         return ok;
       });
   stdexec::start_detached(std::move(snd));

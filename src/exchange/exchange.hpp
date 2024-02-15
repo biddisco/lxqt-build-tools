@@ -5,11 +5,12 @@
 #include <vector>
 //
 #include <QObject>
+// extern
+#include <magic_enum.hpp>
 //
 #include "currency/currency.hpp"
 #include "currency/json_data_types.hpp"
 #include "currency/trade_data.hpp"
-//
 #include "data/ohlc_dataset_view.hpp"
 #include "network/qwebsocket_client.hpp"
 #include "network/qwebsocket_session.hpp"
@@ -25,45 +26,36 @@ namespace network {
     live_trades,
     order_book,
     price_data,
-    accounts,
+    account_changes,
     invalid,
   };
-}
+  constexpr auto stream_names = magic_enum::enum_names<network::streams>();
+}    // namespace network
+
 using stream_set = std::set<network::streams>;
 
 // ----------------------------------------------------------------------------
-static std::string stream_to_text(network::streams stype)
+static std::string stream_to_pretty_text(network::streams stream)
 {
-  // always change stream_to_text and stream_from_text together
-  switch (stype)
-  {
-  case network::streams::my_trades:
-    return "My Trades";
-  case network::streams::my_orders:
-    return "My Orders";
-  case network::streams::live_trades:
-    return "Live Trades";
-  case network::streams::order_book:
-    return "Order Book";
-  case network::streams::accounts:
-    return "Account Changes";
-  }
-  return "Unknown";
+  std::string txt = std::string(magic_enum::enum_name(stream));
+  // Transform fir char after each break
+  txt[0] = std::toupper(txt[0]);
+  std::for_each(txt.begin() + 1, txt.end(), [](char& c) {
+    if ((*(&c - 1)) == '_')
+      c = std::toupper(c);
+  });
+  std::transform(txt.begin(), txt.end(), txt.begin(), [](char& c) { return (c == '_') ? ' ' : c; });
+  return txt;
 }
 
-static network::streams stream_from_text(std::string_view txt)
+static network::streams stream_from_pretty_text(std::string txt)
 {
-  // always change stream_to_text and stream_from_text together
-  if (txt == "My Trades")
-    return network::streams::my_trades;
-  if (txt == "My Orders")
-    return network::streams::my_orders;
-  if (txt == "Live Trades")
-    return network::streams::live_trades;
-  if (txt == "Order Book")
-    return network::streams::order_book;
-  if (txt == "Account Changes")
-    return network::streams::accounts;
+  std::transform(txt.begin(), txt.end(), txt.begin(), [](char c) { return std::tolower(c); });
+  auto stream = magic_enum::enum_cast<network::streams>(txt);
+  if (stream.has_value())
+  {
+    return stream.value();
+  }
   return network::streams::invalid;
 }
 
@@ -127,9 +119,9 @@ class exchange
   virtual stream_set websocket_streams() = 0;
 
   // check if a particular ticker/stream is subscribed to
-  virtual bool stream_subscribed(std::string const& s);
+  virtual bool is_stream_subscribed(currency_pair cp, network::streams s);
   // puts an entry into the stream map
-  void mark_stream_subscribed(std::string const& s, bool enabled);
+  void mark_stream_subscribed(currency_pair cp, network::streams s, bool enabled);
   // un/subscribe to an individual ticker stream
   virtual bool stream_subscribe(
     currency_pair const& cp, network::streams const stream, bool enabled) = 0;

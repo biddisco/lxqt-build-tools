@@ -13,19 +13,21 @@ template <int Level>
 static print_threshold<Level, debug_level> exchange_dbg("Exchange");
 
 // ----------------------------------------------------------------------------
-bool exchange::stream_subscribed(std::string const& s)
+bool exchange::is_stream_subscribed(currency_pair cp, network::streams s)
 {
-  if (enabled_streams_.find(s) != enabled_streams_.end())
+  std::string key = currency_pair_string(cp) + "/" + std::string(magic_enum::enum_name(s));
+  if (enabled_streams_.contains(key))
   {
-    return enabled_streams_[s];
+    return enabled_streams_[key];
   }
   return false;
 }
 
 // ----------------------------------------------------------------------------
-void exchange::mark_stream_subscribed(std::string const& s, bool enabled)
+void exchange::mark_stream_subscribed(currency_pair cp, network::streams s, bool enabled)
 {
-  enabled_streams_[s] = enabled;
+  std::string key = currency_pair_string(cp) + "/" + std::string(magic_enum::enum_name(s));
+  enabled_streams_[key] = enabled;
 }
 
 // ----------------------------------------------------------------------------

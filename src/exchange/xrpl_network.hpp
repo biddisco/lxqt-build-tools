@@ -135,7 +135,7 @@ class xrpl_network : public exchange
   //
   stream_set websocket_streams() override
   {
-    return {network::streams::order_book, network::streams::accounts};
+    return {network::streams::order_book, network::streams::account_changes};
   }
 
   stream_set ticker_subscribe(currency const& c1, currency const& c2) override;
