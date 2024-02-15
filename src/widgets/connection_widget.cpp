@@ -16,7 +16,6 @@ connection_widget::connection_widget(QWidget* parent, exchange* ex)
   ui->setupUi(this);
   connect(
     ui->filter, SIGNAL(textChanged(QString const&)), this, SLOT(filter_changed(QString const&)));
-  connect(ui->apply, SIGNAL(clicked()), this, SLOT(apply()));
 }
 
 // ----------------------------------------------------------------------------
@@ -34,27 +33,31 @@ void connection_widget::setup_gui()
   // -------------------------------------------
   // display available streams in a Vertical box
   QVBoxLayout* sbl = new QVBoxLayout(ui->stream_box);
+  ui->stream_box->setLayout(sbl);
+  //
   const auto streams = exchange_->websocket_streams();
-  // for each ticker we are subscribed to
-  for (auto const& t : exchange_->tickers_subscribed())
-  {
+  //
+  // function to create a box with a set of stream checkboxes inside it
+  auto create_stream_box = [this, sbl, streams](currency_pair cp, stream_set s) {
+    QGroupBox* ticker_panel =
+      new QGroupBox(QString(currency_pair_string(cp).c_str()), ui->stream_box);
+    QVBoxLayout* vbox = new QVBoxLayout;
     for (auto const& s : streams)
     {
-      currency_pair cp = t.first;
-      QCheckBox* bx = new QCheckBox(QString(stream_to_pretty_text(s).c_str()), ui->stream_box);
+      QString txt = QString(stream_to_pretty_text(s).c_str());
+      QCheckBox* bx = new QCheckBox(txt, ticker_panel);
       bx->setChecked(exchange_->is_stream_subscribed(cp, s));
       connect(
         bx, &QCheckBox::stateChanged, this,
-        [this, cp, s](bool checked) {    //
-          exchange_->stream_subscribe(cp, s, checked);
-        },
+        [this, cp, s](bool checked) { exchange_->stream_subscribe(cp, s, checked); },
         Qt::QueuedConnection);
-
-      sbl->addWidget(bx);
+      vbox->addWidget(bx);
     }
-  }
-  sbl->addItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding));
-  ui->stream_box->setLayout(sbl);
+    ticker_panel->setLayout(vbox);
+    sbl->addWidget(ticker_panel);
+    sbl->addItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding));
+    return ticker_panel;
+  };
 
   // -------------------------------------------
   // display available ticker currency pairs
@@ -63,8 +66,10 @@ void connection_widget::setup_gui()
 
   enum
   {
-    CheckState = Qt::UserRole + 1
+    CheckState = Qt::UserRole + 1,
+    DataState = Qt::UserRole + 2
   };
+
   for (auto const& [i, cp] : exchange_->get_currency_pairs() | ranges::views::enumerate)
   {
     QStandardItem* item = new QStandardItem();
@@ -73,37 +78,38 @@ void connection_widget::setup_gui()
     // initial state stored in user role to track checkbox changes
     if (exchange_->ticker_subscribed(std::get<0>(cp), std::get<1>(cp)))
     {
+      auto* panel = create_stream_box(cp, streams);
       item->setData(Qt::Checked, CheckState);
+      item->setData(QVariant::fromValue<QGroupBox*>(panel), DataState);
       item->setCheckState(Qt::Checked);
-      ui->subscribed_list->addItem(item->text());
     }
     else
     {
       item->setData(Qt::Unchecked, CheckState);
+      item->setData(QVariant::fromValue<QGroupBox*>(nullptr), DataState);
       item->setCheckState(Qt::Unchecked);
     }
     model_->setItem(i, item);
   }
+
   // attach a slot to catch item changes and update subscribed list
   connect(
     model_, &QStandardItemModel::itemChanged, this,
-    [this](QStandardItem* item) {
+    [this, create_stream_box, streams](QStandardItem* item) {
       if (item->checkState() != item->data(CheckState).value<Qt::CheckState>())
       {
         // main_dbg<0>.debug(str<>("Checked changed"), item->text().toStdString(), item->checkState());
         item->setData(item->checkState(), CheckState);
-        auto* sl = ui->subscribed_list;
         if (item->checkState() == Qt::Checked)
         {
-          sl->addItem(item->text());
+          currency_pair cp = string_to_pair(item->text().toStdString(), "/");
+          auto* panel = create_stream_box(cp, streams);
+          item->setData(QVariant::fromValue<QGroupBox*>(panel), DataState);
         }
         else
         {
-          auto items = sl->findItems(item->text(), Qt::MatchFlag::MatchCaseSensitive);
-          for (auto* item : items)
-          {
-            delete sl->takeItem(sl->row(item));
-          }
+          auto* panel = item->data(DataState).value<QGroupBox*>();
+          delete panel;
         }
       }
     },
@@ -119,28 +125,4 @@ void connection_widget::filter_changed(QString const& s)
   QRegularExpression::PatternOption po = QRegularExpression::PatternOption::CaseInsensitiveOption;
   QRegularExpression regExp(s, po);
   filter_->setFilterRegularExpression(regExp);
-}
-
-// ----------------------------------------------------------------------------
-void connection_widget::apply()
-{
-  // add any new subscribed tickers to exchange list
-  auto* sl = ui->subscribed_list;
-  for (int i = 0; i < sl->count(); ++i)
-  {
-    std::string s = sl->item(i)->text().toStdString();
-    auto const& [c1, c2] = split_currency_pair_string(s, '/');
-    exchange_->ticker_subscribe(currency("", c1), currency("", c2));
-  }
-  // remove any unsubscribed ones
-  auto ticker_copy = exchange_->tickers_subscribed();
-  for (auto& [ticker, data] : ticker_copy)
-  {
-    std::string text = currency_pair_string(ticker, "/");
-    auto list = sl->findItems(QString(text.c_str()), Qt::MatchFlag::MatchExactly);
-    if (list.empty())
-    {
-      exchange_->ticker_unsubscribe(std::get<0>(ticker), std::get<1>(ticker));
-    }
-  }
 }

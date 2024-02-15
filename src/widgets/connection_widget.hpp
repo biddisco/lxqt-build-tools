@@ -27,7 +27,6 @@ class connection_widget : public QWidget
 
   public slots:
   void filter_changed(QString const& s);
-  void apply();
 
   private:
   Ui::connection_widget* ui;
