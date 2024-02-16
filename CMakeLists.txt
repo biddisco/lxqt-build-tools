@@ -349,22 +349,10 @@ add_subdirectory(src/indicators)
 add_subdirectory(src/io)
 add_subdirectory(src/network)
 add_subdirectory(src/plot)
+add_subdirectory(src/widgets)
 
-set(GROX_SRC
-    # main application
-    src/main.cpp
-    src/mainwindow.cpp
-    # widgets and dialogs
-    src/widgets/check_trades_dialog.cpp
-    src/widgets/connection_widget.cpp
-    src/widgets/currency_widget.cpp
-    src/widgets/digital_clock.cpp
-    src/widgets/password_dialog.cpp
-    src/widgets/indicator_dialog.cpp
-    src/widgets/trade_widget.cpp
-    src/widgets/wallet_widget.cpp
-    src/widgets/xrp_functions.cpp
-    src/widgets/price_chart_widget.cpp)
+set(GROX_SRC # main application
+    src/main.cpp src/mainwindow.cpp)
 
 qt_wrap_ui(GROX_SRC src/tabbed_form.ui)
 
@@ -420,15 +408,16 @@ target_compile_definitions(
 
 target_link_libraries(
   grox
-  PUBLIC grox_util
+  PUBLIC grox_currency
          grox_data
-         grox_currency
          grox_debug
          grox_exchange
          grox_indicators
          grox_io
          grox_network
          grox_plot
+         grox_util
+         grox_widgets
          qwt
          Qt::Core
          Qt::Gui

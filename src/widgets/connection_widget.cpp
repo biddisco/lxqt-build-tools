@@ -3,6 +3,7 @@
 //
 #include <range/v3/view.hpp>
 //
+#include "collapsible_groupbox.hpp"
 #include "connection_widget.hpp"
 #include "ui_connection_widget.h"
 #include "util/stringutils.hpp"
@@ -39,8 +40,8 @@ void connection_widget::setup_gui()
   //
   // function to create a box with a set of stream checkboxes inside it
   auto create_stream_box = [this, sbl, streams](currency_pair cp, stream_set s) {
-    QGroupBox* ticker_panel =
-      new QGroupBox(QString(currency_pair_string(cp).c_str()), ui->stream_box);
+    CollapsibleGroupBox* ticker_panel =
+      new CollapsibleGroupBox(QString(currency_pair_string(cp).c_str()), ui->stream_box);
     QVBoxLayout* vbox = new QVBoxLayout;
     for (auto const& s : streams)
     {
@@ -80,13 +81,13 @@ void connection_widget::setup_gui()
     {
       auto* panel = create_stream_box(cp, streams);
       item->setData(Qt::Checked, CheckState);
-      item->setData(QVariant::fromValue<QGroupBox*>(panel), DataState);
+      item->setData(QVariant::fromValue<CollapsibleGroupBox*>(panel), DataState);
       item->setCheckState(Qt::Checked);
     }
     else
     {
       item->setData(Qt::Unchecked, CheckState);
-      item->setData(QVariant::fromValue<QGroupBox*>(nullptr), DataState);
+      item->setData(QVariant::fromValue<CollapsibleGroupBox*>(nullptr), DataState);
       item->setCheckState(Qt::Unchecked);
     }
     model_->setItem(i, item);
@@ -104,11 +105,11 @@ void connection_widget::setup_gui()
         {
           currency_pair cp = string_to_pair(item->text().toStdString(), "/");
           auto* panel = create_stream_box(cp, streams);
-          item->setData(QVariant::fromValue<QGroupBox*>(panel), DataState);
+          item->setData(QVariant::fromValue<CollapsibleGroupBox*>(panel), DataState);
         }
         else
         {
-          auto* panel = item->data(DataState).value<QGroupBox*>();
+          auto* panel = item->data(DataState).value<CollapsibleGroupBox*>();
           delete panel;
         }
       }
