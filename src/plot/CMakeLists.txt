@@ -17,11 +17,16 @@ set(grox_plot_SRCS
     timebased_chart_plot.cpp
     timebased_chart_plot.hpp
     timebased_data_curve.cpp
-    timebased_data_curve.hpp)
+    timebased_data_curve.hpp
+)
 
 add_library(grox_plot ${grox_plot_SRCS})
 
-set_property(TARGET grox_plot PROPERTY AUTOMOC ON)
+set_property(
+  TARGET grox_plot
+  PROPERTY AUTOMOC
+           ON
+)
 
 target_include_directories(grox_plot PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
@@ -36,4 +41,5 @@ target_link_libraries(
          fmt::fmt
          nlohmann_json
          range-v3
-         Qt::Core)
+         Qt::Core
+)

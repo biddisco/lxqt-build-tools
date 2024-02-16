@@ -20,11 +20,11 @@ set(grox_widgets_SRCS
     wallet_widget.cpp
     wallet_widget.hpp
     xrp_functions.cpp
-    xrp_functions.hpp)
+    xrp_functions.hpp
+)
 
-# qt_wrap_ui(grox_widgets_ui_SRC connection_widget.ui currency_widget.ui
-# indicator_dialog.ui password_dialog.ui price_chart_widget.ui trade_widget.ui
-# wallet_widget.ui xrp_functions.ui)
+# qt_wrap_ui(grox_widgets_ui_SRC connection_widget.ui currency_widget.ui indicator_dialog.ui
+# password_dialog.ui price_chart_widget.ui trade_widget.ui wallet_widget.ui xrp_functions.ui)
 
 set(grox_widgets_SRCS
     ${grox_widgets_SRCS}
@@ -35,12 +35,25 @@ set(grox_widgets_SRCS
     price_chart_widget.ui
     trade_widget.ui
     wallet_widget.ui
-    xrp_functions.ui)
+    xrp_functions.ui
+)
 
-add_library(grox_widgets ${grox_widgets_SRCS} ${grox_widgets_ui_SRC})
+add_library(
+  grox_widgets
+  ${grox_widgets_SRCS}
+  ${grox_widgets_ui_SRC}
+)
 
-set_property(TARGET grox_widgets PROPERTY AUTOMOC ON)
-set_property(TARGET grox_widgets PROPERTY AUTOUIC ON)
+set_property(
+  TARGET grox_widgets
+  PROPERTY AUTOMOC
+           ON
+)
+set_property(
+  TARGET grox_widgets
+  PROPERTY AUTOUIC
+           ON
+)
 
 target_include_directories(grox_widgets PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
@@ -56,4 +69,5 @@ target_link_libraries(
          nlohmann_json
          range-v3
          Qt::Core
-         Qt::Widgets)
+         Qt::Widgets
+)
