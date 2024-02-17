@@ -1,12 +1,12 @@
+// STL
+#include <string>
+#include <vector>
 // Qt
 #include <QCheckBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QLineEdit>
 #include <QString>
-// STL
-#include <string>
-#include <vector>
 // Grox
 #include "data/ohlc_datasets.hpp"
 #include "indicators/indicator_definitions.hpp"

@@ -1,17 +1,16 @@
+#include <string>
+//
 #include <QDialog>
 #include <QMessageBox>
 //
 #include "config/config.hpp"
 #include "exchange/account.hpp"
 #include "exchange/exchange.hpp"
+#include "widgets/check_trades_dialog.hpp"
+#include "widgets/currency_widget.hpp"
+#include "widgets/trade_widget.hpp"
 //
-#include "check_trades_dialog.hpp"
-#include "currency_widget.hpp"
-#include "trade_widget.hpp"
 #include "ui_currency_widget.h"
-//
-#include <boost/format.hpp>
-#include <string>
 
 // ----------------------------------------------------------------------------
 currency_widget::currency_widget(int decimals, QWidget* parent)

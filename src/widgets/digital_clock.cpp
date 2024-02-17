@@ -2,7 +2,7 @@
 #include <QTime>
 #include <QTimer>
 //
-#include "digital_clock.hpp"
+#include "widgets/digital_clock.hpp"
 
 DigitalClock::DigitalClock(QWidget* parent, QTimer* timer)
   : QLCDNumber(parent)

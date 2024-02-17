@@ -1,4 +1,6 @@
-#include "collapsible_groupbox.hpp"
+#include <cassert>
+#include <cmath>
+//
 #include <QApplication>
 #include <QGuiApplication>
 #include <QLayout>
@@ -7,8 +9,8 @@
 #include <QStyle>
 #include <QTimer>
 #include <QWindow>
-#include <cassert>
-#include <cmath>
+//
+#include "widgets/collapsible_groupbox.hpp"
 
 inline QWindow* findWindowForWidget(const QWidget* widget)
 {
