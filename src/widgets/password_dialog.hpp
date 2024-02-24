@@ -7,8 +7,10 @@
 #include <vector>
 //
 #include "exchange/account.hpp"
-#include "ui_password_dialog.h"
 //
+namespace Ui {
+  class password_dialog;
+}
 
 class password_dialog : public QDialog
 {
@@ -41,6 +43,6 @@ class password_dialog : public QDialog
   void refresh_gui(int index);
 
   private:
-  Ui::password_dialog ui;
+  Ui::password_dialog* ui;
   bool simple_mode_;
 };
