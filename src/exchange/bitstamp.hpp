@@ -102,13 +102,6 @@ class bitstamp_network : public exchange
     return accounts_[0];
   }
 
-  // ---------------------------------------
-  // network name
-  std::string_view name() override
-  {
-    return "Bitstamp";
-  }
-
   // Is sending this currency to the destination exchange supported
   bool can_send(const currency& c, exchange* dest) override;
 
@@ -137,8 +130,8 @@ class bitstamp_network : public exchange
   }
 
   // connect to a single stream
-  bool stream_subscribe(
-    currency_pair const& cp, network::streams const stream, bool enabled) override;
+  bool stream_subscribe(currency_pair const& cp, network::streams const stream, bool enabled,
+    factory_function f) override;
 
   // connect to (multiple) streams
   //  bool websocket_connect(net::contexts& io_contexts, stream_set const&

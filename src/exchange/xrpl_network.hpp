@@ -113,11 +113,6 @@ class xrpl_network : public exchange
   xrpl_network(bool testnet);
   ~xrpl_network() override;
   //
-  std::string_view name() override
-  {
-    return testnet() ? "XRPL Testnet" : "XRPL Mainnet";
-  }
-  //
 
   void initialize() override;
   //
@@ -141,8 +136,8 @@ class xrpl_network : public exchange
   stream_set ticker_subscribe(currency const& c1, currency const& c2) override;
 
   // connect to an individual stream
-  bool stream_subscribe(
-    currency_pair const& cp, network::streams const stream, bool enabled) override;
+  bool stream_subscribe(currency_pair const& cp, network::streams const stream, bool enabled,
+    factory_function f) override;
 
   // connect to (multiple) streams
   //  bool websocket_connect(net::contexts& io_contexts, stream_set const& streams) override;

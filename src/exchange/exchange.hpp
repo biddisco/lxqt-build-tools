@@ -16,6 +16,7 @@
 #include "network/qwebsocket_session.hpp"
 
 class basic_account;
+class exchange;
 
 // ----------------------------------------------------------------------------
 namespace network {
@@ -67,6 +68,7 @@ using live_trade_function = std::function<void(currency_pair cp, grox::live_trad
 using orderbook_function = std::function<void(currency_pair cp)>;
 struct ticker_data
 {
+  std::shared_ptr<exchange> exchange_;
   std::shared_ptr<ohlc_dataset_view> view_;
   std::shared_ptr<order_book_base> orderbook_;
   std::shared_ptr<price_chart_widget> chart_widget_;
@@ -90,15 +92,22 @@ class exchange
   public:
   using exchange_vector = std::vector<std::shared_ptr<exchange>>;
   using exchange_map = std::map<currency_pair, ticker_data>;
+  using factory_function = std::function<void(currency_pair, ticker_data&, network::streams)>;
 
   // websocket streams subscribed to format = ticker/stream_name
   std::map<std::string, bool> enabled_streams_;
+
+  // a place that stores registeered factory functions (callbacks)
+  // these are used for subscription/unsubscription
+  std::map<std::string, factory_function> factories_;
 
   // ticker pairs available
   currency_pairlist tickers_available_;
 
   // ticker pairs subscribed to
   exchange_map tickers_subscribed_;
+
+  std::string exchange_name_;
 
   // obligatory virtual destructor
   virtual ~exchange()
@@ -110,6 +119,12 @@ class exchange
   // concreate exchange instantiations must override the initialization
   // ---------------------------------------
   virtual void initialize() = 0;
+
+  // ---------------------------------------
+  // factory functions to be used for callbacks to stream subscribe/unsubscribe events
+  // ---------------------------------------
+  void register_factory(std::string name, factory_function f);
+  factory_function get_factory(std::string name);
 
   // ---------------------------------------
   // websocket/stream connection management
@@ -124,7 +139,7 @@ class exchange
   void mark_stream_subscribed(currency_pair cp, network::streams s, bool enabled);
   // un/subscribe to an individual ticker stream
   virtual bool stream_subscribe(
-    currency_pair const& cp, network::streams const stream, bool enabled) = 0;
+    currency_pair const& cp, network::streams const stream, bool enabled, factory_function f) = 0;
 
   //  virtual bool websocket_connect(net::contexts& io_contexts, stream_set const& streams) = 0;
   //  virtual bool websocket_disconnect(net::contexts& io_contexts, stream_set const& streams) = 0;
@@ -142,7 +157,9 @@ class exchange
   virtual void ticker_unsubscribe(currency const& c1, currency const& c2);
   // return list of subscribed tickers
   exchange_map const& tickers_subscribed() const;
-  exchange_map& tickers_subscribed();
+  // exchange_map& tickers_subscribed();
+  ticker_data& get_subscribed_ticker_data(currency_pair cp);
+  ticker_data const& get_subscribed_ticker_data(currency_pair cp) const;
 
   // ---------------------------------------
   // setup / query tickers
@@ -155,7 +172,10 @@ class exchange
   // ---------------------------------------
   virtual bool can_send(const currency& c, exchange* dest) = 0;
   virtual bool make_payment(const currency& c, basic_account* src, basic_account* dest) = 0;
-  virtual std::string_view name() = 0;
+  virtual std::string get_name()
+  {
+    return exchange_name_;
+  }
   virtual void cancel_order(trade_data const& t) = 0;
   virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const&) = 0;
   virtual std::vector<basic_account*> wallets() = 0;

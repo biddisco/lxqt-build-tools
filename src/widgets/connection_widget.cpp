@@ -46,7 +46,7 @@ enum
 // ----------------------------------------------------------------------------
 void connection_widget::setup_gui()
 {
-  ui->name->setText(QString::fromStdString(exchange_->name().data()));
+  ui->name->setText(QString::fromStdString(exchange_->get_name()));
   // -------------------------------------------
   // display available streams in a Vertical box
   QVBoxLayout* sbl = new QVBoxLayout(ui->stream_box);
@@ -66,7 +66,9 @@ void connection_widget::setup_gui()
       bx->setChecked(exchange_->is_stream_subscribed(cp, s));
       connect(
         bx, &QCheckBox::stateChanged, this,
-        [this, cp, s](bool checked) { exchange_->stream_subscribe(cp, s, checked); },
+        [this, cp, s](bool checked) {    //
+          exchange_->stream_subscribe(cp, s, checked, exchange_->get_factory("stream_subscribe"));
+        },
         Qt::QueuedConnection);
       vbox->addWidget(bx);
     }
@@ -113,16 +115,19 @@ void connection_widget::setup_gui()
   }
 
   // attach a slot to catch item changes and update subscribed list
+  // caution : itemChanged is not triggered only when the checkstate changes
+  // so we compare the checkstate to the stored state before making changes
   connect(
     model_, &QStandardItemModel::itemChanged, this,
-    [this, create_stream_box, create_stream_panel, streams](QStandardItem* item) {
+    [this, create_stream_panel, streams](QStandardItem* item) {
       if (item->checkState() != item->data(CheckState).value<Qt::CheckState>())
       {
-        // main_dbg<0>.debug(str<>("Checked changed"), item->text().toStdString(), item->checkState());
         item->setData(item->checkState(), CheckState);
         if (item->checkState() == Qt::Checked)
         {
           currency_pair cp = string_to_pair(item->text().toStdString(), "/");
+          ticker_data empty;
+          exchange_->get_factory("ticker_subscribe")(cp, empty, {});
           create_stream_panel(cp, streams, item, true);
         }
         else

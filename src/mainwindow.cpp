@@ -191,9 +191,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       // create a gui widget for the wallet
       w->widget_ = new wallet_widget(this);
       w->widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-      if (network->name() == "Bitstamp")
+      if (network->get_name() == "Bitstamp")
         w->widget_->set_data(*static_cast<bitstamp_account*>(w));
-      if (network->name() == "XRPL")
+      if (network->get_name() == "XRPL")
         w->widget_->set_data(*static_cast<ledger_wallet*>(w));
       accounts_frame_->layout()->addWidget(w->widget_);
       // update wallet combo with name
@@ -215,14 +215,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   // initialize networks / start websocket connections etc
   for (auto const& e : exchange_list_)
   {
-    main_dbg<0>.debug(str<>("Init exchange"), e->name());
+    main_dbg<0>.debug(str<>("Init exchange"), e->get_name());
     e->initialize();
-    progress_events(10);
   }
-
-  // ----------------------------------
-  // setup connections tab
-  loadConnectionSetups();
 
   // @TODO get rid of this
   // ----------------------------------
@@ -287,7 +282,7 @@ void GroxMainWindow::appExitCleanupHandler()
   //
   for (auto& e : exchange_list_)
   {
-    std::string name = std::string(e->name());
+    auto name = e->get_name();
     main_dbg<0>.debug(str<>("shut down"), name);
     e->shut_down();
     e.reset();
@@ -589,23 +584,21 @@ void GroxMainWindow::showEvent(QShowEvent* event)
   static bool only_once = true;
   if (only_once)
   {
-    loadWindowSettings();
     only_once = false;
-    main_dbg<0>.debug(str<>("ShowEvent"), "Reset timer");
-    QTimer* timer = global_settings.get_global_clock_timer();
-    timer->stop();
-    timer->start(1000);
+    auto snd = stdexec::on(grox::senders::qt_mainthread_scheduler(), stdexec::just())    //
+      | stdexec::then([this]() { loadConnectionSetups(); })                              //
+      | stdexec::then([this]() { loadWindowSettings(); });                               //
+    stdexec::start_detached(std::move(snd));
   }
 }
 
 // ----------------------------------------------------------------------------
 std::shared_ptr<price_chart_widget> create_price_chart_widget(
-  std::shared_ptr<ohlc_dataset_view> view, std::shared_ptr<exchange> exch, std::string cps,
-  std::string name)
+  std::shared_ptr<ohlc_dataset_view> view, std::string cps, std::string name)
 {
   // create a new price plot object
   std::shared_ptr<price_chart_widget> chart_widget =
-    std::make_shared<price_chart_widget>(nullptr, view, exch, cps);
+    std::make_shared<price_chart_widget>(nullptr, view, cps);
 
   // put the price plot into a dock widget
   using namespace ads;
@@ -618,6 +611,7 @@ std::shared_ptr<price_chart_widget> create_price_chart_widget(
   return chart_widget;
 }
 
+// ----------------------------------------------------------------------------
 QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
 {
   // create a new orderbook text display
@@ -645,6 +639,7 @@ QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
   return orderbook_text;
 }
 
+// ----------------------------------------------------------------------------
 OrderBookPlot* create_order_book_plot_widget(
   std::string cps, std::string name, std::shared_ptr<order_book_base> orderbook)
 {
@@ -660,6 +655,51 @@ OrderBookPlot* create_order_book_plot_widget(
   global_settings.dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, obpDockWidget);
   global_settings.dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
   return orderbook_plot;
+}
+
+// ----------------------------------------------------------------------------
+void create_ticker_price_plot(ticker_data& tdata, currency_pair cp)
+{
+  std::string cps = currency_pair_string(cp);
+  tdata.chart_widget_ = create_price_chart_widget(tdata.view_, cps, tdata.exchange_->get_name());
+  // start by displaying 1 day of data
+  tdata.chart_widget_->graph_rescale(0);
+
+  auto live_trade_subscription = [tdata](currency_pair cp, grox::live_trade_data t) {
+    auto p = t.price;
+    auto v = t.amount;
+    ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
+    tdata.view_->add_live_data(new_sample);
+    QMetaObject::invokeMethod(
+      grox::senders::getMainWindow(), [=]() { tdata.chart_widget_->update_live_data(new_sample); });
+  };
+  tdata.live_trade_subscribers_.push_back(live_trade_subscription);
+}
+
+// ----------------------------------------------------------------------------
+void create_ticker_orderbook_widgets(ticker_data& tdata, currency_pair cp)
+{
+  std::string exch_name = std::string(tdata.exchange_->get_name());
+  std::string cps = currency_pair_string(cp);
+  auto* orderbook_text = create_order_book_text_widget(cps, exch_name);
+  auto* orderbook_plot = create_order_book_plot_widget(cps, exch_name, tdata.orderbook_);
+
+  auto orderbook_text_sub = [tdata, orderbook_text](currency_pair cp) {
+    QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=]() {
+      QString datastring = QString::fromStdString(tdata.orderbook_->get_orderbook_string());
+      orderbook_text->setPlainText(datastring);
+    });
+  };
+  tdata.orderbook_subscribers_.push_back(orderbook_text_sub);
+
+  auto orderbook_plot_sub = [tdata, orderbook_plot](currency_pair cp) {
+    QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=]() {
+      orderbook_plot->update_graph_limits();
+      orderbook_plot->new_data_event();
+      orderbook_plot->update_time_and_replot();
+    });
+  };
+  tdata.orderbook_subscribers_.push_back(orderbook_plot_sub);
 }
 
 // ----------------------------------------------------------------------------
@@ -708,7 +748,7 @@ void GroxMainWindow::saveConnectionSetups()
     // streams supported by this exchange
     auto streams = e->websocket_streams();
     // begin exchange group
-    settings.beginGroup(QString(e->name().data()));
+    settings.beginGroup(QString::fromStdString(e->get_name()));
 
     // for each ticker we are subscribed to
     for (auto const& ticker : e->tickers_subscribed())
@@ -737,6 +777,16 @@ void GroxMainWindow::saveConnectionSetups()
 }
 
 // ----------------------------------------------------------------------------
+void ticker_gui_factory(currency_pair cp, ticker_data& tdata, network::streams stream)
+{
+  main_dbg<0>.debug(str<>("Stream"), "factory_function");
+  if (stream == network::streams::price_data)
+    create_ticker_price_plot(tdata, cp);
+  if (stream == network::streams::order_book)
+    create_ticker_orderbook_widgets(tdata, cp);
+}
+
+// ----------------------------------------------------------------------------
 void GroxMainWindow::loadConnectionSetups()
 {
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
@@ -745,9 +795,13 @@ void GroxMainWindow::loadConnectionSetups()
   settings.beginGroup("Streams");
   for (auto const& e : exchange_list_)
   {
+    e->register_factory("ticker_subscribe",
+      [e](currency_pair cp, ticker_data, network::streams) { e->ticker_subscribe(cp); });
+    e->register_factory("stream_subscribe", ticker_gui_factory);
+
     // begin exchange group
-    std::string exch_name = std::string(e->name());
-    settings.beginGroup(QString(exch_name.data()));
+    settings.beginGroup(QString::fromStdString(e->get_name()));
+
     // sub groups are tickers on the exchange
     QStringList children = settings.childGroups();
     for (const auto& ticker : children)
@@ -756,68 +810,16 @@ void GroxMainWindow::loadConnectionSetups()
       currency_pair cp = string_to_pair(cps, "-");
       // subscribe to this ticker and get the streams available back
       stream_set streams_avail = e->ticker_subscribe(cp);
-      // @todo: hide this : get ticker related objects
-      auto& tdata = e->tickers_subscribed().at(cp);
       //
       settings.beginGroup(ticker);
       for (auto stream : streams_avail)
       {
         auto key = std::string(magic_enum::enum_name(stream));
         bool subscribed = settings.value(key.c_str()).toBool();
-
-        main_dbg<6>.debug(str<>("Stream check"), settings.group().toStdString(), key);
+        main_dbg<0>.debug(str<>("Stream setup"), settings.group().toStdString(), key);
         if (subscribed)
         {
-          main_dbg<0>.debug(str<>("Stream"), "subscribing", settings.group().toStdString(), key);
-          e->stream_subscribe(cp, stream, true);
-          //
-          if (stream == network::streams::price_data)
-          {
-            tdata.chart_widget_ =
-              create_price_chart_widget(tdata.view_, e->shared_from_this(), cps, exch_name);
-            // start by displaying 1 day of data
-            tdata.chart_widget_->graph_rescale(0);
-
-            auto live_trade_subscription = [this, tdata](
-                                             currency_pair cp, grox::live_trade_data t) {
-              auto p = t.price;
-              auto v = t.amount;
-              ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
-              tdata.view_->add_live_data(new_sample);
-              QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
-                tdata.chart_widget_->update_live_data(new_sample);
-                // stream_process(new_sample);
-              });
-            };
-            tdata.live_trade_subscribers_.push_back(live_trade_subscription);
-          }
-
-          if (stream == network::streams::order_book)
-          {
-            auto* orderbook_text = create_order_book_text_widget(cps, exch_name);
-            auto* orderbook_plot = create_order_book_plot_widget(cps, exch_name, tdata.orderbook_);
-
-            auto orderbook_text_sub = [this, tdata, orderbook_text](currency_pair cp) {
-              QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
-                QString datastring =
-                  QString::fromStdString(tdata.orderbook_->get_orderbook_string());
-                orderbook_text->setPlainText(datastring);
-              });
-            };
-            tdata.orderbook_subscribers_.push_back(orderbook_text_sub);
-
-            auto orderbook_plot_sub = [this, tdata, orderbook_plot](currency_pair cp) {
-              QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=] {
-                orderbook_plot->update_graph_limits();
-                orderbook_plot->new_data_event();
-                orderbook_plot->update_time_and_replot();
-              });
-            };
-            tdata.orderbook_subscribers_.push_back(orderbook_plot_sub);
-          }
-
-          // process messages to unblock startup waits
-          progress_events(10);
+          e->stream_subscribe(cp, stream, true, e->get_factory("stream_subscribe"));
         }
       }
       settings.endGroup();    // ticker

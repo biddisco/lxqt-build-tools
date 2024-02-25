@@ -44,6 +44,7 @@ std::atomic<bool> bitstamp_network::closing_down_ = false;
 // ----------------------------------------------------------------------------
 bitstamp_network::bitstamp_network()
 {
+  exchange_name_ = "Bitstamp";
   bitstamp_account default_acct;
   default_acct.name_ = "Bitstamp Main";
   accounts_.push_back(default_acct);
@@ -120,7 +121,7 @@ bool bitstamp_network::subscribe_live_trades(currency_pair const& cp, bool enabl
   command["event"] = enable ? "bts:subscribe" : "bts:unsubscribe";
   command["data"]["channel"] = string_join("live_trades_", ticker);
 
-  ticker_data& tdata = tickers_subscribed_.at(cp);
+  ticker_data& tdata = get_subscribed_ticker_data(cp);
   bitstamp_dbg<4>.debug(str<>("websocket trades"), command["event"],
     string_join("live_trades_", ticker), command.dump(4));
 
@@ -147,7 +148,7 @@ bool bitstamp_network::subscribe_order_book(currency_pair const& cp, bool enable
   command["event"] = enable ? "bts:subscribe" : "bts:unsubscribe";
   command["data"]["channel"] = string_join("order_book_", ticker);
 
-  ticker_data& tdata = tickers_subscribed_.at(cp);
+  ticker_data& tdata = get_subscribed_ticker_data(cp);
   bitstamp_dbg<4>.debug(str<>("websocket orders"), command["event"],
     string_join("order_book_", ticker), command.dump(4));
 
@@ -175,7 +176,7 @@ bool bitstamp_network::subscribe_my_trades(currency_pair const& cp, bool enable)
   command["data"]["channel"] = string_join("private-my_trades_", ticker) + "-" + websocket_user_id_;
   command["data"]["auth"] = websocket_token_;
 
-  ticker_data& tdata = tickers_subscribed_.at(cp);
+  ticker_data& tdata = get_subscribed_ticker_data(cp);
   bitstamp_dbg<3>.debug(str<>("websocket mytrades"), command["event"],
     string_join("private-my_trades_", ticker), command.dump(4));
 
@@ -205,7 +206,7 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
   command["data"]["channel"] = string_join("private-my_orders_", ticker) + "-" + websocket_user_id_;
   command["data"]["auth"] = websocket_token_;
 
-  ticker_data& tdata = tickers_subscribed_.at(cp);
+  ticker_data& tdata = get_subscribed_ticker_data(cp);
   bitstamp_dbg<3>.debug(str<>("websocket myorders"), command["event"],
     string_join("private-my_orders_", ticker), command.dump(4));
 
@@ -239,7 +240,7 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
 // ----------------------------------------------------------------------------
 // connect to a single stream
 bool bitstamp_network::stream_subscribe(
-  currency_pair const& cp, network::streams const stream, bool enabled)
+  currency_pair const& cp, network::streams const stream, bool enabled, factory_function f)
 {
   auto snd = stdexec::on(qt_mainthread_scheduler(), request_websocket_token())    //
     | stdexec::then([this](QByteArray byteArray) {                                // pika
@@ -277,7 +278,10 @@ bool bitstamp_network::stream_subscribe(
         }
         if (ok)
           mark_stream_subscribed(cp, stream, enabled);
-        return ok;
+      })                                              //
+    | stdexec::transfer(qt_mainthread_scheduler())    //
+    | stdexec::then([this, cp, stream, f]() {         //
+        f(cp, get_subscribed_ticker_data(cp), stream);
       });
   stdexec::start_detached(std::move(snd));
   // @todo : must return a sender here
@@ -317,7 +321,7 @@ void bitstamp_network::shut_down()
 // ----------------------------------------------------------------------------
 bitstamp_order_book const& bitstamp_network::get_orderbook(currency_pair const& cp) const
 {
-  const ticker_data tdata = tickers_subscribed_.at(cp);
+  const ticker_data tdata = get_subscribed_ticker_data(cp);
   return *dynamic_pointer_cast<bitstamp_order_book const>(tdata.orderbook_);
 }
 
@@ -761,7 +765,7 @@ void bitstamp_network::new_orderbook_data_q(
   }
 
   auto process = [exchange, cp, data]() {
-    const ticker_data& tdata = exchange->tickers_subscribed_.at(cp);
+    const ticker_data& tdata = exchange->get_subscribed_ticker_data(cp);
     try
     {
       dynamic_pointer_cast<bitstamp_order_book>(tdata.orderbook_)->accept_json_bitstamp(data);
@@ -808,7 +812,7 @@ void bitstamp_network::new_live_trade_data_q(
     bitstamp_dbg<7>.debug(str<>("Trade data parsed"), jdata.dump(4));
     live_trade_data trade_data = jdata.get<live_trade_data>();
     //
-    const ticker_data& tdata = exchange->tickers_subscribed_.at(cp);
+    const ticker_data& tdata = exchange->get_subscribed_ticker_data(cp);
     for (auto subscriber : tdata.live_trade_subscribers_)
     {
       bitstamp_dbg<4>.debug(str<>("live_trade subscribe"), currency_pair_string(cp));
@@ -1100,7 +1104,7 @@ stream_set bitstamp_network::ticker_subscribe(currency const& c1, currency const
   std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("bitstamp", c1, c2);
   std::shared_ptr<bitstamp_order_book> orderbook = std::make_shared<bitstamp_order_book>();
   // add the subscribed ticker/data/plot to our list for tracking
-  tickers_subscribed_.insert({cp, {view, orderbook, nullptr}});
+  tickers_subscribed_.insert({cp, {shared_from_this(), view, orderbook, nullptr}});
   return stream_set{
     network::streams::order_book,
     network::streams::price_data,

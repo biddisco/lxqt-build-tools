@@ -54,6 +54,11 @@ set_property(
   PROPERTY AUTOUIC
            ON
 )
+set_property(
+  TARGET grox_widgets
+  PROPERTY AUTORCC
+           ON
+)
 
 target_include_directories(grox_widgets PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 

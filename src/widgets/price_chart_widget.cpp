@@ -29,11 +29,10 @@ template <int Level>
 static print_threshold<Level, debug_level> pplot_dbg("PricePlt");
 
 // ----------------------------------------------------------------------------
-price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dataset_view> ohlc,
-  std::shared_ptr<exchange> ex, std::string ticker)
+price_chart_widget::price_chart_widget(
+  QWidget* parent, std::shared_ptr<ohlc_dataset_view> ohlc, std::string ticker)
   : QWidget(parent)
   , ui(new Ui::price_chart_widget)
-  , exchange_(ex)
   , hdf5_ohlc_(ohlc)
   , ticker_string_(ticker)
 {
@@ -93,6 +92,7 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
 // ----------------------------------------------------------------------------
 price_chart_widget::~price_chart_widget()
 {
+  pplot_dbg<0>.debug(str<>("~price_chart_widget"));
   delete ui;
   delete crypto_price_plot_;
   for (auto p : filter_plots_)
@@ -234,7 +234,7 @@ void price_chart_widget::connect_gui()
   });
 
   connect(btn_indicator_, &QPushButton::clicked, this, [this](bool b) {
-    pplot_dbg<0>.debug(str<>("Indicators"), exchange_->name(), ticker_string_);
+    pplot_dbg<0>.debug(str<>("Indicators"), ticker_string_);
 
     indicator_dialog in_dialog = indicator_dialog();
     auto result = in_dialog.exec();

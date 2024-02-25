@@ -33,11 +33,10 @@ trade_widget::trade_widget(std::string_view data, QWidget* parent)
 void trade_widget::set_data(trade_data const& t)
 {
   trade_ = t;
-  std::string temp = t.network_->name().begin();
   QPalette palette = ui->network->palette();
   palette.setColor(QPalette::WindowText, QRgb(0x2020FF));
   ui->network->setPalette(palette);
-  ui->network->setText(QString::fromStdString(temp));
+  ui->network->setText(QString::fromStdString(t.network_->get_name()));
   //
   if (t.get_trade_type() == trade_type::buy)
   {

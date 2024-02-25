@@ -68,7 +68,6 @@ class price_chart_widget : public QWidget
   indicator_plot* assets_plot_;
   QPushButton* btn_indicator_;
   //
-  std::shared_ptr<exchange> exchange_;
   std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;
   std::string ticker_string_;
 
@@ -76,8 +75,7 @@ class price_chart_widget : public QWidget
   QTableView* ind_vis_;
 
   public:
-  price_chart_widget(
-    QWidget*, std::shared_ptr<ohlc_dataset_view>, std::shared_ptr<exchange> ex, std::string ticker);
+  price_chart_widget(QWidget*, std::shared_ptr<ohlc_dataset_view>, std::string ticker);
   ~price_chart_widget();
 
   void connect_gui();

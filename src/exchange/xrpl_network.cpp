@@ -41,6 +41,7 @@ static print_threshold<Level, 7> xrpnet_dbg("XRP-legr");
 xrpl_network::xrpl_network(bool testnet)
   : testnet_(testnet)
 {
+  exchange_name_ = testnet_ ? "XRPL Testnet" : "XRPL Mainnet";
 }
 
 // ----------------------------------------------------------------------------
@@ -141,7 +142,7 @@ xrpl_order_book const& xrpl_network::get_orderbook(currency_pair const& cp) cons
 // ----------------------------------------------------------------------------
 // connect to a single stream
 bool xrpl_network::stream_subscribe(
-  currency_pair const& cp, network::streams const stream, bool enabled)
+  currency_pair const& cp, network::streams const stream, bool enabled, factory_function f)
 {
   bool ok = true;
   switch (stream)
@@ -179,7 +180,7 @@ stream_set xrpl_network::ticker_subscribe(currency const& c1, currency const& c2
 
   std::shared_ptr<xrpl_order_book> orderbook = std::make_shared<xrpl_order_book>();
   // add the subscribed ticker/data/plot to our list for tracking
-  tickers_subscribed_.insert({cp, {nullptr, orderbook, nullptr}});
+  tickers_subscribed_.insert({cp, {shared_from_this(), nullptr, orderbook, nullptr}});
   return websocket_streams();
 }
 //// ----------------------------------------------------------------------------
