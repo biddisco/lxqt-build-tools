@@ -1,8 +1,10 @@
 #include <QCheckBox>
 #include <QRegularExpression>
+#include <QStandardItemModel>
 //
 #include <range/v3/view.hpp>
 //
+#include "config/config.hpp"
 #include "debug/print.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/collapsible_groupbox.hpp"
@@ -40,113 +42,161 @@ connection_widget::~connection_widget()
 enum
 {
   CheckState = Qt::UserRole + 0,
-  DataState = Qt::UserRole + 1
+  DataState = Qt::UserRole + 1,
+  StreamState = Qt::UserRole + 2
 };
 
 // ----------------------------------------------------------------------------
 void connection_widget::setup_gui()
 {
+  // setup model/view/filter for gui control
+  model_ = new QStandardItemModel();
+  filter_ = new QSortFilterProxyModel();
+  filter_->setAutoAcceptChildRows(true);
   ui->name->setText(QString::fromStdString(exchange_->get_name()));
-  // -------------------------------------------
-  // display available streams in a Vertical box
-  QVBoxLayout* sbl = new QVBoxLayout(ui->stream_box);
-  ui->stream_box->setLayout(sbl);
-  //
-  const auto streams = exchange_->websocket_streams();
 
-  // function to create a box with a set of stream checkboxes inside it
-  auto create_stream_box = [this, sbl, streams](currency_pair cp, stream_set s) {
-    CollapsibleGroupBox* ticker_panel =
-      new CollapsibleGroupBox(currency_pair_qstring(cp), ui->stream_box);
-    QVBoxLayout* vbox = new QVBoxLayout;
-    for (auto const& s : streams)
+  // on creation, add all tickers available on the exchange to the model + gui
+  for (auto const& [i, cp] : exchange_->get_currency_pairs() | ranges::views::enumerate)
+  {
+    // create an item for each ticker, unchecked to go into the listbox gui
+    QStandardItem* ticker_item = new QStandardItem();
+    ticker_item->setCheckable(true);
+    ticker_item->setData(currency_pair_qstring(cp, "-"), Qt::DisplayRole);
+    ticker_item->setData(QVariant::fromValue<CollapsibleGroupBox*>(nullptr), DataState);
+    ticker_item->setData(Qt::Unchecked, CheckState);
+    ticker_item->setData(-1, StreamState);
+    ticker_item->setCheckState(Qt::Unchecked);
+    model_->setItem(i, ticker_item);
+    stream_set streams_avail = exchange_->websocket_streams();
+    QList<QStandardItem*> children;
+    for (auto s : streams_avail)
     {
-      QString txt = QString(stream_to_pretty_text(s).c_str());
-      QCheckBox* bx = new QCheckBox(txt, ticker_panel);
-      bx->setChecked(exchange_->is_stream_subscribed(cp, s));
-      connect(
-        bx, &QCheckBox::stateChanged, this,
-        [this, cp, s](bool checked) {    //
-          exchange_->stream_subscribe(cp, s, checked, exchange_->get_factory("stream_subscribe"));
-        },
-        Qt::QueuedConnection);
-      vbox->addWidget(bx);
+      QStandardItem* stream_item = new QStandardItem();
+      stream_item->setCheckable(true);
+      stream_item->setData(QString(stream_to_pretty_text(s).c_str()), Qt::DisplayRole);
+      stream_item->setData(Qt::Unchecked, CheckState);
+      stream_item->setData(s, StreamState);
+      stream_item->setCheckState(Qt::Unchecked);
+      children.append(stream_item);
     }
-    ticker_panel->setLayout(vbox);
-    sbl->addWidget(ticker_panel);
-    sbl->addItem(new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding));
-    return ticker_panel;
-  };
+    ticker_item->appendColumn(children);
+  }
 
-  // create box and also populate model
-  auto create_stream_panel = [create_stream_box](currency_pair cp, stream_set streams,
-                               QStandardItem* item, bool checked) {
-    // state stored in user role to track checkbox changes
+  // attach a slot to catch item changes and update subscribed list
+  // caution : itemChanged is not triggered _only_ when the checkstate changes
+  // so we compare the checkstate to the stored state before making changes
+  connect(
+    model_, &QStandardItemModel::itemChanged, this,
+    [this](QStandardItem* item) {
+      if (item->checkState() != item->data(CheckState).value<Qt::CheckState>())
+      {
+        item->setData(item->checkState(), CheckState);
+        auto stream = magic_enum::enum_cast<network::streams>(item->data(StreamState).toInt());
+        bool ticker_node = !stream.has_value();
+        currency_pair cp = (ticker_node) ?
+          string_to_pair(item->text().toStdString(), "-") :
+          string_to_pair(item->parent()->text().toStdString(), "-");
+        //
+        if (item->checkState() == Qt::Checked)
+        {
+          if (ticker_node)
+            exchange_->ticker_subscribe(cp);
+          else
+          {
+            exchange_->stream_subscribe(
+              cp, stream.value(), true, exchange_->get_factory("stream_subscribe"));
+            //item->parent()->setData(item->checkState(), CheckState);
+          }
+        }
+        else
+        {
+          if (ticker_node)    // ticker node deselected, uncheck all streams
+          {
+            for (int i = 0; i < item->rowCount(); ++i)
+            {
+              QStandardItem* child = item->child(i);
+              child->setCheckState(Qt::Unchecked);
+            }
+          }
+          else
+          {
+            exchange_->stream_subscribe(
+              cp, stream.value(), false, exchange_->get_factory("stream_unsubscribe"));
+          }
+        }
+      }
+    },
+    Qt::QueuedConnection);
+
+  // open ini file and get the group for the exchange tickers
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
+  // open global settings streams section
+  settings.beginGroup("Streams");
+  // open group for this exchange
+  settings.beginGroup(QString::fromStdString(exchange_->get_name()));
+  // get all subscribed tickers on this exchange from ini file
+  QStringList children = settings.childGroups();
+  for (const auto& ticker : children)
+  {
+    QList<QStandardItem*> list = model_->findItems(ticker, Qt::MatchExactly);
+    // list length should never be >1
+    for (QStandardItem* item : list)
+    {
+      item->setCheckState(Qt::Checked);
+      settings.beginGroup(ticker);
+      for (auto const& k : settings.childKeys())
+      {
+        bool subscribed = settings.value(k).toBool();
+        if (subscribed)
+        {
+          network::streams stream =
+            magic_enum::enum_cast<network::streams>(k.toLatin1().toStdString()).value();
+          std::string txt = stream_to_pretty_text(stream);
+          std::cout << k.toLatin1().data() << " " << subscribed << " " << txt << std::endl;
+
+          QStandardItem* child = item->child(magic_enum::enum_integer(stream), 0);
+          child->setCheckState(Qt::Checked);
+        }
+      }
+      settings.endGroup();
+    }
+  }
+
+  /*
+  // is this ticker subscribed to
+  bool ticker_subscribed = (children.contains(currency_pair_qstring(cp)));
+  if (ticker_subscribed)
+  {
+    stream_set streams_avail = exchange_->ticker_subscribe(cp);
+
     if (checked)
     {
-      auto* panel = create_stream_box(cp, streams);
+      stream_set streams_avail = exchange_->ticker_subscribe(cp);
+      auto* panel = create_checkbox_per_stream(cp, streams);
       item->setData(QVariant::fromValue<CollapsibleGroupBox*>(panel), DataState);
       item->setData(Qt::Checked, CheckState);
       item->setCheckState(Qt::Checked);
     }
     else
     {
-      item->setData(QVariant::fromValue<CollapsibleGroupBox*>(nullptr), DataState);
-      item->setData(Qt::Unchecked, CheckState);
-      item->setCheckState(Qt::Unchecked);
-    }
-    return item;
-  };
-
-  // -------------------------------------------
-  // display available ticker currency pairs
-  model_ = new QStandardItemModel();
-  filter_ = new QSortFilterProxyModel();
-
-  // on initial creation, add all tickers to the model
-  for (auto const& [i, cp] : exchange_->get_currency_pairs() | ranges::views::enumerate)
-  {
-    QStandardItem* item = new QStandardItem();
-    item->setText(currency_pair_qstring(cp, "/"));
-    item->setCheckable(true);
-    bool checked = exchange_->ticker_subscribed(std::get<0>(cp), std::get<1>(cp));
-    create_stream_panel(cp, streams, item, checked);
-    model_->setItem(i, item);
-  }
-
-  // attach a slot to catch item changes and update subscribed list
-  // caution : itemChanged is not triggered only when the checkstate changes
-  // so we compare the checkstate to the stored state before making changes
-  connect(
-    model_, &QStandardItemModel::itemChanged, this,
-    [this, create_stream_panel, streams](QStandardItem* item) {
-      if (item->checkState() != item->data(CheckState).value<Qt::CheckState>())
+      // sub groups are tickers on the exchange
+      QStringList children = settings.childGroups();
+      for (const auto& ticker : children)
       {
-        item->setData(item->checkState(), CheckState);
-        if (item->checkState() == Qt::Checked)
-        {
-          currency_pair cp = string_to_pair(item->text().toStdString(), "/");
-          ticker_data empty;
-          exchange_->get_factory("ticker_subscribe")(cp, empty, {});
-          create_stream_panel(cp, streams, item, true);
-        }
-        else
-        {
-          // the streams are being unsubscribed from
-          auto* panel = item->data(DataState).value<CollapsibleGroupBox*>();
-          for (auto s : streams)
-          {
-            auto stream = std::string(magic_enum::enum_name(s));
-            currency_pair cp = string_to_pair(item->text().toStdString(), "/");
-            conn_dbg<0>.debug(str<>("Unsubscribe"), item->text().toStdString(), stream);
-            exchange_->ticker_unsubscribe(std::get<0>(cp), std::get<1>(cp));
-          }
-          delete panel;
-        }
+        std::string cps = ticker.toStdString();
+        currency_pair cp = string_to_pair(cps, "-");
+        // subscribe to this ticker and get the streams available back
+        stream_set streams_avail = exchange_->ticker_subscribe(cp);
       }
-    },
-    Qt::QueuedConnection);
+      settings.endGroup();    // exchange
 
+      settings.endGroup();    // streams
+
+      // -------------------------------------------
+      //
+      const auto streams = exchange_->websocket_streams();
+
+*/
   filter_->setSourceModel(model_);
   ui->tickers_list->setModel(filter_);
 }

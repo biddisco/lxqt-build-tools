@@ -1,13 +1,14 @@
 #pragma once
-
+// stl
 #include <set>
 #include <string>
 #include <vector>
-//
+// qt
 #include <QObject>
+#include <QTimer>
 // extern
 #include <magic_enum.hpp>
-//
+// grox
 #include "currency/currency.hpp"
 #include "currency/json_data_types.hpp"
 #include "currency/trade_data.hpp"
@@ -22,7 +23,7 @@ class exchange;
 namespace network {
   enum streams : int
   {
-    my_trades,
+    my_trades = 0,
     my_orders,
     live_trades,
     order_book,
@@ -66,7 +67,7 @@ class order_book_base;
 
 using live_trade_function = std::function<void(currency_pair cp, grox::live_trade_data t)>;
 using orderbook_function = std::function<void(currency_pair cp)>;
-struct ticker_data
+struct ticker_subscription
 {
   std::shared_ptr<exchange> exchange_;
   std::shared_ptr<ohlc_dataset_view> view_;
@@ -79,8 +80,7 @@ struct ticker_data
   std::vector<orderbook_function> orderbook_subscribers_;
 };
 
-// To ensure Qt can emit signals of this type
-Q_DECLARE_METATYPE(ticker_data)
+using ticker_data = std::shared_ptr<ticker_subscription>;
 
 // ----------------------------------------------------------------------------
 class exchange
@@ -92,7 +92,7 @@ class exchange
   public:
   using exchange_vector = std::vector<std::shared_ptr<exchange>>;
   using exchange_map = std::map<currency_pair, ticker_data>;
-  using factory_function = std::function<void(currency_pair, ticker_data&, network::streams)>;
+  using factory_function = std::function<void(currency_pair, ticker_data, network::streams)>;
 
   // websocket streams subscribed to format = ticker/stream_name
   std::map<std::string, bool> enabled_streams_;
@@ -108,17 +108,27 @@ class exchange
   exchange_map tickers_subscribed_;
 
   std::string exchange_name_;
+  QTimer* timer_;
 
+  // ---------------------------------------
+  exchange();
+
+  // ---------------------------------------
   // obligatory virtual destructor
-  virtual ~exchange()
-  {
-    tickers_available_.clear();
-  }
+  virtual ~exchange();
 
   // ---------------------------------------
   // concreate exchange instantiations must override the initialization
   // ---------------------------------------
   virtual void initialize() = 0;
+
+  // ---------------------------------------
+  // timer used for http/other updates
+  // ---------------------------------------
+  QTimer* get_clock_timer()
+  {
+    return timer_;
+  }
 
   // ---------------------------------------
   // factory functions to be used for callbacks to stream subscribe/unsubscribe events
@@ -158,8 +168,7 @@ class exchange
   // return list of subscribed tickers
   exchange_map const& tickers_subscribed() const;
   // exchange_map& tickers_subscribed();
-  ticker_data& get_subscribed_ticker_data(currency_pair cp);
-  ticker_data const& get_subscribed_ticker_data(currency_pair cp) const;
+  ticker_data get_subscribed_ticker_data(currency_pair cp) const;
 
   // ---------------------------------------
   // setup / query tickers

@@ -29,15 +29,16 @@ template <int Level>
 static print_threshold<Level, debug_level> pplot_dbg("PricePlt");
 
 // ----------------------------------------------------------------------------
-price_chart_widget::price_chart_widget(
-  QWidget* parent, std::shared_ptr<ohlc_dataset_view> ohlc, std::string ticker)
+price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dataset_view> ohlc,
+  std::shared_ptr<exchange> ex, currency_pair cp)
   : QWidget(parent)
   , ui(new Ui::price_chart_widget)
   , hdf5_ohlc_(ohlc)
-  , ticker_string_(ticker)
+  , exchange_(ex)
+  , ticker_string_(currency_pair_string(cp))
 {
   ui->setupUi(this);
-  ui->ticker->setText(ticker.data());
+  ui->ticker->setText(ticker_string_.data());
   //
   // Create candlestick plot
   //
@@ -82,8 +83,8 @@ price_chart_widget::price_chart_widget(
   btn_indicator_->setText("Indicators");
   btn_indicator_->setFlat(true);
   ui->controls_layout->addWidget(btn_indicator_);
-
-  DigitalClock* clock = new DigitalClock(this, global_settings.get_global_clock_timer());
+  //
+  DigitalClock* clock = new DigitalClock(this, exchange_->get_clock_timer());
   ui->controls_layout->addWidget(clock);
   //
   connect_gui();

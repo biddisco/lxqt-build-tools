@@ -9,6 +9,7 @@
 #include <QNetworkAccessManager>
 #include <QTimer>
 //
+#include <pika/debugging/print.hpp>
 #include <pika/init.hpp>
 #include <pika/modules/execution.hpp>
 #include <pika/modules/executors.hpp>
@@ -17,7 +18,7 @@
 #include <pika/modules/thread_manager.hpp>
 #include <pika/program_options.hpp>
 #include "fmt/format.h"
-//
+// //
 #include "debug/print.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
@@ -31,10 +32,12 @@ const std::string bitstamp_https_address = "www.bitstamp.net";
 const int bitstamp_https_port = 443;
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-//std::getenv("rand2") ? std::getenv("rand2") : ""
-template <int Level>
-static print_threshold<Level, 2> test1_dbg("https://");
+namespace {
+  using namespace grox::debug;
+  constexpr int gdeb_level = 3;
+  template <int Level>
+  static print_threshold<Level, gdeb_level> test1_dbg("https://");
+}    // namespace
 
 // ----------------------------------------------------------------------------
 void account_request(QNetworkAccessManager& networkmanager_, const std::string& url_path,

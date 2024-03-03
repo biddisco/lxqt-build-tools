@@ -26,11 +26,13 @@
 // attach a handler to it that will pass the response over to a pika thread
 
 // -----------------------------------------------------------------
-template <int Level>
-inline constexpr pika::debug::detail::print_threshold<Level, 1> qt_trig("QT_TRIGG");
-
-// -----------------------------------------------------------------
 namespace grox::senders {
+
+  using namespace grox::debug;
+  constexpr int gdeb_level = 3;
+  template <int Level>
+  static print_threshold<Level, gdeb_level> qt_trig("QT_TRIGG");
+
   namespace pexec = pika::execution;
   namespace ex = pexec::experimental;
   using namespace pika::debug::detail;

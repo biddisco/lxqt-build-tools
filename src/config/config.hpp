@@ -6,7 +6,6 @@
 #include <QApplication>
 #include <QMenu>
 #include <QString>
-#include <QTimer>
 
 // @TODO: Put back string with cleanup operation
 using secure_string = std::string;
@@ -42,9 +41,6 @@ struct app_settings
   std::shared_ptr<abstract_dataset_manager> data_manager_;
   //
   QNetworkAccessManager* networkmanager_;
-  //
-  static QTimer* get_global_clock_timer();
-  static void delete_global_clock_timer(QTimer* timer_);
 };
 
 inline app_settings global_settings;

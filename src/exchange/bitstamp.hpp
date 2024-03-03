@@ -182,11 +182,11 @@ class bitstamp_network : public exchange
   // regularly
   void update_ohlc_datasets();
   // triggers an update for a single ticker
-  void update_ohlc_data(currency_pair cp, ticker_data* data);
+  void update_ohlc_data(currency_pair cp, ticker_data data);
   // http : generate a request for candlestick data for a single ticker
   any_bytearray_sender request_new_ohlc_data(currency_pair cp, uint64_t start_t, uint64_t samples);
   // handler for an http request containing new data
-  void handle_new_ohlc_data(ticker_data*, std::string_view);
+  void handle_new_ohlc_data(ticker_data, std::string_view);
   //
   any_bytearray_sender request_price_history(currency_pair cp);
   std::uint64_t handle_price_history(std::string_view data);
@@ -217,9 +217,9 @@ class bitstamp_network : public exchange
   void restart_candlestick_timer();
 
   // after new data is received, trigger this to update plots
-  void new_ohlc_data(ticker_data*, double);
+  void new_ohlc_data(ticker_data, double);
 
   public slots:
   void candlestick_timer_event();
-  void new_ohlc_data_event(ticker_data*, double);
+  void new_ohlc_data_event(ticker_data, double);
 };

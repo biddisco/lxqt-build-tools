@@ -13,6 +13,20 @@ template <int Level>
 static print_threshold<Level, debug_level> exchange_dbg("Exchange");
 
 // ----------------------------------------------------------------------------
+exchange::exchange()
+{
+  timer_ = new QTimer(nullptr);
+  timer_->start(1000);
+}
+
+// ----------------------------------------------------------------------------
+exchange::~exchange()
+{
+  delete timer_;
+  tickers_available_.clear();
+}
+
+// ----------------------------------------------------------------------------
 void exchange::register_factory(std::string name, exchange::factory_function f)
 {
   if (factories_.contains(name))
@@ -47,18 +61,7 @@ void exchange::mark_stream_subscribed(currency_pair cp, network::streams s, bool
 }
 
 // ----------------------------------------------------------------------------
-ticker_data& exchange::get_subscribed_ticker_data(currency_pair cp)
-{
-  if (tickers_subscribed_.contains(cp))
-  {
-    return tickers_subscribed_.at(cp);
-  }
-  else
-    throw std::runtime_error("Attempt to access unsubscribed ticker");
-}
-
-// ----------------------------------------------------------------------------
-ticker_data const& exchange::get_subscribed_ticker_data(currency_pair cp) const
+ticker_data exchange::get_subscribed_ticker_data(currency_pair cp) const
 {
   if (tickers_subscribed_.contains(cp))
   {
