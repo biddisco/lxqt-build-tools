@@ -68,7 +68,7 @@ class GroxMainWindow : public QMainWindow
   std::shared_ptr<xrpl_network> xrpl_network_;
   std::shared_ptr<xrpl_network> xrpl_testnet_;
 
-  QVBoxLayout* net_layout_;
+  QTabWidget* net_layout_;
 
   // menu helpers for docking support
   QMenu* perspectives_menu_;
@@ -104,8 +104,6 @@ class GroxMainWindow : public QMainWindow
   void stream_process(ohlctv_sample const& data);
 
   void execute_filter();
-
-  void build_connection_gui(exchange* ex);
 
   void createPerspectives_Ui();
   void openPerspective(QString const& name);

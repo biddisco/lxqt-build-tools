@@ -52,7 +52,7 @@
 #include "FloatingDockContainer.h"
 
 #define GROX_HAVE_BITSTAMP
-//#define GROX_HAVE_XRPL
+#define GROX_HAVE_XRPL
 
 // ----------------------------------------------------------------------------
 extern void generate_encrypted_ini_data(password_dialog& npw);
@@ -237,8 +237,32 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   global_settings.dock_manager_ = std::make_shared<CDockManager>(this);
 
   // ----------------------------------
-  // Setup a menu to allow dockwindow control
+  // Setup a menu to allow dockwindow control - must be after dock manager creation
   createPerspectives_Ui();
+
+  // ----------------------------------
+  // Create dockwidget for network connections
+  net_layout_ = new QTabWidget(this);
+  //
+  CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
+  NetworkDockWidget->setWidget(net_layout_);
+  NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  auto RightArea = global_settings.dock_manager_->addDockWidget(
+    DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
+  global_settings.dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
+
+  // ----------------------------------
+  // Create dockwidget for algorithmic trading
+  QWidget* algowidget_ = new QWidget(this);
+  algo_form_ = new Ui::TabbedForm();
+  algo_form_->setupUi(algowidget_);
+
+  CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
+  AlgorithmsDockWidget->setWidget(algowidget_);
+  AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  global_settings.dock_manager_->addDockWidget(
+    DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
+  global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
 #ifdef GROX_HAVE_BITSTAMP
   // ----------------------------------
@@ -273,7 +297,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       // widget with panels for tickers/selected/streams
       connection_widget* conwidget = new connection_widget(this, ex);
       conwidget->setup_gui();
-      net_layout_->insertWidget(0, conwidget);
+      net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
     },
     Qt::QueuedConnection);
 #endif
@@ -285,33 +309,43 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   xrpl_testnet_ = xrpl_network::get_xrpl_instance(true);
   exchange_list_.push_back(xrpl_network_);
   exchange_list_.push_back(xrpl_testnet_);
+
+  connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)), this,
+    SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
+  connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)), this,
+    SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
+  connect(xrpl_network_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this,
+    SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
+  connect(xrpl_testnet_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this,
+    SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
+  //    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
+  //            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
+  //    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
+  //            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
+
+  // when a transaction takes place we might need to update wallet/records
+  connect(xrpl_network_.get(), SIGNAL(transaction_event()), this, SLOT(transaction_event()),
+    Qt::QueuedConnection);
+
+  connect(
+    xrpl_network_.get(), &xrpl_network::network_initialized, this,
+    [this](exchange* ex) {
+      // widget with panels for tickers/selected/streams
+      connection_widget* conwidget = new connection_widget(this, ex);
+      conwidget->setup_gui();
+      net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
+    },
+    Qt::QueuedConnection);
+
+  connect(
+    xrpl_testnet_.get(), &xrpl_network::network_initialized, this,
+    [this](exchange* ex) {    // widget with panels for tickers/selected/streams
+      connection_widget* conwidget = new connection_widget(this, ex);
+      conwidget->setup_gui();
+      net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
+    },
+    Qt::QueuedConnection);
 #endif
-
-  // ----------------------------------
-  // Create dockwidget for network connections
-  QFrame* netbox = new QFrame(this);
-  net_layout_ = new QVBoxLayout();
-  netbox->setLayout(net_layout_);
-  //
-  CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
-  NetworkDockWidget->setWidget(netbox);
-  NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  auto RightArea = global_settings.dock_manager_->addDockWidget(
-    DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
-  global_settings.dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
-
-  // ----------------------------------
-  // Create dockwidget for algorithmic trading
-  QWidget* algowidget_ = new QWidget(this);
-  algo_form_ = new Ui::TabbedForm();
-  algo_form_->setupUi(algowidget_);
-
-  CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
-  AlgorithmsDockWidget->setWidget(algowidget_);
-  AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(
-    DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
-  global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
   // ----------------------------------
   // create a dock widget to hold accounts/wallets
@@ -496,33 +530,6 @@ void GroxMainWindow::connect_gui_controls()
   // signals emitted from networking thread completion handlers should use
   // Qt::QueuedConnection to ensure they transfer to Qt main thread
   // ---------------------------------------------------------------------
-
-#ifdef GROX_HAVE_XRPL
-  connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)), this,
-    SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
-  connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)), this,
-    SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
-  connect(xrpl_network_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this,
-    SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
-  connect(xrpl_testnet_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this,
-    SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
-  //    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
-  //            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
-  //    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
-  //            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
-
-  // when a transaction takes place we might need to update wallet/records
-  connect(xrpl_network_.get(), SIGNAL(transaction_event()), this, SLOT(transaction_event()),
-    Qt::QueuedConnection);
-
-  connect(
-    xrpl_network_.get(), &xrpl_network::network_initialized, this,
-    [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
-
-  connect(
-    xrpl_testnet_.get(), &xrpl_network::network_initialized, this,
-    [this](exchange* ex) { build_connection_gui(ex); }, Qt::QueuedConnection);
-#endif
 
   connect(
     algo_form_->exec_algo, &QAbstractButton::clicked, this,
@@ -1111,15 +1118,6 @@ void GroxMainWindow::execute_filter()
     }
 }
 */
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::build_connection_gui(exchange* ex)
-{
-  // widget with panels for tickers/selected/streams
-  connection_widget* conwidget = new connection_widget(this, ex);
-  conwidget->setup_gui();
-  net_layout_->insertWidget(0, conwidget);
-}
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::createPerspectives_Ui()
