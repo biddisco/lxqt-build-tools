@@ -163,21 +163,19 @@ bool xrpl_network::stream_subscribe(
 }
 
 // ----------------------------------------------------------------------------
-stream_set xrpl_network::ticker_subscribe(currency const& c1, currency const& c2)
+stream_set xrpl_network::ticker_subscribe(const currency_pair& cp)
 {
   // exit if this exchange has already subscribed to this ticker
-  std::string cps = currency_pair_string({c1, c2});
-  if (ticker_subscribed(c1, c2))
+  std::string cps = currency_pair_string(cp);
+  if (ticker_subscribed(cp))
   {
     xrpnet_dbg<0>.debug(str<>("subscription"), cps, "subscribed");
     return stream_set{};
   }
   xrpnet_dbg<0>.debug(str<>("subscribing"), cps);
-  currency_pair cp{c1, c2};
 
   // create a new data view from hdf5
   // std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("xrpl", c1, c2);
-
   std::shared_ptr<xrpl_order_book> orderbook = std::make_shared<xrpl_order_book>();
   // add the subscribed ticker/data/plot to our list for tracking
   ticker_data data =
@@ -932,13 +930,13 @@ double xrpl_network::get_transfer_fee(currency const& c1)
 }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_fee_percent(currency const& c1, currency const& c2)
+double xrpl_network::get_fee_percent(const currency_pair& cp)
 {
   return 0.0;
 }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_fee_fixed(currency const& c1, currency const& c2)
+double xrpl_network::get_fee_fixed(const currency_pair& cp)
 {
   return 0.0;
 }

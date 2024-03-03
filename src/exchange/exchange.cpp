@@ -84,30 +84,24 @@ exchange::exchange_map& exchange::tickers_subscribed()
 }
 */
 // ----------------------------------------------------------------------------
-bool exchange::ticker_subscribed(currency const& c1, currency const& c2)
+bool exchange::ticker_subscribed(const currency_pair& cp)
 {
-  auto present = (tickers_subscribed_.contains(currency_pair{c1, c2}));
+  auto present = (tickers_subscribed_.contains(cp));
   return present;
 }
 
 // ----------------------------------------------------------------------------
-stream_set exchange::ticker_subscribe(currency const& c1, currency const& c2)
+stream_set exchange::ticker_subscribe(const currency_pair& cp)
 {
   throw std::runtime_error("Exchange classes must implement this function");
 }
 
 // ----------------------------------------------------------------------------
-stream_set exchange::ticker_subscribe(const currency_pair& p)
+void exchange::ticker_unsubscribe(const currency_pair& cp)
 {
-  return ticker_subscribe(std::get<0>(p), std::get<1>(p));
-}
-
-// ----------------------------------------------------------------------------
-void exchange::ticker_unsubscribe(currency const& c1, currency const& c2)
-{
-  if (ticker_subscribed(c1, c2))
+  if (ticker_subscribed(cp))
   {
-    tickers_subscribed_.erase(currency_pair{c1, c2});
+    tickers_subscribed_.erase(cp);
   }
 }
 

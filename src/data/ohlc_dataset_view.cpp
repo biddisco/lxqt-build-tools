@@ -21,11 +21,9 @@ template <int Level>
 static print_threshold<Level, debug_level> man_dbg("DataView");
 
 // ----------------------------------------------------------------------------
-ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency const& c1, currency const& c2)
+ohlc_dataset_view::ohlc_dataset_view(std::string exchange, const currency_pair& cp)
   : exchange_(exchange)
-  , c1_(c1)
-  , c2_(c2)
-  , ticker_string_(currency_pair_string({c1_, c2_}))
+  , ticker_string_(currency_pair_string(cp))
 {
   // insert empty highest resolution candle dataset
   ohlc_datasets* min_res = new ohlc_datasets(ohlc_data_resolutions::minute, ticker_string_);

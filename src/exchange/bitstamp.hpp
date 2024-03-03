@@ -197,8 +197,8 @@ class bitstamp_network : public exchange
   // function called from websocket subscription to live orderbook data
   static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, const QString);
 
-  double get_fee_percent(currency const& c1, currency const& c2) override;
-  double get_fee_fixed(currency const& c1, currency const& c2) override;
+  double get_fee_percent(const currency_pair& cp) override;
+  double get_fee_fixed(const currency_pair& cp) override;
   double get_transfer_fee(currency const& /*c1*/) override
   {
     return 0;
@@ -206,7 +206,7 @@ class bitstamp_network : public exchange
 
   void custom_functions(basic_account* /*acct*/) override{};
 
-  stream_set ticker_subscribe(currency const& c1, currency const& c2) override;
+  stream_set ticker_subscribe(const currency_pair& cp) override;
 
   signals:
 

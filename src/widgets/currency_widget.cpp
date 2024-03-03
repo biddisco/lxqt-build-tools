@@ -249,7 +249,7 @@ void currency_widget::execute_trade()
       taker_pay = taker_get * price;
     }
     //
-    double fee_percent = network_->get_fee_percent(taker_payc, this->currency_);
+    double fee_percent = network_->get_fee_percent({taker_payc, this->currency_});
     if (feesincluded)
     {
       taker_get = (1.0 - 0.01 * fee_percent) * taker_get;
@@ -263,9 +263,9 @@ void currency_widget::execute_trade()
       this->currency_,    // taker gets this currency
       taker_pay,          // taker pays this amount (total)
       taker_get,          // taker gets this amount (total)
-      price,              // exchange rate
-      network_->get_fee_percent(taker_payc, this->currency_),
-      network_->get_fee_percent(taker_payc, this->currency_),
+      price,              // exchange rate : TODO - check fee settings
+      network_->get_fee_percent({taker_payc, this->currency_}),
+      network_->get_fee_percent({taker_payc, this->currency_}),
       0,    // Id
       now.toStdString(),
       false,

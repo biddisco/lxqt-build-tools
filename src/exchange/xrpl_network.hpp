@@ -133,7 +133,7 @@ class xrpl_network : public exchange
     return {network::streams::order_book, network::streams::account_changes};
   }
 
-  stream_set ticker_subscribe(currency const& c1, currency const& c2) override;
+  stream_set ticker_subscribe(const currency_pair& cp) override;
 
   // connect to an individual stream
   bool stream_subscribe(currency_pair const& cp, network::streams const stream, bool enabled,
@@ -202,8 +202,8 @@ class xrpl_network : public exchange
   void place_limit_order(basic_account* acct, trade_data const& t, bool update_after);
   void place_buy_sell_orders(basic_account* acct, std::vector<trade_data> const& trades) override;
 
-  double get_fee_percent(currency const& c1, currency const& c2) override;
-  double get_fee_fixed(currency const& c1, currency const& c2) override;
+  double get_fee_percent(const currency_pair& cp) override;
+  double get_fee_fixed(const currency_pair& cp) override;
   double get_transfer_fee(currency const& c1) override;
 
   void trustline(

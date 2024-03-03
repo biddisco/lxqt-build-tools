@@ -160,11 +160,10 @@ class exchange
   // withut subscribing to any streams for live trades/other
   // ---------------------------------------
   // query which tickers (currency pairs) are subscribed
-  virtual bool ticker_subscribed(currency const& c1, currency const& c2);
+  virtual bool ticker_subscribed(const currency_pair& cp);
   // un/subscribe to a ticker
-  virtual stream_set ticker_subscribe(currency const& c1, currency const& c2);
-  virtual stream_set ticker_subscribe(const currency_pair& p);
-  virtual void ticker_unsubscribe(currency const& c1, currency const& c2);
+  virtual stream_set ticker_subscribe(const currency_pair& cp);
+  virtual void ticker_unsubscribe(const currency_pair& cp);
   // return list of subscribed tickers
   exchange_map const& tickers_subscribed() const;
   // exchange_map& tickers_subscribed();
@@ -197,8 +196,8 @@ class exchange
   // ---------------------------------------
   // fees
   // ---------------------------------------
-  virtual double get_fee_percent(currency const& c1, currency const& c2) = 0;
-  virtual double get_fee_fixed(currency const& c1, currency const& c2) = 0;
+  virtual double get_fee_percent(const currency_pair& cp) = 0;
+  virtual double get_fee_fixed(const currency_pair& cp) = 0;
   virtual double get_transfer_fee(currency const& c1) = 0;
   virtual void custom_functions(basic_account* acct) = 0;
 

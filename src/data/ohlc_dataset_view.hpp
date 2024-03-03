@@ -23,12 +23,10 @@ class ohlc_dataset_view
   std::map<double, ohlc_datasets*> candles_;
 
   std::string exchange_;
-  currency c1_;
-  currency c2_;
   std::string ticker_string_;
 
   public:
-  ohlc_dataset_view(std::string exchange, currency const& c1, currency const& c2);
+  ohlc_dataset_view(std::string exchange, const currency_pair& cp);
   ~ohlc_dataset_view();
 
   void read_from_disk();

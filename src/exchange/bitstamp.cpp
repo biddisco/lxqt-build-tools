@@ -240,10 +240,8 @@ bool bitstamp_network::stream_subscribe(
   currency_pair const& cp, network::streams const stream, bool enabled, factory_function f)
 {
   // always subscribe to a ticker before a stream it owns
-  if (!ticker_subscribed(std::get<0>(cp), std::get<1>(cp)))
-  {
-    ticker_subscribe(std::get<0>(cp), std::get<1>(cp));
-  }
+  if (!ticker_subscribed(cp))
+    ticker_subscribe(cp);
 
   auto snd = stdexec::on(qt_mainthread_scheduler(), request_websocket_token())    //
     | stdexec::then([this](QByteArray byteArray) {                                // pika
@@ -352,23 +350,25 @@ bool bitstamp_network::can_send(const currency& c, exchange* dest)
 }
 
 // ----------------------------------------------------------------------------
-double bitstamp_network::get_fee_percent(currency const& c1, currency const& c2)
+double bitstamp_network::get_fee_percent(const currency_pair& cp)
 {
   std::pair<std::string, std::string> cpair;
-  if (c1.is_xrp())
+  if (std::get<0>(cp).is_xrp())
   {
-    cpair = std::make_pair(lowercase(c1.to_string().first), lowercase(c2.to_string().first));
+    cpair = std::make_pair(
+      lowercase(std::get<0>(cp).to_string().first), lowercase(std::get<1>(cp).to_string().first));
   }
   else
   {
-    cpair = std::make_pair(lowercase(c2.to_string().first), lowercase(c1.to_string().first));
+    cpair = std::make_pair(
+      lowercase(std::get<1>(cp).to_string().first), lowercase(std::get<0>(cp).to_string().first));
   }
   const auto val = fee_map_.at(cpair);
   return val;
 }
 
 // ----------------------------------------------------------------------------
-double bitstamp_network::get_fee_fixed(currency const& c1, currency const& c2)
+double bitstamp_network::get_fee_fixed(const currency_pair& cp)
 {
   return 0.0;
 }
@@ -1101,20 +1101,19 @@ void bitstamp_network::place_buy_sell_orders(
 }
 
 // ----------------------------------------------------------------------------
-stream_set bitstamp_network::ticker_subscribe(currency const& c1, currency const& c2)
+stream_set bitstamp_network::ticker_subscribe(const currency_pair& cp)
 {
   // exit if this exchange has already subscribed to this ticker
-  std::string cps = currency_pair_string({c1, c2});
-  if (ticker_subscribed(c1, c2))
+  std::string cps = currency_pair_string(cp);
+  if (ticker_subscribed(cp))
   {
     bitstamp_dbg<2>.debug(str<>("subscription"), cps, "already subscribed");
     return stream_set{};
   }
   bitstamp_dbg<0>.debug(str<>("subscribing"), cps);
-  currency_pair cp{c1, c2};
 
   // create a new data view from hdf5
-  std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("bitstamp", c1, c2);
+  std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("bitstamp", cp);
   std::shared_ptr<bitstamp_order_book> orderbook = std::make_shared<bitstamp_order_book>();
   // add the subscribed ticker/data/plot to our list for tracking
   ticker_data data =
