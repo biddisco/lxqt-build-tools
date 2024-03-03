@@ -229,8 +229,8 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
 
   // Override the Qt size policy. Otherwise, the plot may not scale to
   // the desired dimensions from the grid layout.
-  setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-  setMinimumSize(0, 0);
+  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  setMinimumSize(128, 64);
 
   bind_graphs();
 }

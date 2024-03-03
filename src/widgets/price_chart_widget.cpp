@@ -87,6 +87,9 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   DigitalClock* clock = new DigitalClock(this, exchange_->get_clock_timer());
   ui->controls_layout->addWidget(clock);
   //
+  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  setMinimumSize(128, 96);
+  //
   connect_gui();
 }
 
