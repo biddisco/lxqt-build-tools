@@ -68,7 +68,7 @@ void hdf5_ohlc_manager::read_impl(
       std::vector<size_t> offset{0};
       std::vector<size_t> size{Nread * ohlc_size};
       Selection slice = dataset.select(offset, size);
-      slice.read<double>(reinterpret_cast<double*>(data.data()));
+      slice.read_raw<double>(reinterpret_cast<double*>(data.data()), create_datatype<double>());
     }
     else
     {
