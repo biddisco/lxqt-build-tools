@@ -44,6 +44,7 @@
 #include "widgets/wallet_widget.hpp"
 
 // Qt Advanced Docking System
+#include "AutoHideDockContainer.h"
 #include "DockAreaTabBar.h"
 #include "DockAreaTitleBar.h"
 #include "DockAreaWidget.h"
@@ -107,7 +108,7 @@ QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
   obPlotDockWidget->setWidget(orderbook_text);
   obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   global_settings.dock_manager_->addDockWidget(
-    DockWidgetArea::LeftDockWidgetArea, obPlotDockWidget);
+    DockWidgetArea::RightDockWidgetArea, obPlotDockWidget);
   global_settings.dockwindows_menu_->addAction(obPlotDockWidget->toggleViewAction());
 
   return orderbook_text;
@@ -126,7 +127,7 @@ OrderBookPlot* create_order_book_plot_widget(
   CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
   obpDockWidget->setWidget(orderbook_plot);
   obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(DockWidgetArea::CenterDockWidgetArea, obpDockWidget);
+  global_settings.dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, obpDockWidget);
   global_settings.dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
   return orderbook_plot;
 }
@@ -234,7 +235,16 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockManager::setConfigFlag(CDockManager::OpaqueSplitterResize, true);
   CDockManager::setConfigFlag(CDockManager::XmlCompressionEnabled, false);
   CDockManager::setConfigFlag(CDockManager::FocusHighlighting, true);
+  CDockManager::setAutoHideConfigFlags(CDockManager::DefaultAutoHideConfig);
   global_settings.dock_manager_ = std::make_shared<CDockManager>(this);
+
+  // // Set central widget
+  // QPlainTextEdit* w = new QPlainTextEdit();
+  // w->setPlaceholderText("This is the central editor. Enter your text here.");
+  // CDockWidget* CentralDockWidget = new CDockWidget("CentralWidget");
+  // CentralDockWidget->setWidget(w);
+  // auto* CentralDockArea = global_settings.dock_manager_->setCentralWidget(CentralDockWidget);
+  // CentralDockArea->setAllowedAreas(DockWidgetArea::OuterDockAreas);
 
   // ----------------------------------
   // Setup a menu to allow dockwindow control - must be after dock manager creation
@@ -243,12 +253,15 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   // ----------------------------------
   // Create dockwidget for network connections
   net_layout_ = new QTabWidget(this);
+  net_layout_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   //
   CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
   NetworkDockWidget->setWidget(net_layout_);
   NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  auto RightArea = global_settings.dock_manager_->addDockWidget(
-    DockWidgetArea::RightDockWidgetArea, NetworkDockWidget);
+  NetworkDockWidget->setMinimumSize(128, 196);
+  const auto NetworkautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+    SideBarLocation::SideBarRight, NetworkDockWidget);
+  NetworkautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
 
   // ----------------------------------
@@ -256,13 +269,44 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   QWidget* algowidget_ = new QWidget(this);
   algo_form_ = new Ui::TabbedForm();
   algo_form_->setupUi(algowidget_);
+  algowidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
   CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
   AlgorithmsDockWidget->setWidget(algowidget_);
   AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(
-    DockWidgetArea::RightDockWidgetArea, AlgorithmsDockWidget, RightArea, 1);
+  AlgorithmsDockWidget->setMinimumSize(128, 196);
+  const auto AlgorithmsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+    SideBarLocation::SideBarRight, AlgorithmsDockWidget);
+  AlgorithmsautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
+
+  // ----------------------------------
+  // create a dock widget to hold accounts/wallets
+  accounts_frame_ = new QFrame();
+  accounts_frame_->setLayout(new QVBoxLayout());
+  //
+  CDockWidget* AccountsDockWidget = new CDockWidget("Accounts");
+  AccountsDockWidget->setWidget(accounts_frame_);
+  AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  AccountsDockWidget->setMinimumSize(128, 196);
+  const auto AccountsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+    SideBarLocation::SideBarRight, AccountsDockWidget);
+  AccountsautoHideContainer->setSize(256);
+  global_settings.dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
+
+  // ----------------------------------
+  // create a dock widget to hold open orders
+  orders_frame_ = new QFrame();
+  orders_frame_->setLayout(new QVBoxLayout());
+  //
+  CDockWidget* OrdersDockWidget = new CDockWidget("Trades");
+  OrdersDockWidget->setWidget(orders_frame_);
+  OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContentMinimumSize);
+  OrdersDockWidget->setMinimumSize(128, 196);
+  const auto OrdersautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+    SideBarLocation::SideBarRight, OrdersDockWidget);
+  OrdersautoHideContainer->setSize(256);
+  global_settings.dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
 
 #ifdef GROX_HAVE_BITSTAMP
   // ----------------------------------
@@ -349,30 +393,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     },
     Qt::QueuedConnection);
 #endif
-
-  // ----------------------------------
-  // create a dock widget to hold accounts/wallets
-  accounts_frame_ = new QFrame();
-  accounts_frame_->setLayout(new QVBoxLayout());
-  //
-  CDockWidget* AccountsDockWidget = new CDockWidget("Accounts");
-  AccountsDockWidget->setWidget(accounts_frame_);
-  AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(
-    DockWidgetArea::RightDockWidgetArea, AccountsDockWidget, RightArea, 2);
-  global_settings.dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
-
-  // ----------------------------------
-  // create a dock widget to hold open orders
-  orders_frame_ = new QFrame();
-  orders_frame_->setLayout(new QVBoxLayout());
-  //
-  CDockWidget* OrdersDockWidget = new CDockWidget("Trades");
-  OrdersDockWidget->setWidget(orders_frame_);
-  OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(
-    DockWidgetArea::RightDockWidgetArea, OrdersDockWidget, RightArea, 3);
-  global_settings.dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
 
   // for each wallet on each network
   for (auto network : global_settings.networks_)
