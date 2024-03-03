@@ -298,6 +298,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       connection_widget* conwidget = new connection_widget(this, ex);
       conwidget->setup_gui();
       net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
+      global_settings.dock_manager_->openPerspective(active_perspective_);
     },
     Qt::QueuedConnection);
 #endif
@@ -334,6 +335,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       connection_widget* conwidget = new connection_widget(this, ex);
       conwidget->setup_gui();
       net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
+      global_settings.dock_manager_->openPerspective(active_perspective_);
     },
     Qt::QueuedConnection);
 
@@ -343,6 +345,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       connection_widget* conwidget = new connection_widget(this, ex);
       conwidget->setup_gui();
       net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
+      global_settings.dock_manager_->openPerspective(active_perspective_);
     },
     Qt::QueuedConnection);
 #endif
