@@ -124,7 +124,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   , first_update_(true)
   , last_auto_res_(-1)
 {
-  // find a fix font char size for candle status/data
+  // find a fixed font char size for candle status/data
   QString X = "X";
   QFont label_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   fixed_char_size_x_ = QFontMetrics(label_font).tightBoundingRect(X).width();
@@ -148,7 +148,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   candle_status_->setFont(label_font);
   // OHLCV format string : "O:<num>" = 5(OHLCV)*2 + 4(OHLC)*9 + 1(V)*14 = 61chars
   candle_status_->setGeometry(
-    label_xsize, 0, 61 * fixed_char_size_x_, 2 * margin + 2 * fixed_char_size_y_);
+    label_xsize, 0, 65 * fixed_char_size_x_, 2 * margin + 2 * fixed_char_size_y_);
 
   // default start up resolution
   candle_resolution_ = ohlc_data_resolutions::minute;
@@ -475,22 +475,24 @@ void ohlc_price_plot::display_picker_info(const QPointF pos)
   //
   ohlctv_sample const& sample = dataset->ohlc_samples_->data().at(index);
 
-  std::string c;
+  const char* c = "red";
   if (sample.open <= sample.close)
     c = "green";
-  else
-    c = "red";
 
-  static const char* html1 = "<font color=\"white\">";
-  static const char* html2 = "</font> <font color=\"";
-  static const char* html3 = "\">";
-  std::stringstream temp;
-  temp << html1 << " O:" << html2 << c << html3 << fp<5, 9>(sample.open) << html1 << " H:" << html2
-       << c << html3 << fp<5, 9>(sample.high) << html1 << " L:" << html2 << c << html3
-       << fp<5, 9>(sample.low) << html1 << " C:" << html2 << c << html3 << fp<5, 9>(sample.close)
-       << html1 << " V:" << html2 << c << html3 << fp<2, 14>(sample.volume);
+  std::string fstr = fmt::format(                                //
+    "<font color=\"white\"> O: <font color=\"{}\">{:<9.5f}"      //
+    "<font color=\"white\"> H: <font color=\"{}\">{:<9.5f}"      //
+    "<font color=\"white\"> L: <font color=\"{}\">{:<9.5f}"      //
+    "<font color=\"white\"> C: <font color=\"{}\">{:<9.5f}"      //
+    "<font color=\"white\"> V: <font color=\"{}\">{:<14.2f}",    //
+    c, sample.open,                                              //
+    c, sample.high,                                              //
+    c, sample.low,                                               //
+    c, sample.close,                                             //
+    c, sample.volume                                             //
+  );
 
-  QwtText status(temp.str().c_str());
+  QwtText status(fstr.c_str());
   status.setRenderFlags(Qt::AlignLeft | Qt::AlignTop);
   //fill_text_label(status);
   candle_status_->setText(status);
