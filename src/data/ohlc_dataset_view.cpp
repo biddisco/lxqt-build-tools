@@ -173,29 +173,28 @@ double ohlc_dataset_view::get_first_sample_time()
 
 // ----------------------------------------------------------------------------
 ohlcv_minmax ohlc_dataset_view::get_min_max(
-  ohlc_chart_data const* dataset, double res, double start_time, double end_time) const
+  ohlc_chart_data const* dataset, double res, double view_t1, double view_t2) const
 {
   if (dataset->data().empty())
     return ohlcv_minmax();
   //
-  double init_time = dataset->data().front().time;
-  double last_time = dataset->data().back().time;
+  double data_t1 = dataset->data().front().time;
+  double data_t2 = dataset->data().back().time;
   //
-  start_time = std::max(start_time, init_time);
-  end_time = std::max(start_time, end_time);
-  end_time = std::min(end_time, last_time);
-  size_t sample1 = static_cast<size_t>((start_time - init_time) / res);
-  size_t sample2 = static_cast<size_t>((end_time - init_time) / res);
+  double t1 = std::max(view_t1, data_t1);
+  double t2 = std::min(std::max(view_t1, view_t2), data_t2);
+  size_t sample1 = static_cast<size_t>((t1 - data_t1) / res);
+  size_t sample2 = static_cast<size_t>((t2 - data_t1) / res);
 
   ohlcv_minmax result;
   // if graph is too far right, show last point range, mark flags as invalid
-  if (start_time > last_time)
+  if (view_t1 > data_t2)
   {
     result = dataset->minmax_limits(sample2, sample2);
     result.valid_ = false;
   }
   // if graph is too far left, show first point range, mark flags as invalid
-  else if (end_time < init_time)
+  else if (view_t2 < data_t1)
   {
     result = dataset->minmax_limits(sample1, sample1);
     result.valid_ = false;
