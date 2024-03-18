@@ -139,11 +139,11 @@ class xrpl_order_book : public order_book_base
   // When subscribing to the ledger order book webstream
   //  a snapshot is inculded initiall with the current state
   // This function converts the json into our order book
-  void accept_json_ledger_snapshot(std::string_view data);
+  void accept_json_ledger_snapshot(nlohmann::json joffers);
 
   void ledger_map_to_order_book();
 
-  void accept_json_ledger_transaction(std::string_view data);
+  void accept_json_ledger_transaction(nlohmann::json jdata);
 
   bool update_offer(
     grox::xrpl_offer const& prev_offer, grox::xrpl_offer& final_offer, double owner_funds = -1);

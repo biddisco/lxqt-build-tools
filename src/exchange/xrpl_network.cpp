@@ -13,9 +13,14 @@
 #include <ripple/protocol/Sign.h>
 #include <ripple/protocol/UintTypes.h>
 //
+//
 #include <exec/async_scope.hpp>
 #include <exec/inline_scheduler.hpp>
+#include <exec/variant_sender.hpp>
 #include <stdexec/execution.hpp>
+//
+#include <pika/execution/algorithms/just.hpp>
+#include <pika/execution/algorithms/transfer_just.hpp>
 //
 #include "debug/print.hpp"
 #include "exchange/bitstamp.hpp"
@@ -48,7 +53,6 @@ xrpl_network::xrpl_network(bool testnet)
 xrpl_network::~xrpl_network()
 {
   xrpnet_dbg<0>.debug(str<>("destructor"), "testnet ", testnet());
-  delete orderbook_;
 }
 
 // ----------------------------------------------------------------------------
@@ -56,10 +60,10 @@ void xrpl_network::initialize()
 {
   if (!testnet())
   {
-    add_currency_pair(currency_code{currency::bitstamp_trust, "USD"}, currency_code{"", "XRP"});
-    add_currency_pair(currency_code{currency::bitstamp_trust, "EUR"}, currency_code{"", "XRP"});
-    add_currency_pair(currency_code{currency::gatehub_trust, "USD"}, currency_code{"", "XRP"});
-    add_currency_pair(currency_code{currency::gatehub_trust, "EUR"}, currency_code{"", "XRP"});
+    add_currency_pair({{currency::bitstamp_trust, "USD"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currency::bitstamp_trust, "EUR"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currency::gatehub_trust, "USD"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currency::gatehub_trust, "EUR"}, currency_code{"", "XRP"}});
   }
 
   // spawn a task that performs init functions, we must do this on a pika thread because
@@ -136,7 +140,8 @@ bool xrpl_network::can_send(currency const& c, exchange* dest)
 // ----------------------------------------------------------------------------
 xrpl_order_book const& xrpl_network::get_orderbook(currency_pair const& cp) const
 {
-  return *orderbook_;
+  const ticker_data tdata = get_subscribed_ticker_data(cp);
+  return *dynamic_pointer_cast<xrpl_order_book const>(tdata->orderbook_);
 }
 
 // ----------------------------------------------------------------------------
@@ -144,22 +149,34 @@ xrpl_order_book const& xrpl_network::get_orderbook(currency_pair const& cp) cons
 bool xrpl_network::stream_subscribe(
   currency_pair const& cp, network::streams const stream, bool enabled, factory_function f)
 {
-  bool ok = true;
-  switch (stream)
-  {
-  case network::streams::account_changes:
-    ok = subscribe_accounts();
-    break;
-  case network::streams::order_book:
-    ok = subscribe_order_book(cp, enabled);
-    break;
-  default:
-    ok = false;
-    throw std::runtime_error("unknown stream");
-  }
-  if (ok)
-    mark_stream_subscribed(cp, stream, enabled);
-  return ok;
+  // always subscribe to a ticker before a stream it owns
+  if (!ticker_subscribed(cp))
+    ticker_subscribe(cp);
+
+  auto snd = stdexec::on(qt_mainthread_scheduler(), stdexec::just())    //
+    | stdexec::then([this, cp, stream, enabled]() {                     //
+        bool ok = true;
+        switch (stream)
+        {
+        case network::streams::account_changes:
+          ok = subscribe_accounts();
+          break;
+        case network::streams::order_book:
+          ok = subscribe_order_book(cp, enabled);
+          break;
+        default:
+          ok = false;
+          throw std::runtime_error("unknown stream");
+        }
+        if (ok)
+          mark_stream_subscribed(cp, stream, enabled);
+      })                                         //
+    | stdexec::then([this, cp, stream, f]() {    //
+        f(cp, get_subscribed_ticker_data(cp), stream);
+      });
+  stdexec::start_detached(std::move(snd));
+  // @todo : must return a sender here
+  return true;
 }
 
 // ----------------------------------------------------------------------------
@@ -213,6 +230,10 @@ stream_set xrpl_network::ticker_subscribe(const currency_pair& cp)
 // ----------------------------------------------------------------------------
 void xrpl_network::shut_down()
 {
+  // do not allow shutdown / async operations concurrently
+  closing_down_ = true;
+  std::lock_guard l(async_mutex_);
+  //
   if (ws_orderbook)
   {
     ws_orderbook.reset();
@@ -233,20 +254,26 @@ void xrpl_network::add_wallet(ledger_wallet const& w)
 bool xrpl_network::subscribe_order_book(currency_pair const& cp, bool enable)
 {
   using namespace std::placeholders;
+  // flip currency pair around if xrp is second
+  currency_pair cp2 = cp;
+  if (!std::get<0>(cp).is_xrp())
+  {
+    cp2 = {std::get<1>(cp), std::get<0>(cp)};
+  }
   //startswith
   json command;
   command["command"] = "subscribe";
   // buying xrp
   json buy_xrp;
-  buy_xrp["taker_gets"]["currency"] = std::get<0>(cp).code_;
-  buy_xrp["taker_pays"]["currency"] = std::get<1>(cp).code_;
-  buy_xrp["taker_pays"]["issuer"] = std::get<1>(cp).issuer_;
+  buy_xrp["taker_gets"]["currency"] = std::get<0>(cp2).code_;
+  buy_xrp["taker_pays"]["currency"] = std::get<1>(cp2).code_;
+  buy_xrp["taker_pays"]["issuer"] = std::get<1>(cp2).issuer_;
   buy_xrp["snapshot"] = true;
   // selling xrp
   json sell_xrp;
-  buy_xrp["taker_pays"]["currency"] = std::get<0>(cp).code_;
-  buy_xrp["taker_gets"]["currency"] = std::get<1>(cp).code_;
-  buy_xrp["taker_gets"]["issuer"] = std::get<1>(cp).issuer_;
+  sell_xrp["taker_pays"]["currency"] = std::get<0>(cp2).code_;
+  sell_xrp["taker_gets"]["currency"] = std::get<1>(cp2).code_;
+  sell_xrp["taker_gets"]["issuer"] = std::get<1>(cp2).issuer_;
   sell_xrp["snapshot"] = true;
   // subscribe to 2 books
   command["books"] = json::array({buy_xrp, sell_xrp});
@@ -256,7 +283,7 @@ bool xrpl_network::subscribe_order_book(currency_pair const& cp, bool enable)
 
   ws_orderbook = net::ws::qwebsocket_session::create("xrpl::orderbook" + currency_pair_string(cp),
     websocket_address(), websocket_port(), subscription,
-    std::bind(xrpl_network::new_orderbook_data, this, cp, _1));
+    std::bind(xrpl_network::new_orderbook_data_q, this, cp, _1));
 
   return true;
 }
@@ -277,30 +304,75 @@ bool xrpl_network::subscribe_accounts()
 
   ws_accounts =
     net::ws::qwebsocket_session::create("xrpl::accounts" + addresses, websocket_address(),
-      websocket_port(), subscription, std::bind(xrpl_network::new_account_data, this, _1));
+      websocket_port(), subscription, std::bind(xrpl_network::new_account_data_q, this, _1));
 
   return true;
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::new_orderbook_data(xrpl_network* nw, currency_pair const cp, QString qdata)
+void xrpl_network::new_orderbook_data_q(
+  xrpl_network* exchange, currency_pair const cp, QString data)
 {
-  xrpnet_dbg<0>.debug(str<>("new_orderbook_data"), "xrpl: orderbook");
-  std::string data = qdata.toStdString();
-  if (startswith(data, "{\"result\":"))
+  xrpnet_dbg<5>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
+  xrpnet_dbg<9>.debug(str<>("Orderbook data"), data.toStdString());
+
+  // if shutdown was started after this data was sent by the remote source
+  // then it can be ignored/dropped as we will not handle it anyway
+  std::lock_guard l(exchange->async_mutex_);
+  if (exchange->closing_down_)
   {
-    xrpnet_dbg<5>.debug(str<>("ledger_snapshot"));
-    nw->orderbook_->accept_json_ledger_snapshot(data);
+    xrpnet_dbg<0>.error(str<>("Orderbook data"), "Shutdown in progress: ignoring data");
+    return;
   }
-  else if (startswith(data, "{\"engine_result\":"))
-  {
-    xrpnet_dbg<5>.debug(str<>("ledger_transaction"));
-    nw->orderbook_->accept_json_ledger_transaction(data);
-  }
+
+  auto process = [exchange, cp, data]() {
+    const ticker_data tdata = exchange->get_subscribed_ticker_data(cp);
+    try
+    {
+      std::string sdata = data.toStdString();
+      json jdata = json::parse(sdata);
+      if (jdata.contains("result") && jdata["result"].contains("offers"))
+      {
+        xrpnet_dbg<5>.debug(str<>("ledger_snapshot"));
+        dynamic_pointer_cast<xrpl_order_book>(tdata->orderbook_)
+          ->accept_json_ledger_snapshot(jdata["result"]["offers"]);
+      }
+      else if (jdata.contains("transaction") && jdata.contains("meta"))
+      {
+        xrpnet_dbg<5>.debug(str<>("ledger_transaction"));
+        dynamic_pointer_cast<xrpl_order_book>(tdata->orderbook_)
+          ->accept_json_ledger_transaction(jdata);
+      }
+      else
+      {
+        // Enumerate all keys (including sub-keys -- not working)
+        for (auto it = jdata.begin(); it != jdata.end(); it++)
+        {
+          std::cout << "key: " << it.key() << " : " << it.value().dump(4) << std::endl;
+        }
+        //xrpnet_dbg<5>.debug(str<>("unknown"), jdata.dump(4));
+      }
+    }
+    catch (...)
+    {
+      xrpnet_dbg<0>.error(
+        str<>("Orderbook error"), currency_pair_string(cp), tdata->orderbook_, data.toStdString());
+    }
+    //
+    for (auto subscriber : tdata->orderbook_subscribers_)
+    {
+      xrpnet_dbg<4>.debug(str<>("orderbook subscribe"), currency_pair_string(cp));
+      subscriber(cp);
+    }
+  };
+
+  stdexec::sender auto snd =
+    stdexec::on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
+  stdexec::start_detached(std::move(snd));
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::new_account_data(xrpl_network* nw, QString qdata)
+void xrpl_network::new_account_data_q(xrpl_network* nw, QString qdata)
 {
   std::string data = qdata.toStdString();
   xrpnet_dbg<0>.debug(str<>("Account changes"), data);
@@ -541,9 +613,9 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
   //
   for (auto const& b : balances)
   {
-    if (b.currency.has_value())
+    if (!b.currency.is_xrp())
     {
-      const currency_code ic = b.currency.value();
+      const currency_code ic = b.currency;
       if (ic.is_xrp())
       {
         currency c{ic, b.value, b.value, 0, nullptr};
@@ -716,8 +788,8 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
     grox::from_json(offer["taker_gets"], taker_get);
     grox::from_json(offer["taker_pays"], taker_pay);
     //
-    trade_data t{get_instance(testnet()), w.name_, taker_pay.currency.value(),
-      taker_get.currency.value(), taker_pay.value, taker_get.value,
+    trade_data t{get_instance(testnet()), w.name_, taker_pay.currency, taker_get.currency,
+      taker_pay.value, taker_get.value,
       0.0,    // fee %
       0.0,    // fee fixed
       0,      // id

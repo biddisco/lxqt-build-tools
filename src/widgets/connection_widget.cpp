@@ -151,6 +151,7 @@ void connection_widget::setup_gui()
         {
           network::streams stream =
             magic_enum::enum_cast<network::streams>(k.toLatin1().toStdString()).value();
+          //          child index is not always same as stream index(some streams not present)
           QStandardItem* child = item->child(magic_enum::enum_integer(stream), 0);
           child->setCheckState(Qt::Checked);
         }

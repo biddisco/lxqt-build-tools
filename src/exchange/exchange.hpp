@@ -110,6 +110,14 @@ class exchange
   std::string exchange_name_;
   QTimer* timer_;
 
+  public:
+  // if an asynchronous websocket/http operation is being handled
+  // then shutdown must wait until it has completed before starting
+  // and then set a flag to prevent new async operations being handled
+  std::mutex async_mutex_;
+  std::atomic<bool> closing_down_;
+
+  public:
   // ---------------------------------------
   exchange();
 
@@ -172,7 +180,7 @@ class exchange
   // ---------------------------------------
   // setup / query tickers
   // ---------------------------------------
-  virtual bool add_currency_pair(const currency& c1, const currency& c2);
+  virtual bool add_currency_pair(const currency_pair& cp);
   virtual currency_pairlist const& get_currency_pairs();
 
   // ---------------------------------------

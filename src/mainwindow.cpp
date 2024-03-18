@@ -52,7 +52,7 @@
 #include "DockManager.h"
 #include "FloatingDockContainer.h"
 
-#define GROX_HAVE_BITSTAMP
+//#define GROX_HAVE_BITSTAMP
 #define GROX_HAVE_XRPL
 
 // ----------------------------------------------------------------------------
@@ -177,7 +177,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
 }
 
 // ----------------------------------------------------------------------------
-void ticker_price_gui_constructor(currency_pair cp, ticker_data tdata, network::streams stream)
+void ticker_stream_gui_constructor(currency_pair cp, ticker_data tdata, network::streams stream)
 {
   main_dbg<0>.debug(str<>("Stream"), "factory_create");
   if (stream == network::streams::price_data)
@@ -189,7 +189,7 @@ void ticker_price_gui_constructor(currency_pair cp, ticker_data tdata, network::
 }
 
 // ----------------------------------------------------------------------------
-void ticker_price_gui_destructor(currency_pair cp, ticker_data tdata, network::streams stream)
+void ticker_stream_gui_destructor(currency_pair cp, ticker_data tdata, network::streams stream)
 {
   main_dbg<0>.debug(str<>("Stream"), "factory_destroy");
   if (stream == network::streams::price_data)
@@ -336,8 +336,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     [this](exchange* ex) {
       ex->register_factory("ticker_subscribe",
         [ex](currency_pair cp, ticker_data, network::streams) { ex->ticker_subscribe(cp); });
-      ex->register_factory("stream_subscribe", ticker_price_gui_constructor);
-      ex->register_factory("stream_unsubscribe", ticker_price_gui_destructor);
+      ex->register_factory("stream_subscribe", ticker_stream_gui_constructor);
+      ex->register_factory("stream_unsubscribe", ticker_stream_gui_destructor);
       // widget with panels for tickers/selected/streams
       connection_widget* conwidget = new connection_widget(this, ex);
       conwidget->setup_gui();
@@ -375,6 +375,10 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   connect(
     xrpl_network_.get(), &xrpl_network::network_initialized, this,
     [this](exchange* ex) {
+      ex->register_factory("ticker_subscribe",
+        [ex](currency_pair cp, ticker_data, network::streams) { ex->ticker_subscribe(cp); });
+      ex->register_factory("stream_subscribe", ticker_stream_gui_constructor);
+      ex->register_factory("stream_unsubscribe", ticker_stream_gui_destructor);
       // widget with panels for tickers/selected/streams
       connection_widget* conwidget = new connection_widget(this, ex);
       conwidget->setup_gui();

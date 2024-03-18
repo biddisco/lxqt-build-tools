@@ -12,10 +12,7 @@ namespace grox {
 
   std::ostream& operator<<(std::ostream& os, xrp_amount const& x)
   {
-    if (x.currency.has_value())
-      os << x.currency.value();
-    else
-      os << "ERR.invalid";
+    os << x.currency;
     return os;
   }
 
@@ -55,6 +52,7 @@ namespace grox {
     // if this is a simple value (just plain XRP amount)
     if (j.size() == 1)
     {
+      p.currency = {"", "XRP"};
       p.value = std::stod(j.get<std::string>());
     }
     else

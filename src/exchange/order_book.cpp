@@ -25,7 +25,7 @@ using namespace grox;
 using namespace grox::debug;
 using namespace nlohmann;
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
+constexpr int debug_level = 6;
 //
 template <int Level>
 static print_threshold<Level, debug_level> obook_dbg("ord-book");
@@ -395,11 +395,9 @@ void bitstamp_order_book::bid_ask_string_to_number(json& jdata, offer_data& data
 // a snapshot is included initially with the current state
 // This function converts the json data into our order book form
 // This function should only be executed once : when connecting to stream
-void xrpl_order_book::accept_json_ledger_snapshot(std::string_view data)
+void xrpl_order_book::accept_json_ledger_snapshot(nlohmann::json joffers)
 {
-  json jdata = json::parse(data);
-  auto joffers = jdata["result"]["offers"];
-  obook_dbg<5>.debug(str<>("snapshot"), joffers.dump(4));
+  obook_dbg<9>.debug(str<>("snapshot"), joffers.dump(4));
   //
   // websocket (re?)connnect: clear the orderbook ...
   orders.clear();
@@ -472,7 +470,7 @@ void xrpl_order_book::ledger_map_to_order_book()
     std::vector<xrpl_offer>& acc_bids_ = std::get<bid_index>(bid_ask);
     std::vector<xrpl_offer>& acc_asks_ = std::get<ask_index>(bid_ask);
     //
-    obook_dbg<5>.debug(
+    obook_dbg<7>.debug(
       str<>("bid/ask"), acct, "bids:", acc_bids_.size(), "asks:", acc_asks_.size());
 
     // the account may not be fully funded, so the offers may be invalid
@@ -546,18 +544,17 @@ void xrpl_order_book::ledger_map_to_order_book()
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_order_book::accept_json_ledger_transaction(std::string_view data)
+void xrpl_order_book::accept_json_ledger_transaction(nlohmann::json jdata)
 {
-  json jdata = json::parse(data);
   std::string success = jdata.at("engine_result").get<std::string>();
   if (success != "tesSUCCESS")
     return;
   //
   json affected = jdata["meta"]["AffectedNodes"];
-  obook_dbg<5>.debug(str<>("Affected nodes"), affected.dump(4));
+  obook_dbg<7>.debug(str<>("Affected nodes"), affected.dump(4));
 
   json transaction = jdata["transaction"];
-  obook_dbg<5>.debug(str<>("transaction"), transaction.dump(4));
+  obook_dbg<7>.debug(str<>("transaction"), transaction.dump(4));
 
   std::string ttype = transaction.at("TransactionType").get<std::string>();
   if (ttype == "OfferCreate" || ttype == "OfferCancel" || ttype == "Payment")
@@ -597,7 +594,7 @@ bool xrpl_order_book::update_offer(
   //
   std::vector<xrpl_offer>& acc_bids_ = std::get<bid_index>(it->second);
   std::vector<xrpl_offer>& acc_asks_ = std::get<ask_index>(it->second);
-  if (prev_offer.TakerPays.currency.value() == currency_code("", "XRP"))
+  if (prev_offer.TakerPays.currency.is_xrp())
   {
     auto it2 = std::find(acc_bids_.begin(), acc_bids_.end(), prev_offer);
     if (it2 == acc_bids_.end())
@@ -650,15 +647,15 @@ bool xrpl_order_book::insert_offer(xrpl_offer const& offer)
   // add new order to map vectors
   std::vector<xrpl_offer>& acc_bids_ = std::get<bid_index>(it->second);
   std::vector<xrpl_offer>& acc_asks_ = std::get<ask_index>(it->second);
-  if (offer.TakerPays.currency.value() == currency_code("", "XRP"))
+  if (offer.TakerPays.currency.is_xrp())
   {
     acc_bids_.push_back(offer);
-    obook_dbg<5>.debug(str<>("Insert Bid:"), offer);
+    obook_dbg<7>.debug(str<>("Insert Bid:"), offer);
   }
   else
   {
     acc_asks_.push_back(offer);
-    obook_dbg<5>.debug(str<>("Insert Ask:"), offer);
+    obook_dbg<7>.debug(str<>("Insert Ask:"), offer);
   }
   return true;
 }
@@ -677,7 +674,7 @@ bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
   // remove order from map vector
   std::vector<xrpl_offer>& acc_bids_ = std::get<bid_index>(it->second);
   std::vector<xrpl_offer>& acc_asks_ = std::get<ask_index>(it->second);
-  if (offer.TakerPays.currency.value() == currency_code("", "XRP"))
+  if (offer.TakerPays.currency.is_xrp())
   {
     auto val = std::find(acc_bids_.begin(), acc_bids_.end(), offer);
     if (val == acc_bids_.end())
@@ -695,7 +692,7 @@ bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
         std::next(val)->owner_funds = val->owner_funds;
       }
     }
-    obook_dbg<5>.debug(str<>("Delete Bid:"), offer);
+    obook_dbg<7>.debug(str<>("Delete Bid:"), offer);
     acc_bids_.erase(val);
   }
   else
@@ -716,7 +713,7 @@ bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
         std::next(val)->owner_funds = val->owner_funds;
       }
     }
-    obook_dbg<5>.debug(str<>("Delete Ask:"), offer);
+    obook_dbg<7>.debug(str<>("Delete Ask:"), offer);
     acc_asks_.erase(val);
   }
   if (acc_bids_.size() == 0 && acc_asks_.size() == 0)

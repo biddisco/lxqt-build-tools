@@ -106,6 +106,13 @@ struct currency : public currency_code
     return currency_code::to_string();
   }
 
+  std::string to_stringrep() const
+  {
+    if (issuer_ != "")
+      return code_ + "." + issuer_;
+    return code_;
+  }
+
   // const currency_code& code() const
   // {
   //   return *this;

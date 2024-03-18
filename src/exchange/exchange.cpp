@@ -17,6 +17,8 @@ exchange::exchange()
 {
   timer_ = new QTimer(nullptr);
   timer_->start(1000);
+  //
+  closing_down_ = false;
 }
 
 // ----------------------------------------------------------------------------
@@ -112,8 +114,8 @@ currency_pairlist const& exchange::get_currency_pairs()
 }
 
 // ----------------------------------------------------------------------------
-bool exchange::add_currency_pair(const currency& c1, const currency& c2)
+bool exchange::add_currency_pair(const currency_pair& cp)
 {
-  tickers_available_.push_back(std::make_pair(c1, c2));
+  tickers_available_.push_back(cp);
   return true;
 }

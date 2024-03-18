@@ -45,13 +45,6 @@ class bitstamp_network : public exchange
   std::set<currency_pair> candlestick_updates_active_;
 
   public:
-  // if an asynchronous websocket/http operation is being handled
-  // then shutdown must wait until it has completed before starting
-  // and then set a flag to prevent new async operations being handled
-  std::mutex async_mutex_;
-  static std::atomic<bool> closing_down_;
-
-  public:
   //
   static inline const std::string bitstamp_https_address = "www.bitstamp.net";
   static inline const int bitstamp_https_port = 443;

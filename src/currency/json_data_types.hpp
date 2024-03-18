@@ -62,7 +62,7 @@ namespace grox {
   struct xrp_amount
   {
     double value;
-    std::optional<currency_code> currency = std::nullopt;
+    currency_code currency;
   };
 
   // ----------------------------------------------------------------------------
@@ -81,16 +81,10 @@ namespace grox {
     xrp_amount TakerGets;
     xrp_amount TakerPays;
 
-    // if there is no issuer, then it must be native xrp currency
-    bool is_xrp(xrp_amount const x) const
-    {
-      return !x.currency.has_value();
-    }
-
     double amount(currency const& c) const
     {
-      // @ todo : check if currency type of C is same as type of TakerPAys
-      if (is_xrp(TakerPays) == c.is_xrp())
+      // @ todo : check if currency type of C is same as type of TakerPays
+      if (TakerPays.currency.is_xrp() == c.is_xrp())
       {
         return TakerPays.value;
       }
@@ -104,7 +98,7 @@ namespace grox {
     // if the takes gives usd, offer is buying xrp
     double rate() const
     {
-      if (is_xrp(TakerPays))
+      if (TakerPays.currency.is_xrp())
       {
         return 1E6 * TakerGets.value / TakerPays.value;
       }
@@ -140,10 +134,12 @@ namespace grox {
 
     bool grox_compatible() const
     {
-      return ((is_xrp(TakerGets) &&
-                (TakerPays.currency == currency_code{currency::bitstamp_trust, "USD"})) ||
-        (is_xrp(TakerPays) &&
-          (TakerGets.currency == currency_code{currency::bitstamp_trust, "USD"})));
+      bool ok = TakerGets.currency.is_xrp() &&
+        (TakerPays.currency == currency_code{currency::bitstamp_trust, "USD"});
+      ok = ok ||
+        (TakerPays.currency.is_xrp() &&
+          (TakerGets.currency == currency_code{currency::bitstamp_trust, "USD"}));
+      return ok;
     }
   };
 

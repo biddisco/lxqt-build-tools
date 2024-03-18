@@ -40,8 +40,6 @@ template <int Level>
 static print_threshold<Level, 3> bitstamp_dbg("Bitstamp");
 
 // ----------------------------------------------------------------------------
-std::atomic<bool> bitstamp_network::closing_down_ = false;
-// ----------------------------------------------------------------------------
 bitstamp_network::bitstamp_network()
 {
   exchange_name_ = "Bitstamp";
@@ -53,8 +51,6 @@ bitstamp_network::bitstamp_network()
   // after new data has been received, trigger this to process new candles and replot
   connect(this, SIGNAL(new_ohlc_data(ticker_data, double)), this,
     SLOT(new_ohlc_data_event(ticker_data, double)));
-  //
-  closing_down_ = false;
 }
 
 // ----------------------------------------------------------------------------
@@ -586,7 +582,7 @@ void bitstamp_network::handle_tickers_available(std::string_view data)
     json::string_t jstring = val[std::string_view("pair")];
     auto const& [c1, c2] = string_to_pair(jstring, "/");
     bitstamp_dbg<6>.debug(str<>("Currency pair"), jstring, c1, c2);
-    add_currency_pair(c1, c2);
+    add_currency_pair({c1, c2});
   }
 }
 
@@ -771,7 +767,7 @@ void bitstamp_network::new_orderbook_data_q(
   // if shutdown was started after this data was sent by the remote source
   // then it can be ignored/dropped as we will not handle it anyway
   std::lock_guard l(exchange->async_mutex_);
-  if (closing_down_)
+  if (exchange->closing_down_)
   {
     bitstamp_dbg<0>.error(str<>("Orderbook data"), "Shutdown in progress: ignoring data");
     return;
@@ -811,7 +807,7 @@ void bitstamp_network::new_live_trade_data_q(
   // if shutdown was started after this data was sent by the remote source
   // then it can be ignored/dropped as we will not handle it anyway
   std::lock_guard l(exchange->async_mutex_);
-  if (closing_down_)
+  if (exchange->closing_down_)
   {
     bitstamp_dbg<0>.error(str<>("trade data"), "Shutdown in progress: ignoring data");
     return;

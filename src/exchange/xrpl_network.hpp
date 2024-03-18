@@ -33,7 +33,6 @@ class xrpl_network : public exchange
   std::shared_ptr<net::ws::qwebsocket_session> ws_accounts;
 
   bool testnet_;
-  xrpl_order_book* orderbook_;
   std::vector<ledger_wallet> subscribed_wallets_;
 
   std::map<std::string, double> currency_fees_;
@@ -169,9 +168,9 @@ class xrpl_network : public exchange
   }
 
   // ----------------------------------------------------------------------------
-  static void new_orderbook_data(xrpl_network* nw, currency_pair const cp, QString);
+  static void new_orderbook_data_q(xrpl_network* nw, currency_pair const cp, QString);
   // ----------------------------------------------------------------------------
-  static void new_account_data(xrpl_network* nw, QString);
+  static void new_account_data_q(xrpl_network* nw, QString);
 
   // ----------------------------------------------------------------------------
   std::vector<currency>::iterator get_currency(std::string_view addr, currency c);
