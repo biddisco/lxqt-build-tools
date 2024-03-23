@@ -121,7 +121,6 @@ class GroxMainWindow : public QMainWindow
   void execute_usd();
   void perform_arbitrage();
   void transaction_event();
-  void orderbook_text_update();
 
   // to connect to xrpl ledger signals
   void update_currency_widget(currency*);

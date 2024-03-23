@@ -52,7 +52,7 @@
 #include "DockManager.h"
 #include "FloatingDockContainer.h"
 
-//#define GROX_HAVE_BITSTAMP
+#define GROX_HAVE_BITSTAMP
 #define GROX_HAVE_XRPL
 
 // ----------------------------------------------------------------------------
@@ -160,6 +160,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
 
   auto orderbook_text_sub = [tdata, orderbook_text](currency_pair cp) {
     QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=]() {
+      main_dbg<0>.debug(str<>("Orderbook-Text"), "orderbook_plot_sub");
       QString datastring = QString::fromStdString(tdata->orderbook_->get_orderbook_string());
       orderbook_text->setPlainText(datastring);
     });
@@ -168,6 +169,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
 
   auto orderbook_plot_sub = [tdata, orderbook_plot](currency_pair cp) {
     QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=]() {
+      main_dbg<0>.debug(str<>("Orderbook-Plot"), "orderbook_plot_sub");
       orderbook_plot->update_graph_limits();
       orderbook_plot->new_data_event();
       orderbook_plot->update_time_and_replot();
@@ -690,13 +692,6 @@ void GroxMainWindow::perform_arbitrage()
 void GroxMainWindow::transaction_event()
 {
   main_dbg<5>.debug("transaction_event : update balances?");
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::orderbook_text_update()
-{
-  //  QString datastring = QString::fromStdString(xrpl_network_->get_orderbook().order_text);
-  //  algo_form_->order_book_xrpl->setPlainText(datastring);
 }
 
 // ----------------------------------------------------------------------------

@@ -345,24 +345,20 @@ void xrpl_network::new_orderbook_data_q(
       }
       else
       {
-        // Enumerate all keys (including sub-keys -- not working)
         for (auto it = jdata.begin(); it != jdata.end(); it++)
-        {
-          std::cout << "key: " << it.key() << " : " << it.value().dump(4) << std::endl;
-        }
-        //xrpnet_dbg<5>.debug(str<>("unknown"), jdata.dump(4));
+          xrpnet_dbg<0>.error(str<>("Unrecognized"), "key: ", it.key(), it.value().dump(4));
+      }
+      //
+      for (auto subscriber : tdata->orderbook_subscribers_)
+      {
+        xrpnet_dbg<4>.debug(str<>("orderbook callback"), currency_pair_string(cp));
+        subscriber(cp);
       }
     }
     catch (...)
     {
       xrpnet_dbg<0>.error(
         str<>("Orderbook error"), currency_pair_string(cp), tdata->orderbook_, data.toStdString());
-    }
-    //
-    for (auto subscriber : tdata->orderbook_subscribers_)
-    {
-      xrpnet_dbg<4>.debug(str<>("orderbook subscribe"), currency_pair_string(cp));
-      subscriber(cp);
     }
   };
 

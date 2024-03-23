@@ -13,6 +13,10 @@ set(grox_exchange_SRCS
     exchange.cpp
     order_book.hpp
     order_book.cpp
+    order_book_bitstamp.hpp
+    order_book_bitstamp.cpp
+    order_book_xrpl.hpp
+    order_book_xrpl.cpp
     xrpl.hpp
     xrpl.cpp
     xrpl_network.hpp

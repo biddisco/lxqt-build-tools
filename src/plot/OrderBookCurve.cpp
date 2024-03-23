@@ -1,4 +1,5 @@
 // STL
+#include <iostream>
 #include <mutex>
 #include <vector>
 // Qt
@@ -56,7 +57,7 @@ void OrderBookCurve::drawLines(QPainter* p, QwtScaleMap const& xMap, QwtScaleMap
 void OrderBookCurve::setSegmentInfo(
   int segmentStartIndex, int segmentFinisIndex, QColor const& color, double thickness)
 {
-  // when we are changing daya
+  // when we are changing data
   std::lock_guard<std::mutex> lock(paint_mutex_);
   //
   QPen pen(color);
@@ -70,7 +71,7 @@ void OrderBookCurve::setSegmentInfo(
 // ----------------------------------------------------------------------------
 void OrderBookCurve::clear_samples()
 {
-  // when we are changing daya
+  // when we are changing data
   std::lock_guard<std::mutex> lock(paint_mutex_);
   //
   QwtPlotCurve::setRawSamples(static_cast<float*>(nullptr), static_cast<float*>(nullptr), 0);
@@ -80,9 +81,14 @@ void OrderBookCurve::clear_samples()
 void OrderBookCurve::setRawSamples_locked(
   std::vector<float> const& xData, std::vector<float> const& yData)
 {
-  assert(xData.size() == yData.size());
-  // when we are changing daya
+  // prevent paint events when we are changing data
   std::lock_guard<std::mutex> lock(paint_mutex_);
+  //
+  if (xData.size() != yData.size())
+  {
+    std::cout << xData.size() << " " << yData.size() << std::endl;
+  }
+  assert(xData.size() == yData.size());
   //
   m_segStart.front() = 0;
   m_segFinish.front() = xData.size();

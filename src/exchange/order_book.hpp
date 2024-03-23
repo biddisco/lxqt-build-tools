@@ -45,6 +45,28 @@ struct fee_data
   double fixed;
 };
 
+// if we want to give our lock to another object, we must wrap our mutex
+// in a reference that will be unlocked when complete
+struct orderbook_lock
+{
+  std::unique_lock<std::mutex> lock_;
+
+  // we are constructed with a lock that is moved in and we take over the lock
+  orderbook_lock(std::unique_lock<std::mutex>&& lock)
+    : lock_(std::move(lock))
+  {
+  }
+
+  // to hand a lock to another one, we provide a move constructor
+  orderbook_lock(orderbook_lock&& other) = default;
+
+  ~orderbook_lock()
+  {
+    // it will be unlocked on destruction anyway, but lets be explicit
+    lock_.unlock();
+  }
+};
+
 // ----------------------------------------------------------------------------
 // Base order book class provides access to top bids/asks
 // plotting and other representations of the orders
@@ -53,15 +75,18 @@ class order_book_base : QObject
 {
   Q_OBJECT
 
-  public:
+  // ---------------------------------------------
+  private:
+  // a websocket thread might deliver bid/ask data as we are reading it, keep a lock
+  mutable std::mutex bidask_mtx_;
+
+  // ---------------------------------------------
+  protected:
   using trade_set =
     std::tuple<double, double, double, double, double, double, double, double, double, double>;
   using arb_vector = std::vector<trade_set>;
 
-  // a websocket thread might deliver bid/ask data as we are reading it, keep a lock
-  mutable std::mutex bidask_mtx_;
-
-  // Sorted order book entries
+  // Sorted order book entries, processed data that is derived from incoming websocket data
   offer_data bids_;
   offer_data asks_;
 
@@ -73,11 +98,22 @@ class order_book_base : QObject
   // Text representation of order book
   std::string order_text;
 
-  // construct, passing plot object in
+  // ---------------------------------------------
+  // construct
   order_book_base();
 
-  // clean up
+  // clean up, virtual destructor for inheritance
   virtual ~order_book_base();
+
+  // these are not protected by a mutex and should only be accessed internally
+  void update_graph_limits(bool primary);
+
+  // produces a simple string representation of the order book from the bid/ask lists
+  std::string make_order_book_string();
+
+  // ---------------------------------------------
+  public:
+  orderbook_lock take_bid_ask_lock() const;
 
   // given a max amount to spend, how much of this ask to take
   std::pair<double, double> buy_nibble(
@@ -97,67 +133,20 @@ class order_book_base : QObject
     return order_text;
   }
 
-  Q_SIGNALS:
-
-  protected:
-  // these are not protected by a mutex and should only be accessed internally
-  void update_graph_limits(bool primary);
-  // produces a simple string representation of the order book
-  // from the bid/ask lists
-  std::string make_order_book_string();
-};
-
-// ----------------------------------------------------------------------------
-// Bitstamp specific order book processing routines
-// ----------------------------------------------------------------------------
-class bitstamp_order_book : public order_book_base
-{
-  public:
-  using order_book_base::order_book_base;
-
-  // ----------------------------------------------------------------------------
-  // accept json reply from bitstamp order book query and turn into numeric arrays
-  void accept_json_bitstamp(const QString data);
-
-  private:
-  // ----------------------------------------------------------------------------
-  // bitstamp data arrives as strings instead of numbers
-  // these must be converted to numeric arrays
-  void bid_ask_string_to_number(nlohmann::json& json, offer_data& data);
-};
-
-// ----------------------------------------------------------------------------
-// XRP ledger specific order book processing routines
-// ----------------------------------------------------------------------------
-class xrpl_order_book : public order_book_base
-{
-  public:
-  using order_book_base::order_book_base;
-  //
-  offer_map orders;
-
-  // When subscribing to the ledger order book webstream
-  //  a snapshot is inculded initiall with the current state
-  // This function converts the json into our order book
-  void accept_json_ledger_snapshot(nlohmann::json joffers);
-
-  void ledger_map_to_order_book();
-
-  void accept_json_ledger_transaction(nlohmann::json jdata);
-
-  bool update_offer(
-    grox::xrpl_offer const& prev_offer, grox::xrpl_offer& final_offer, double owner_funds = -1);
-
-  bool insert_offer(grox::xrpl_offer const& offer);
-
-  bool delete_offer(grox::xrpl_offer const& offer);
-
-  enum node_edit
+  std::tuple<double, double> get_xminmax(bool primary)
   {
-    created = 0,
-    modified,
-    deleted
-  };
+    int index = primary ? 0 : 1;
+    return {prev_xmin[index], prev_xmax[index]};
+  }
 
-  void handle_offer_change(nlohmann::json const& trans, nlohmann::json const& affected);
+  std::tuple<double, double> get_yminmax(bool primary)
+  {
+    int index = primary ? 0 : 1;
+    return {0.0, prev_ymax[index]};
+  }
+
+  std::tuple<const offer_data&, const offer_data&> get_bidask_data()
+  {
+    return {bids_, asks_};
+  }
 };

@@ -23,7 +23,7 @@ public:
 
     static const int bid_ask_max = 200;
 
-    // Graph min/max control
+    // Graph min/max control, 0=primary, 1=secondary
     double prev_xmin[2];
     double prev_xmax[2];
     double prev_ymax[2];

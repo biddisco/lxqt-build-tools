@@ -113,17 +113,17 @@ OrderBookPlot::OrderBookPlot(QWidget* parent, std::shared_ptr<order_book_base> o
   this->setAxisTitle(QwtPlot::yLeft, axisTitleY);
 
   // 2nd y axis
-  QPalette palette3 = axisWidget(Axis::yRight)->palette();
-  palette3.setColor(QPalette::WindowText, Qt::darkYellow);    // tick
-  palette3.setColor(QPalette::Text, Qt::darkMagenta);         // tick labels
-  axisWidget(Axis::yRight)->setPalette(palette3);
+  // QPalette palette3 = axisWidget(Axis::yRight)->palette();
+  // palette3.setColor(QPalette::WindowText, Qt::darkYellow);    // tick
+  // palette3.setColor(QPalette::Text, Qt::darkMagenta);         // tick labels
+  // axisWidget(Axis::yRight)->setPalette(palette3);
 
-  QwtText axisTitleY2("XRPL");
-  axisTitleY2.setRenderFlags(Qt::AlignRight | Qt::AlignTop);
-  axisTitleY2.setFont(axis_title_font);
-  this->setAxisTitle(QwtPlot::yRight, axisTitleY2);
+  // QwtText axisTitleY2("XRPL");
+  // axisTitleY2.setRenderFlags(Qt::AlignRight | Qt::AlignTop);
+  // axisTitleY2.setFont(axis_title_font);
+  // this->setAxisTitle(QwtPlot::yRight, axisTitleY2);
 
-  enableAxis(QwtPlot::yRight);
+  // enableAxis(QwtPlot::yRight);
 
   bid_curve_ = new OrderBookCurve();
   ask_curve_ = new OrderBookCurve();
@@ -193,28 +193,19 @@ void OrderBookPlot::update_graph_limits()
 {
   bool primary = true;
   //
-  double ymin = 0.0;
   int index = primary ? 0 : 1;
-  // if (primary)
-  {
-    setAxisScale(QwtPlot::xBottom, order_book_->prev_xmin[index], order_book_->prev_xmax[index]);
-    setAxisScale(QwtPlot::yLeft, ymin, order_book_->prev_ymax[index]);
-  }
-  // else
-  // {
-  //   if (first_time[0])
-  //   {
-  //     setAxisScale(QwtPlot::xBottom, prev_xmin[index], prev_xmax[index]);
-  //     setAxisScale(QwtPlot::yLeft, ymin, prev_ymax[index]);
-  //   }
-  //   setAxisScale(QwtPlot::yRight, ymin, prev_ymax[index]);
-  // }
+  auto [minx, maxx] = order_book_->get_xminmax(primary);
+  setAxisScale(QwtPlot::xBottom, minx, maxx);
+  auto [miny, maxy] = order_book_->get_yminmax(primary);
+  setAxisScale(QwtPlot::yLeft, miny, maxy);
 }
 
 // ----------------------------------------------------------------------------
 void OrderBookPlot::new_data_event()
 {
   // push this data into the graph object
-  bid_curve_->setRawSamples_locked(order_book_->bids_.rate, order_book_->bids_.total);
-  ask_curve_->setRawSamples_locked(order_book_->asks_.rate, order_book_->asks_.total);
+  orderbook_lock lock = order_book_->take_bid_ask_lock();
+  const auto& [bids, asks] = order_book_->get_bidask_data();
+  bid_curve_->setRawSamples_locked(bids.rate, bids.total);
+  ask_curve_->setRawSamples_locked(asks.rate, asks.total);
 }
