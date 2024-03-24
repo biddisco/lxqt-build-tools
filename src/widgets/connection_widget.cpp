@@ -39,12 +39,31 @@ connection_widget::~connection_widget()
 }
 
 // ----------------------------------------------------------------------------
-enum
+enum data_slot
 {
   CheckState = Qt::UserRole + 0,
   DataState = Qt::UserRole + 1,
   StreamState = Qt::UserRole + 2
 };
+
+// ----------------------------------------------------------------------------
+template <typename T>
+QStandardItem* findChildItem(QStandardItem* parent, data_slot slot, T cdata)
+{
+  int C = parent->rowCount();
+  for (int c = 0; c < C; ++c)
+  {
+    QStandardItem* child = parent->child(c);
+    auto stream = magic_enum::enum_cast<network::streams>(child->data(slot).toInt());
+    auto s = magic_enum::enum_name(stream.value());
+    conn_dbg<7>.debug(str<>("stream-load"), c, child, s);
+    if (child->data(slot) == cdata)
+    {
+      return child;
+    }
+  }
+  return nullptr;
+}
 
 // ----------------------------------------------------------------------------
 void connection_widget::setup_gui()
@@ -78,6 +97,8 @@ void connection_widget::setup_gui()
       stream_item->setData(s, StreamState);
       stream_item->setCheckState(Qt::Unchecked);
       children.append(stream_item);
+      auto name = magic_enum::enum_name(s);
+      conn_dbg<7>.debug(str<>("stream-create"), stream_item, name);
     }
     ticker_item->appendColumn(children);
   }
@@ -151,9 +172,14 @@ void connection_widget::setup_gui()
         {
           network::streams stream =
             magic_enum::enum_cast<network::streams>(k.toLatin1().toStdString()).value();
-          //          child index is not always same as stream index(some streams not present)
-          QStandardItem* child = item->child(magic_enum::enum_integer(stream), 0);
-          child->setCheckState(Qt::Checked);
+          QStandardItem* child = findChildItem<int>(item, data_slot::StreamState, stream);
+          if (child)
+            child->setCheckState(Qt::Checked);
+          else
+          {
+            conn_dbg<0>.error(
+              str<>("stream-load"), "Did not find a child tree item with the right data");
+          }
         }
       }
       settings.endGroup();

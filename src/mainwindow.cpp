@@ -160,7 +160,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
 
   auto orderbook_text_sub = [tdata, orderbook_text](currency_pair cp) {
     QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=]() {
-      main_dbg<0>.debug(str<>("Orderbook-Text"), "orderbook_plot_sub");
+      main_dbg<4>.debug(str<>("Orderbook-Text"), "orderbook_plot_sub");
       QString datastring = QString::fromStdString(tdata->orderbook_->get_orderbook_string());
       orderbook_text->setPlainText(datastring);
     });
@@ -169,7 +169,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
 
   auto orderbook_plot_sub = [tdata, orderbook_plot](currency_pair cp) {
     QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=]() {
-      main_dbg<0>.debug(str<>("Orderbook-Plot"), "orderbook_plot_sub");
+      main_dbg<4>.debug(str<>("Orderbook-Plot"), "orderbook_plot_sub");
       orderbook_plot->update_graph_limits();
       orderbook_plot->new_data_event();
       orderbook_plot->update_time_and_replot();

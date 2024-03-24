@@ -26,7 +26,7 @@ using namespace grox;
 using namespace grox::debug;
 using namespace nlohmann;
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 6;
+constexpr int debug_level = 2;
 //
 template <int Level>
 static print_threshold<Level, debug_level> bobook_dbg("bit-book");

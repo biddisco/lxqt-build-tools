@@ -20,7 +20,7 @@
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
+constexpr int debug_level = 9;
 //
 template <int Level>
 static print_threshold<Level, debug_level> book_dbg("ord-plot");
@@ -150,7 +150,7 @@ OrderBookPlot::OrderBookPlot(QWidget* parent, std::shared_ptr<order_book_base> o
 OrderBookPlot::~OrderBookPlot()
 {
   order_book_.reset();
-  book_dbg<0>.debug(str<>("Destroying"), "orderbook plot");
+  book_dbg<2>.debug(str<>("Destroying"), "orderbook plot");
 }
 
 // ----------------------------------------------------------------------------
