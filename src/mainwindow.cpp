@@ -81,7 +81,7 @@ std::shared_ptr<price_chart_widget> create_price_chart_widget(
   CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
   PlotDockWidget->setWidget(chart_widget.get());
   PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(DockWidgetArea::LeftDockWidgetArea, PlotDockWidget);
+  global_settings.dock_manager_->addDockWidgetFloating(PlotDockWidget);
   global_settings.dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
   return chart_widget;
 }
@@ -107,8 +107,7 @@ QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
   CDockWidget* obPlotDockWidget = new CDockWidget(QString(obtitle.c_str()));
   obPlotDockWidget->setWidget(orderbook_text);
   obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(
-    DockWidgetArea::RightDockWidgetArea, obPlotDockWidget);
+  global_settings.dock_manager_->addDockWidgetFloating(obPlotDockWidget);
   global_settings.dockwindows_menu_->addAction(obPlotDockWidget->toggleViewAction());
 
   return orderbook_text;
@@ -127,7 +126,7 @@ OrderBookPlot* create_order_book_plot_widget(
   CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
   obpDockWidget->setWidget(orderbook_plot);
   obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  global_settings.dock_manager_->addDockWidget(DockWidgetArea::RightDockWidgetArea, obpDockWidget);
+  global_settings.dock_manager_->addDockWidgetFloating(obpDockWidget);
   global_settings.dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
   return orderbook_plot;
 }
