@@ -759,6 +759,11 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
   try
   {
     jdata = json::parse(data)["result"];
+    if (jdata.at("error") == "actNotFound")
+    {
+      xrpnet_dbg<0>.error(str<>("actNotFound"));
+      return;
+    }
   }
   catch (...)
   {
