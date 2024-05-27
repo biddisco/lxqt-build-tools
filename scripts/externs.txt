@@ -41,7 +41,8 @@ pwd && git branch && git pull
 echo "#---------------------------"
 echo "Qwt"
 cd $HOME/src/grox/extern/qwt
-pwd && git branch && git fa
+#pwd && git branch && git fa
+pwd ; git branch ; git fa
 
 echo "#---------------------------"
 echo "Ranges"
