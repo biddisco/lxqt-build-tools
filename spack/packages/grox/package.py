@@ -21,6 +21,7 @@ class Grox(BundlePackage, CudaPackage, ROCmPackage):
     variant("iwyu", default=False, description="Enable iwyu support in oomph")
     variant("mpi", default=False, description="Enable mpi for pika dependency")
     variant("llvm", default=False, description="Turn on llvm for clang-format support")
+    variant("apex", default=False, description="Turn on APEX support")
 
     # ------------------------------------------------------------------------
     # build time dependencies
@@ -56,10 +57,15 @@ class Grox(BundlePackage, CudaPackage, ROCmPackage):
     # ------------------------------------------------------------------------
     # allocators/memory
     # ------------------------------------------------------------------------
-    depends_on("camp@2022.10.1")
     depends_on("mimalloc")
-    depends_on("umpire@2022.10.0 ")
-    depends_on("umpire@2022.10.0 +cuda", when="+cuda")
+    depends_on("umpire")
+    depends_on("umpire +cuda", when="+cuda")
+
+    # ------------------------------------------------------------------------
+    # profiling
+    # ------------------------------------------------------------------------
+    depends_on("apex@develop +papi +gperftools +binutils ~activeharmony ~cuda ~examples ~hip ~ipo ~jemalloc ~kokkos ~lmsensors ~mpi ~openmp ~otf2 ~plugins ~starpu ~sycl ~tests build_type=Debug dev_path=/home/biddisco/src/apex", when="+apex")
+    depends_on("otf2") 
 
     # ------------------------------------------------------------------------
     # testing
@@ -73,7 +79,7 @@ class Grox(BundlePackage, CudaPackage, ROCmPackage):
     depends_on("soci@master cxxstd=20 +sqlite ~static +boost ~visibility")
     depends_on("libarchive")
     depends_on("lz4")
-    depends_on("grpc")
+    depends_on("grpc@1.47 cxxstd=14")
     depends_on("protobuf")
     depends_on("sqlite")
     depends_on("snappy")
