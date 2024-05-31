@@ -7,6 +7,9 @@
 #include <QwtPlotCurve>
 #include <QwtPlotItem>
 //
+#include <type_traits>
+#include <vector>
+//
 #include "ui_price_chart_widget.h"
 //
 #include "config/config.hpp"
@@ -104,6 +107,35 @@ price_chart_widget::~price_chart_widget()
     delete p;
   }
   //  delete assets_plot_;
+}
+
+// ----------------------------------------------------------------------------
+/// The algorithm might not return a single value, so we provide
+/// overloads that can handle vectors of values
+template <typename Algorithm, typename Datain,
+  typename std::enable_if_t<std::is_same<typename Algorithm::result_type, double>::value, bool>
+    Enable = false>
+void call_algorithm_operator(
+  Algorithm& alg, const Datain& ohlc, std::vector<point_chart_data*>& output_datasets)
+{
+  auto vals = alg.operator()(ohlc);
+  QPointF xyval(ohlc.time, vals);
+  output_datasets[0]->data().push_back(xyval);
+}
+
+template <typename Algorithm, typename Datain,
+  typename std::enable_if_t<
+    std::is_same<typename Algorithm::result_type, std::vector<float>>::value, bool>
+    Enable = false>
+void call_algorithm_operator(
+  Algorithm& alg, const Datain& ohlc, std::vector<point_chart_data*>& output_datasets)
+{
+  auto vals = alg.operator()(ohlc);
+  for (int i = 0; i < alg.num_outputs(); ++i)
+  {
+    QPointF xyval(ohlc.time, vals[i]);
+    output_datasets[i]->data().push_back(xyval);
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -216,13 +248,16 @@ void price_chart_widget::connect_gui()
     if (col == 2)
     {
       auto it = std::next(ind_model_.indicators_.begin(), row);
-      QColor c = it->curve->pen().color();
-      QColor color = QColorDialog::getColor(c, this);
-      if (color.isValid())
+      for (auto* curve : it->curves)
       {
-        QPen new_pen(it->curve->pen());
-        new_pen.setColor(color);
-        it->curve->setPen(new_pen);
+        QColor c = curve->pen().color();
+        QColor color = QColorDialog::getColor(c, this);
+        if (color.isValid())
+        {
+          QPen new_pen(curve->pen());
+          new_pen.setColor(color);
+          curve->setPen(new_pen);
+        }
       }
       ind_model_.dataAdded();
       this->replot();
@@ -230,7 +265,10 @@ void price_chart_widget::connect_gui()
     else if (col == 3)
     {
       auto it = std::next(ind_model_.indicators_.begin(), row);
-      remove_indicator_plot(it->plot, it->curve);
+      for (auto* curve : it->curves)
+      {
+        remove_indicator_plot(it->plot, curve);
+      }
       ind_model_.indicators_.erase(it);
       ind_model_.dataAdded();
       this->replot();
@@ -250,26 +288,30 @@ void price_chart_widget::connect_gui()
       // now execute the algorithm
       std::visit(
         [this](auto& alg) {
+          //using alg_type = decltype(std::decay<decltype(alg)>(alg));
           // first - initialize algorithm with parameters (set by dialog)
           alg.initialize();
 
           // convert the dataset name selections in the dialog into actual datasets
           std::vector<ohlc_datasets*> datasets = indicators::get_datasets(alg.params, hdf5_ohlc_);
-
-          point_chart_data* indicator_data =
-            new point_chart_data(datasets[0]->ohlc_samples_->get_resolution());
+          std::vector<point_chart_data*> output_datasets;
+          for (int i = 0; i < alg.num_outputs(); ++i)
+          {
+            point_chart_data* indicator_data =
+              new point_chart_data(datasets[0]->ohlc_samples_->get_resolution());
+            output_datasets.push_back(indicator_data);
+          }
           // if the algorithm operates on a single input dataset
           if (datasets.size() == 1)
           {
             auto const& input_dataset = datasets[0]->ohlc_samples_;
-            indicator_data->data().reserve(input_dataset->size());
+            for (int i = 0; i < alg.num_outputs(); ++i)
+              output_datasets[i]->data().reserve(input_dataset->size());
 
             // iterate over the dataset, executing the algorithm for each point
             for (auto const& ohlc : input_dataset->data())
             {
-              double val = alg.operator()(ohlc);
-              QPointF xyval(ohlc.time, val);
-              indicator_data->data().push_back(xyval);
+              call_algorithm_operator(alg, ohlc, output_datasets);
             }
           }
           else
@@ -283,64 +325,56 @@ void price_chart_widget::connect_gui()
           auto colour = colours[colour_count++ % 10];
 
           QString name = QString(alg.name.c_str());
-          timebased_data_curve* curve;
           indicator_plot* plot = nullptr;
-          if (alg.overlay == indicators::overlay_type::price)
+          QString params = QString(indicators::param_string(alg.params).c_str());
+
+          // create an indicator_data object with empty curves data
+          indicator_data i_data{name, params, plot, {}};
+
+          for (int i = 0; i < alg.num_outputs(); ++i)
           {
-            curve = crypto_price_plot_->add_overlay_curve(name, indicator_data, colour);
-          }
-          else if (alg.overlay == indicators::overlay_type::mode_select)
-          {
-            ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(alg.params[2]));
-            if (mode == ohlc_modes::volume)
+            if (alg.overlay == indicators::overlay_type::price)
             {
-              curve = crypto_price_plot_->add_overlay_volume_curve(name, indicator_data, colour);
+              auto* curve = crypto_price_plot_->add_overlay_curve(name, output_datasets[i], colour);
+              i_data.curves.push_back(curve);
             }
-            else if (mode == ohlc_modes::value)
+            else if (alg.overlay == indicators::overlay_type::mode_select)
             {
-              std::tie(plot, curve) = add_indicator_plot(name, indicator_data, colour);
+              ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(alg.params[2]));
+              if (mode == ohlc_modes::volume)
+              {
+                auto* curve =
+                  crypto_price_plot_->add_overlay_volume_curve(name, output_datasets[i], colour);
+                i_data.curves.push_back(curve);
+              }
+              else if (mode == ohlc_modes::value)
+              {
+                auto [plot, curve] = add_indicator_plot(name, output_datasets[i], colour);
+                i_data.curves.push_back(curve);
+                i_data.plot = plot;
+              }
+              else
+              {
+                auto* curve =
+                  crypto_price_plot_->add_overlay_curve(name, output_datasets[i], colour);
+                i_data.curves.push_back(curve);
+              }
             }
             else
             {
-              curve = crypto_price_plot_->add_overlay_curve(name, indicator_data, colour);
+              auto [plot, curve] = add_indicator_plot(name, output_datasets[i], colour);
+              i_data.curves.push_back(curve);
+              i_data.plot = plot;
             }
           }
-          else
-          {
-            std::tie(plot, curve) = add_indicator_plot(name, indicator_data, colour);
-          }
 
-          QString params = QString(indicators::param_string(alg.params).c_str());
-          ind_model_.indicators_.push_back({name, params, plot, curve});
+          ind_model_.indicators_.push_back(i_data);
           ind_model_.dataAdded();
-          //          QStandardItem* item = new QStandardItem();
-          //          item->setText(name);
-          //          item->setCheckable(true);
-          //          item->setCheckState(Qt::Checked);
-          //          item->setIcon(QCommonStyle().standardIcon(QStyle::SP_TrashIcon));
-          //          ind_model_.appendRow(item);
           this->replot();
         },
         indicator);
-
-      //indicators::generate(indicator, hdf5_ohlc_->)
-
-      //            price_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
-
-      //            filters_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
-      //            filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
-
-      //            assets_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
-      //            assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
     }
-
-    //    indicators::moving_average ma{};
-    //    ma.generate(hdf5_ohlc_);
   });
-  //    connect(pAction2, SIGNAL(triggered()), this, SLOT(onAction2()));
-  //    connect(pAction3, SIGNAL(triggered()), this, SLOT(onAction3()));
-
-  //  assets_plot_->hide();
 }
 
 // ----------------------------------------------------------------------------
@@ -550,7 +584,7 @@ QVariant indicators_model::data(QModelIndex const& index, int role) const
   }
   else if (role == Qt::BackgroundRole && index.column() == 2)
   {
-    QColor col = it->curve->pen().color();
+    QColor col = it->curves[0]->pen().color();
     return col;
   }
   else if (role == Qt::DecorationRole && index.column() == 3)

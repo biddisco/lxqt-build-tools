@@ -7,6 +7,7 @@
 //
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_dataset_view.hpp"
+#include "indicators/bollinger_bands.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 #include "indicators/moving_average_exponential.hpp"
@@ -19,30 +20,32 @@
 namespace indicators {
 
   // add each new indicator to types and variant
-  // clang-format off
-  using types = std::variant<
-    moving_average,
-    moving_average_volume_weighted,
-    moving_average_exponential,
-moving_average_exponential_volume_weighted,
-    relative_strength_indicator,
-    stochastic_relative_strength_indicator
-  >;
+  using types = std::variant<                      // prevent clang-format aliging types
+    moving_average,                                //
+    moving_average_volume_weighted,                //
+    moving_average_exponential,                    //
+    moving_average_exponential_volume_weighted,    //
+    relative_strength_indicator,                   //
+    stochastic_relative_strength_indicator,        //
+    bollinger_bands                                //
+    >;
 
   inline std::vector<types> available_indicators = {
-    moving_average{},
-    moving_average_volume_weighted{},
-    moving_average_exponential{},
-moving_average_exponential_volume_weighted{},
-    relative_strength_indicator{},
-    stochastic_relative_strength_indicator{},
+    //
+    moving_average{},                                //
+    moving_average_volume_weighted{},                //
+    moving_average_exponential{},                    //
+    moving_average_exponential_volume_weighted{},    //
+    relative_strength_indicator{},                   //
+    stochastic_relative_strength_indicator{},        //
+    bollinger_bands{},                               //
+
     /*stochastic_oscillator{}, */
     //    {"Heikin Ashi", 1, 0, {}},
     //    {"MA gradient", 1, 0, {}},
     //    {"MA cross",    2, 0, {}},
     //    {"MACD",        1, 3, {12, 26, 9}},
   };
-  // clang-format on
 
   static std::vector<ohlc_datasets*> get_datasets(
     param_list const& params, std::shared_ptr<ohlc_dataset_view> view)

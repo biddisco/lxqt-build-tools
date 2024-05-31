@@ -1,4 +1,5 @@
 set(grox_indicators_SRCS
+    bollinger_bands.hpp
     indicator_definitions.hpp
     indicator_types.hpp
     moving_average_exponential.hpp

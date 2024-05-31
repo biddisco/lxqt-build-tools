@@ -16,6 +16,8 @@
 indicator_dialog::indicator_dialog()
   : QDialog()
 {
+  static int last_selected_index = 0;
+
   ui.setupUi(this);
   this->setWindowTitle("Indicator");
 
@@ -42,9 +44,15 @@ indicator_dialog::indicator_dialog()
   // when algorithm is changed, rebuild gui
   connect(
     ui.algorithm, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-    [this](int index) { refresh_gui(index); }, Qt::QueuedConnection);
-  // build gui for first algorithm
-  refresh_gui(0);
+    [this](int index) {
+      last_selected_index = index;
+      refresh_gui(index);
+    },
+    Qt::QueuedConnection);
+
+  // build gui for first/last used algorithm
+  ui.algorithm->setCurrentIndex(last_selected_index);
+  refresh_gui(last_selected_index);
 }
 
 // ----------------------------------------------------------------------------
@@ -189,7 +197,7 @@ void indicator_dialog::refresh_gui(int index)
     int column = std::visit([&](auto const& v) { return get_column(v); }, std::get<1>(p));
 
     // get label for parameter
-    QLabel* const label = new QLabel(QString(std::get<0>(p).c_str()));
+    QLabel* const label = new QLabel(std::get<0>(p));
     layout->addWidget(label, counts[column], column * 2);
 
     // get a widget to represent the parameter (based on param type)

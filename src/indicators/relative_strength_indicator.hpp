@@ -8,7 +8,7 @@
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  struct relative_strength_indicator
+  struct relative_strength_indicator : indicator_base
   {
     // ---------------------------------------
     // fields required for auto gui generation
@@ -18,8 +18,8 @@ namespace indicators {
     const y_limits ylimits = {0.0, 1.0};
 
     param_list params = {
-      std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<std::string, param_types>("Window size", 14)};
+      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+      std::make_tuple<QString, param_types>("Window size", 14)};
 
     // ---------------------------------------
     // Default constructor

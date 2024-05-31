@@ -15,7 +15,7 @@ namespace indicators {
   namespace ba = boost::accumulators;
 
   //----------------------------------------------------------------------------
-  struct moving_average
+  struct moving_average : indicator_base
   {
     // ---------------------------------------
     // fields required for auto gui generation
@@ -24,9 +24,9 @@ namespace indicators {
     const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {
-      std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<std::string, param_types>("Window size", 14),
-      std::make_tuple<std::string, param_types>("mode", ohlc_modes::mid_open_close)};
+      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+      std::make_tuple<QString, param_types>("Window size", 14),
+      std::make_tuple<QString, param_types>("mode", ohlc_modes::mid_open_close)};
 
     // ---------------------------------------
     // Default constructor
@@ -36,6 +36,15 @@ namespace indicators {
       , mean_(0)
       , decay_acc_(ba::tag::rolling_window::window_size = window_size)
     {
+    }
+
+    moving_average& operator=(const moving_average& other)
+    {
+      window_size_ = other.window_size_;
+      mode_ = other.mode_;
+      mean_ = other.mean_;
+      decay_acc_ = other.decay_acc_;
+      return *this;
     }
 
     // ---------------------------------------

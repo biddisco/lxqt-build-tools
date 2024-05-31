@@ -25,7 +25,7 @@ struct indicator_data
   QString text;
   QString params;
   indicator_plot* plot;
-  timebased_data_curve* curve;
+  std::vector<timebased_data_curve*> curves;
 };
 Q_DECLARE_METATYPE(indicator_data*)
 

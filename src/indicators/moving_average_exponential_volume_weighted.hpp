@@ -10,7 +10,7 @@
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  struct moving_average_exponential_volume_weighted
+  struct moving_average_exponential_volume_weighted : indicator_base
   {
     // ---------------------------------------
     // fields required for auto gui generation
@@ -19,11 +19,11 @@ namespace indicators {
     const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {
-      std::make_tuple<std::string, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<std::string, param_types>("Window size", 14),
-      std::make_tuple<std::string, param_types>("mode", ohlc_modes::close),
-      std::make_tuple<std::string, param_types>("User-defined alpha", false),
-      std::make_tuple<std::string, param_types>("Decay 1 - alpha", 0.1),
+      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+      std::make_tuple<QString, param_types>("Window size", 14),
+      std::make_tuple<QString, param_types>("mode", ohlc_modes::close),
+      std::make_tuple<QString, param_types>("User-defined alpha", false),
+      std::make_tuple<QString, param_types>("Decay 1 - alpha", 0.1),
     };
 
     // ---------------------------------------
