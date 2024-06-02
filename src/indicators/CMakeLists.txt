@@ -5,6 +5,7 @@ set(grox_indicators_SRCS
     # volatility estimators
     bollinger_bands.hpp
     garman_klass_volatility.hpp
+    rogers_satchell_volatility.hpp
     # moving averages
     moving_average_exponential.hpp
     moving_average_exponential_volume_weighted.hpp

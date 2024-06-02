@@ -15,6 +15,7 @@
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
 #include "indicators/moving_average_volume_weighted.hpp"
 #include "indicators/relative_strength_indicator.hpp"
+#include "indicators/rogers_satchell_volatility.hpp"
 #include "indicators/stochastic_oscillator.hpp"
 #include "indicators/stochastic_relative_strength_indicator.hpp"
 
@@ -29,7 +30,8 @@ namespace indicators {
     relative_strength_indicator,                   //
     stochastic_relative_strength_indicator,        //
     bollinger_bands,                               //
-    garman_klass_volatility                        //
+    garman_klass_volatility,                       //
+    rogers_satchell_volatility                     //
     >;
 
   inline std::vector<types> available_indicators = {
@@ -42,6 +44,7 @@ namespace indicators {
     stochastic_relative_strength_indicator{},        //
     bollinger_bands{},                               //
     garman_klass_volatility{},                       //
+    rogers_satchell_volatility{},
     /*stochastic_oscillator{}, */
     //    {"Heikin Ashi", 1, 0, {}},
     //    {"MA gradient", 1, 0, {}},
