@@ -1,11 +1,16 @@
 set(grox_indicators_SRCS
-    bollinger_bands.hpp
+    # basic definitions
     indicator_definitions.hpp
     indicator_types.hpp
+    # volatility estimators
+    bollinger_bands.hpp
+    garman_klass_volatility.hpp
+    # moving averages
     moving_average_exponential.hpp
     moving_average_exponential_volume_weighted.hpp
     moving_average.hpp
     moving_average_volume_weighted.hpp
+    # others
     relative_strength_indicator.hpp
     stochastic_oscillator.hpp
     stochastic_relative_strength_indicator.hpp

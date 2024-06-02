@@ -8,6 +8,7 @@
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_dataset_view.hpp"
 #include "indicators/bollinger_bands.hpp"
+#include "indicators/garman_klass_volatility.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 #include "indicators/moving_average_exponential.hpp"
@@ -20,14 +21,15 @@
 namespace indicators {
 
   // add each new indicator to types and variant
-  using types = std::variant<                      // prevent clang-format aliging types
+  using types = std::variant<                      // prevent clang-format rearranging types
     moving_average,                                //
     moving_average_volume_weighted,                //
     moving_average_exponential,                    //
     moving_average_exponential_volume_weighted,    //
     relative_strength_indicator,                   //
     stochastic_relative_strength_indicator,        //
-    bollinger_bands                                //
+    bollinger_bands,                               //
+    garman_klass_volatility                        //
     >;
 
   inline std::vector<types> available_indicators = {
@@ -39,7 +41,7 @@ namespace indicators {
     relative_strength_indicator{},                   //
     stochastic_relative_strength_indicator{},        //
     bollinger_bands{},                               //
-
+    garman_klass_volatility{},                       //
     /*stochastic_oscillator{}, */
     //    {"Heikin Ashi", 1, 0, {}},
     //    {"MA gradient", 1, 0, {}},
@@ -66,6 +68,8 @@ namespace indicators {
   {
     T const& val;
   };
+
+  // template instantiation helper for constructor type
   template <class T>
   streamer(T) -> streamer<T>;
 
