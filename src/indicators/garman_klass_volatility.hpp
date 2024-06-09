@@ -64,6 +64,7 @@ namespace indicators {
     {
       // scale according to time resolution of data???
       auto mean = average_(ohlc_mode_extract(ohlc_modes::mid_high_low, val));
+      mean = val.close;
       // first part to be summed
       double val1 = 0.5 * std::pow(std::log(val.high / val.low), 2);
       buffer1_.push_back(val1);
