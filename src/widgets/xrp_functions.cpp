@@ -1,7 +1,7 @@
 #include <QDialog>
 #include <QMessageBox>
 //
-#include <ripple/protocol/TxFlags.h>
+#include <xrpl/protocol/TxFlags.h>
 //
 #include "check_trades_dialog.hpp"
 #include "trade_widget.hpp"

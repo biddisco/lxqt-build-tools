@@ -61,6 +61,12 @@ set(CMAKE_MODULE_PATH
 set(CMAKE_CXX_STANDARD 20)
 
 # ------------------------------------------------------------------------------
+# PIC needed by ripple libs
+# ------------------------------------------------------------------------------
+set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "Position independent code")
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
+
+# ------------------------------------------------------------------------------
 # Options
 # ------------------------------------------------------------------------------
 option(
@@ -602,7 +608,7 @@ target_link_libraries(
          STDEXEC::stdexec
          fmt::fmt
          range-v3
-         Ripple::xrpl_core
+	 xrpl.libxrpl
          uuid
          Threads::Threads
          pika::pika

@@ -3,8 +3,8 @@
 #include <string>
 #include <string_view>
 //
-#include <ripple/protocol/KeyType.h>
-#include <ripple/protocol/STAmount.h>
+#include <xrpl/protocol/KeyType.h>
+#include <xrpl/protocol/STAmount.h>
 
 // Useful functions that directly make use of ripple-lib
 std::string hexcurrency(std::string_view name);

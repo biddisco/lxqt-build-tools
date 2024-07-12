@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 /*
-    This file is part of ripple-libpp: https://github.com/ripple/ripple-libpp
+    This file is part of ripple-libpp: https://github.com/xrpl/ripple-libpp
     Copyright (c) 2016 Ripple Labs Inc.
 
     Permission to use, copy, modify, and/or distribute this software for any
@@ -18,18 +18,18 @@
 //==============================================================================
 
 #include <algorithm>
-#include <ripple/basics/StringUtilities.h>
-#include <ripple/json/to_string.h>
-#include <ripple/protocol/AccountID.h>
-#include <ripple/protocol/BuildInfo.h>
-#include <ripple/protocol/HashPrefix.h>
-#include <ripple/protocol/STAccount.h>
-#include <ripple/protocol/STArray.h>
-#include <ripple/protocol/STTx.h>
-#include <ripple/protocol/Sign.h>
-#include <ripple/protocol/TxFlags.h>
-#include <ripple/protocol/digest.h>
-#include <ripple/protocol/jss.h>
+#include <xrpl/basics/StringUtilities.h>
+#include <xrpl/json/to_string.h>
+#include <xrpl/protocol/AccountID.h>
+#include <xrpl/protocol/BuildInfo.h>
+#include <xrpl/protocol/HashPrefix.h>
+#include <xrpl/protocol/STAccount.h>
+#include <xrpl/protocol/STArray.h>
+#include <xrpl/protocol/STTx.h>
+#include <xrpl/protocol/Sign.h>
+#include <xrpl/protocol/TxFlags.h>
+#include <xrpl/protocol/digest.h>
+#include <xrpl/protocol/jss.h>
 
 std::string serialize(ripple::STTx const& tx)
 {

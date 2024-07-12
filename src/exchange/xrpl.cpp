@@ -7,21 +7,21 @@
 #include "currency/currency.hpp"
 #include "debug/print.hpp"
 // extern
-#include <ripple/basics/StringUtilities.h>
-#include <ripple/basics/strHex.h>
-#include <ripple/json/to_string.h>
-#include <ripple/protocol/AccountID.h>
-#include <ripple/protocol/BuildInfo.h>
-#include <ripple/protocol/HashPrefix.h>
-#include <ripple/protocol/Issue.h>
-#include <ripple/protocol/STAccount.h>
-#include <ripple/protocol/STArray.h>
-#include <ripple/protocol/STTx.h>
-#include <ripple/protocol/Sign.h>
-#include <ripple/protocol/TxFlags.h>
-#include <ripple/protocol/digest.h>
-#include <ripple/protocol/jss.h>
-#include <ripple/protocol/tokens.h>
+#include <xrpl/basics/StringUtilities.h>
+#include <xrpl/basics/strHex.h>
+#include <xrpl/json/to_string.h>
+#include <xrpl/protocol/AccountID.h>
+#include <xrpl/protocol/BuildInfo.h>
+#include <xrpl/protocol/HashPrefix.h>
+#include <xrpl/protocol/Issue.h>
+#include <xrpl/protocol/STAccount.h>
+#include <xrpl/protocol/STArray.h>
+#include <xrpl/protocol/STTx.h>
+#include <xrpl/protocol/Sign.h>
+#include <xrpl/protocol/TxFlags.h>
+#include <xrpl/protocol/digest.h>
+#include <xrpl/protocol/jss.h>
+#include <xrpl/protocol/tokens.h>
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

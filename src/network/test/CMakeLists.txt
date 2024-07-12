@@ -130,4 +130,4 @@ foreach(test ${TEST_SRCS})
   )
 endforeach()
 
-target_link_libraries(ripple-sign PUBLIC Ripple::xrpl_core)
+target_link_libraries(ripple-sign PUBLIC xrpl.libxrpl)

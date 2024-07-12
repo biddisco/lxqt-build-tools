@@ -9,9 +9,9 @@
 #include <QString>
 // extern
 #include <fmt/format.h>
-#include <ripple/protocol/Issue.h>
-#include <ripple/protocol/Sign.h>
-#include <ripple/protocol/UintTypes.h>
+#include <xrpl/protocol/Issue.h>
+#include <xrpl/protocol/Sign.h>
+#include <xrpl/protocol/UintTypes.h>
 //
 //
 #include <exec/async_scope.hpp>
