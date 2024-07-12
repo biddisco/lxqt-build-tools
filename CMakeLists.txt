@@ -45,13 +45,14 @@ project(
   VERSION 0.1
   LANGUAGES CXX
             C
+            CUDA
 )
 
 # ------------------------------------------------------------------------------
 # CMake configuration
 # ------------------------------------------------------------------------------
 set(CMAKE_MODULE_PATH
-    ${CMAKE_MODULE_PATH}
+    "${CMAKE_MODULE_PATH}"
     "${PROJECT_SOURCE_DIR}/cmake"
 )
 
@@ -63,7 +64,11 @@ set(CMAKE_CXX_STANDARD 20)
 # ------------------------------------------------------------------------------
 # PIC needed by ripple libs
 # ------------------------------------------------------------------------------
-set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "Position independent code")
+set(CMAKE_POSITION_INDEPENDENT_CODE
+    ON
+    CACHE BOOL
+          "Position independent code"
+)
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 
 # ------------------------------------------------------------------------------
@@ -356,6 +361,7 @@ get_external_project(
 # ------------------------------------------------------------------------------
 # Build/Download HighFive hdf5 c++ library
 # ------------------------------------------------------------------------------
+set(HIGHFIVE_FIND_HDF5 OFF)
 set(HIGHFIVE_UNIT_TESTS
     OFF
     CACHE STRING
@@ -386,6 +392,13 @@ get_external_project(
 # ------------------------------------------------------------------------------
 set(static FALSE)
 set(rocksdb FALSE)
+set(unity FALSE)
+set(tests
+    ""
+    CACHE BOOL
+          ""
+          FORCE
+)
 set(protobuf_MODULE_COMPATIBLE TRUE)
 set(SECP256K1_BUILD_TESTS FALSE)
 set(SECP256K1_BUILD_EXHAUSTIVE_TESTS FALSE)
@@ -608,7 +621,7 @@ target_link_libraries(
          STDEXEC::stdexec
          fmt::fmt
          range-v3
-	 xrpl.libxrpl
+         xrpl.libxrpl
          uuid
          Threads::Threads
          pika::pika

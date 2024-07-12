@@ -11,6 +11,7 @@ target_link_libraries(
          grox_debug
          pika::pika
          HighFive
+         hdf5
 )
 
 if(GROX_WITH_IWYU)
