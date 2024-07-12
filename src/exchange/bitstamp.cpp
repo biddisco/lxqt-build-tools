@@ -311,7 +311,7 @@ void bitstamp_network::shut_down()
       try
       {
         bitstamp_dbg<2>.debug(
-          str<>("websocket close"), currency_pair_string(ticker), ptr(websocket.get()));
+          str<>("websocket close"), currency_pair_string(ticker), fmt::ptr(websocket.get()));
         websocket.reset();
       }
       catch (const std::exception& err)
@@ -634,11 +634,11 @@ void bitstamp_network::process_order(json& jdata, std::string_view event)
     auto trade = std::find_if(trades.begin(), trades.end(), find_by_id);
     if (trade == trades.end())
     {
-      bitstamp_dbg<0>.error(str<>("Order not found"), dec<18>(id));
+      bitstamp_dbg<0>.error(str<>("Order not found"), ffmt<dec18>(id));
     }
     else
     {
-      bitstamp_dbg<0>.debug(str<>("Order deleted"), dec<18>(id));
+      bitstamp_dbg<0>.debug(str<>("Order deleted"), ffmt<dec18>(id));
       trades.erase(trade);
     }
   }
@@ -647,18 +647,18 @@ void bitstamp_network::process_order(json& jdata, std::string_view event)
     auto trade = std::find_if(trades.begin(), trades.end(), find_by_id);
     if (trade == trades.end())
     {
-      bitstamp_dbg<0>.error(str<>("Order not found"), dec<18>(id));
+      bitstamp_dbg<0>.error(str<>("Order not found"), ffmt<dec18>(id));
     }
     else
     {
       if (trade->confirmed_ == false)
       {
-        bitstamp_dbg<0>.debug(str<>("Order created"), dec<18>(id), "confirmed");
+        bitstamp_dbg<0>.debug(str<>("Order created"), ffmt<dec18>(id), "confirmed");
         trade->confirmed_ = true;
       }
       else
       {
-        bitstamp_dbg<0>.error(str<>("Order created"), dec<18>(id), "already active");
+        bitstamp_dbg<0>.error(str<>("Order created"), ffmt<dec18>(id), "already active");
       }
     }
   }
@@ -1126,7 +1126,7 @@ void bitstamp_network::handle_new_ohlc_data(ticker_data tdata, std::string_view 
     // convert json data into vectors of actual data
     json jdata = json::parse(data)["data"]["ohlc"];
     bitstamp_dbg<0>.debug(str<>("OHLC received"), tdata->view_->get_ticker_string(),
-      dec<4>(jdata.size()), "json OHLC samples");
+      ffmt<dec4>(jdata.size()), "json OHLC samples");
     QVector<ohlctv_sample> new_ohlc_samples;
     new_ohlc_samples.reserve(jdata.size());
     ohlctv_sample sample;

@@ -64,7 +64,7 @@ void hdf5_ohlc_manager::read_impl(
       std::uint64_t Nread =
         std::min(Nelem, N >= 0 ? N : std::numeric_limits<std::uint64_t>().max());
       data.resize(Nread);
-      man_dbg<0>.debug(str<>("dataset read"), path, "size", dec<9>(Nread), dec<9>(Nelem));
+      man_dbg<0>.debug(str<>("dataset read"), path, "size", ffmt<dec9>(Nread), ffmt<dec9>(Nelem));
       std::vector<size_t> offset{0};
       std::vector<size_t> size{Nread * ohlc_size};
       Selection slice = dataset.select(offset, size);
@@ -82,7 +82,7 @@ void hdf5_ohlc_manager::read_impl(
   }
   //
   ohlc_datasets::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
-  man_dbg<0>.debug(str<>("file close"), path, "read_hdf5", dec<9>(data.size()));
+  man_dbg<0>.debug(str<>("file close"), path, "read_hdf5", ffmt<dec9>(data.size()));
 }
 
 // ----------------------------------------------------------------------------
@@ -136,13 +136,13 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
     DataSetCreateProps props;
     props.add(Chunking(std::vector<hsize_t>{65536}));
     // Create the dataset and write data
-    man_dbg<0>.debug(str<>("create"), path, "size", dec<9>(data.size()));
+    man_dbg<0>.debug(str<>("create"), path, "size", ffmt<dec9>(data.size()));
     DataSet dataset = file.createDataSet(path, dataspace, create_datatype<double>(), props);
   }
   // if we are extending an existing dataset
   if (update > 0)
   {
-    man_dbg<5>.debug(str<>("extend"), path, dec<9>(update));
+    man_dbg<5>.debug(str<>("extend"), path, ffmt<dec9>(update));
     DataSet dataset = file.getDataSet(path);
     // resize along 1 dimmension
     dataset.resize({N});
@@ -156,10 +156,10 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
   // truncating a dataset
   else if (truncate)
   {
-    man_dbg<0>.debug(str<>("truncate"), path, dec<9>(data.size()));
+    man_dbg<0>.debug(str<>("truncate"), path, ffmt<dec9>(data.size()));
     DataSet dataset = file.getDataSet(path);
     // resize along 1 dimension
     dataset.resize({N});
   }
-  man_dbg<0>.debug(str<>("file close"), path, "write_hdf5", dec<9>(data.size()));
+  man_dbg<0>.debug(str<>("file close"), path, "write_hdf5", ffmt<dec9>(data.size()));
 }

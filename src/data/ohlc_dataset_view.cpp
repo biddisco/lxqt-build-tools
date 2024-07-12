@@ -78,7 +78,7 @@ void ohlc_dataset_view::read_from_disk()
   {
     // QInputDialog requires int and not int64 unfortunately
     int64_t index = e.index();
-    man_dbg<0>.error(str<>("Data integrity error"), ticker_string_, "at index", dec<9>(index));
+    man_dbg<0>.error(str<>("Data integrity error"), ticker_string_, "at index", ffmt<dec9>(index));
     bool ok = false;
     QString label = "First bad index is :" + QString::number(index);
     index = QInputDialog::getInt(nullptr, "Truncate from", label, index, 0, 1 << 30, 1, &ok);
@@ -100,7 +100,7 @@ void ohlc_dataset_view::truncate_from_time(double t)
     auto index = samples->sample_index(t);
     samples->data().resize(index);
     man_dbg<0>.debug(str<>("Truncating"), ticker_string_,
-      str<3>(ohlc_data_resolutions::get_resolution(res).name_), "at index", dec<9>(index));
+      str<3>(ohlc_data_resolutions::get_resolution(res).name_), "at index", ffmt<dec9>(index));
     if (res == ohlc_data_resolutions::minute)
     {
       global_settings.data_manager_->write_impl(

@@ -112,7 +112,7 @@ namespace grox::senders {
             assert(r.op_state.client_ != nullptr);
 
             PIKA_DETAIL_DP(qt_trig<5>,
-              debug(str<>("qhttp_post_recv"), "set_value_t", "req", ptr(r.op_state.client_)));
+              debug(str<>("qhttp_post_recv"), "set_value_t", "req", fmt::ptr(r.op_state.client_)));
 
             pika::detail::try_catch_exception_ptr(
               [&]() mutable {

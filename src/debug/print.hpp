@@ -63,8 +63,8 @@ extern char** environ;
 //
 //             spq_deb.debug(str<16>("cleanup_terminated"), "v1"
 //                  , "D" , dec<2>(domain_num)
-//                  , "Q" , dec<3>(q_index)
-//                  , "thread_num", dec<3>(local_num));
+//                  , "Q" , ffmt<dec3>(q_index)
+//                  , "thread_num", ffmt<dec3>(local_num));
 //
 // various print formatters (dec/hex/str) are supplied to make
 // the output regular and aligned for easy parsing/scanning.
@@ -337,8 +337,8 @@ namespace grox::debug {
     {
       const std::uint8_t* byte = static_cast<const std::uint8_t*>(p.addr_);
       os << "Memory:";
-      os << " address " << ptr(p.addr_) << " length " << hex<6>(p.len_)
-         << " CRC32:" << hex<8>(crc32(p.addr_, p.len_)) << "\n";
+      os << " address " << fmt::ptr(p.addr_) << " length " << ffmt<hex6>(p.len_)
+         << " CRC32:" << ffmt<hex8>(crc32(p.addr_, p.len_)) << "\n";
       size_t i = 0;
       while (i < std::min(size_t(128), p.len_))
       {
@@ -769,7 +769,7 @@ public:
     template <typename T>
     void array(std::string const& name, std::vector<T> const& v) const
     {
-      std::cout << str<20>(name.c_str()) << ": {" << debug::dec<4>(v.size()) << "} : ";
+      std::cout << str<20>(name.c_str()) << ": {" << debug::ffmt<dec4>(v.size()) << "} : ";
       std::copy(std::begin(v), std::end(v), std::ostream_iterator<T>(std::cout, ", "));
       std::cout << "\n";
     }
@@ -777,7 +777,7 @@ public:
     template <typename T, std::size_t N>
     void array(std::string const& name, const std::array<T, N>& v) const
     {
-      std::cout << str<20>(name.c_str()) << ": {" << debug::dec<4>(v.size()) << "} : ";
+      std::cout << str<20>(name.c_str()) << ": {" << debug::ffmt<dec4>(v.size()) << "} : ";
       std::copy(std::begin(v), std::end(v), std::ostream_iterator<T>(std::cout, ", "));
       std::cout << "\n";
     }
@@ -785,7 +785,7 @@ public:
     template <typename Iter>
     void array(std::string const& name, Iter begin, Iter end) const
     {
-      std::cout << str<20>(name.c_str()) << ": {" << debug::dec<4>(std::distance(begin, end))
+      std::cout << str<20>(name.c_str()) << ": {" << debug::ffmt<dec4>(std::distance(begin, end))
                 << "} : ";
       std::copy(begin, end,
         std::ostream_iterator<typename std::iterator_traits<Iter>::value_type>(std::cout, ", "));

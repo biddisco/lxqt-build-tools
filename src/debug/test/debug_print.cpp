@@ -1,7 +1,10 @@
+#include <bitset>
 #include <iostream>
 #include <numeric>
 #include <string>
-
+//
+#include <fmt/format.h>
+//
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
 //
@@ -10,7 +13,9 @@
 int main(int argc, char** argv);
 
 using namespace grox;
+using namespace pika::debug::detail;
 
+// ------------------------------------------------------------------
 std::string diff(const std::string& s1, const std::string& s2)
 {
   std::stringstream tmp;
@@ -30,7 +35,7 @@ bool compare(const std::string& expected, const std::string& value)
 {
   if (bool ok = (expected == value))
   {
-    std::cout << "passed : \"" << expected << std::endl;
+    std::cout << "passed : \"" << expected << "\"" << std::endl;
     return ok;
   }
   else
@@ -61,35 +66,52 @@ TEST(debug_print, print_type)
   EXPECT_TRUE(test_print_type("int (int, char**)", main));
   EXPECT_TRUE(test_print_type("<>"));
 }
+// ------------------------------------------------------------------
+
+constexpr static char fp17_15[] = "{:17.15f}";
 
 // ------------------------------------------------------------------
 TEST(debug_print, print_format)
 {
   {
     std::stringstream tmp;
-    tmp << debug::dec<8>(12345);
+    tmp << debug::ffmt<dec8>(12345);
     EXPECT_TRUE(compare("00012345", tmp.str()));
   }
   {
     std::stringstream tmp;
-    std::uintptr_t v = std::uintptr_t(0x0000face);
-    tmp << debug::ptr(v);
-    EXPECT_TRUE(compare("0xface", tmp.str()));
+    tmp << fmt::ptr((void*) (0x0000face));
+    EXPECT_TRUE(compare("0x00000000face", tmp.str()));
   }
   {
     std::stringstream tmp;
-    tmp << debug::hex<12>(0xdeadbeef);
+    tmp << debug::ffmt<hex12>(0xdeadbeef);
     EXPECT_TRUE(compare("0x0000deadbeef", tmp.str()));
   }
   {
     std::stringstream tmp;
-    tmp << debug::fp<8, 12>(3.141592653589793238);
+    tmp << debug::ffmt<fp12_8>(3.141592653589793238);
     EXPECT_TRUE(compare("  3.14159265", tmp.str()));
   }
   {
     std::stringstream tmp;
-    tmp << debug::bin<16>(0xfca7);
+    tmp << debug::ffmt<fp17_15>(3.141592653589793238);
+    EXPECT_TRUE(compare("3.141592653589793", tmp.str()));
+  }
+  {
+    std::stringstream tmp;
+    tmp << debug::ffmt<bin8>(0x01);
+    EXPECT_TRUE(compare("00000001", tmp.str()));
+  }
+  {
+    std::stringstream tmp;
+    tmp << debug::ffmt<bin16>(0xfca7);
     EXPECT_TRUE(compare("1111110010100111", tmp.str()));
+  }
+  {
+    std::stringstream tmp;
+    tmp << debug::ffmt<bin8>(0x01) << " " << debug::ffmt<bin16>(0xfca7);
+    EXPECT_TRUE(compare("00000001 1111110010100111", tmp.str()));
   }
   {
     std::stringstream tmp;
