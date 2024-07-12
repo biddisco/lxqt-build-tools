@@ -1,4 +1,4 @@
-pushd
+pushd .
 
 #
 # record existing git refs in case updates cause breakage
