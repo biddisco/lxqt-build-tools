@@ -320,17 +320,12 @@ get_external_project(
 )
 
 # ------------------------------------------------------------------------------
-# Build/Download nlohmann/json
+# Find nlohmann-json
 # ------------------------------------------------------------------------------
-get_external_project(
-  PROJECT_NAME
-  "nlohmann_json"
-  FOLDER_NAME
-  "json"
-  GIT_REPO
-  "https://github.com/nlohmann/json"
-  GIT_TAG
-  "develop"
+find_package(
+  nlohmann_json
+  3.11.3
+  REQUIRED
 )
 
 # ------------------------------------------------------------------------------
@@ -617,7 +612,7 @@ target_link_libraries(
          Qt::OpenGLWidgets
          qt6advanceddocking
          ${Boost_LIBRARIES}
-         nlohmann_json
+         nlohmann_json::nlohmann_json
          STDEXEC::stdexec
          fmt::fmt
          range-v3

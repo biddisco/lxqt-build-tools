@@ -78,7 +78,6 @@ foreach(test ${TEST_SRCS})
     ${testname}
     PUBLIC grox_util
            grox_network
-           nlohmann_json
            ${UUID_LIBRARIES}
            OpenSSL::SSL
            Threads::Threads

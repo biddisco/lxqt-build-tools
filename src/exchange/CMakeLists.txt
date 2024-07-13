@@ -37,8 +37,8 @@ target_link_libraries(
          grox_util
          grox_data
          grox_network
-         nlohmann_json
-	 xrpl.libxrpl
+         nlohmann_json::nlohmann_json
+         xrpl.libxrpl
          range-v3
          qwt
          Qt::Core

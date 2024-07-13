@@ -39,7 +39,6 @@ target_link_libraries(
          grox_currency
          grox_exchange
          fmt::fmt
-         nlohmann_json
          range-v3
          Qt::Core
 )

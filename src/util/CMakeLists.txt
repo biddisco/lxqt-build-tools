@@ -17,7 +17,7 @@ add_library(grox_util ${grox_util_SRCS})
 target_include_directories(grox_util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(
   grox_util
-  PUBLIC nlohmann_json
+  PUBLIC nlohmann_json::nlohmann_json
          range-v3
          Qt::Core
 )

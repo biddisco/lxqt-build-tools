@@ -35,6 +35,7 @@ target_link_libraries(
   grox_network
   PUBLIC grox_util
          fmt::fmt
+         nlohmann_json::nlohmann_json
          ${Boost_LIBRARIES}
          OpenSSL::SSL
 )

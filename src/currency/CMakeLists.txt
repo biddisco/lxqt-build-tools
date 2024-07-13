@@ -15,7 +15,7 @@ target_link_libraries(
   PUBLIC grox_util
          qwt
          Qt::Core
-         nlohmann_json
+         nlohmann_json::nlohmann_json
          range-v3
 )
 

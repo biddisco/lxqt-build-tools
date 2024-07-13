@@ -71,7 +71,7 @@ target_link_libraries(
          grox_plot
          grox_util
          fmt::fmt
-         nlohmann_json
+         nlohmann_json::nlohmann_json
          range-v3
          Qt::Core
          Qt::Widgets
