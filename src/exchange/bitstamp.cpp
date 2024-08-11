@@ -930,7 +930,9 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data tdata)
         {
           bitstamp_dbg<0>.debug(str<>("candlesticks"), tdata->view_->get_ticker_string(),
             "up to date", secs_unix_to_calendar_time(start_t_sec));
-          throw std::logic_error("Candlesticks up-to-date");
+          bitstamp_dbg<0>.debug(str<>("OHLC up-to-date"));
+          return any_bytearray_sender{stdexec::just_stopped()};
+          // throw std::logic_error("Candlesticks up-to-date");
         }
 
         std::uint64_t samples = (unixtime_secs - start_t_sec) / 60;
