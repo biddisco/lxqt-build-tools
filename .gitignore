@@ -3,3 +3,6 @@ extern/
 transactions/
 CMakeLists.txt.user
 __pycache__
+xrpl-dev-portal
+papers
+scripts/examples

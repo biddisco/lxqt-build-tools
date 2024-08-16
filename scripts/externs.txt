@@ -13,41 +13,30 @@ find $HOME/src/grox/extern -maxdepth 2 -type d -name .git -exec git --git-dir {}
 # curl https://raw.githubusercontent.com/nlohmann/json/develop/single_include/nlohmann/json.hpp -o ./extern/nlohmann/json.hpp
 
 # update all externs
-echo "#---------------------------"
+printf "\n#---------------------------"
 echo "HighFive"
 cd $HOME/src/grox/extern/HighFive/
 pwd && git branch && git pull
 
-echo "#---------------------------"
+printf "\n#---------------------------"
 echo "QDarkStyleSheet"
 cd $HOME/src/grox/extern/QDarkStyleSheet/
 pwd && git branch && git pull
 
-echo "#---------------------------"
+printf "\n#---------------------------"
 echo "Qt-Advanced-Docking-System"
 cd $HOME/src/grox/extern/Qt-Advanced-Docking-System/
 pwd && git branch && git fetch --all && git pull --rebase origin master
 
-echo "#---------------------------"
+printf "\n#---------------------------"
 echo "magic_enum"
 cd $HOME/src/grox/extern/magic_enum/
 pwd && git branch && git pull
 
-echo "#---------------------------"
-echo "json"
-cd $HOME/src/grox/extern/json/
-pwd && git branch && git pull
-
-echo "#---------------------------"
+printf "\n#---------------------------"
 echo "Qwt"
 cd $HOME/src/grox/extern/qwt
-#pwd && git branch && git fa
-pwd ; git branch ; git fa
-
-echo "#---------------------------"
-echo "Ranges"
-cd $HOME/src/grox/extern/range-v3/
-pwd && git branch && git pull
+pwd ; git branch ; git fetch --all && git pull --rebase origin develop
 
 popd
 
