@@ -387,8 +387,8 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
                << "PUT SOMETHING IN HERE";
     //
     auto* client = signed_request("/api/v2/xrp_withdrawal/", req_string.str());
-    auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
-      | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
+    auto web = stdexec::on(exec::inline_scheduler(), stdexec::just(client))    // Qt
+      | qhttp_post()                                                           // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/xrp_withdrawal/", data);
@@ -401,8 +401,8 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
     req_string << "&currency= this is wrong" << c.issuer_;
     //
     auto* client = signed_request("/api/v2/ripple_withdrawal/", req_string.str());
-    auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
-      | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
+    auto web = stdexec::on(exec::inline_scheduler(), stdexec::just(client))    // Qt
+      | qhttp_post()                                                           // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/ripple_withdrawal/", data);
@@ -1010,8 +1010,8 @@ void bitstamp_network::cancel_order(trade_data const& t)
   std::string data = "&id=" + std::to_string(t.id_);
 
   auto* client = signed_request("/api/v2/cancel_order/", data);
-  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
-    | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
+  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just(client))    // Qt
+    | qhttp_post()                                                           // Qt -> pika
     | stdexec::then([this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         json jdata = json::parse(data);
@@ -1054,8 +1054,8 @@ void bitstamp_network::place_limit_order(trade_data const& t, bool update_after)
     str<>("limit-order"), (t.get_trade_type() == trade_type::buy ? "Buy" : "Sell"), req, data);
 
   auto* client = signed_request(req, data);
-  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just())          // Qt
-    | stdexec::let_value(std::move(stdexec::just(client) | qhttp_post()))    // Qt -> pika
+  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just(client))    // Qt
+    | qhttp_post()                                                           // Qt -> pika
     | stdexec::then([=, this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         json jdata = json::parse(data);

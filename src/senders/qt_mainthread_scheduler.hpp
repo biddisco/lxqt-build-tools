@@ -22,11 +22,15 @@
 //
 #include <stdexec/execution.hpp>
 //
+#include <pika/assert.hpp>
+#include <pika/async_base/scheduling_properties.hpp>
+#include <pika/config.hpp>
+#include <pika/errors/try_catch_exception_ptr.hpp>
+#include <pika/execution_base/sender.hpp>
+#include <pika/execution_base/stdexec_forward.hpp>
+//
 #include <QCoreApplication>
 #include <QMainWindow>
-
-// Quick and dirty scheduler to invoke function on Qt mainwin thread
-// @TODO: Remove stdexec::detail __xxx usage
 
 namespace grox::senders {
   using qt_function_type = std::function<void(void)>;
@@ -38,60 +42,134 @@ namespace grox::senders {
         return mainWin;
     return nullptr;
   }
-}    // namespace grox::senders
 
-namespace stdexec {
-
-  namespace qt_detail {
-    struct qt_schedule_t
-    {
-    };
-
-    struct scheduler
-    {
-      template <class Tag = qt_schedule_t>
-      friend auto tag_invoke(schedule_t, scheduler)
-      {
-        return __make_sexpr<Tag>();
-      }
-
-      friend forward_progress_guarantee tag_invoke(
-        get_forward_progress_guarantee_t, scheduler) noexcept
-      {
-        return forward_progress_guarantee::weakly_parallel;
-      }
-
-      bool operator==(const scheduler&) const noexcept = default;
-    };
-  }    // namespace qt_detail
-
-  template <>
-  struct __sexpr_impl<qt_detail::qt_schedule_t> : __sexpr_defaults
+  struct qt_mainthread_scheduler
   {
-    static constexpr auto get_attrs =    //
-      [](__ignore) noexcept
-      -> __env::__with<qt_detail::scheduler, get_completion_scheduler_t<set_value_t>> {
-      return __env::__with(qt_detail::scheduler{}, get_completion_scheduler<set_value_t>);
-    };
+    constexpr qt_mainthread_scheduler() = default;
 
-    static constexpr auto get_completion_signatures =    //
-      [](__ignore, __ignore) noexcept -> completion_signatures<set_value_t()> { return {}; };
+    /// \cond NOINTERNAL
+    bool operator==(qt_mainthread_scheduler const& rhs) const noexcept
+    {
+      return true;
+    }
 
-    static constexpr auto start =    //
-      []<class Receiver>(__ignore, Receiver& rcvr) noexcept -> void {
-      // Create a lambda that calls the continuation, and then pass that to the mainwindow
-      // schedule_function member that will be called via invoke on the Qt application thread
-      grox::senders::qt_function_type func = [rcvr = std::move(rcvr)]() {
-        set_value((Receiver &&) rcvr);
-      };
+    bool operator!=(qt_mainthread_scheduler const& rhs) const noexcept
+    {
+      return !(*this == rhs);
+    }
 
+    template <typename F>
+    void execute(F&& f) const
+    {
       // Do not use DirectConnection as it will execute on the same thread
       QMetaObject::invokeMethod(
-        grox::senders::getMainWindow(), [=] { func(); }, Qt::AutoConnection);
+        grox::senders::getMainWindow(), PIKA_FORWARD(F, f), Qt::AutoConnection);
+    }
+
+    template <typename F>
+    friend void tag_invoke(stdexec::execute_t, qt_mainthread_scheduler const& sched, F&& f)
+    {
+      sched.execute(PIKA_FORWARD(F, f));
+    }
+
+    template <typename Scheduler, typename Receiver>
+    struct operation_state
+    {
+      PIKA_NO_UNIQUE_ADDRESS std::decay_t<Scheduler> scheduler;
+      PIKA_NO_UNIQUE_ADDRESS std::decay_t<Receiver> receiver;
+
+      template <typename Scheduler_, typename Receiver_>
+      operation_state(Scheduler_&& scheduler, Receiver_&& receiver)
+        : scheduler(PIKA_FORWARD(Scheduler_, scheduler))
+        , receiver(PIKA_FORWARD(Receiver_, receiver))
+      {
+      }
+
+      operation_state(operation_state&&) = delete;
+      operation_state(operation_state const&) = delete;
+      operation_state& operator=(operation_state&&) = delete;
+      operation_state& operator=(operation_state const&) = delete;
+
+      friend void tag_invoke(stdexec::start_t, operation_state& os) noexcept
+      {
+        pika::detail::try_catch_exception_ptr(
+          [&]() {
+            os.scheduler.execute([&os]() mutable {
+              pika::execution::experimental::set_value(PIKA_MOVE(os.receiver));
+            });
+          },
+          [&](std::exception_ptr ep) {
+            pika::execution::experimental::set_error(PIKA_MOVE(os.receiver), PIKA_MOVE(ep));
+          });
+      }
     };
+
+    template <typename Scheduler>
+    struct sender
+    {
+      PIKA_STDEXEC_SENDER_CONCEPT
+
+      PIKA_NO_UNIQUE_ADDRESS std::decay_t<Scheduler> scheduler;
+
+      template <template <typename...> class Tuple, template <typename...> class Variant>
+      using value_types = Variant<Tuple<>>;
+
+      template <template <typename...> class Variant>
+      using error_types = Variant<std::exception_ptr>;
+
+      static constexpr bool sends_done = false;
+
+      using completion_signatures = pika::execution::experimental::completion_signatures<
+        pika::execution::experimental::set_value_t(),
+        pika::execution::experimental::set_error_t(std::exception_ptr)>;
+
+      template <typename Receiver>
+      friend operation_state<Scheduler, Receiver>
+      tag_invoke(stdexec::connect_t, sender&& s, Receiver&& receiver)
+      {
+        return {PIKA_MOVE(s.scheduler), PIKA_FORWARD(Receiver, receiver)};
+      }
+
+      template <typename Receiver>
+      friend operation_state<Scheduler, Receiver>
+      tag_invoke(stdexec::connect_t, sender const& s, Receiver&& receiver)
+      {
+        return {s.scheduler, PIKA_FORWARD(Receiver, receiver)};
+      }
+
+      struct env
+      {
+        PIKA_NO_UNIQUE_ADDRESS std::decay_t<Scheduler> scheduler;
+
+        friend std::decay_t<Scheduler> tag_invoke(
+          pika::execution::experimental::get_completion_scheduler_t<
+            pika::execution::experimental::set_value_t>,
+          env const& e) noexcept
+        {
+          return e.scheduler;
+        }
+      };
+
+      friend env tag_invoke(pika::execution::experimental::get_env_t, sender const& s) noexcept
+      {
+        return {s.scheduler};
+      }
+    };
+
+    friend sender<qt_mainthread_scheduler> tag_invoke(
+      stdexec::schedule_t, qt_mainthread_scheduler&& sched)
+    {
+      return {PIKA_MOVE(sched)};
+    }
+
+    friend sender<qt_mainthread_scheduler> tag_invoke(
+      stdexec::schedule_t, qt_mainthread_scheduler const& sched)
+    {
+      return {sched};
+    }
   };
-}    // namespace stdexec
+}    // namespace grox::senders
 
 namespace grox::senders {
-  using qt_mainthread_scheduler = stdexec::qt_detail::scheduler;
+  using qt_mainthread_scheduler = grox::senders::qt_mainthread_scheduler;
 }    // namespace grox::senders

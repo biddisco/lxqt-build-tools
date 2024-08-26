@@ -284,30 +284,10 @@ get_external_project(
 # ------------------------------------------------------------------------------
 # Build/Download stdexec std execution senders library
 # ------------------------------------------------------------------------------
-set(STDEXEC_BUILD_EXAMPLES
-    OFF
-    CACHE BOOL
-          "Examples"
-          FORCE
+find_package(
+  stdexec
+  REQUIRED
 )
-set(STDEXEC_BUILD_TESTS
-    OFF
-    CACHE BOOL
-          "Tests"
-          FORCE
-)
-get_external_project(
-  PROJECT_NAME
-  "STDEXEC"
-  FOLDER_NAME
-  "stdexec"
-  GIT_REPO
-  "https://github.com/NVIDIA/stdexec.git"
-  GIT_TAG
-  "main"
-  DO_NOT_FIND
-)
-set(STDEXEC_ROOT ${STDEXEC_BINARY_DIR})
 
 # ------------------------------------------------------------------------------
 # Build/Download Qt-Advanced-Docking-System
