@@ -163,33 +163,6 @@ int qt_main(pika::program_options::variables_map& vm)
   bool authenticated = false;
   // do we have a ram filesystem mounted? (ubuntu specific env var)
   const char* tempfs_dir = std::getenv("XDG_RUNTIME_DIR");
-  if (std::getenv("rand3") != nullptr)
-  {
-    // generate a base64 encoded pw : bash commmand : echo "password" | base64
-    std::string raw = std::getenv("rand3");
-    global_settings.grox_password = base64_decode(raw).toStdString();
-    global_settings.grox_password = global_settings.grox_password.substr(8, 13);
-    authenticated = true;
-    app_dbg<5>.debug(str<>("authentication"), "getenv", "ok");
-  }
-  if (!authenticated)
-  {
-    std::string commandLine = "timeout 5 ssh pi@192.168.1.15 cat /home/pi/.ssh/.skey.sh";
-    auto result = execute_os_command(commandLine.c_str());
-    std::regex rgx(".*rand3=\"(.*)\".*");
-    std::smatch match;
-    if (std::regex_search(result, match, rgx))
-    {
-      global_settings.grox_password = base64_decode(match[1]).toStdString();
-      global_settings.grox_password = global_settings.grox_password.substr(8, 13);
-      authenticated = true;
-      app_dbg<5>.debug(str<>("authentication"), "pi", "ok");
-    }
-    else
-    {
-      app_dbg<5>.error(str<>("Authentication"), "pi", "fail");
-    }
-  }
   if (!authenticated && tempfs_dir)
   {
     std::string filepath = {std::string(tempfs_dir) + "/grox.txt"};
@@ -209,7 +182,7 @@ int qt_main(pika::program_options::variables_map& vm)
   }
   if (!authenticated)
   {
-    std::string commandLine = "pass grox";
+    std::string commandLine = "pass grox/grox";
     auto result = execute_os_command(commandLine.c_str());
     if (result.size() > 0)
     {
