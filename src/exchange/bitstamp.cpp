@@ -40,6 +40,36 @@ template <int Level>
 static print_threshold<Level, 3> bitstamp_dbg("Bitstamp");
 
 // ----------------------------------------------------------------------------
+std::string what(const std::exception_ptr& eptr = std::current_exception())
+{
+  if (!eptr)
+  {
+    throw std::bad_exception();
+  }
+
+  try
+  {
+    std::rethrow_exception(eptr);
+  }
+  catch (const std::exception& e)
+  {
+    return e.what();
+  }
+  catch (const std::string& e)
+  {
+    return e;
+  }
+  catch (const char* e)
+  {
+    return e;
+  }
+  catch (...)
+  {
+    return "who knows";
+  }
+}
+
+// ----------------------------------------------------------------------------
 bitstamp_network::bitstamp_network()
 {
   exchange_name_ = "Bitstamp";
@@ -100,7 +130,11 @@ void bitstamp_network::initialize()
         bitstamp_dbg<6>.debug(str<>("Initialize"), "OpenOrders", data);
         handle_open_orders(data);
       })    //
-    | stdexec::then([this]() { emit network_initialized(this); });
+    | stdexec::then([this]() { emit network_initialized(this); }) |
+    stdexec::upon_error([this](std::exception_ptr const& e) {
+      std::lock_guard<std::mutex> l(candlestick_mutex_);
+      bitstamp_dbg<0>.error(str<>("Bitstamp initilize failed"), what(e));
+    });
 
   // bitstamp_dbg<0>.debug(str<>("SENDER"), grox::debug::print_type<decltype(snd0)>());
   stdexec::start_detached(std::move(web));
@@ -314,9 +348,9 @@ void bitstamp_network::shut_down()
           str<>("websocket close"), currency_pair_string(ticker), fmt::ptr(websocket.get()));
         websocket.reset();
       }
-      catch (const std::exception& err)
+      catch (const std::exception& e)
       {
-        std::cerr << err.what() << std::endl;
+        std::cerr << e.what() << std::endl;
       }
     }
     // delete orderbook _after_ closing websocket to avoid some late async data arrivals
@@ -453,86 +487,101 @@ any_bytearray_sender bitstamp_network::request_tickers_available()
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_account_info(std::string_view data)
 {
-  nlohmann::json jdata = nlohmann::json::parse(data);
-  bitstamp_dbg<6>.debug(str<>("account info"), jdata.dump(4));
-  //
-  bitstamp_account& acct = get_bitstamp_instance()->account();
-
-  currency xrp_bitstamp{{"", "XRP"},
-    std::stod(jdata["xrp_balance"].get_ptr<json::string_t*>()->c_str()),
-    std::stod(jdata["xrp_available"].get_ptr<json::string_t*>()->c_str()),
-    std::stod(jdata["xrp_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
-  acct.add_currency(xrp_bitstamp);
-
-  if (jdata.contains("usd_balance"))
+  try
   {
-    currency usd_bitstamp{{currency::bitstamp_trust, "USD"},
-      std::stod(jdata["usd_balance"].get_ptr<json::string_t*>()->c_str()),
-      std::stod(jdata["usd_available"].get_ptr<json::string_t*>()->c_str()),
-      std::stod(jdata["usd_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
-    acct.add_currency(usd_bitstamp);
-  }
+    nlohmann::json jdata = nlohmann::json::parse(data);
+    bitstamp_dbg<6>.debug(str<>("account info"), jdata.dump(4));
+    //
+    bitstamp_account& acct = get_bitstamp_instance()->account();
 
-  if (jdata.contains("eur_balance"))
-  {
-    currency eur_bitstamp{{currency::bitstamp_trust, "EUR"},
-      std::stod(jdata["eur_balance"].get_ptr<json::string_t*>()->c_str()),
-      std::stod(jdata["eur_available"].get_ptr<json::string_t*>()->c_str()),
-      std::stod(jdata["eur_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
-    acct.add_currency(eur_bitstamp);
-  }
+    currency xrp_bitstamp{{"", "XRP"},
+      std::stod(jdata["xrp_balance"].get_ptr<json::string_t*>()->c_str()),
+      std::stod(jdata["xrp_available"].get_ptr<json::string_t*>()->c_str()),
+      std::stod(jdata["xrp_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
+    acct.add_currency(xrp_bitstamp);
 
-  if (jdata.contains("xrpusd_fee"))
-  {
-    double xrpusd_fee = std::stod(jdata["xrpusd_fee"].get_ptr<json::string_t*>()->c_str());
-    std::pair<std::string, std::string> cpair = std::make_pair("xrp", "usd");
-    const auto [it, success] = fee_map_.insert({cpair, xrpusd_fee});
-    if (success)
+    if (jdata.contains("usd_balance"))
     {
-      bitstamp_dbg<0>.debug(str<>("new fee xrp/usd"), xrpusd_fee);
+      currency usd_bitstamp{{currency::bitstamp_trust, "USD"},
+        std::stod(jdata["usd_balance"].get_ptr<json::string_t*>()->c_str()),
+        std::stod(jdata["usd_available"].get_ptr<json::string_t*>()->c_str()),
+        std::stod(jdata["usd_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
+      acct.add_currency(usd_bitstamp);
     }
-    else
-    {
-      bitstamp_dbg<0>.debug(str<>("replace fee xrp/usd"), xrpusd_fee);
-      fee_map_[cpair] = xrpusd_fee;
-    }
-  }
 
-  if (jdata.contains("xrpeur_fee"))
-  {
-    double xrpeur_fee = std::stod(jdata["xrpeur_fee"].get_ptr<json::string_t*>()->c_str());
-    std::pair<std::string, std::string> cpair = std::make_pair("xrp", "eur");
-    const auto [it, success] = fee_map_.insert({cpair, xrpeur_fee});
-    if (success)
+    if (jdata.contains("eur_balance"))
     {
-      bitstamp_dbg<0>.debug(str<>("new fee xrp/eur"), xrpeur_fee);
+      currency eur_bitstamp{{currency::bitstamp_trust, "EUR"},
+        std::stod(jdata["eur_balance"].get_ptr<json::string_t*>()->c_str()),
+        std::stod(jdata["eur_available"].get_ptr<json::string_t*>()->c_str()),
+        std::stod(jdata["eur_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
+      acct.add_currency(eur_bitstamp);
     }
-    else
+
+    if (jdata.contains("xrpusd_fee"))
     {
-      bitstamp_dbg<0>.debug(str<>("replace fee xrp/eur"), xrpeur_fee);
-      fee_map_[cpair] = xrpeur_fee;
+      double xrpusd_fee = std::stod(jdata["xrpusd_fee"].get_ptr<json::string_t*>()->c_str());
+      std::pair<std::string, std::string> cpair = std::make_pair("xrp", "usd");
+      const auto [it, success] = fee_map_.insert({cpair, xrpusd_fee});
+      if (success)
+      {
+        bitstamp_dbg<0>.debug(str<>("new fee xrp/usd"), xrpusd_fee);
+      }
+      else
+      {
+        bitstamp_dbg<0>.debug(str<>("replace fee xrp/usd"), xrpusd_fee);
+        fee_map_[cpair] = xrpusd_fee;
+      }
     }
+
+    if (jdata.contains("xrpeur_fee"))
+    {
+      double xrpeur_fee = std::stod(jdata["xrpeur_fee"].get_ptr<json::string_t*>()->c_str());
+      std::pair<std::string, std::string> cpair = std::make_pair("xrp", "eur");
+      const auto [it, success] = fee_map_.insert({cpair, xrpeur_fee});
+      if (success)
+      {
+        bitstamp_dbg<0>.debug(str<>("new fee xrp/eur"), xrpeur_fee);
+      }
+      else
+      {
+        bitstamp_dbg<0>.debug(str<>("replace fee xrp/eur"), xrpeur_fee);
+        fee_map_[cpair] = xrpeur_fee;
+      }
+    }
+    emit update_wallet_widget(&acct);
   }
-  emit update_wallet_widget(&acct);
+  catch (const std::exception_ptr& e)
+  {
+    bitstamp_dbg<0>.error(str<>("Account info failed"));
+    std::rethrow_exception(e);
+  }
 }
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_websocket_token(std::string_view data)
 {
-  nlohmann::json jdata = nlohmann::json::parse(data);
-  bitstamp_dbg<5>.debug(str<>("websocket token"), jdata.dump());
-  //
   bitstamp_account& acct = get_bitstamp_instance()->account();
-  //
-  using namespace std::literals;
-  auto valid_sec = jdata["valid_sec"].get<int>();
-  websocket_token_ = jdata["token"].get<std::string>();
-  websocket_user_id_ = std::to_string(jdata["user_id"].get<int>());
-  token_expiry_ = std::chrono::system_clock::now() + valid_sec * 1s;
+  try
+  {
+    nlohmann::json jdata = nlohmann::json::parse(data);
+    bitstamp_dbg<5>.debug(str<>("websocket token"), jdata.dump());
+    //
+    using namespace std::literals;
+    auto valid_sec = jdata["valid_sec"].get<int>();
+    websocket_token_ = jdata["token"].get<std::string>();
+    websocket_user_id_ = std::to_string(jdata["user_id"].get<int>());
+    token_expiry_ = std::chrono::system_clock::now() + valid_sec * 1s;
 
-  bitstamp_dbg<2>.debug(str<>("websocket_token"),
-    token_valid(token_expiry_) ? "valid until" : "expired",
-    fmt::format("{:%Y-%m-%d %X}", round<std::chrono::seconds>(token_expiry_.load())));
+    bitstamp_dbg<2>.debug(str<>("websocket_token"),
+      token_valid(token_expiry_) ? "valid until" : "expired",
+      fmt::format("{:%Y-%m-%d %X}", round<std::chrono::seconds>(token_expiry_.load())));
+  }
+  catch (const std::exception_ptr& e)
+  {
+    bitstamp_dbg<0>.error(str<>("websocket token"), "Failed to renew");
+    std::rethrow_exception(e);
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -576,13 +625,21 @@ void bitstamp_network::handle_open_orders(std::string_view data)
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_tickers_available(std::string_view data)
 {
-  nlohmann::json jdata = nlohmann::json::parse(data);
-  for (auto const& [key, val] : jdata.items())
+  try
   {
-    json::string_t jstring = val[std::string_view("pair")];
-    auto const& [c1, c2] = string_to_pair(jstring, "/");
-    bitstamp_dbg<6>.debug(str<>("Currency pair"), jstring, c1, c2);
-    add_currency_pair({c1, c2});
+    nlohmann::json jdata = nlohmann::json::parse(data);
+    for (auto const& [key, val] : jdata.items())
+    {
+      json::string_t jstring = val[std::string_view("pair")];
+      auto const& [c1, c2] = string_to_pair(jstring, "/");
+      bitstamp_dbg<6>.debug(str<>("Currency pair"), jstring, c1, c2);
+      add_currency_pair({c1, c2});
+    }
+  }
+  catch (const std::exception_ptr& e)
+  {
+    bitstamp_dbg<0>.error(str<>("Ticker data error"));
+    std::rethrow_exception(e);
   }
 }
 
@@ -846,36 +903,6 @@ void bitstamp_network::update_ohlc_datasets()
     {
       update_ohlc_data(ticker, data);
     }
-  }
-}
-
-// ----------------------------------------------------------------------------
-std::string what(const std::exception_ptr& eptr = std::current_exception())
-{
-  if (!eptr)
-  {
-    throw std::bad_exception();
-  }
-
-  try
-  {
-    std::rethrow_exception(eptr);
-  }
-  catch (const std::exception& e)
-  {
-    return e.what();
-  }
-  catch (const std::string& e)
-  {
-    return e;
-  }
-  catch (const char* e)
-  {
-    return e;
-  }
-  catch (...)
-  {
-    return "who knows";
   }
 }
 

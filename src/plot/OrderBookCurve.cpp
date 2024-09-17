@@ -86,7 +86,7 @@ void OrderBookCurve::setRawSamples_locked(
   //
   if (xData.size() != yData.size())
   {
-    std::cout << xData.size() << " " << yData.size() << std::endl;
+    std::cout << "FIX: rawdata sizes " << xData.size() << " " << yData.size() << std::endl;
   }
   assert(xData.size() == yData.size());
   //

@@ -352,7 +352,7 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
   if (trades.size() > 0)
   {
     string_output = temp.str();
-    std::cout << string_output << std::endl;
+    std::cout << "trades " << string_output << std::endl;
   }
   return trades;
 }

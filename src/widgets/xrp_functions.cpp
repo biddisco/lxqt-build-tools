@@ -44,7 +44,7 @@ xrp_functions::xrp_functions(xrpl_network* network, basic_account* account, QWid
     std::uint32_t flags = ripple::tfSetNoRipple;
     if (ui->rippling->isChecked())
       flags = ripple::tfClearNoRipple;
-    std::cout << addr << " " << code << " " << limit << std::endl;
+    std::cout << "FIX: QToolButton::clicked " << addr << " " << code << " " << limit << std::endl;
     network_->trustline(account_, addr, code, limit, flags);
   });
 }
