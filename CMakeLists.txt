@@ -430,19 +430,6 @@ get_external_project(
   "master"
 )
 
-# -------------------------------------------------------------
-# QtCreator dark theme
-# -------------------------------------------------------------
-get_external_project(
-  PROJECT_NAME
-  monokai
-  GIT_REPO
-  "https://github.com/bfrg/qtcreator-monokai.git"
-  GIT_TAG
-  "master"
-  DO_NOT_BUILD
-)
-
 # ------------------------------------------------------------------------------
 # grox build
 # ------------------------------------------------------------------------------
