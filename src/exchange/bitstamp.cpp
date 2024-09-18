@@ -897,11 +897,15 @@ void bitstamp_network::new_live_trade_data_q(
 // typically called once per minute by the application to update data regularly
 void bitstamp_network::update_ohlc_datasets()
 {
-  for (auto& [ticker, data] : tickers_subscribed_)
+  for (auto& [cp, data] : tickers_subscribed_)
   {
-    if (!candlestick_updates_active_.contains(ticker))
+    if (!candlestick_updates_active_.contains(cp))
     {
-      update_ohlc_data(ticker, data);
+      update_ohlc_data(cp, data);
+    }
+    else
+    {
+      bitstamp_dbg<0>.warning(str<>("ohlc active"), currency_pair_lowercase_string(cp));
     }
   }
 }
@@ -958,8 +962,11 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data tdata)
           bitstamp_dbg<0>.debug(str<>("candlesticks"), tdata->view_->get_ticker_string(),
             "up to date", secs_unix_to_calendar_time(start_t_sec));
           bitstamp_dbg<0>.debug(str<>("OHLC up-to-date"));
+          {
+            std::lock_guard<std::mutex> l(candlestick_mutex_);
+            candlestick_updates_active_.erase(cp);
+          }
           return any_bytearray_sender{stdexec::just_stopped()};
-          // throw std::logic_error("Candlesticks up-to-date");
         }
 
         std::uint64_t samples = (unixtime_secs - start_t_sec) / 60;
@@ -975,7 +982,10 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data tdata)
       })    //
     | stdexec::upon_error([this, cp](std::exception_ptr const& e) {
         std::lock_guard<std::mutex> l(candlestick_mutex_);
-        candlestick_updates_active_.erase(cp);
+        {
+          std::lock_guard<std::mutex> l(candlestick_mutex_);
+          candlestick_updates_active_.erase(cp);
+        }
         bitstamp_dbg<0>.error(str<>("OHLC"), what(e));
       });
 
