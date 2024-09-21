@@ -38,8 +38,16 @@ namespace grox::senders {
   inline QMainWindow* getMainWindow()
   {
     foreach (QWidget* w, qApp->topLevelWidgets())
-      if (QMainWindow* mainWin = qobject_cast<QMainWindow*>(w))
-        return mainWin;
+    {
+      try
+      {
+        if (QMainWindow* mainWin = qobject_cast<QMainWindow*>(w))
+          return mainWin;
+      }
+      catch (...)
+      {
+      }
+    }
     return nullptr;
   }
 
