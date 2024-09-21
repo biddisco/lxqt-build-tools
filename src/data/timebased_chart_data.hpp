@@ -5,6 +5,7 @@
 //
 #include <QwtSeriesData>
 //
+#include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_utils.hpp"
 
 // ----------------------------------------------------------------------------
@@ -12,7 +13,7 @@ template <typename DataType>
 class timebased_chart_data : public QwtArraySeriesData<DataType>
 {
   protected:
-  double resolution_;
+  candle_res resolution_;
 
   using QwtArraySeriesData<DataType>::m_samples;
   using QwtArraySeriesData<DataType>::cachedBoundingRect;
@@ -49,7 +50,7 @@ class timebased_chart_data : public QwtArraySeriesData<DataType>
     cachedBoundingRect = QRectF(0.0, 0.0, -1.0, -1.0);
   }
 
-  inline double get_resolution() const
+  inline candle_res get_resolution() const
   {
     return resolution_;
   }

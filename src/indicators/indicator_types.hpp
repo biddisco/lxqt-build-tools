@@ -41,16 +41,16 @@ namespace indicators {
 
     virtual ~indicator_base() {}
 
-    virtual int num_inputs()
+    virtual int num_inputs() const
     {
       return 1;
     }
-    virtual int num_outputs()
+    virtual int num_outputs() const
     {
       return 1;
     }
 
-    virtual overlay_type output_overlay_type(int n)
+    virtual overlay_type output_overlay_type(int n) const
     {
       return overlay_type::price;
     }

@@ -41,7 +41,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    int num_outputs() override
+    int num_outputs() const override
     {
       return 1 + (2 * num_bands_);
     }

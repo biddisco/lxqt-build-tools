@@ -45,13 +45,11 @@ namespace indicators {
     bollinger_bands{},                               //
     garman_klass_volatility{},                       //
     rogers_satchell_volatility{},
-    /*stochastic_oscillator{}, */
-    //    {"Heikin Ashi", 1, 0, {}},
-    //    {"MA gradient", 1, 0, {}},
-    //    {"MA cross",    2, 0, {}},
-    //    {"MACD",        1, 3, {12, 26, 9}},
   };
 
+  // ----------------------------------------------------------------------------
+  // iterate over the parameters returned from an indicator selection dialog and
+  // find the datasets of the right resolution in the datasets view
   static std::vector<ohlc_datasets*> get_datasets(
     param_list const& params, std::shared_ptr<ohlc_dataset_view> view)
   {
@@ -66,6 +64,58 @@ namespace indicators {
     return result;
   }
 
+  // ----------------------------------------------------------------------------
+  // create a dataset for each indicator output
+  template <typename Algorithm>
+  std::vector<point_chart_data*>
+  create_outputs(const Algorithm& alg, const candle_res res, std::size_t size)
+  {
+    std::vector<point_chart_data*> output_datasets;
+    for (int i = 0; i < alg.num_outputs(); ++i)
+    {
+      point_chart_data* indicator_data = new point_chart_data(res);
+      indicator_data->data().reserve(size);
+      output_datasets.push_back(indicator_data);
+    }
+    return output_datasets;
+  }
+
+  // ----------------------------------------------------------------------------
+  /// The algorithm might not return a single value, so we provide
+  /// overloads that can handle vectors of values
+  template <typename Algorithm, typename Datain,
+    typename std::enable_if_t<std::is_same<typename Algorithm::result_type, double>::value, bool>
+      Enable = false>
+  void call_algorithm_operator(
+    Algorithm& alg, const Datain& in_data, std::vector<point_chart_data*>& out_datasets)
+  {
+    for (auto const& ohlc : in_data->data())
+    {
+      auto vals = alg.operator()(ohlc);
+      QPointF xyval(ohlc.time, vals);
+      out_datasets[0]->data().push_back(xyval);
+    }
+  }
+
+  template <typename Algorithm, typename Datain,
+    typename std::enable_if_t<
+      std::is_same<typename Algorithm::result_type, std::vector<float>>::value, bool>
+      Enable = false>
+  void call_algorithm_operator(
+    Algorithm& alg, const Datain& in_data, std::vector<point_chart_data*>& out_datasets)
+  {
+    for (auto const& ohlc : in_data->data())
+    {
+      auto vals = alg.operator()(ohlc);
+      for (int i = 0; i < alg.num_outputs(); ++i)
+      {
+        QPointF xyval(ohlc.time, vals[i]);
+        out_datasets[i]->data().push_back(xyval);
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------------
   template <class T>
   struct streamer
   {

@@ -110,35 +110,6 @@ price_chart_widget::~price_chart_widget()
 }
 
 // ----------------------------------------------------------------------------
-/// The algorithm might not return a single value, so we provide
-/// overloads that can handle vectors of values
-template <typename Algorithm, typename Datain,
-  typename std::enable_if_t<std::is_same<typename Algorithm::result_type, double>::value, bool>
-    Enable = false>
-void call_algorithm_operator(
-  Algorithm& alg, const Datain& ohlc, std::vector<point_chart_data*>& output_datasets)
-{
-  auto vals = alg.operator()(ohlc);
-  QPointF xyval(ohlc.time, vals);
-  output_datasets[0]->data().push_back(xyval);
-}
-
-template <typename Algorithm, typename Datain,
-  typename std::enable_if_t<
-    std::is_same<typename Algorithm::result_type, std::vector<float>>::value, bool>
-    Enable = false>
-void call_algorithm_operator(
-  Algorithm& alg, const Datain& ohlc, std::vector<point_chart_data*>& output_datasets)
-{
-  auto vals = alg.operator()(ohlc);
-  for (int i = 0; i < alg.num_outputs(); ++i)
-  {
-    QPointF xyval(ohlc.time, vals[i]);
-    output_datasets[i]->data().push_back(xyval);
-  }
-}
-
-// ----------------------------------------------------------------------------
 void price_chart_widget::connect_gui()
 {
   // Graph resolution buttons
@@ -182,8 +153,8 @@ void price_chart_widget::connect_gui()
     Qt::QueuedConnection);
 
   connect(
-    ui->heikin, QOverload<int>::of(&QCheckBox::stateChanged), this,
-    [this](int state) {
+    ui->heikin, QOverload<Qt::CheckState>::of(&QCheckBox::checkStateChanged), this,
+    [this](Qt::CheckState state) {
       if (state)
       {
         crypto_price_plot_->setMode(ohlc_chart_curve::HeikinAshi);
@@ -288,36 +259,27 @@ void price_chart_widget::connect_gui()
       // now execute the algorithm
       std::visit(
         [this](auto& alg) {
-          //using alg_type = decltype(std::decay<decltype(alg)>(alg));
+          // using alg_type = decltype(std::decay<decltype(alg)>(alg));
           // first - initialize algorithm with parameters (set by dialog)
           alg.initialize();
 
           // convert the dataset name selections in the dialog into actual datasets
-          std::vector<ohlc_datasets*> datasets = indicators::get_datasets(alg.params, hdf5_ohlc_);
-          std::vector<point_chart_data*> output_datasets;
-          for (int i = 0; i < alg.num_outputs(); ++i)
-          {
-            point_chart_data* indicator_data =
-              new point_chart_data(datasets[0]->ohlc_samples_->get_resolution());
-            output_datasets.push_back(indicator_data);
-          }
-          // if the algorithm operates on a single input dataset
-          if (datasets.size() == 1)
-          {
-            auto const& input_dataset = datasets[0]->ohlc_samples_;
-            for (int i = 0; i < alg.num_outputs(); ++i)
-              output_datasets[i]->data().reserve(input_dataset->size());
+          std::vector<ohlc_datasets*> in_datasets =
+            indicators::get_datasets(alg.params, hdf5_ohlc_);
 
-            // iterate over the dataset, executing the algorithm for each point
-            for (auto const& ohlc : input_dataset->data())
-            {
-              call_algorithm_operator(alg, ohlc, output_datasets);
-            }
-          }
-          else
+          if (in_datasets.size() != 1)
           {
             pplot_dbg<0>.error(str<>("Indicator"), alg.name, "Not yet implemented");
+            throw std::runtime_error("Fix code for indicators with multiple datasets");
           }
+          auto const& input_dataset = in_datasets[0]->ohlc_samples_;
+
+          // create a dataset for each indicator output
+          std::vector<point_chart_data*> out_datasets =
+            indicators::create_outputs(alg, input_dataset->get_resolution(), input_dataset->size());
+
+          // iterate over the input dataset, executing the algorithm for each point
+          indicators::call_algorithm_operator(alg, input_dataset, out_datasets);
 
           QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QColor("darkRed"),
             QColor("darkCyan"), QColor("darkMagenta"), QColor("green"), QColor("darkGreen"),
@@ -335,7 +297,7 @@ void price_chart_widget::connect_gui()
           {
             if (alg.overlay == indicators::overlay_type::price)
             {
-              auto* curve = crypto_price_plot_->add_overlay_curve(name, output_datasets[i], colour);
+              auto* curve = crypto_price_plot_->add_overlay_curve(name, out_datasets[i], colour);
               i_data.curves.push_back(curve);
             }
             else if (alg.overlay == indicators::overlay_type::mode_select)
@@ -344,25 +306,24 @@ void price_chart_widget::connect_gui()
               if (mode == ohlc_modes::volume)
               {
                 auto* curve =
-                  crypto_price_plot_->add_overlay_volume_curve(name, output_datasets[i], colour);
+                  crypto_price_plot_->add_overlay_volume_curve(name, out_datasets[i], colour);
                 i_data.curves.push_back(curve);
               }
               else if (mode == ohlc_modes::value)
               {
-                auto [plot, curve] = add_indicator_plot(name, output_datasets[i], colour);
+                auto [plot, curve] = add_indicator_plot(name, out_datasets[i], colour);
                 i_data.curves.push_back(curve);
                 i_data.plot = plot;
               }
               else
               {
-                auto* curve =
-                  crypto_price_plot_->add_overlay_curve(name, output_datasets[i], colour);
+                auto* curve = crypto_price_plot_->add_overlay_curve(name, out_datasets[i], colour);
                 i_data.curves.push_back(curve);
               }
             }
             else
             {
-              auto [plot, curve] = add_indicator_plot(name, output_datasets[i], colour);
+              auto [plot, curve] = add_indicator_plot(name, out_datasets[i], colour);
               i_data.curves.push_back(curve);
               i_data.plot = plot;
             }
