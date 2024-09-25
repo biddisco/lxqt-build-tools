@@ -21,8 +21,12 @@
 
 namespace indicators {
 
-  // add each new indicator to types and variant
-  using types = std::variant<                      // prevent clang-format rearranging types
+  // Helper to create a typelist
+  template <typename... Ts>
+  struct typelist;
+
+  // Typelist of all indicator types
+  using indicator_typelist = typelist<             // for clang-format
     moving_average,                                //
     moving_average_volume_weighted,                //
     moving_average_exponential,                    //
@@ -34,18 +38,26 @@ namespace indicators {
     rogers_satchell_volatility                     //
     >;
 
-  inline std::vector<types> available_indicators = {
-    //
-    moving_average{},                                //
-    moving_average_volume_weighted{},                //
-    moving_average_exponential{},                    //
-    moving_average_exponential_volume_weighted{},    //
-    relative_strength_indicator{},                   //
-    stochastic_relative_strength_indicator{},        //
-    bollinger_bands{},                               //
-    garman_klass_volatility{},                       //
-    rogers_satchell_volatility{},
+  // Generate a variant containing each type from the typelist
+  // and a vector with one instance of each type in the typelist
+  template <typename T>
+  struct types_generator;
+
+  template <typename... Ts>
+  struct types_generator<typelist<Ts...>>
+  {
+    // variant with every type in the typelist
+    using type = std::variant<Ts...>;
+    // vector containing one of each variant type
+    static std::vector<type> generate()
+    {
+      return {Ts{}...};
+    }
   };
+
+  using variant_type = types_generator<indicator_typelist>::type;
+  inline std::vector<variant_type> available_indicators =
+    types_generator<indicator_typelist>::generate();
 
   // ----------------------------------------------------------------------------
   // iterate over the parameters returned from an indicator selection dialog and
