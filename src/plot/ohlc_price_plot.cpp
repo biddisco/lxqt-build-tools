@@ -251,7 +251,7 @@ void ohlc_price_plot::bind_graphs()
 
     if (r == ohlc_data_resolutions::minute)
     {
-      auto* live_data = ohlc_dataset_view_->get_live_data();
+      auto* live_data = ohlc_dataset_view_->get_live_data(ohlc_data_resolutions::minute);
       auto* live_curve = new ohlc_chart_curve(live_data);
       live_curves_.insert(std::make_pair(r, live_curve));
       live_curve->setSymbolPen(QwtPlotTradingCurve::Increasing, QColor("#26a69a"));

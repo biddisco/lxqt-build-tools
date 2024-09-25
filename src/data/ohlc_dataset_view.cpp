@@ -113,7 +113,7 @@ void ohlc_dataset_view::truncate_from_time(double t)
 void ohlc_dataset_view::delete_live_data_up_to(double msecs)
 {
   std::lock_guard l(live_mutex_);
-  ohlc_chart_data* live_samples = get_live_data();
+  ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
   QVector<ohlctv_sample>& live_data = live_samples->data();
   auto pos = std::remove_if(live_data.begin(), live_data.end(),
     [msecs](ohlctv_sample& ohlc) { return ohlc.time <= msecs; });
@@ -145,7 +145,7 @@ double ohlc_dataset_view::get_last_sample_time_msec(bool include_live)
   else if (include_live)
   {
     std::lock_guard l(live_mutex_);
-    ohlc_chart_data* live_samples = get_live_data();
+    ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
     if (!live_samples->data().empty())
     {
       last = std::max(last, live_samples->data().back().time);
@@ -163,7 +163,7 @@ double ohlc_dataset_view::get_first_sample_time()
     first = candles_.begin()->second->ohlc_samples_->data().front().time;
   }
   std::lock_guard l(live_mutex_);
-  ohlc_chart_data* live_samples = get_live_data();
+  ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
   if (!live_samples->data().empty())
   {
     first = std::min(first, live_samples->data().front().time);
@@ -214,7 +214,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max(double res, double start_time, doubl
 
   // live data is always at highest resolution, but if it is out of range, ignore it
   std::lock_guard l(live_mutex_);
-  const ohlc_chart_data* live_samples = get_live_data();
+  const ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
   auto mm2 = get_min_max(live_samples, res, start_time, end_time);
   if (mm2.valid_ == false)
   {
@@ -258,16 +258,16 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(
 }
 
 // ----------------------------------------------------------------------------
-ohlc_chart_data* ohlc_dataset_view::get_live_data()
+ohlc_chart_data* ohlc_dataset_view::get_live_data(candle_res res)
 {
-  ohlc_datasets* temp = get_dataset(ohlc_data_resolutions::minute);
+  ohlc_datasets* temp = get_dataset(res);
   return temp->live_samples_;
 }
 
 // ----------------------------------------------------------------------------
-const ohlc_chart_data* ohlc_dataset_view::get_live_data() const
+const ohlc_chart_data* ohlc_dataset_view::get_live_data(candle_res res) const
 {
-  const ohlc_datasets* temp = get_dataset(ohlc_data_resolutions::minute);
+  const ohlc_datasets* temp = get_dataset(res);
   return temp->live_samples_;
 }
 
@@ -286,7 +286,7 @@ void ohlc_dataset_view::add_live_data(ohlctv_sample new_sample)
     ohlc_data_resolutions::minute * std::trunc(new_sample.time / ohlc_data_resolutions::minute);
 
   std::lock_guard l(live_mutex_);
-  ohlc_chart_data* live_samples = get_live_data();
+  ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
   // if this is the first one, just add it
   if (live_samples->size() == 0)
   {

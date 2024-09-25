@@ -55,8 +55,8 @@ class ohlc_dataset_view
   void merge_data(double res, QVector<ohlctv_sample> const& new_ohlc_samples_);
 
   // access the underlying data vector for live samples
-  const ohlc_chart_data* get_live_data() const;
-  ohlc_chart_data* get_live_data();
+  const ohlc_chart_data* get_live_data(candle_res res) const;
+  ohlc_chart_data* get_live_data(candle_res res);
   void delete_live_data_up_to(double msecs);
   // add a new trade sample to build live OHLC candles, returns true when
   // a new candle is started, false when one is (only) updated
