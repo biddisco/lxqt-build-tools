@@ -3,9 +3,9 @@ set(grox_indicators_SRCS
     indicator_definitions.hpp
     indicator_types.hpp
     # volatility estimators
-    bollinger_bands.hpp
-    garman_klass_volatility.hpp
-    rogers_satchell_volatility.hpp
+    volatility_bollinger_bands.hpp
+    volatility_garman_klass.hpp
+    volatility_rogers_satchell.hpp
     # moving averages
     moving_average_exponential.hpp
     moving_average_exponential_volume_weighted.hpp

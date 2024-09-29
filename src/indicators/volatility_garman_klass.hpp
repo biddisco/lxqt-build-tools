@@ -7,17 +7,18 @@
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 
-namespace indicators {
+// see https://portfoliooptimizer.io/blog/range-based-volatility-estimators-overview-and-examples-of-usage/#parkinson-volatility-estimator
 
+namespace indicators {
   //----------------------------------------------------------------------------
-  struct rogers_satchell_volatility : indicator_base
+  struct volatility_garman_klass : indicator_base
   {
     using result_type = std::vector<float>;
 
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string name = "Rogers-Satchell";
-    const std::string description = "Rogers-Satchell volatility (default 14 period)";
+    const std::string name = "Garman-Klass";
+    const std::string description = "Garman-=Klass volatility (default 14 period)";
     const overlay_type overlay = overlay_type::price;
 
     const QChar sigma = QChar(0xc3, 0x03);
@@ -30,10 +31,11 @@ namespace indicators {
 
     // ---------------------------------------
     // Default constructor
-    rogers_satchell_volatility(
+    volatility_garman_klass(
       int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
       : average_{}
       , buffer1_(window_size)
+      , buffer2_(window_size)
       , scale_{1.0}
       , num_bands_{num_bands}
       , window_size_(window_size)
@@ -55,6 +57,7 @@ namespace indicators {
       scale_ = std::get<double>(std::get<1>(params[2]));
       num_bands_ = std::get<int>(std::get<1>(params[3]));
       buffer1_ = boost::circular_buffer<float>(window_size_);
+      buffer2_ = boost::circular_buffer<float>(window_size_);
     }
 
     // ---------------------------------------
@@ -64,17 +67,22 @@ namespace indicators {
       auto mean = average_(ohlc_mode_extract(ohlc_modes::mid_high_low, val));
       mean = val.close;
       // first part to be summed
-      double val1 = std::log(val.high / val.open) * std::log(val.high / val.close) +
-        std::log(val.low / val.open) * std::log(val.low / val.close);
+      double val1 = 0.5 * std::pow(std::log(val.high / val.low), 2);
       buffer1_.push_back(val1);
+      // second part to be summed
+      double val2 = (2.0 * std::log(2) - 1) * std::pow(std::log(val.close / val.open), 2);
+      buffer2_.push_back(val2);
 
       double accum1 = 0;
-      for (double elem : buffer1_)
+      double accum2 = 0;
+      for (std::tuple<double, double> elem : ranges::views::zip(buffer1_, buffer2_))
       {
-        accum1 += elem;
+        accum1 += std::get<0>(elem);
+        accum2 += std::get<1>(elem);
       }
       accum1 *= 1.0 / buffer1_.size();
-      last_sigma_ = scale_ * std::sqrt(accum1);
+      accum2 *= 1.0 / buffer2_.size();
+      last_sigma_ = scale_ * std::sqrt(accum1 - accum2);
       //
       std::vector<float> outdata;
       // push N bands below the mean
@@ -104,6 +112,7 @@ namespace indicators {
 private:
     moving_average average_;
     boost::circular_buffer<float> buffer1_;
+    boost::circular_buffer<float> buffer2_;
     double scale_;
     int num_bands_;
     int window_size_;

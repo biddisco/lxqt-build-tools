@@ -7,17 +7,17 @@
 //
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_dataset_view.hpp"
-#include "indicators/bollinger_bands.hpp"
-#include "indicators/garman_klass_volatility.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 #include "indicators/moving_average_exponential.hpp"
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
 #include "indicators/moving_average_volume_weighted.hpp"
 #include "indicators/relative_strength_indicator.hpp"
-#include "indicators/rogers_satchell_volatility.hpp"
 #include "indicators/stochastic_oscillator.hpp"
 #include "indicators/stochastic_relative_strength_indicator.hpp"
+#include "indicators/volatility_bollinger_bands.hpp"
+#include "indicators/volatility_garman_klass.hpp"
+#include "indicators/volatility_rogers_satchell.hpp"
 
 namespace indicators {
 
@@ -33,9 +33,9 @@ namespace indicators {
     moving_average_exponential_volume_weighted,    //
     relative_strength_indicator,                   //
     stochastic_relative_strength_indicator,        //
-    bollinger_bands,                               //
-    garman_klass_volatility,                       //
-    rogers_satchell_volatility                     //
+    volatility_bollinger_bands,                    //
+    volatility_garman_klass,                       //
+    volatility_rogers_satchell                     //
     >;
 
   // Generate a variant containing each type from the typelist

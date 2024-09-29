@@ -9,7 +9,7 @@
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  struct bollinger_bands : indicator_base
+  struct volatility_bollinger_bands : indicator_base
   {
     using result_type = std::vector<float>;
 
@@ -29,7 +29,8 @@ namespace indicators {
 
     // ---------------------------------------
     // Default constructor
-    bollinger_bands(int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 2)
+    volatility_bollinger_bands(
+      int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 2)
       : average_{}
       , num_bands_{num_bands}
       , window_size_(window_size)
