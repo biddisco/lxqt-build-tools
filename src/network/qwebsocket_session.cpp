@@ -61,8 +61,8 @@ namespace net::ws {
     QObject::connect(
       thread_, &QThread::started, client_,
       [this]() {
-        qsession_dbg<2>.debug(
-          fmt::format("{:20s} {} Starting websocket connection", client_->id(), "QThread:started"));
+        qsession_dbg<2>.debug(fmt::format("{:20s} {} {} Starting websocket connection",
+          client_->id(), fmt::ptr(this), "QThread:started"));
         this->client_->startConnection();
       },
       Qt::DirectConnection);
