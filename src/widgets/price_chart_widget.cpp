@@ -269,7 +269,7 @@ void price_chart_widget::connect_gui()
 
           if (in_datasets.size() != 1)
           {
-            pplot_dbg<0>.error(str<>("Indicator"), alg.name, "Not yet implemented");
+            pplot_dbg<0>.error(str<>("Indicator"), alg.get_name(), "Not yet implemented");
             throw std::runtime_error("Fix code for indicators with multiple datasets");
           }
           auto const& input_dataset = in_datasets[0]->ohlc_samples_;
@@ -286,7 +286,7 @@ void price_chart_widget::connect_gui()
             QColor("yellow"), QColor("blue")};
           auto colour = colours[colour_count++ % 10];
 
-          QString name = QString(alg.name.c_str());
+          QString name = QString(alg.get_name().c_str());
           indicator_plot* plot = nullptr;
           QString params = QString(indicators::param_string(alg.params).c_str());
 

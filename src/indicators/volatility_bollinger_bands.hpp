@@ -15,8 +15,14 @@ namespace indicators {
 
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string name = "Bollinger-Bands";
-    const std::string description = "Bollinger-Bands default 14 period";
+    const std::string get_name() const override
+    {
+      return "Bollinger-Bands";
+    }
+    const std::string get_description() const override
+    {
+      return "Bollinger-Bands default 14 period";
+    }
     const overlay_type overlay = overlay_type::price;
 
     const QChar sigma = QChar(0xc3, 0x03);

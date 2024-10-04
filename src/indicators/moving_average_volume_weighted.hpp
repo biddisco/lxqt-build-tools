@@ -16,10 +16,15 @@ namespace indicators {
   //----------------------------------------------------------------------------
   struct moving_average_volume_weighted : indicator_base
   {
-    // ---------------------------------------
     // fields required for auto gui generation
-    const std::string name = "Moving Average (Volume Weighted)";
-    const std::string description = "Moving Average with Volume weighted values";
+    const std::string get_name() const override
+    {
+      return "Moving Average (Volume Weighted)";
+    }
+    const std::string get_description() const override
+    {
+      return "Moving Average with Volume weighted values";
+    }
     const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {

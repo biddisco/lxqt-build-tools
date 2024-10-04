@@ -16,8 +16,14 @@ namespace indicators {
 
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string name = "Rogers-Satchell";
-    const std::string description = "Rogers-Satchell volatility (default 14 period)";
+    const std::string get_name() const override
+    {
+      return "Rogers-Satchell";
+    }
+    const std::string get_description() const override
+    {
+      return "Rogers-Satchell volatility (default 14 period)";
+    }
     const overlay_type overlay = overlay_type::price;
 
     const QChar sigma = QChar(0xc3, 0x03);

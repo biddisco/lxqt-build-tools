@@ -19,8 +19,14 @@ namespace indicators {
   {
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string name = "Moving Average";
-    const std::string description = "Simple Moving Average";
+    const std::string get_name() const override
+    {
+      return "Moving Average";
+    }
+    const std::string get_description() const override
+    {
+      return "Simple Moving Average";
+    }
     const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {

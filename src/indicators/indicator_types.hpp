@@ -7,6 +7,12 @@
 
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_utils.hpp"
+#include "debug/print.hpp"
+
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+template <int Level>
+inline print_threshold<Level, 5> indicator_dbg("Indicate");
 
 namespace indicators {
 
@@ -39,7 +45,19 @@ namespace indicators {
   {
     using result_type = double;
 
-    virtual ~indicator_base() {}
+    virtual ~indicator_base()
+    {
+      indicator_dbg<2>.debug(str<>(get_name().c_str()));
+    }
+
+    virtual const std::string get_name() const
+    {
+      return "";
+    }
+    virtual const std::string get_description() const
+    {
+      return "";
+    }
 
     virtual int num_inputs() const
     {

@@ -12,10 +12,15 @@ namespace indicators {
   //----------------------------------------------------------------------------
   struct stochastic_oscillator : indicator_base
   {
-    // ---------------------------------------
-    // fields required for auto gui generation and plot setup
-    const std::string name = "Stochastic Oscillator";
-    const std::string description = "Stochastic Oscillator default 14 period";
+    // fields required for auto gui generation
+    const std::string get_name() const override
+    {
+      return "Stochastic Oscillator";
+    }
+    const std::string get_description() const override
+    {
+      return "Stochastic Oscillator default 14 period";
+    }
     const overlay_type overlay = overlay_type::minmax_limit;
     const y_limits ylimits = {0.0, 1.0};
 

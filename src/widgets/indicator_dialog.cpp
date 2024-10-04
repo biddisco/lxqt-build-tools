@@ -38,7 +38,7 @@ indicator_dialog::indicator_dialog()
   // setup algorithms combobox
   for (auto const& a : indicators::available_indicators)
   {
-    QString s = std::visit([](auto const& obj) { return obj.name; }, a).c_str();
+    QString s = std::visit([](auto const& obj) { return obj.get_name(); }, a).c_str();
     ui.algorithm->addItem(s);
   }
   // when algorithm is changed, rebuild gui
@@ -184,7 +184,7 @@ void indicator_dialog::refresh_gui(int index)
   std::array<int, 2> counts = {0, 0};
 
   auto alg = indicators::available_indicators[index];
-  std::string desc = std::visit([](auto const& obj) { return obj.description; }, alg);
+  std::string desc = std::visit([](auto const& obj) { return obj.get_description(); }, alg);
   ui.description->setText(QString(desc.c_str()));
 
   QGridLayout* layout = new QGridLayout;

@@ -17,8 +17,14 @@ namespace indicators {
 
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string name = "Garman-Klass";
-    const std::string description = "Garman-=Klass volatility (default 14 period)";
+    const std::string get_name() const override
+    {
+      return "Garman-Klass";
+    }
+    const std::string get_description() const override
+    {
+      return "Garman-Klass volatility (default 14 period)";
+    }
     const overlay_type overlay = overlay_type::price;
 
     const QChar sigma = QChar(0xc3, 0x03);
