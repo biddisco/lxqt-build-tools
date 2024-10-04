@@ -188,7 +188,7 @@ class exchange
   // ---------------------------------------
   virtual bool can_send(const currency& c, exchange* dest) = 0;
   virtual bool make_payment(const currency& c, basic_account* src, basic_account* dest) = 0;
-  virtual std::string get_name()
+  virtual std::string get_name() const
   {
     return exchange_name_;
   }
