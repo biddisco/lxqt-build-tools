@@ -842,11 +842,7 @@ void bitstamp_network::new_orderbook_data_q(
         str<>("Orderbook error"), currency_pair_string(cp), tdata->orderbook_, data.toStdString());
     }
     //
-    for (auto subscriber : tdata->orderbook_subscribers_)
-    {
-      bitstamp_dbg<4>.debug(str<>("orderbook subscribe"), currency_pair_string(cp));
-      subscriber(cp);
-    }
+    tdata->orderbook_subscribers_.publish(cp);
   };
 
   stdexec::sender auto snd =
@@ -878,12 +874,7 @@ void bitstamp_network::new_live_trade_data_q(
     bitstamp_dbg<7>.debug(str<>("Trade data parsed"), jdata.dump(4));
     live_trade_data trade_data = jdata.get<live_trade_data>();
     //
-    const ticker_data tdata = exchange->get_subscribed_ticker_data(cp);
-    for (auto subscriber : tdata->live_trade_subscribers_)
-    {
-      bitstamp_dbg<4>.debug(str<>("live_trade subscribe"), currency_pair_string(cp));
-      subscriber(cp, trade_data);
-    }
+    exchange->get_subscribed_ticker_data(cp)->live_trade_subscribers_.publish(cp, trade_data);
   };
 
   stdexec::sender auto snd =

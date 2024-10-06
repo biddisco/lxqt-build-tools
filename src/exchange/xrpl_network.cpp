@@ -349,11 +349,8 @@ void xrpl_network::new_orderbook_data_q(
           xrpnet_dbg<0>.error(str<>("Unrecognized"), "key: ", it.key(), it.value().dump(4));
       }
       //
-      for (auto subscriber : tdata->orderbook_subscribers_)
-      {
-        xrpnet_dbg<4>.debug(str<>("orderbook callback"), currency_pair_string(cp));
-        subscriber(cp);
-      }
+      xrpnet_dbg<4>.debug(str<>("orderbook callback"), currency_pair_string(cp));
+      tdata->orderbook_subscribers_.publish(cp);
     }
     catch (...)
     {

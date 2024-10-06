@@ -146,7 +146,7 @@ void create_ticker_price_plot(ticker_data tdata, currency_pair cp)
     QMetaObject::invokeMethod(grox::senders::getMainWindow(),
       [=]() { tdata->chart_widget_->update_live_data(new_sample); });
   };
-  tdata->live_trade_subscribers_.push_back(live_trade_subscription);
+  tdata->live_trade_subscribers_.subscribe(live_trade_subscription);
 }
 
 // ----------------------------------------------------------------------------
@@ -164,7 +164,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
       orderbook_text->setPlainText(datastring);
     });
   };
-  tdata->orderbook_subscribers_.push_back(orderbook_text_sub);
+  tdata->orderbook_subscribers_.subscribe(orderbook_text_sub);
 
   auto orderbook_plot_sub = [tdata, orderbook_plot](currency_pair cp) {
     QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=]() {
@@ -174,7 +174,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
       orderbook_plot->update_time_and_replot();
     });
   };
-  tdata->orderbook_subscribers_.push_back(orderbook_plot_sub);
+  tdata->orderbook_subscribers_.subscribe(orderbook_plot_sub);
 }
 
 // ----------------------------------------------------------------------------

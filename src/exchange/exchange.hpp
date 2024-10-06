@@ -15,6 +15,7 @@
 #include "data/ohlc_dataset_view.hpp"
 #include "network/qwebsocket_client.hpp"
 #include "network/qwebsocket_session.hpp"
+#include "util/pubsub.hpp"
 
 class basic_account;
 class exchange;
@@ -65,8 +66,6 @@ static network::streams stream_from_pretty_text(std::string txt)
 class price_chart_widget;
 class order_book_base;
 
-using live_trade_function = std::function<void(currency_pair cp, grox::live_trade_data t)>;
-using orderbook_function = std::function<void(currency_pair cp)>;
 struct ticker_subscription
 {
   std::shared_ptr<exchange> exchange_;
@@ -76,8 +75,8 @@ struct ticker_subscription
   // each ticker may subscribe to multiple streams
   std::map<network::streams, std::shared_ptr<net::ws::qwebsocket_session>> websockets_;
   //
-  std::vector<live_trade_function> live_trade_subscribers_;
-  std::vector<orderbook_function> orderbook_subscribers_;
+  grox::PublishSubscribe<const currency_pair, const grox::live_trade_data> live_trade_subscribers_;
+  grox::PublishSubscribe<const currency_pair> orderbook_subscribers_;
 };
 
 using ticker_data = std::shared_ptr<ticker_subscription>;
