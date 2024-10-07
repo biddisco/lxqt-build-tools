@@ -22,6 +22,7 @@ class ohlc_dataset_view
   // a map of datasets, key is resolution
   std::map<double, ohlc_datasets*> candles_;
 
+  // needed for IO and debug messages
   std::string exchange_;
   std::string ticker_string_;
 
@@ -48,7 +49,7 @@ class ohlc_dataset_view
 
   ohlc_chart_data* get_samples()
   {
-    return candles_.begin()->second->ohlc_samples_;
+    return candles_.begin()->second;
   }
 
   // Add new downloaded data to an existing dataset

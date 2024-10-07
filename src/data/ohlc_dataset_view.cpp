@@ -63,7 +63,7 @@ void ohlc_dataset_view::merge_data(
   uint64_t update = data->merge_data(new_ohlc_samples_);
   // write new samples to the main datafile
   global_settings.data_manager_->write_file(
-    "bitstamp", ticker_string_, data->ohlc_samples_->data(), update, false);
+    "bitstamp", ticker_string_, data->data(), update, false);
 }
 
 // ----------------------------------------------------------------------------
@@ -72,7 +72,7 @@ void ohlc_dataset_view::read_from_disk()
   try
   {
     global_settings.data_manager_->read_file(
-      exchange_, ticker_string_, candles_.begin()->second->ohlc_samples_->data());
+      exchange_, ticker_string_, candles_.begin()->second->data());
   }
   catch (ohlc_data_exception& e)
   {
@@ -96,7 +96,7 @@ void ohlc_dataset_view::truncate_from_time(double t)
   for (auto k : candles_)
   {
     auto res = k.first;
-    auto samples = k.second->ohlc_samples_;
+    auto samples = k.second;
     auto index = samples->sample_index(t);
     samples->data().resize(index);
     man_dbg<0>.debug(str<>("Truncating"), ticker_string_,
@@ -127,9 +127,9 @@ void ohlc_dataset_view::delete_live_data_up_to(double msecs)
 double ohlc_dataset_view::get_time_from_index(std::uint64_t i)
 {
   double t = 0;
-  if (!candles_.begin()->second->ohlc_samples_->data().empty())
+  if (!candles_.begin()->second->data().empty())
   {
-    t = candles_.begin()->second->ohlc_samples_->sample_time(i);
+    t = candles_.begin()->second->sample_time(i);
   }
   return t;
 }
@@ -138,9 +138,9 @@ double ohlc_dataset_view::get_time_from_index(std::uint64_t i)
 double ohlc_dataset_view::get_last_sample_time_msec(bool include_live)
 {
   double last = 0;
-  if (!candles_.begin()->second->ohlc_samples_->data().empty())
+  if (!candles_.begin()->second->data().empty())
   {
-    last = candles_.begin()->second->ohlc_samples_->data().back().time;
+    last = candles_.begin()->second->data().back().time;
   }
   else if (include_live)
   {
@@ -158,9 +158,9 @@ double ohlc_dataset_view::get_last_sample_time_msec(bool include_live)
 double ohlc_dataset_view::get_first_sample_time()
 {
   double first = 0;
-  if (!candles_.begin()->second->ohlc_samples_->data().empty())
+  if (!candles_.begin()->second->data().empty())
   {
-    first = candles_.begin()->second->ohlc_samples_->data().front().time;
+    first = candles_.begin()->second->data().front().time;
   }
   std::lock_guard l(live_mutex_);
   ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
@@ -210,7 +210,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max(
 ohlcv_minmax ohlc_dataset_view::get_min_max(double res, double start_time, double end_time) const
 {
   // min max uses the current dataset resolution for main plot
-  auto mm1 = get_min_max(get_dataset(res)->ohlc_samples_, res, start_time, end_time);
+  auto mm1 = get_min_max(get_dataset(res), res, start_time, end_time);
 
   // live data is always at highest resolution, but if it is out of range, ignore it
   std::lock_guard l(live_mutex_);

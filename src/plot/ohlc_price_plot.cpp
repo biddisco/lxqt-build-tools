@@ -246,7 +246,7 @@ void ohlc_price_plot::bind_graphs()
   for (auto r : resolutions)
   {
     auto* data = ohlc_dataset_view_->get_dataset(r);
-    auto* curve = new ohlc_chart_curve(data->ohlc_samples_);
+    auto* curve = new ohlc_chart_curve(data);
     curves_.insert(std::make_pair(r, curve));
 
     if (r == ohlc_data_resolutions::minute)
@@ -463,17 +463,17 @@ void ohlc_price_plot::display_picker_info(const QPointF pos)
   const double time = pos.x();
   int64_t index = -1;
   auto* dataset = ohlc_dataset_view_->get_dataset(get_candle_resolution());
-  if (dataset->ohlc_samples_->size() > 0)
+  if (dataset->size() > 0)
   {
-    index = dataset->ohlc_samples_->sample_index(time);
+    index = dataset->sample_index(time);
   }
-  if (index < 0 || size_t(index) >= dataset->ohlc_samples_->size())
+  if (index < 0 || size_t(index) >= dataset->size())
   {
     candle_status_->setText("");
     return;
   }
   //
-  ohlctv_sample const& sample = dataset->ohlc_samples_->data().at(index);
+  ohlctv_sample const& sample = dataset->data().at(index);
 
   const char* c = "red";
   if (sample.open <= sample.close)

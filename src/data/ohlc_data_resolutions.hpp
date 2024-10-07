@@ -106,6 +106,3 @@ class ohlc_data_resolutions
     return ohlc_data_resolutions::minute;
   }
 };
-
-using variant_param_types = std::variant<double, int, bool, candle_res>;
-using variant_param_list = std::vector<std::tuple<std::string, variant_param_types>>;

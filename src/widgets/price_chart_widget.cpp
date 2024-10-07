@@ -272,7 +272,7 @@ void price_chart_widget::connect_gui()
             pplot_dbg<0>.error(str<>("Indicator"), alg.get_name(), "Not yet implemented");
             throw std::runtime_error("Fix code for indicators with multiple datasets");
           }
-          auto const& input_dataset = in_datasets[0]->ohlc_samples_;
+          auto const& input_dataset = in_datasets[0];
 
           // create a dataset for each indicator output
           std::vector<point_chart_data*> out_datasets =

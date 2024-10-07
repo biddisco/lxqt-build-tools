@@ -19,12 +19,12 @@ template <int Level>
 static print_threshold<Level, debug_level> ohlc_dbg("Datasets");
 
 // ----------------------------------------------------------------------------
-ohlc_datasets::ohlc_datasets(double res, std::string const& name)
-  : ticker_str_(name)
+ohlc_datasets::ohlc_datasets(candle_res res, std::string const& name)
+  : timebased_chart_data<ohlctv_sample>(res)
+  , ticker_str_(name)
 {
   // we do not destroy these in the destructor because they are given to the
   // plot curve object which deletes them when it is destroyed
-  ohlc_samples_ = new ohlc_chart_data(res);
   live_samples_ = new ohlc_chart_data(res);
 }
 
@@ -41,14 +41,14 @@ uint64_t ohlc_datasets::merge_data(ohlctv_vector const& new_ohlc_samples_)
 {
   uint64_t update = 0;
   // initial data may be empty, so just copy without merge/update
-  if (ohlc_samples_->data().size() == 0)
+  if (data().size() == 0)
   {
-    ohlc_samples_->data() = new_ohlc_samples_;
-    return ohlc_samples_->size();
+    data() = new_ohlc_samples_;
+    return size();
   }
   else if (!new_ohlc_samples_.empty())
   {
-    auto last_existing = ohlc_samples_->data().back().time;
+    auto last_existing = data().back().time;
     auto first_new = new_ohlc_samples_.front().time;
     // new samples must start exactly one timestep after old
     int offset = (first_new - last_existing) / ohlc_data_resolutions::minute;
@@ -63,14 +63,14 @@ uint64_t ohlc_datasets::merge_data(ohlctv_vector const& new_ohlc_samples_)
     // add new samples
     ohlc_dbg<5>.debug(
       str<>("merging"), ticker_str_, "new samples", ffmt<dec6>(new_ohlc_samples_.size()));
-    ohlc_samples_->data().append(new_ohlc_samples_);
+    data().append(new_ohlc_samples_);
     update += new_ohlc_samples_.size();
   }
   return update;
 }
 
 // ----------------------------------------------------------------------------
-uint64_t sample_index(double init, double time, double res)
+uint64_t offset_index(double init, double time, double res)
 {
   uint64_t i = static_cast<uint64_t>((time - init) / res);
   return std::max(uint64_t(0), i);
@@ -92,7 +92,7 @@ int64_t ohlc_datasets::validate_ohlc(
   }
   else
   {
-    init_index = sample_index(origin_time, time, res);
+    init_index = offset_index(origin_time, time, res);
     init_time = samples.at(init_index).time;
   }
   ohlc_dbg<6>.debug(str<>("validating"), name, str<3>(res.name_), "from",
@@ -130,7 +130,7 @@ ohlc_datasets* ohlc_datasets::resample(candle_res res1, candle_res res2)
 ohlc_datasets* ohlc_datasets::resample_update(
   candle_res res1, ohlc_datasets* other, candle_res res2)
 {
-  if (other->ohlc_samples_->data().empty())
+  if (other->data().empty())
     return this;
 
   // how many of the hi-res candles in the new lower-res candle?
@@ -142,16 +142,16 @@ ohlc_datasets* ohlc_datasets::resample_update(
   // and increment it by 1 hi-res sample to get next start time
   double start_T, orig_T = 0;
   std::uint64_t orig_size = 0;
-  if (!ohlc_samples_->data().empty())
+  if (!data().empty())
   {
-    orig_size = ohlc_samples_->size();
-    orig_T = ohlc_samples_->data().back().time;
+    orig_size = size();
+    orig_T = data().back().time;
     start_T = orig_T + res2;
   }
   // empty, resample from the first point of the hi-res dataset
   else
   {
-    start_T = other->ohlc_samples_->data().front().time;
+    start_T = other->data().front().time;
   }
   // the start time must start an integral candle at the new resolution
   while (static_cast<int>(0.5 + start_T / res2) % subsamples != 0)
@@ -163,19 +163,19 @@ ohlc_datasets* ohlc_datasets::resample_update(
   }
 
   // What index in the high res data maps to selected time start_T
-  uint64_t init_sample = other->ohlc_samples_->sample_index(start_T);
+  uint64_t init_sample = other->sample_index(start_T);
 
   // just exit if there isn't enough hi-res data for a full new resampled candle
-  if ((init_sample + subsamples) > other->ohlc_samples_->size())
+  if ((init_sample + subsamples) > other->size())
     return this;
 
   // we will start a fresh candle from this start_T
-  ohlctv_sample current_ohlc = other->ohlc_samples_->data()[init_sample];
+  ohlctv_sample current_ohlc = other->data()[init_sample];
   current_ohlc.time = res1 * static_cast<uint64_t>(current_ohlc.time / res1);
 
   // iterate over all higher res samples for T onwards
-  for (ohlctv_vector::const_iterator it = other->ohlc_samples_->data().begin() + init_sample;
-       it < other->ohlc_samples_->data().end(); ++it)
+  for (ohlctv_vector::const_iterator it = other->data().begin() + init_sample;
+       it < other->data().end(); ++it)
   {
     double quantized_time = res1 * static_cast<uint64_t>(it->time / res1);
     int subsample = static_cast<int>(0.5 + it->time / res2) % subsamples;
@@ -193,13 +193,12 @@ ohlc_datasets* ohlc_datasets::resample_update(
     // finalizing a new candle
     if (subsample == (subsamples - 1))
     {
-      ohlc_samples_->append(current_ohlc);
+      append(current_ohlc);
     }
   }
   ohlc_dbg<1>.debug(str<>("resampled"), ticker_str_, str<3>(res1.name_), "from",
-    msecs_unix_to_calendar_time(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of",
-    ohlc_samples_->size());
-  validate_ohlc(ohlc_samples_->data(), res1, orig_T, ticker_str_);
+    msecs_unix_to_calendar_time(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of", size());
+  validate_ohlc(data(), res1, orig_T, ticker_str_);
 
   return this;
 }
