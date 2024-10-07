@@ -52,8 +52,8 @@ namespace indicators {
     static std::vector<type> generate() { return {Ts{}...}; }
   };
 
-  using variant_type = types_generator<indicator_typelist>::type;
-  inline std::vector<variant_type> available_indicators =
+  using indicator_variant = types_generator<indicator_typelist>::type;
+  inline std::vector<indicator_variant> available_indicators =
       types_generator<indicator_typelist>::generate();
 
   // ----------------------------------------------------------------------------
@@ -74,31 +74,15 @@ namespace indicators {
   }
 
   // ----------------------------------------------------------------------------
-  // create a dataset for each indicator output
-  template <typename Algorithm>
-  std::vector<point_chart_data*>
-  create_outputs(const Algorithm& alg, const candle_res res, std::size_t size)
-  {
-    std::vector<point_chart_data*> output_datasets;
-    for (int i = 0; i < alg.num_outputs(); ++i)
-    {
-      point_chart_data* indicator_data = new point_chart_data(res);
-      indicator_data->data().reserve(size);
-      output_datasets.push_back(indicator_data);
-    }
-    return output_datasets;
-  }
-
-  // ----------------------------------------------------------------------------
   /// The algorithm might not return a single value, so we provide
   /// overloads that can handle vectors of values
-  template <typename Algorithm, typename Datain,
+  template <typename Algorithm,
       typename std::enable_if_t<std::is_same<typename Algorithm::result_type, double>::value, bool>
           Enable = false>
-  void call_algorithm_operator(
-      Algorithm& alg, const Datain& in_data, std::vector<point_chart_data*>& out_datasets)
+  void call_algorithm_operator(Algorithm& alg, const std::vector<ohlc_dataset*> in_datasets,
+      std::vector<point_chart_data*>& out_datasets)
   {
-    for (auto const& ohlc : in_data->data())
+    for (auto const& ohlc : in_datasets[0]->data())
     {
       auto vals = alg.operator()(ohlc);
       QPointF xyval(ohlc.time, vals);
@@ -106,14 +90,14 @@ namespace indicators {
     }
   }
 
-  template <typename Algorithm, typename Datain,
+  template <typename Algorithm,
       typename std::enable_if_t<
           std::is_same<typename Algorithm::result_type, std::vector<float>>::value, bool>
           Enable = false>
-  void call_algorithm_operator(
-      Algorithm& alg, const Datain& in_data, std::vector<point_chart_data*>& out_datasets)
+  void call_algorithm_operator(Algorithm& alg, const std::vector<ohlc_dataset*> in_datasets,
+      std::vector<point_chart_data*>& out_datasets)
   {
-    for (auto const& ohlc : in_data->data())
+    for (auto const& ohlc : in_datasets[0]->data())
     {
       auto vals = alg.operator()(ohlc);
       for (int i = 0; i < alg.num_outputs(); ++i)

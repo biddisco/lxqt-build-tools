@@ -240,19 +240,11 @@ void price_chart_widget::connect_gui()
             std::vector<ohlc_dataset*> in_datasets =
                 indicators::get_datasets(alg.params, hdf5_ohlc_);
 
-            if (in_datasets.size() != 1)
-            {
-              pplot_dbg<0>.error(str<>("Indicator"), alg.get_name(), "Not yet implemented");
-              throw std::runtime_error("Fix code for indicators with multiple datasets");
-            }
-            auto const& input_dataset = in_datasets[0];
-
             // create a dataset for each indicator output
-            std::vector<point_chart_data*> out_datasets = indicators::create_outputs(
-                alg, input_dataset->get_resolution(), input_dataset->size());
+            std::vector<point_chart_data*> out_datasets = alg.create_outputs(in_datasets);
 
             // iterate over the input dataset, executing the algorithm for each point
-            indicators::call_algorithm_operator(alg, input_dataset, out_datasets);
+            indicators::call_algorithm_operator(alg, in_datasets, out_datasets);
 
             QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"),
                 QColor("darkRed"), QColor("darkCyan"), QColor("darkMagenta"), QColor("green"),
@@ -264,7 +256,7 @@ void price_chart_widget::connect_gui()
             QString params = QString(indicators::param_string(alg.params).c_str());
 
             // create an indicator_data object with empty curves data
-            indicator_data i_data{name, params, plot, {}};
+            indicator_data i_data{name, params, /*alg, */ plot, {}};
 
             for (int i = 0; i < alg.num_outputs(); ++i)
             {

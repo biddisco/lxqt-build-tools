@@ -1,5 +1,7 @@
 set(grox_indicators_SRCS
     # basic definitions
+    # indicator_api.hpp
+    # indicator_api.cpp
     indicator_definitions.hpp
     indicator_types.hpp
     # volatility estimators

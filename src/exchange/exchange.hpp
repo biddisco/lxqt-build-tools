@@ -73,6 +73,7 @@ struct ticker_subscription
   //
   grox::PublishSubscribe<const currency_pair, const grox::live_trade_data> live_trade_subscribers_;
   grox::PublishSubscribe<const currency_pair> orderbook_subscribers_;
+  grox::PublishSubscribe<const candle_res> new_ohlc_subscribers_;
 };
 
 using ticker_data = std::shared_ptr<ticker_subscription>;

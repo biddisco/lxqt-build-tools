@@ -186,7 +186,8 @@ void ticker_stream_gui_constructor(currency_pair cp, ticker_data tdata, network:
   else if (stream == network::streams::order_book)
     create_ticker_orderbook_widgets(tdata, cp);
   else
-    main_dbg<0>.error(str<>("Stream"), "factory_create unknown stream");
+    main_dbg<0>.error(
+        str<>("Stream"), "factory_create no GUI for stream", network::stream_names[stream]);
 }
 
 // ----------------------------------------------------------------------------

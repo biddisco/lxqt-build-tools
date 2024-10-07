@@ -8,6 +8,7 @@
 
 //
 #include "exchange/exchange.hpp"
+#include "indicators/indicator_definitions.hpp"
 #include "indicators/indicator_types.hpp"
 #include "plot/indicator_plot.hpp"
 #include "plot/ohlc_picker.hpp"
@@ -24,6 +25,7 @@ struct indicator_data
 {
   QString text;
   QString params;
+  //  indicators::indicator_variant indicator;
   indicator_plot* plot;
   std::vector<timebased_data_curve*> curves;
 };

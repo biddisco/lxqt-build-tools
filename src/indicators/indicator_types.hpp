@@ -7,6 +7,7 @@
 
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_utils.hpp"
+#include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
 
 // ----------------------------------------------------------------------------
@@ -44,16 +45,38 @@ namespace indicators {
   struct indicator_base
   {
     using result_type = double;
+    std::string name;
 
-    virtual ~indicator_base() { indicator_dbg<2>.debug(str<>(get_name().c_str())); }
+    virtual ~indicator_base()
+    {
+      // indicator_dbg<2>.debug(str<>(name.c_str()));
+    }
 
     virtual const std::string get_name() const { return ""; }
+
     virtual const std::string get_description() const { return ""; }
 
     virtual int num_inputs() const { return 1; }
     virtual int num_outputs() const { return 1; }
 
     virtual overlay_type output_overlay_type(int n) const { return overlay_type::price; }
+
+    // ----------------------------------------------------------------------------
+    // create a dataset for each indicator output
+    // default implementation uses first input resolution and size
+    std::vector<point_chart_data*> create_outputs(std::vector<ohlc_dataset*> in_datasets) const
+    {
+      const candle_res res = in_datasets[0]->get_resolution();
+      const std::size_t size = in_datasets[0]->data().size();
+      std::vector<point_chart_data*> output_datasets;
+      for (int i = 0; i < num_outputs(); ++i)
+      {
+        point_chart_data* indicator_data = new point_chart_data(res);
+        indicator_data->data().reserve(size);
+        output_datasets.push_back(indicator_data);
+      }
+      return output_datasets;
+    }
   };
 
 }    // namespace indicators
