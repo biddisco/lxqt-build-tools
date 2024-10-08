@@ -65,9 +65,9 @@ namespace net {
 
       // disallow older versions of SSL protocol/handshaking
       ctx.set_options(boost::asio::ssl::context::default_workarounds |
-        boost::asio::ssl::context::no_sslv2 | boost::asio::ssl::context::no_sslv3 |
-        boost::asio::ssl::context::no_tlsv1 | boost::asio::ssl::context::no_tlsv1_1 |
-        boost::asio::ssl::context::no_tlsv1_3);
+          boost::asio::ssl::context::no_sslv2 | boost::asio::ssl::context::no_sslv3 |
+          boost::asio::ssl::context::no_tlsv1 | boost::asio::ssl::context::no_tlsv1_1 |
+          boost::asio::ssl::context::no_tlsv1_3);
       //                boost::asio::ssl::context::no_sslv2 |
       //                boost::asio::ssl::context::no_sslv3 |
       //                boost::asio::ssl::context::no_tlsv1 |
@@ -77,13 +77,10 @@ namespace net {
       //                boost::asio::ssl::context::no_compression
 
       work_guard_ = new asio::executor_work_guard<asio::io_context::executor_type>{
-        boost::asio::make_work_guard(ioc)};
+          boost::asio::make_work_guard(ioc)};
     }
 
-    ~contexts()
-    {
-      delete work_guard_;
-    }
+    ~contexts() { delete work_guard_; }
   };
 
   namespace ws {
@@ -108,7 +105,7 @@ namespace net {
   public:
       // Resolver and socket require an io_context
       explicit session(
-        asio::io_context& ioc, ssl::context& ctx, std::function<void(std::string&&)>&& cb)
+          asio::io_context& ioc, ssl::context& ctx, std::function<void(std::string&&)>&& cb)
         : resolver_(asio::make_strand(ioc))
         , ws_(asio::make_strand(ioc), ctx)
         , read_callback_(std::move(cb))
@@ -124,26 +121,24 @@ namespace net {
 
         // Look up the domain name
         resolver_.async_resolve(
-          host, port, boost::beast::bind_front_handler(&session::on_resolve, shared_from_this()));
+            host, port, boost::beast::bind_front_handler(&session::on_resolve, shared_from_this()));
       }
 
       void on_resolve(boost::beast::error_code ec, tcp::resolver::results_type results)
       {
-        if (ec)
-          return msg_fail(ec, "resolve");
+        if (ec) return msg_fail(ec, "resolve");
 
         // Set the timeout for the operation
         boost::beast::get_lowest_layer(ws_).expires_after(std::chrono::seconds(30));
 
         // Make the connection on the IP address we get from a lookup
         boost::beast::get_lowest_layer(ws_).async_connect(
-          results, boost::beast::bind_front_handler(&session::on_connect, shared_from_this()));
+            results, boost::beast::bind_front_handler(&session::on_connect, shared_from_this()));
       }
 
       void on_connect(boost::beast::error_code ec, tcp::resolver::results_type::endpoint_type ep)
       {
-        if (ec)
-          return msg_fail(ec, "connect");
+        if (ec) return msg_fail(ec, "connect");
 
         // Update the host_ string. This will provide the value of the
         // Host HTTP header during the WebSocket handshake.
@@ -157,19 +152,18 @@ namespace net {
         if (!SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str()))
         {
           ec = boost::beast::error_code(
-            static_cast<int>(::ERR_get_error()), asio::error::get_ssl_category());
+              static_cast<int>(::ERR_get_error()), asio::error::get_ssl_category());
           return msg_fail(ec, "connect");
         }
 
         // Perform the SSL handshake
         ws_.next_layer().async_handshake(ssl::stream_base::client,
-          boost::beast::bind_front_handler(&session::on_ssl_handshake, shared_from_this()));
+            boost::beast::bind_front_handler(&session::on_ssl_handshake, shared_from_this()));
       }
 
       void on_ssl_handshake(boost::beast::error_code ec)
       {
-        if (ec)
-          return msg_fail(ec, "ssl_handshake");
+        if (ec) return msg_fail(ec, "ssl_handshake");
 
         // Turn off the timeout on the tcp_stream, because
         // the websocket stream has its own timeout system.
@@ -181,48 +175,45 @@ namespace net {
         // Set a decorator to change the User-Agent of the handshake
         ws_.set_option(websocket::stream_base::decorator([](websocket::request_type& req) {
           req.set(http::field::user_agent,
-            std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-async-ssl");
+              std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-async-ssl");
         }));
 
         // Perform the websocket handshake
-        ws_.async_handshake(
-          host_, "/", boost::beast::bind_front_handler(&session::on_handshake, shared_from_this()));
+        ws_.async_handshake(host_, "/",
+            boost::beast::bind_front_handler(&session::on_handshake, shared_from_this()));
       }
 
       void on_handshake(boost::beast::error_code ec)
       {
-        if (ec)
-          return msg_fail(ec, "handshake");
+        if (ec) return msg_fail(ec, "handshake");
 
         // Send the message
         ws_.async_write(asio::buffer(text_),
-          boost::beast::bind_front_handler(&session::on_write, shared_from_this()));
+            boost::beast::bind_front_handler(&session::on_write, shared_from_this()));
       }
 
       void write(std::string const& msg)
       {
         ws_.async_write(asio::buffer(msg),
-          boost::beast::bind_front_handler(&session::on_write, shared_from_this()));
+            boost::beast::bind_front_handler(&session::on_write, shared_from_this()));
       }
 
       void on_write(boost::beast::error_code ec, std::size_t bytes_transferred)
       {
         boost::ignore_unused(bytes_transferred);
 
-        if (ec)
-          return msg_fail(ec, "write");
+        if (ec) return msg_fail(ec, "write");
 
         // Read a message into our buffer
         ws_.async_read(
-          buffer_, boost::beast::bind_front_handler(&session::on_read, shared_from_this()));
+            buffer_, boost::beast::bind_front_handler(&session::on_read, shared_from_this()));
       }
 
       void on_read(boost::beast::error_code ec, std::size_t bytes_transferred)
       {
         boost::ignore_unused(bytes_transferred);
 
-        if (ec)
-          return msg_fail(ec, "read");
+        if (ec) return msg_fail(ec, "read");
 
         // The make_printable() function helps print a ConstBufferSequence
         // std::cout << boost::beast::make_printable(buffer_.data()) << std::endl;
@@ -231,18 +222,14 @@ namespace net {
 
         // Read the next message
         ws_.async_read(
-          buffer_, boost::beast::bind_front_handler(&session::on_read, shared_from_this()));
+            buffer_, boost::beast::bind_front_handler(&session::on_read, shared_from_this()));
 
-        if (read_callback_)
-        {
-          read_callback_(std::move(str_buffer));
-        }
+        if (read_callback_) { read_callback_(std::move(str_buffer)); }
       }
 
       void on_close(boost::beast::error_code ec)
       {
-        if (ec)
-          return msg_fail(ec, "close");
+        if (ec) return msg_fail(ec, "close");
 
         // If we get here then the connection is closed gracefully
         std::cout << "Connection closed gracefully" << std::endl;
@@ -255,7 +242,7 @@ namespace net {
       {
         // Close the WebSocket connection
         ws_.async_close(websocket::close_code::normal,
-          boost::beast::bind_front_handler(&session::on_close, shared_from_this()));
+            boost::beast::bind_front_handler(&session::on_close, shared_from_this()));
       }
 
       void shutdown_blocking()
@@ -267,8 +254,8 @@ namespace net {
     };
 
     inline std::shared_ptr<session> create_session(asio::io_context& ioc, ssl::context& ctx,
-      std::string host, std::string port, std::string channel,
-      std::function<void(std::string&&)>&& callback)
+        std::string host, std::string port, std::string channel,
+        std::function<void(std::string&&)>&& callback)
     {
       // Launch the asynchronous operation
       auto session_ptr = std::make_shared<session>(ioc, ctx, std::move(callback));

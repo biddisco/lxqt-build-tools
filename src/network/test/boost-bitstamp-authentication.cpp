@@ -56,7 +56,7 @@ int main(int argc, char** argv)
   encryption encryptor(api_secret, randbytes);
 
   std::chrono::milliseconds timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::system_clock::now().time_since_epoch());
+      std::chrono::system_clock::now().time_since_epoch());
 
   std::string http_method = "POST";
   std::string url_host = "www.bitstamp.net";
@@ -105,7 +105,7 @@ int main(int argc, char** argv)
   net::contexts contexts;
 
   std::shared_ptr<net::https::session> session =
-    net::https::create_session(contexts.ioc, contexts.ctx, url_host, "443", bitstamp_reply);
+      net::https::create_session(contexts.ioc, contexts.ctx, url_host, "443", bitstamp_reply);
 
   // Run the I/O service on a thread.
   std::thread io_thread([&]() {
@@ -114,10 +114,7 @@ int main(int argc, char** argv)
   });
 
   // wait until connection is setup
-  while (!session->ready_)
-  {
-    std::this_thread::yield();
-  }
+  while (!session->ready_) { std::this_thread::yield(); }
 
   // invoke a post on the context thread
   contexts.ioc.post([&]() {

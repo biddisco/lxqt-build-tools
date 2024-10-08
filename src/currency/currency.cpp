@@ -64,10 +64,7 @@ currency_pair string_to_pair(std::string_view s, std::string_view delim)
 // ----------------------------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, currency_code const& c)
 {
-  if (c.is_fiat())
-  {
-    os << c.code_;
-  }
+  if (c.is_fiat()) { os << c.code_; }
   else
   {
     if (c.issuer_ == currency::bitstamp_trust)
@@ -91,10 +88,7 @@ std::ostream& operator<<(std::ostream& os, currency const& c)
 std::string to_string(double amount, currency const& c)
 {
   int dec = 6;
-  if (c.is_fiat())
-  {
-    dec = 2;
-  }
+  if (c.is_fiat()) { dec = 2; }
   std::stringstream stream;
   stream << std::fixed << std::setprecision(dec) << amount;
   return stream.str();

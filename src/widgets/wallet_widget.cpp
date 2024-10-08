@@ -12,15 +12,12 @@ wallet_widget::wallet_widget(QWidget* parent)
   ui->setupUi(this);
   //
   connect(
-    ui->net_funcs, &QToolButton::clicked, this,
-    [this](bool /*checked*/) { network_->custom_functions(account_); }, Qt::QueuedConnection);
+      ui->net_funcs, &QToolButton::clicked, this,
+      [this](bool /*checked*/) { network_->custom_functions(account_); }, Qt::QueuedConnection);
 }
 
 // ----------------------------------------------------------------------------
-wallet_widget::~wallet_widget()
-{
-  delete ui;
-}
+wallet_widget::~wallet_widget() { delete ui; }
 
 // ----------------------------------------------------------------------------
 void wallet_widget::set_data(ledger_wallet& w, int decimals)
@@ -51,9 +48,6 @@ void wallet_widget::set_data(ledger_wallet& w, int decimals)
 }
 
 // ----------------------------------------------------------------------------
-void wallet_widget::set_data(bitstamp_account& w)
-{
-  this->set_data(w, 2);
-}
+void wallet_widget::set_data(bitstamp_account& w) { this->set_data(w, 2); }
 
 // ----------------------------------------------------------------------------

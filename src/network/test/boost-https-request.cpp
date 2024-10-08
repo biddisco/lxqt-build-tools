@@ -28,10 +28,7 @@ std::atomic<int> counter{0};
 //------------------------------------------------------------------------------
 void new_data(std::string&& data)
 {
-  if (data.find("{\"data\": {\"ohlc\":") != data.npos)
-  {
-    counter++;
-  }
+  if (data.find("{\"data\": {\"ohlc\":") != data.npos) { counter++; }
   std::cout << "\n\nReceived\n\n" << data << std::endl;
 }
 
@@ -60,7 +57,7 @@ int main(int argc, char** argv)
   net::contexts contexts;
 
   std::shared_ptr<net::https::session> session =
-    net::https::create_session(contexts.ioc, contexts.ctx, host, port, new_data);
+      net::https::create_session(contexts.ioc, contexts.ctx, host, port, new_data);
 
   // Run the I/O service on a thread.
   std::thread io_thread([&]() {
@@ -69,10 +66,7 @@ int main(int argc, char** argv)
   });
 
   // wait until connection is setup
-  while (!session->ready_)
-  {
-    std::this_thread::yield();
-  }
+  while (!session->ready_) { std::this_thread::yield(); }
 
   // invoke a post on the context thread
   contexts.ioc.post([&]() {

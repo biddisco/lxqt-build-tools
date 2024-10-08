@@ -8,10 +8,7 @@
 
 namespace util {
 
-  void to_json(nljson& j, const QString& qstr)
-  {
-    j = nljson{qstr.toStdString()};
-  }
+  void to_json(nljson& j, const QString& qstr) { j = nljson{qstr.toStdString()}; }
 
   void from_json(const nljson j, QString& qstr)
   {
@@ -21,10 +18,7 @@ namespace util {
       qstr = QString::fromStdString(j.dump());
   }
 
-  void to_json(nljson& j, const QByteArray& qba)
-  {
-    j = nljson{qba.toStdString()};
-  }
+  void to_json(nljson& j, const QByteArray& qba) { j = nljson{qba.toStdString()}; }
 
   void from_json(nljson& j, QByteArray& qba)
   {

@@ -10,10 +10,7 @@ DigitalClock::DigitalClock(QWidget* parent, QTimer* timer)
   setSegmentStyle(Flat);
   setDigitCount(8);
 
-  if (timer)
-  {
-    connect(timer, &QTimer::timeout, this, &DigitalClock::showTime);
-  }
+  if (timer) { connect(timer, &QTimer::timeout, this, &DigitalClock::showTime); }
   else
   {
     QTimer* local_timer = new QTimer(this);

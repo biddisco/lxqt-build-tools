@@ -55,18 +55,9 @@ class ohlc_price_plot : public timebased_chart_plot
   void update_live_data(ohlctv_sample const& new_sample);
   //
   bool adjust_candle_size(double res);
-  double get_candle_resolution()
-  {
-    return candle_resolution_;
-  }
-  bool auto_candle_resolution()
-  {
-    return auto_candle_resolution_;
-  }
-  void set_auto_candle_resolution(bool a)
-  {
-    auto_candle_resolution_ = a;
-  }
+  double get_candle_resolution() { return candle_resolution_; }
+  bool auto_candle_resolution() { return auto_candle_resolution_; }
+  void set_auto_candle_resolution(bool a) { auto_candle_resolution_ = a; }
 
   // recomputes min/max for price/volue, recomputes candles sizes etc
   void update_time_axis(double t1, double t2, bool emit_signal = false) override;
@@ -79,13 +70,13 @@ class ohlc_price_plot : public timebased_chart_plot
   bool update_candle_size();
 
   timebased_data_curve* add_overlay_curve(
-    QString const& title, point_chart_data* data, QColor const& color);
+      QString const& title, point_chart_data* data, QColor const& color);
 
   timebased_data_curve* add_overlay_volume_curve(
-    QString const& title, point_chart_data* data, QColor const& color);
+      QString const& title, point_chart_data* data, QColor const& color);
 
   QwtPlotCurve* add_buy_sell_curve(
-    QString const& title, QVector<QPointF> const& samples, QColor const& color);
+      QString const& title, QVector<QPointF> const& samples, QColor const& color);
 
   void updateLayout() override;
 

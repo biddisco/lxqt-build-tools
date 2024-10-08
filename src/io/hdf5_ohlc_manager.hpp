@@ -42,9 +42,9 @@ class hdf5_ohlc_manager : public abstract_dataset_manager
   // read datasets from hdf5 file
   void read_impl(std::string group, std::string dataname, QVector<ohlctv_sample>& data) override;
   void read_impl(std::string group, std::string dataname, QVector<ohlctv_sample>& data,
-    std::uint64_t N) override;
+      std::uint64_t N) override;
 
   // write out data to hdf5
   void write_impl(std::string group, std::string dataname, QVector<ohlctv_sample> const& samples,
-    const uint64_t update, bool truncate) override;
+      const uint64_t update, bool truncate) override;
 };

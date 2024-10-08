@@ -29,7 +29,7 @@ struct ohlc_dataset : timebased_chart_data<ohlctv_sample>
   // Checks that all data from time T (if present) has consecutive time stamps.
   // Important when merging new downloaded data with old to ensure no gaps have crept in
   static int64_t validate_ohlc(
-    ohlctv_vector const& samples, candle_res res, double time, std::string name);
+      ohlctv_vector const& samples, candle_res res, double time, std::string name);
 
   // DownSample the current dataset to a lower resolution, it is assumed (without checks) that
   // the lower resolution is an exact multiple of the current one giving a simple N:1 downsizing

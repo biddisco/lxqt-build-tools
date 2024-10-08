@@ -29,7 +29,7 @@ namespace grox {
     live_trade_data() = default;
   };
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(grox::live_trade_data, amount, amount_str, buy_order_id, id,
-    microtimestamp, price, price_str, sell_order_id, timestamp, type);
+      microtimestamp, price, price_str, sell_order_id, timestamp, type);
 
   // ----------------------------------------------------------------------------
   // bitstamp websocket order book entry
@@ -84,47 +84,32 @@ namespace grox {
     double amount(currency const& c) const
     {
       // @ todo : check if currency type of C is same as type of TakerPays
-      if (TakerPays.currency.is_xrp() == c.is_xrp())
-      {
-        return TakerPays.value;
-      }
-      else
-      {
-        return TakerGets.value;
-      }
+      if (TakerPays.currency.is_xrp() == c.is_xrp()) { return TakerPays.value; }
+      else { return TakerGets.value; }
     }
 
     // if the taker gives xrp, offer is selling xrp
     // if the takes gives usd, offer is buying xrp
     double rate() const
     {
-      if (TakerPays.currency.is_xrp())
-      {
-        return 1E6 * TakerGets.value / TakerPays.value;
-      }
-      else
-      {
-        return 1E6 * TakerPays.value / TakerGets.value;
-      }
+      if (TakerPays.currency.is_xrp()) { return 1E6 * TakerGets.value / TakerPays.value; }
+      else { return 1E6 * TakerPays.value / TakerGets.value; }
     }
 
     // we do not need to compare all fields when modifying XRP leddger offers
     // as the book directory is unique per offer node
-    bool operator==(xrpl_offer const& other) const
-    {
-      return BookDirectory == other.BookDirectory;
-    }
+    bool operator==(xrpl_offer const& other) const { return BookDirectory == other.BookDirectory; }
 
     bool operator<(xrpl_offer const& other) const
     {
       return (rate() < other.rate()) ||
-        ((std::fabs(rate() - other.rate()) < 1E-6) && owner_funds > other.owner_funds);
+          ((std::fabs(rate() - other.rate()) < 1E-6) && owner_funds > other.owner_funds);
     }
 
     bool operator>(xrpl_offer const& other) const
     {
       return (rate() > other.rate()) ||
-        ((std::fabs(rate() - other.rate()) < 1E-6) && owner_funds > other.owner_funds);
+          ((std::fabs(rate() - other.rate()) < 1E-6) && owner_funds > other.owner_funds);
     }
 
     bool unfunded(double epsilon = 0.0) const
@@ -135,10 +120,10 @@ namespace grox {
     bool grox_compatible() const
     {
       bool ok = TakerGets.currency.is_xrp() &&
-        (TakerPays.currency == currency_code{currency::bitstamp_trust, "USD"});
+          (TakerPays.currency == currency_code{currency::bitstamp_trust, "USD"});
       ok = ok ||
-        (TakerPays.currency.is_xrp() &&
-          (TakerGets.currency == currency_code{currency::bitstamp_trust, "USD"}));
+          (TakerPays.currency.is_xrp() &&
+              (TakerGets.currency == currency_code{currency::bitstamp_trust, "USD"}));
       return ok;
     }
   };

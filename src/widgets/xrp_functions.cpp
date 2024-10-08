@@ -42,18 +42,14 @@ xrp_functions::xrp_functions(xrpl_network* network, basic_account* account, QWid
     std::string code = ui->code->text().toStdString();
     uint64_t limit = ui->limit->text().toULongLong();
     std::uint32_t flags = ripple::tfSetNoRipple;
-    if (ui->rippling->isChecked())
-      flags = ripple::tfClearNoRipple;
+    if (ui->rippling->isChecked()) flags = ripple::tfClearNoRipple;
     std::cout << "FIX: QToolButton::clicked " << addr << " " << code << " " << limit << std::endl;
     network_->trustline(account_, addr, code, limit, flags);
   });
 }
 
 // ----------------------------------------------------------------------------
-xrp_functions::~xrp_functions()
-{
-  delete ui;
-}
+xrp_functions::~xrp_functions() { delete ui; }
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------

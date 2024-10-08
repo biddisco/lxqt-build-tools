@@ -29,8 +29,5 @@ inline void update_ohlctv_sample(ohlctv_sample& ohlc, ohlctv_sample const& other
     ohlc.close = other.close;
     ohlc.volume = ohlc.volume + other.volume;
   }
-  else
-  {
-    ohlc = other;
-  }
+  else { ohlc = other; }
 }

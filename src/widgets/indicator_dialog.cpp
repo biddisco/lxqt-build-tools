@@ -22,15 +22,12 @@ indicator_dialog::indicator_dialog()
   this->setWindowTitle("Indicator");
 
   // add ok, cancel buttons
-  QDialogButtonBox* buttonBox =
-    new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Reset);
+  QDialogButtonBox* buttonBox = new QDialogButtonBox(
+      QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Reset);
   connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
   connect(buttonBox, &QDialogButtonBox::clicked, this, [=](QAbstractButton* b) {
-    if (buttonBox->standardButton(b) == QDialogButtonBox::Reset)
-    {
-      this->done(2);
-    }
+    if (buttonBox->standardButton(b) == QDialogButtonBox::Reset) { this->done(2); }
   });
 
   ui.buttons_layout->addWidget(buttonBox);
@@ -43,12 +40,12 @@ indicator_dialog::indicator_dialog()
   }
   // when algorithm is changed, rebuild gui
   connect(
-    ui.algorithm, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-    [this](int index) {
-      last_selected_index = index;
-      refresh_gui(index);
-    },
-    Qt::QueuedConnection);
+      ui.algorithm, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+      [this](int index) {
+        last_selected_index = index;
+        refresh_gui(index);
+      },
+      Qt::QueuedConnection);
 
   // build gui for first/last used algorithm
   ui.algorithm->setCurrentIndex(last_selected_index);
@@ -65,11 +62,9 @@ void clearLayout(QLayout* layout, bool deleteWidgets = true)
   {
     if (deleteWidgets)
     {
-      if (QWidget* widget = item->widget())
-        widget->deleteLater();
+      if (QWidget* widget = item->widget()) widget->deleteLater();
     }
-    if (QLayout* childLayout = item->layout())
-      clearLayout(childLayout, deleteWidgets);
+    if (QLayout* childLayout = item->layout()) clearLayout(childLayout, deleteWidgets);
     delete item;
   }
   delete layout;
@@ -96,10 +91,7 @@ QWidget* get_widget(int const& param)
 QWidget* get_widget(ohlc_modes const& param)
 {
   QStringList mode_list;
-  for (auto const& r : ohlc_mode_names)
-  {
-    mode_list << QString::fromStdString(std::string(r));
-  }
+  for (auto const& r : ohlc_mode_names) { mode_list << QString::fromStdString(std::string(r)); }
 
   QComboBox* const widget = new QComboBox();
   widget->addItems(mode_list);
@@ -117,10 +109,7 @@ QWidget* get_widget(bool const& param)
 QWidget* get_widget(candle_res const& param)
 {
   QStringList res_list;
-  for (auto const& r : ohlc_data_resolutions::available_resolutions())
-  {
-    res_list << r.name_;
-  }
+  for (auto const& r : ohlc_data_resolutions::available_resolutions()) { res_list << r.name_; }
   //
   QComboBox* const widget = new QComboBox();
   widget->addItems(res_list);
@@ -178,8 +167,7 @@ void indicator_dialog::refresh_gui(int index)
 {
   // wipe the contents of the dialog
   QLayout* oldlayout = ui.algo_params->layout();
-  if (oldlayout)
-    clearLayout(oldlayout, true);
+  if (oldlayout) clearLayout(oldlayout, true);
   params.clear();
   std::array<int, 2> counts = {0, 0};
 
@@ -227,8 +215,7 @@ void indicator_dialog::update_parameters()
   for (int i = 0; i < nparams; ++i)
   {
     // get a reference to the i-th param from the variant algorithm list
-    auto& p = std::visit(
-      [=](auto& obj) -> auto& { return obj.params[i]; }, alg);
+    auto& p = std::visit([=](auto& obj) -> auto& { return obj.params[i]; }, alg);
 
     // get the widget that represents the param
     QWidget* widget = params[i];

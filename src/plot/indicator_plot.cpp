@@ -132,13 +132,12 @@ void indicator_plot::update_time_axis(double t1, double t2, bool emit_signal)
 
   setAutoReplot(doAutoReplot);
   replot();
-  if (emit_signal)
-    emit timeAxisChanged(t1, t2, false);
+  if (emit_signal) emit timeAxisChanged(t1, t2, false);
 }
 
 // ----------------------------------------------------------------------------
 void indicator_plot::add_asset_curve(
-  QString const& title, QVector<QPointF> const& samples, QColor const& color)
+    QString const& title, QVector<QPointF> const& samples, QColor const& color)
 {
   auto m_curve = new QwtPlotCurve(title);
   m_curve->setYAxis(QwtPlot::yRight);

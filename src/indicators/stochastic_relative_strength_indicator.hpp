@@ -19,10 +19,7 @@ namespace indicators {
   struct stochastic_relative_strength_indicator : indicator_base
   {
     // fields required for auto gui generation
-    const std::string get_name() const override
-    {
-      return "Stochastic RSI";
-    }
+    const std::string get_name() const override { return "Stochastic RSI"; }
     const std::string get_description() const override
     {
       return "Stochastic RSI default 14 period";
@@ -31,9 +28,9 @@ namespace indicators {
     const y_limits ylimits = {0.0, 1.0};
 
     param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 14),
-      std::make_tuple<QString, param_types>("K smooth", 3),
+        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+        std::make_tuple<QString, param_types>("Window size", 14),
+        std::make_tuple<QString, param_types>("K smooth", 3),
     };
 
     // ---------------------------------------
@@ -54,7 +51,7 @@ namespace indicators {
     {
       int k_smooth = std::get<int>(std::get<1>(params[2]));
       mov_av_k_ = ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>>(
-        ba::tag::rolling_window::window_size = k_smooth);
+          ba::tag::rolling_window::window_size = k_smooth);
       //
       rsi_.params = params;
       rsi_.initialize();
@@ -77,10 +74,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    inline double getLastResult()
-    {
-      return stoch_rsi_D;
-    }
+    inline double getLastResult() { return stoch_rsi_D; }
 
 private:
     ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>> mov_av_k_;

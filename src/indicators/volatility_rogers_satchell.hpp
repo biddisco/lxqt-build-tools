@@ -16,10 +16,7 @@ namespace indicators {
 
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string get_name() const override
-    {
-      return "Rogers-Satchell";
-    }
+    const std::string get_name() const override { return "Rogers-Satchell"; }
     const std::string get_description() const override
     {
       return "Rogers-Satchell volatility (default 14 period)";
@@ -29,15 +26,15 @@ namespace indicators {
     const QChar sigma = QChar(0xc3, 0x03);
 
     param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 20),
-      std::make_tuple<QString, param_types>("scale factor", 1.0),
-      std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
+        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+        std::make_tuple<QString, param_types>("Window size", 20),
+        std::make_tuple<QString, param_types>("scale factor", 1.0),
+        std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
 
     // ---------------------------------------
     // Default constructor
     volatility_rogers_satchell(
-      int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
+        int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
       : average_{}
       , buffer1_(window_size)
       , scale_{1.0}
@@ -47,10 +44,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    int num_outputs() const override
-    {
-      return 1 + (2 * num_bands_);
-    }
+    int num_outputs() const override { return 1 + (2 * num_bands_); }
 
     // ---------------------------------------
     // initialize internals from a parameter list
@@ -71,14 +65,11 @@ namespace indicators {
       mean = val.close;
       // first part to be summed
       double val1 = std::log(val.high / val.open) * std::log(val.high / val.close) +
-        std::log(val.low / val.open) * std::log(val.low / val.close);
+          std::log(val.low / val.open) * std::log(val.low / val.close);
       buffer1_.push_back(val1);
 
       double accum1 = 0;
-      for (double elem : buffer1_)
-      {
-        accum1 += elem;
-      }
+      for (double elem : buffer1_) { accum1 += elem; }
       accum1 *= 1.0 / buffer1_.size();
       last_sigma_ = scale_ * std::sqrt(accum1);
       //
@@ -102,10 +93,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    inline double getLastResult()
-    {
-      return band_above_;
-    }
+    inline double getLastResult() { return band_above_; }
 
 private:
     moving_average average_;

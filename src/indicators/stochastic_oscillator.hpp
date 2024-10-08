@@ -13,10 +13,7 @@ namespace indicators {
   struct stochastic_oscillator : indicator_base
   {
     // fields required for auto gui generation
-    const std::string get_name() const override
-    {
-      return "Stochastic Oscillator";
-    }
+    const std::string get_name() const override { return "Stochastic Oscillator"; }
     const std::string get_description() const override
     {
       return "Stochastic Oscillator default 14 period";
@@ -25,8 +22,8 @@ namespace indicators {
     const y_limits ylimits = {0.0, 1.0};
 
     param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 14)};
+        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+        std::make_tuple<QString, param_types>("Window size", 14)};
 
     // ---------------------------------------
     // Default constructor
@@ -60,10 +57,7 @@ namespace indicators {
         min_val = std::min(min_val, r);
         max_val = std::max(max_val, r);
       }
-      if ((max_val - min_val) == 0)
-      {
-        stoch_val_ = 0.5;
-      }
+      if ((max_val - min_val) == 0) { stoch_val_ = 0.5; }
       else
         stoch_val_ = (val - min_val) / (max_val - min_val);
 
@@ -71,10 +65,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    inline double getLastResult()
-    {
-      return stoch_val_;
-    }
+    inline double getLastResult() { return stoch_val_; }
 
 private:
     boost::circular_buffer<double> buffer_;

@@ -37,15 +37,12 @@ void hdf5_ohlc_manager::create_data_dir()
 // ----------------------------------------------------------------------------
 void hdf5_check(const char* msg, herr_t err)
 {
-  if (err < 0)
-  {
-    throw std::runtime_error(std::string("HDF5 Error") + msg);
-  }
+  if (err < 0) { throw std::runtime_error(std::string("HDF5 Error") + msg); }
 }
 
 // ----------------------------------------------------------------------------
 void hdf5_ohlc_manager::read_impl(
-  std::string group, std::string dataname, QVector<ohlctv_sample>& data, std::uint64_t N)
+    std::string group, std::string dataname, QVector<ohlctv_sample>& data, std::uint64_t N)
 {
   // we do not currently support multi-threaded file access.
   std::lock_guard lock(hdf5_mutex_);
@@ -62,7 +59,7 @@ void hdf5_ohlc_manager::read_impl(
       const std::uint64_t ohlc_size = sizeof(ohlctv_sample) / sizeof(double);
       std::uint64_t Nelem = dataset.getElementCount() / ohlc_size;
       std::uint64_t Nread =
-        std::min(Nelem, N >= 0 ? N : std::numeric_limits<std::uint64_t>().max());
+          std::min(Nelem, N >= 0 ? N : std::numeric_limits<std::uint64_t>().max());
       data.resize(Nread);
       man_dbg<0>.debug(str<>("dataset read"), path, "size", ffmt<dec9>(Nread), ffmt<dec9>(Nelem));
       std::vector<size_t> offset{0};
@@ -76,10 +73,7 @@ void hdf5_ohlc_manager::read_impl(
       man_dbg<0>.debug(str<>("dataset missing"), path);
     }
   }
-  else
-  {
-    data.clear();
-  }
+  else { data.clear(); }
   //
   ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
   man_dbg<0>.debug(str<>("file close"), path, "read_hdf5", ffmt<dec9>(data.size()));
@@ -87,14 +81,14 @@ void hdf5_ohlc_manager::read_impl(
 
 // ----------------------------------------------------------------------------
 void hdf5_ohlc_manager::read_impl(
-  std::string group, std::string dataname, QVector<ohlctv_sample>& data)
+    std::string group, std::string dataname, QVector<ohlctv_sample>& data)
 {
   read_impl(group, dataname, data, -1);
 }
 
 // ----------------------------------------------------------------------------
 void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
-  QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate)
+    QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate)
 {
   std::string path = group + "/" + dataname;
   int valid = ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);

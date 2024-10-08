@@ -80,12 +80,12 @@ TEST(debug_print, print_format)
   }
   {
     std::stringstream tmp;
-    tmp << fmt::ptr((void*) (0x0000face));
+    tmp << fmt::ptr((void*) (0x0000'face));
     EXPECT_TRUE(compare("0x00000000face", tmp.str()));
   }
   {
     std::stringstream tmp;
-    tmp << debug::ffmt<hex12>(0xdeadbeef);
+    tmp << debug::ffmt<hex12>(0xdead'beef);
     EXPECT_TRUE(compare("0x0000deadbeef", tmp.str()));
   }
   {

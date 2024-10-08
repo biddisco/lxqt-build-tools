@@ -27,7 +27,7 @@ connection_widget::connection_widget(QWidget* parent, exchange* ex)
 {
   ui->setupUi(this);
   connect(
-    ui->filter, SIGNAL(textChanged(QString const&)), this, SLOT(filter_changed(QString const&)));
+      ui->filter, SIGNAL(textChanged(QString const&)), this, SLOT(filter_changed(QString const&)));
 }
 
 // ----------------------------------------------------------------------------
@@ -57,10 +57,7 @@ QStandardItem* findChildItem(QStandardItem* parent, data_slot slot, T cdata)
     auto stream = magic_enum::enum_cast<network::streams>(child->data(slot).toInt());
     auto s = magic_enum::enum_name(stream.value());
     conn_dbg<7>.debug(str<>("stream-load"), c, child, s);
-    if (child->data(slot) == cdata)
-    {
-      return child;
-    }
+    if (child->data(slot) == cdata) { return child; }
   }
   return nullptr;
 }
@@ -107,47 +104,47 @@ void connection_widget::setup_gui()
   // caution : itemChanged is not triggered _only_ when the checkstate changes
   // so we compare the checkstate to the stored state before making changes
   connect(
-    model_, &QStandardItemModel::itemChanged, this,
-    [this](QStandardItem* item) {
-      if (item->checkState() != item->data(CheckState).value<Qt::CheckState>())
-      {
-        item->setData(item->checkState(), CheckState);
-        auto stream = magic_enum::enum_cast<network::streams>(item->data(StreamState).toInt());
-        bool ticker_node = !stream.has_value();
-        currency_pair cp = (ticker_node) ?
-          string_to_pair(item->text().toStdString(), "-") :
-          string_to_pair(item->parent()->text().toStdString(), "-");
-        //
-        if (item->checkState() == Qt::Checked)
+      model_, &QStandardItemModel::itemChanged, this,
+      [this](QStandardItem* item) {
+        if (item->checkState() != item->data(CheckState).value<Qt::CheckState>())
         {
-          if (ticker_node)
-            exchange_->ticker_subscribe(cp);
-          else
+          item->setData(item->checkState(), CheckState);
+          auto stream = magic_enum::enum_cast<network::streams>(item->data(StreamState).toInt());
+          bool ticker_node = !stream.has_value();
+          currency_pair cp = (ticker_node) ?
+              string_to_pair(item->text().toStdString(), "-") :
+              string_to_pair(item->parent()->text().toStdString(), "-");
+          //
+          if (item->checkState() == Qt::Checked)
           {
-            exchange_->stream_subscribe(
-              cp, stream.value(), true, exchange_->get_factory("stream_subscribe"));
-            //item->parent()->setData(item->checkState(), CheckState);
-          }
-        }
-        else
-        {
-          if (ticker_node)    // ticker node deselected, uncheck all streams
-          {
-            for (int i = 0; i < item->rowCount(); ++i)
+            if (ticker_node)
+              exchange_->ticker_subscribe(cp);
+            else
             {
-              QStandardItem* child = item->child(i);
-              child->setCheckState(Qt::Unchecked);
+              exchange_->stream_subscribe(
+                  cp, stream.value(), true, exchange_->get_factory("stream_subscribe"));
+              //item->parent()->setData(item->checkState(), CheckState);
             }
           }
           else
           {
-            exchange_->stream_subscribe(
-              cp, stream.value(), false, exchange_->get_factory("stream_unsubscribe"));
+            if (ticker_node)    // ticker node deselected, uncheck all streams
+            {
+              for (int i = 0; i < item->rowCount(); ++i)
+              {
+                QStandardItem* child = item->child(i);
+                child->setCheckState(Qt::Unchecked);
+              }
+            }
+            else
+            {
+              exchange_->stream_subscribe(
+                  cp, stream.value(), false, exchange_->get_factory("stream_unsubscribe"));
+            }
           }
         }
-      }
-    },
-    Qt::QueuedConnection);
+      },
+      Qt::QueuedConnection);
 
   // open ini file and get the group for the exchange tickers
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
@@ -171,14 +168,14 @@ void connection_widget::setup_gui()
         if (subscribed)
         {
           network::streams stream =
-            magic_enum::enum_cast<network::streams>(k.toLatin1().toStdString()).value();
+              magic_enum::enum_cast<network::streams>(k.toLatin1().toStdString()).value();
           QStandardItem* child = findChildItem<int>(item, data_slot::StreamState, stream);
           if (child)
             child->setCheckState(Qt::Checked);
           else
           {
             conn_dbg<0>.error(
-              str<>("stream-load"), "Did not find a child tree item with the right data");
+                str<>("stream-load"), "Did not find a child tree item with the right data");
           }
         }
       }

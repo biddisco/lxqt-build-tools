@@ -37,14 +37,10 @@ std::string currency_to_hex(std::string_view currency)
   if (currency.size() > 3)
   {
     std::string hexcode = ripple::strHex(currency.begin(), currency.end());
-    while (hexcode.size() < 40)
-      hexcode += '0';
+    while (hexcode.size() < 40) hexcode += '0';
     return hexcode;
   }
-  else if (currency.size() < 3)
-  {
-    return std::string(currency);
-  }
+  else if (currency.size() < 3) { return std::string(currency); }
   return std::string(currency);
 }
 
@@ -53,13 +49,12 @@ std::string hex_to_currency(std::string_view hex)
 {
   if (hex.size() == 40)
   {
-    while (hex.back() == '0')
-      hex = hex.substr(0, hex.size() - 1);
+    while (hex.back() == '0') hex = hex.substr(0, hex.size() - 1);
     auto code = ripple::strUnHex(hex.size(), hex.begin(), hex.end());
     if (code.has_value())
     {
       std::string result =
-        std::string(&code.value().data()[0], &code.value().data()[code.value().size()]);
+          std::string(&code.value().data()[0], &code.value().data()[code.value().size()]);
       return result;
     }
   }
@@ -90,9 +85,9 @@ std::shared_ptr<ripple::STTx const> deserialize(std::string blob)
 #define DEBUG_TX_SIGN 1
 
 std::string make_xrp_payment(ripple::KeyType keyType, std::string const& from_seed,
-  std::string const& from_address, int32_t from_sequence, std::string const& dest_address,
-  int32_t dest_tag, double amount, std::string const& currency, std::string const& issuer,
-  double transferrate)
+    std::string const& from_address, int32_t from_sequence, std::string const& dest_address,
+    int32_t dest_tag, double amount, std::string const& currency, std::string const& issuer,
+    double transferrate)
 {
   using namespace ripple;
   // get from account keys/info
@@ -128,17 +123,17 @@ std::string make_xrp_payment(ripple::KeyType keyType, std::string const& from_se
     if (currency_xrp)
     {
       obj[sfAmount] =
-        STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount));
+          STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount));
     }
     else if (currency_code{issuer, currency}.is_fiat())
     {
       // amount we want to send as dollars.cents, multiply x 100, shift right 2 places
-      obj[sfAmount] =
-        STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount * 1E2), -2);
+      obj[sfAmount] = STAmount(
+          Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(amount * 1E2), -2);
       // we multiply by 1 + transferrate (eg. 1.002) to allow for IOU fees, and scale the float to int size,
       // but shift right by the same amount to move the decimal point back to dollars.cents
       obj[sfSendMax] = STAmount(Issue(to_currency(currency), *gateway1),
-        static_cast<uint64_t>(amount * (1.0 + 0.01 * transferrate) * 1E5), -(2 + 5));
+          static_cast<uint64_t>(amount * (1.0 + 0.01 * transferrate) * 1E5), -(2 + 5));
     }
     else
     {
@@ -152,16 +147,16 @@ std::string make_xrp_payment(ripple::KeyType keyType, std::string const& from_se
       }
 
       obj[sfAmount] = STAmount(
-        Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(1E6 * recv_amount), -6);
+          Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(1E6 * recv_amount), -6);
 
-      obj[sfSendMax] =
-        STAmount(Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(1E6 * amount), -6);
+      obj[sfSendMax] = STAmount(
+          Issue(to_currency(currency), *gateway1), static_cast<uint64_t>(1E6 * amount), -6);
     }
   });
 
   xrpl_dbg<0>.debug(str<>("payment"), "Before signing: \n",
-    payTx.getJson(JsonOptions::none).toStyledString(), "\n",
-    "Serialized:", payTx.getJson(JsonOptions::none, true)[jss::tx].asString());
+      payTx.getJson(JsonOptions::none).toStyledString(), "\n",
+      "Serialized:", payTx.getJson(JsonOptions::none, true)[jss::tx].asString());
 
   payTx.sign(keypair.first, keypair.second);
 
@@ -178,8 +173,8 @@ std::string make_xrp_payment(ripple::KeyType keyType, std::string const& from_se
 
 // ----------------------------------------------------------------------------
 std::string make_xrp_offer(ripple::KeyType keyType, std::string const& from_seed,
-  std::string const& from_address, int32_t from_sequence, ripple::STAmount const& pays,
-  ripple::STAmount const& gets, std::uint32_t flags)
+    std::string const& from_address, int32_t from_sequence, ripple::STAmount const& pays,
+    ripple::STAmount const& gets, std::uint32_t flags)
 {
   using namespace ripple;
   //
@@ -193,8 +188,7 @@ std::string make_xrp_offer(ripple::KeyType keyType, std::string const& from_seed
     obj[sfAccount] = id;
     obj[sfFee] = STAmount{100};
     obj[sfFlags] = tfFullyCanonicalSig;
-    if (flags)
-      obj[sfFlags] = flags;
+    if (flags) obj[sfFlags] = flags;
     obj[sfSigningPubKey] = keypair.first.slice();
     obj[sfSequence] = from_sequence;
     // Offer specific fields
@@ -203,8 +197,8 @@ std::string make_xrp_offer(ripple::KeyType keyType, std::string const& from_seed
   });
 
   xrpl_dbg<0>.debug(str<>("offer"), "Before signing: \n",
-    offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
-    "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
+      offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
+      "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
 
   offerTx.sign(keypair.first, keypair.second);
 
@@ -221,7 +215,7 @@ std::string make_xrp_offer(ripple::KeyType keyType, std::string const& from_seed
 
 // ----------------------------------------------------------------------------
 std::string cancel_xrp_offer(ripple::KeyType keyType, std::string const& from_seed,
-  std::string const& from_address, int32_t from_sequence, int32_t offerSeq, std::uint32_t flags)
+    std::string const& from_address, int32_t from_sequence, int32_t offerSeq, std::uint32_t flags)
 {
   using namespace ripple;
   //
@@ -234,8 +228,7 @@ std::string cancel_xrp_offer(ripple::KeyType keyType, std::string const& from_se
     // General transaction fields
     obj[sfAccount] = id;
     obj[sfFee] = STAmount{100};
-    if (flags)
-      obj[sfFlags] = flags;
+    if (flags) obj[sfFlags] = flags;
     obj[sfSigningPubKey] = keypair.first.slice();
     obj[sfSequence] = from_sequence;
     // Offer specific fields
@@ -243,8 +236,8 @@ std::string cancel_xrp_offer(ripple::KeyType keyType, std::string const& from_se
   });
 
   xrpl_dbg<0>.debug(str<>("offer cancel"), "Before signing: \n",
-    offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
-    "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
+      offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
+      "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
 
   offerTx.sign(keypair.first, keypair.second);
 
@@ -261,8 +254,8 @@ std::string cancel_xrp_offer(ripple::KeyType keyType, std::string const& from_se
 
 // ----------------------------------------------------------------------------
 std::string set_trustline(ripple::KeyType keyType, std::string const& from_seed,
-  std::string const& from_address, int32_t from_sequence, int64_t limit,
-  std::string const& currency, std::string const& issuer, std::uint32_t flags)
+    std::string const& from_address, int32_t from_sequence, int64_t limit,
+    std::string const& currency, std::string const& issuer, std::uint32_t flags)
 {
   using namespace ripple;
   //
@@ -272,10 +265,7 @@ std::string set_trustline(ripple::KeyType keyType, std::string const& from_seed,
   assert(toBase58(id) == from_address);
 
   auto const gateway1 = parseBase58<AccountID>(issuer);
-  if (currency != "")
-  {
-    assert(gateway1);
-  }
+  if (currency != "") { assert(gateway1); }
 
   std::string hexcode = currency_to_hex(currency);
 
@@ -283,8 +273,7 @@ std::string set_trustline(ripple::KeyType keyType, std::string const& from_seed,
     // General transaction fields
     obj[sfAccount] = id;
     obj[sfFee] = STAmount{100};
-    if (flags)
-      obj[sfFlags] = flags;
+    if (flags) obj[sfFlags] = flags;
     obj[sfSigningPubKey] = keypair.first.slice();
     obj[sfSequence] = from_sequence;
 
@@ -297,8 +286,8 @@ std::string set_trustline(ripple::KeyType keyType, std::string const& from_seed,
   });
 
   xrpl_dbg<0>.debug(str<>("trustline"), "Before signing: \n",
-    offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
-    "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
+      offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
+      "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
 
   offerTx.sign(keypair.first, keypair.second);
 

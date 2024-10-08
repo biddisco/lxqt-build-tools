@@ -59,12 +59,11 @@ uint64_t ohlc_dataset::merge_data(ohlctv_vector const& new_ohlc_samples_)
     }
     // add new samples
     ohlc_dbg<5>.debug(
-      str<>("merging"), ticker_str_, "new samples", ffmt<dec6>(new_ohlc_samples_.size()));
+        str<>("merging"), ticker_str_, "new samples", ffmt<dec6>(new_ohlc_samples_.size()));
     data().append(new_ohlc_samples_);
     update += new_ohlc_samples_.size();
   }
-  if (update > 0)
-    new_data_subscribers_.publish();
+  if (update > 0) new_data_subscribers_.publish();
   return update;
 }
 
@@ -77,25 +76,21 @@ uint64_t offset_index(double init, double time, double res)
 
 // ----------------------------------------------------------------------------
 int64_t ohlc_dataset::validate_ohlc(
-  ohlctv_vector const& samples, candle_res res, double time, std::string name)
+    ohlctv_vector const& samples, candle_res res, double time, std::string name)
 {
-  if (samples.empty())
-    return 0;
+  if (samples.empty()) return 0;
   //
   double init_time;
   double origin_time = samples.begin()->time;
   uint64_t init_index = 0;
-  if (time == 0)
-  {
-    init_time = origin_time;
-  }
+  if (time == 0) { init_time = origin_time; }
   else
   {
     init_index = offset_index(origin_time, time, res);
     init_time = samples.at(init_index).time;
   }
   ohlc_dbg<6>.debug(str<>("validating"), name, str<3>(res.name_), "from",
-    msecs_unix_to_calendar_time(init_time), "index", ffmt<dec9>(init_index));
+      msecs_unix_to_calendar_time(init_time), "index", ffmt<dec9>(init_index));
 
   for (int64_t index = init_index; index < samples.size(); ++index)
   {
@@ -105,13 +100,13 @@ int64_t ohlc_dataset::validate_ohlc(
     if (expected_time != s1.time)
     {
       ohlc_dbg<0>.error(str<>("validation"), name, str<3>(res.name_), "index", ffmt<dec9>(index),
-        "expected", msecs_unix_to_calendar_time(expected_time), "found",
-        msecs_unix_to_calendar_time(s1.time));
+          "expected", msecs_unix_to_calendar_time(expected_time), "found",
+          msecs_unix_to_calendar_time(s1.time));
       throw ohlc_data_exception(index);
     }
   }
   ohlc_dbg<1>.debug(str<>("validated"), name, str<3>(res.name_), "from",
-    msecs_unix_to_calendar_time(init_time), "index", ffmt<dec9>(init_index));
+      msecs_unix_to_calendar_time(init_time), "index", ffmt<dec9>(init_index));
   return samples.size();
 }
 
@@ -128,8 +123,7 @@ ohlc_dataset* ohlc_dataset::downsample(candle_res res_lo)
 // update this dataset by resampling new candles from another dataset
 ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
 {
-  if (other->data().empty())
-    return this;
+  if (other->data().empty()) return this;
 
   candle_res res_hi = other->get_resolution();
   candle_res res_lo = this->get_resolution();
@@ -137,7 +131,7 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
   // how many of the hi-res candles in the new lower-res candle?
   int subsamples = static_cast<int>(res_lo / res_hi);
   ohlc_dbg<6>.debug(str<>("resample"), ticker_str_, str<3>(res_hi.name_), "subsamples",
-    str<3>(res_lo.name_), ffmt<dec3>(subsamples));
+      str<3>(res_lo.name_), ffmt<dec3>(subsamples));
 
   // Get the final time-point of this dataset if present -
   // and increment it by 1 hi-res sample to get next start time
@@ -150,16 +144,13 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
     start_T = orig_T + res_hi;
   }
   // empty, resample from the first point of the hi-res dataset
-  else
-  {
-    start_T = other->data().front().time;
-  }
+  else { start_T = other->data().front().time; }
   // the start time must start an integral candle at the new resolution
   while (static_cast<int>(0.5 + start_T / res_hi) % subsamples != 0)
   {
     ohlc_dbg<7>.debug(str<>("candle modulus"), ticker_str_,
-      ffmt<dec3>(static_cast<int>(0.5 + start_T / res_hi) % subsamples), "of",
-      ffmt<dec3>(subsamples));
+        ffmt<dec3>(static_cast<int>(0.5 + start_T / res_hi) % subsamples), "of",
+        ffmt<dec3>(subsamples));
     start_T += res_hi;
   }
 
@@ -167,8 +158,7 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
   uint64_t init_sample = other->sample_index(start_T);
 
   // just exit if there isn't enough hi-res data for a full new resampled candle
-  if ((init_sample + subsamples) > other->size())
-    return this;
+  if ((init_sample + subsamples) > other->size()) return this;
 
   // we will start a fresh candle from this start_T
   ohlctv_sample current_ohlc = other->data()[init_sample];
@@ -188,10 +178,7 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
       current_ohlc.time = quantized_time;
     }
     // overwrite the current candle with updated numbers
-    else
-    {
-      update_ohlctv_sample(current_ohlc, *it);
-    }
+    else { update_ohlctv_sample(current_ohlc, *it); }
     // finalizing a new candle
     if (subsample == (subsamples - 1))
     {
@@ -200,10 +187,9 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
     }
   }
   ohlc_dbg<1>.debug(str<>("resampled"), ticker_str_, str<3>(res_lo.name_), "from",
-    msecs_unix_to_calendar_time(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of", size());
+      msecs_unix_to_calendar_time(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of", size());
   validate_ohlc(data(), res_lo, orig_T, ticker_str_);
 
-  if (modified)
-    new_data_subscribers_.publish();
+  if (modified) new_data_subscribers_.publish();
   return this;
 }

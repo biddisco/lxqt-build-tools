@@ -22,7 +22,7 @@ void timebased_chart_plot::onCrossHairsMoved(QPointF const& pos)
     // QPointF pos = crosshairs_->invTransform(crosshairs_->trackerPosition());
 
     const QLineF line =
-      crosshairs_->curveLineAt(static_cast<const QwtPlotCurve*>(curves[0]), pos.x());
+        crosshairs_->curveLineAt(static_cast<const QwtPlotCurve*>(curves[0]), pos.x());
     if (!line.isNull())
     {
       const double curveY = line.pointAt((pos.x() - line.p1().x()) / line.dx()).y();
@@ -38,6 +38,6 @@ void timebased_chart_plot::onCrossHairsMoved(QPointF const& pos)
 
   // fake a mouse move event to cause crosshairs to be drawn
   QMouseEvent mouseEvent(QEvent::Type::MouseMove, device_pos, Qt::MouseButton::NoButton,
-    Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
+      Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
   crosshairs_->injectMouseMoveEvent(&mouseEvent);
 }

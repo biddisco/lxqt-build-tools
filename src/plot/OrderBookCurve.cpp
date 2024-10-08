@@ -29,14 +29,11 @@ OrderBookCurve::OrderBookCurve(QString const& title)
 
 // ----------------------------------------------------------------------------
 void OrderBookCurve::drawLines(QPainter* p, QwtScaleMap const& xMap, QwtScaleMap const& yMap,
-  QRectF const& canvasRect, int from, int to) const
+    QRectF const& canvasRect, int from, int to) const
 {
   std::unique_lock<std::mutex> lock(paint_mutex_, std::try_to_lock_t{});
   // if another thread is mdifying data, just exit without repainting
-  if (!lock.owns_lock())
-  {
-    return;
-  }
+  if (!lock.owns_lock()) { return; }
 
   const int numOfSegments = m_segPen.size();
   if (numOfSegments)
@@ -55,7 +52,7 @@ void OrderBookCurve::drawLines(QPainter* p, QwtScaleMap const& xMap, QwtScaleMap
 
 // ----------------------------------------------------------------------------
 void OrderBookCurve::setSegmentInfo(
-  int segmentStartIndex, int segmentFinisIndex, QColor const& color, double thickness)
+    int segmentStartIndex, int segmentFinisIndex, QColor const& color, double thickness)
 {
   // when we are changing data
   std::lock_guard<std::mutex> lock(paint_mutex_);
@@ -79,7 +76,7 @@ void OrderBookCurve::clear_samples()
 
 // ----------------------------------------------------------------------------
 void OrderBookCurve::setRawSamples_locked(
-  std::vector<float> const& xData, std::vector<float> const& yData)
+    std::vector<float> const& xData, std::vector<float> const& yData)
 {
   // prevent paint events when we are changing data
   std::lock_guard<std::mutex> lock(paint_mutex_);

@@ -13,7 +13,7 @@
 // ----------------------------------------------------------------------------
 template <typename T>
 bool compute_time_limits(timebased_chart_data<T> const* time_data, QwtScaleMap const& xMap,
-  QwtScaleMap const& yMap, QRectF const& canvasRect, int& from, int& to)
+    QwtScaleMap const& yMap, QRectF const& canvasRect, int& from, int& to)
 {
   const QRectF tr = QwtScaleMap::invTransform(xMap, yMap, canvasRect);
   double time_Min = tr.left();
@@ -33,5 +33,5 @@ class timebased_data_curve : public QwtPlotCurve
   explicit timebased_data_curve(const QString& title = QString());
 
   void drawSeries(QPainter*, QwtScaleMap const& xMap, QwtScaleMap const& yMap,
-    QRectF const& canvasRect, int from, int to) const QWT_OVERRIDE;
+      QRectF const& canvasRect, int from, int to) const QWT_OVERRIDE;
 };

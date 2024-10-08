@@ -46,7 +46,7 @@ password_dialog::password_dialog(bool simple)
 }
 
 password_dialog::password_dialog(
-  const std::array<std::string, 5>& strings, std::vector<ledger_wallet> const& wallets)
+    const std::array<std::string, 5>& strings, std::vector<ledger_wallet> const& wallets)
   : password_dialog(false)
 {
   // exchange data
@@ -57,62 +57,35 @@ password_dialog::password_dialog(
   ui->api_address->setText(QString(strings[4].c_str()));
   // wallets
   wallets_ = wallets;
-  for (auto const& w : wallets_)
-  {
-    ui->wallets_combo->addItem(QString(w.name_.c_str()));
-  }
+  for (auto const& w : wallets_) { ui->wallets_combo->addItem(QString(w.name_.c_str())); }
   ui->xrp_nickname->setText(wallets_[0].name_.c_str());
   ui->xrp_public->setText(wallets_[0].public_.c_str());
   ui->xrp_private->setText(wallets_[0].private_.c_str());
 }
 
 // ----------------------------------------------------------------------------
-password_dialog::~password_dialog()
-{
-  delete ui;
-}
+password_dialog::~password_dialog() { delete ui; }
 
 // ----------------------------------------------------------------------------
-QString password_dialog::getPassword()
-{
-  return ui->password->text();
-}
+QString password_dialog::getPassword() { return ui->password->text(); }
 
 // ----------------------------------------------------------------------------
 // Exchange details
 // ----------------------------------------------------------------------------
-QString password_dialog::getAPIUser()
-{
-  return ui->api_user->text();
-}
+QString password_dialog::getAPIUser() { return ui->api_user->text(); }
 
-QString password_dialog::getAPIKey()
-{
-  return ui->api_key->text();
-}
+QString password_dialog::getAPIKey() { return ui->api_key->text(); }
 
-QString password_dialog::getAPISecret()
-{
-  return ui->api_secret->text();
-}
+QString password_dialog::getAPISecret() { return ui->api_secret->text(); }
 
-QString password_dialog::getAPIDestTag()
-{
-  return ui->api_tag->text();
-}
+QString password_dialog::getAPIDestTag() { return ui->api_tag->text(); }
 
-QString password_dialog::getAPIXRPAddress()
-{
-  return ui->api_address->text();
-}
+QString password_dialog::getAPIXRPAddress() { return ui->api_address->text(); }
 
 // ----------------------------------------------------------------------------
 // Wallet details
 // ----------------------------------------------------------------------------
-std::vector<ledger_wallet> const& password_dialog::get_wallets()
-{
-  return wallets_;
-}
+std::vector<ledger_wallet> const& password_dialog::get_wallets() { return wallets_; }
 
 void password_dialog::add_wallet()
 {
@@ -124,16 +97,13 @@ void password_dialog::add_wallet()
   w.network_ = xrpl_network::get_instance(w.testnet_);
 
   auto it = std::find_if(
-    wallets_.begin(), wallets_.end(), [&](ledger_wallet& w2) { return w2.name_ == w.name_; });
+      wallets_.begin(), wallets_.end(), [&](ledger_wallet& w2) { return w2.name_ == w.name_; });
   if (it == wallets_.end())
   {
     wallets_.push_back(w);
     ui->wallets_combo->addItem(QString(w.name_.c_str()));
   }
-  else
-  {
-    *it = w;
-  }
+  else { *it = w; }
   ui->wallets_combo->setCurrentText(QString(w.name_.c_str()));
 }
 
@@ -163,8 +133,8 @@ void password_dialog::enable_ok_button()
   if (!simple_mode_)
   {
     if (ui->api_user->text().isEmpty() || ui->api_key->text().isEmpty() ||
-      ui->api_secret->text().isEmpty() || ui->api_tag->text().isEmpty() ||
-      ui->api_address->text().isEmpty() || ui->password->text().isEmpty())
+        ui->api_secret->text().isEmpty() || ui->api_tag->text().isEmpty() ||
+        ui->api_address->text().isEmpty() || ui->password->text().isEmpty())
     {
       ui->button_box->button(QDialogButtonBox::Ok)->setEnabled(false);
       return;

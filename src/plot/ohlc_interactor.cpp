@@ -33,8 +33,7 @@ class ohlc_interactor::PrivateData
     , isEnabled(false)
     , plot(nullptr)
   {
-    for (int axis = 0; axis < QwtAxis::AxisPositions; axis++)
-      isAxisEnabled[axis] = true;
+    for (int axis = 0; axis < QwtAxis::AxisPositions; axis++) isAxisEnabled[axis] = true;
   }
 
   ~PrivateData() {}
@@ -68,16 +67,10 @@ ohlc_interactor::ohlc_interactor(timebased_chart_plot* parent)
 }
 
 //! Destructor
-ohlc_interactor::~ohlc_interactor()
-{
-  delete m_data;
-}
+ohlc_interactor::~ohlc_interactor() { delete m_data; }
 
 //! \return Parent widget, where the rescaling happens
-QWidget* ohlc_interactor::parentWidget()
-{
-  return qobject_cast<QWidget*>(parent());
-}
+QWidget* ohlc_interactor::parentWidget() { return qobject_cast<QWidget*>(parent()); }
 
 //! \return Parent widget, where the rescaling happens
 const QWidget* ohlc_interactor::parentWidget() const
@@ -115,8 +108,7 @@ const timebased_chart_plot* ohlc_interactor::plot() const
  */
 void ohlc_interactor::setAxisEnabled(QwtAxisId axisId, bool on)
 {
-  if (QwtAxis::isValid(axisId))
-    m_data->isAxisEnabled[axisId] = on;
+  if (QwtAxis::isValid(axisId)) m_data->isAxisEnabled[axisId] = on;
 }
 
 // ----------------------------------------------------------------------------
@@ -130,8 +122,7 @@ void ohlc_interactor::setAxisEnabled(QwtAxisId axisId, bool on)
  */
 bool ohlc_interactor::isAxisEnabled(QwtAxisId axisId) const
 {
-  if (QwtAxis::isValid(axisId))
-    return m_data->isAxisEnabled[axisId];
+  if (QwtAxis::isValid(axisId)) return m_data->isAxisEnabled[axisId];
 
   return true;
 }
@@ -139,11 +130,9 @@ bool ohlc_interactor::isAxisEnabled(QwtAxisId axisId) const
 // ----------------------------------------------------------------------------
 void ohlc_interactor::panCanvas(int dx, int dy)
 {
-  if (dx == 0 && dy == 0)
-    return;
+  if (dx == 0 && dy == 0) return;
   timebased_chart_plot* plot = this->plot();
-  if (plot == NULL)
-    return;
+  if (plot == NULL) return;
 
   // get the X axis pixel/plot coordinate transform
   const QwtScaleMap map = plot->canvasMap(QwtAxis::XBottom);
@@ -161,11 +150,9 @@ void ohlc_interactor::panCanvas(int dx, int dy)
 // ----------------------------------------------------------------------------
 void ohlc_interactor::zoomCanvas(int dx, int dy)
 {
-  if (dx == 0 && dy == 0)
-    return;
+  if (dx == 0 && dy == 0) return;
   timebased_chart_plot* plot = this->plot();
-  if (plot == NULL)
-    return;
+  if (plot == NULL) return;
 
   // get the X axis pixel/plot coordinate transform
   const QwtScaleMap map = plot->canvasMap(QwtAxis::XBottom);
@@ -194,8 +181,7 @@ void ohlc_interactor::zoomCanvas(int dx, int dy)
 // ----------------------------------------------------------------------------
 bool ohlc_interactor::eventFilter(QObject* object, QEvent* event)
 {
-  if (object == nullptr || plot() == nullptr || object != plot()->canvas())
-    return false;
+  if (object == nullptr || plot() == nullptr || object != plot()->canvas()) return false;
 
   switch (event->type())
   {
@@ -206,15 +192,9 @@ bool ohlc_interactor::eventFilter(QObject* object, QEvent* event)
     m_data->initialPos = m_data->pos = we->position().toPoint();
     auto d = we->angleDelta();
     // sideways swipe
-    if (std::abs(d.x()) >= std::abs(d.y()))
-    {
-      Q_EMIT panned(d.x() / 2, d.y() / 2);
-    }
+    if (std::abs(d.x()) >= std::abs(d.y())) { Q_EMIT panned(d.x() / 2, d.y() / 2); }
     // vertical swipe
-    else
-    {
-      Q_EMIT zoomed(d.x() / 2, d.y() / 2);
-    }
+    else { Q_EMIT zoomed(d.x() / 2, d.y() / 2); }
     break;
   }
   case QEvent::MouseButtonPress:
@@ -277,7 +257,7 @@ void ohlc_interactor::setMouseButton(Qt::MouseButton button, Qt::KeyboardModifie
 
 //! Get mouse button and modifiers used for panning
 void ohlc_interactor::getMouseButton(
-  Qt::MouseButton& button, Qt::KeyboardModifiers& modifiers) const
+    Qt::MouseButton& button, Qt::KeyboardModifiers& modifiers) const
 {
   button = m_data->button;
   modifiers = m_data->buttonModifiers;
@@ -320,14 +300,8 @@ void ohlc_interactor::setEnabled(bool on)
 
     if (this->plot() && this->plot()->canvas())
     {
-      if (m_data->isEnabled)
-      {
-        this->plot()->canvas()->installEventFilter(this);
-      }
-      else
-      {
-        this->plot()->canvas()->removeEventFilter(this);
-      }
+      if (m_data->isEnabled) { this->plot()->canvas()->installEventFilter(this); }
+      else { this->plot()->canvas()->removeEventFilter(this); }
     }
   }
 }
@@ -336,10 +310,7 @@ void ohlc_interactor::setEnabled(bool on)
    \return true when enabled, false otherwise
    \sa setEnabled, eventFilter()
  */
-bool ohlc_interactor::isEnabled() const
-{
-  return m_data->isEnabled;
-}
+bool ohlc_interactor::isEnabled() const { return m_data->isEnabled; }
 
 /*!
    Handle a mouse press event for the observed widget.
@@ -361,15 +332,14 @@ void ohlc_interactor::widgetMousePressEvent(QMouseEvent* mouseEvent)
  */
 void ohlc_interactor::widgetMouseMoveEvent(QMouseEvent* mouseEvent)
 {
-  if (!parentWidget()->isVisible())
-    return;
+  if (!parentWidget()->isVisible()) return;
 
   QPoint pos = mouseEvent->pos();
   if (pos != m_data->pos)
   {
     m_data->pos = pos;
     Q_EMIT moved(
-      m_data->pos.x() - m_data->initialPos.x(), m_data->pos.y() - m_data->initialPos.y());
+        m_data->pos.x() - m_data->initialPos.x(), m_data->pos.y() - m_data->initialPos.y());
   }
 }
 
@@ -388,9 +358,7 @@ void ohlc_interactor::widgetMouseReleaseEvent(QMouseEvent* mouseEvent)
 
     m_data->pos = pos;
 
-    if (m_data->pos != m_data->initialPos)
-    {
-    }
+    if (m_data->pos != m_data->initialPos) {}
   }
 }
 
@@ -408,8 +376,7 @@ void ohlc_interactor::widgetKeyPressEvent(QKeyEvent* keyEvent)
   if (keyEvent->key() == Qt::Key_R)
   {
     timebased_chart_plot* plot = this->plot();
-    if (plot == NULL)
-      return;
+    if (plot == NULL) return;
 
     // get the X axis pixel/plot coordinate transform
     const QwtScaleMap mapx = plot->canvasMap(QwtAxis::XBottom);
@@ -429,7 +396,4 @@ void ohlc_interactor::widgetKeyPressEvent(QKeyEvent* keyEvent)
    \param keyEvent Key event
    \sa eventFilter(), widgetKeyReleaseEvent()
  */
-void ohlc_interactor::widgetKeyReleaseEvent(QKeyEvent* keyEvent)
-{
-  Q_UNUSED(keyEvent);
-}
+void ohlc_interactor::widgetKeyReleaseEvent(QKeyEvent* keyEvent) { Q_UNUSED(keyEvent); }

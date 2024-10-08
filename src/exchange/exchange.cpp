@@ -31,16 +31,14 @@ exchange::~exchange()
 // ----------------------------------------------------------------------------
 void exchange::register_factory(std::string name, exchange::factory_function f)
 {
-  if (factories_.contains(name))
-    throw std::runtime_error("Duplicate factory registration");
+  if (factories_.contains(name)) throw std::runtime_error("Duplicate factory registration");
   factories_[name] = f;
 }
 
 // ----------------------------------------------------------------------------
 exchange::factory_function exchange::get_factory(std::string name)
 {
-  if (!factories_.contains(name))
-    throw std::runtime_error("Invalid factory retrieval");
+  if (!factories_.contains(name)) throw std::runtime_error("Invalid factory retrieval");
   return factories_[name];
 }
 
@@ -48,10 +46,7 @@ exchange::factory_function exchange::get_factory(std::string name)
 bool exchange::is_stream_subscribed(currency_pair cp, network::streams s)
 {
   std::string key = currency_pair_string(cp) + "/" + std::string(magic_enum::enum_name(s));
-  if (enabled_streams_.contains(key))
-  {
-    return enabled_streams_[key];
-  }
+  if (enabled_streams_.contains(key)) { return enabled_streams_[key]; }
   return false;
 }
 
@@ -65,19 +60,13 @@ void exchange::mark_stream_subscribed(currency_pair cp, network::streams s, bool
 // ----------------------------------------------------------------------------
 ticker_data exchange::get_subscribed_ticker_data(currency_pair cp) const
 {
-  if (tickers_subscribed_.contains(cp))
-  {
-    return tickers_subscribed_.at(cp);
-  }
+  if (tickers_subscribed_.contains(cp)) { return tickers_subscribed_.at(cp); }
   else
     throw std::runtime_error("Attempt to access unsubscribed ticker");
 }
 
 // ----------------------------------------------------------------------------
-exchange::exchange_map const& exchange::tickers_subscribed() const
-{
-  return tickers_subscribed_;
-}
+exchange::exchange_map const& exchange::tickers_subscribed() const { return tickers_subscribed_; }
 
 /*
 exchange::exchange_map& exchange::tickers_subscribed()
@@ -101,17 +90,11 @@ stream_set exchange::ticker_subscribe(const currency_pair& cp)
 // ----------------------------------------------------------------------------
 void exchange::ticker_unsubscribe(const currency_pair& cp)
 {
-  if (ticker_subscribed(cp))
-  {
-    tickers_subscribed_.erase(cp);
-  }
+  if (ticker_subscribed(cp)) { tickers_subscribed_.erase(cp); }
 }
 
 // ----------------------------------------------------------------------------
-currency_pairlist const& exchange::get_currency_pairs()
-{
-  return tickers_available_;
-}
+currency_pairlist const& exchange::get_currency_pairs() { return tickers_available_; }
 
 // ----------------------------------------------------------------------------
 bool exchange::add_currency_pair(const currency_pair& cp)

@@ -34,19 +34,12 @@ struct zallocator
   typedef std::size_t size_type;
   typedef std::ptrdiff_t difference_type;
 
-  pointer address(reference v) const
-  {
-    return &v;
-  }
-  const_pointer address(const_reference v) const
-  {
-    return &v;
-  }
+  pointer address(reference v) const { return &v; }
+  const_pointer address(const_reference v) const { return &v; }
 
   pointer allocate(size_type n, const void* hint = 0)
   {
-    if (n > std::numeric_limits<size_type>::max() / sizeof(T))
-      throw std::bad_alloc();
+    if (n > std::numeric_limits<size_type>::max() / sizeof(T)) throw std::bad_alloc();
     return static_cast<pointer>(::operator new(n * sizeof(value_type)));
   }
 
@@ -56,10 +49,7 @@ struct zallocator
     ::operator delete(p);
   }
 
-  size_type max_size() const
-  {
-    return std::numeric_limits<size_type>::max() / sizeof(T);
-  }
+  size_type max_size() const { return std::numeric_limits<size_type>::max() / sizeof(T); }
 
   template <typename U>
   struct rebind
@@ -67,15 +57,9 @@ struct zallocator
     typedef zallocator<U> other;
   };
 
-  void construct(pointer ptr, T const& val)
-  {
-    new (static_cast<T*>(ptr)) T(val);
-  }
+  void construct(pointer ptr, T const& val) { new (static_cast<T*>(ptr)) T(val); }
 
-  void destroy(pointer ptr)
-  {
-    static_cast<T*>(ptr)->~T();
-  }
+  void destroy(pointer ptr) { static_cast<T*>(ptr)->~T(); }
 
   template <typename U, typename... Args>
   void construct(U* ptr, Args&&... args)
@@ -98,9 +82,9 @@ using EVP_CIPHER_CTX_free_ptr = std::unique_ptr<EVP_CIPHER_CTX, decltype(&::EVP_
 
 void gen_params(byte* key, byte* iv);
 void aes_encrypt(
-  const byte* key, const byte* iv, secure_string const& instring, secure_string& outstring);
+    const byte* key, const byte* iv, secure_string const& instring, secure_string& outstring);
 void aes_decrypt(
-  const byte* key, const byte* iv, secure_string const& instring, secure_string& outstring);
+    const byte* key, const byte* iv, secure_string const& instring, secure_string& outstring);
 
 struct encryption
 {

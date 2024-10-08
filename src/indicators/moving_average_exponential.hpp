@@ -10,10 +10,7 @@ namespace indicators {
   {
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string get_name() const override
-    {
-      return "Moving Average (Exponential)";
-    }
+    const std::string get_name() const override { return "Moving Average (Exponential)"; }
     const std::string get_description() const override
     {
       return "Exponential (Time-decay) Moving Average";
@@ -21,17 +18,17 @@ namespace indicators {
     const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 14),
-      std::make_tuple<QString, param_types>("mode", ohlc_modes::close),
-      std::make_tuple<QString, param_types>("User-defined alpha", false),
-      std::make_tuple<QString, param_types>("Decay (1 - alpha)", 0.1),
+        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+        std::make_tuple<QString, param_types>("Window size", 14),
+        std::make_tuple<QString, param_types>("mode", ohlc_modes::close),
+        std::make_tuple<QString, param_types>("User-defined alpha", false),
+        std::make_tuple<QString, param_types>("Decay (1 - alpha)", 0.1),
     };
 
     // ---------------------------------------
     // Default constructor
     moving_average_exponential(int window_size = 14, ohlc_modes mode = ohlc_modes::low,
-      bool user_alpha = false, double decay_factor = 0.1)
+        bool user_alpha = false, double decay_factor = 0.1)
       : window_size_(window_size)
       , mode_(mode)
       , mean_(0)
@@ -66,10 +63,7 @@ namespace indicators {
       return mean_;
     }
 
-    inline double getLastResult()
-    {
-      return mean_;
-    }
+    inline double getLastResult() { return mean_; }
 
 private:
     int window_size_;

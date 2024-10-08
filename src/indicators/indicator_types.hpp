@@ -45,33 +45,15 @@ namespace indicators {
   {
     using result_type = double;
 
-    virtual ~indicator_base()
-    {
-      indicator_dbg<2>.debug(str<>(get_name().c_str()));
-    }
+    virtual ~indicator_base() { indicator_dbg<2>.debug(str<>(get_name().c_str())); }
 
-    virtual const std::string get_name() const
-    {
-      return "";
-    }
-    virtual const std::string get_description() const
-    {
-      return "";
-    }
+    virtual const std::string get_name() const { return ""; }
+    virtual const std::string get_description() const { return ""; }
 
-    virtual int num_inputs() const
-    {
-      return 1;
-    }
-    virtual int num_outputs() const
-    {
-      return 1;
-    }
+    virtual int num_inputs() const { return 1; }
+    virtual int num_outputs() const { return 1; }
 
-    virtual overlay_type output_overlay_type(int n) const
-    {
-      return overlay_type::price;
-    }
+    virtual overlay_type output_overlay_type(int n) const { return overlay_type::price; }
   };
 
 }    // namespace indicators

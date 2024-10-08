@@ -60,8 +60,7 @@ class bitstamp_network : public exchange
   static std::shared_ptr<exchange> get_instance()
   {
     static std::shared_ptr<exchange> bitstamp_ptr = nullptr;
-    if (bitstamp_ptr == nullptr)
-      bitstamp_ptr = std::make_shared<bitstamp_network>();
+    if (bitstamp_ptr == nullptr) bitstamp_ptr = std::make_shared<bitstamp_network>();
     return bitstamp_ptr;
   }
 
@@ -84,17 +83,11 @@ class bitstamp_network : public exchange
   std::vector<basic_account*> wallets() override
   {
     std::vector<basic_account*> accts;
-    for (auto& acct : accounts_)
-    {
-      accts.push_back(&acct);
-    }
+    for (auto& acct : accounts_) { accts.push_back(&acct); }
     return accts;
   }
 
-  bitstamp_account& account()
-  {
-    return accounts_[0];
-  }
+  bitstamp_account& account() { return accounts_[0]; }
 
   // Is sending this currency to the destination exchange supported
   bool can_send(const currency& c, exchange* dest) override;
@@ -115,17 +108,17 @@ class bitstamp_network : public exchange
   stream_set websocket_streams() override
   {
     return {
-      network::streams::my_orders,      // private orders
-      network::streams::my_trades,      // private trades
-      network::streams::live_trades,    // all trades
-      network::streams::order_book,     // all orders
-      network::streams::price_data,     // ticker price feeds
+        network::streams::my_orders,      // private orders
+        network::streams::my_trades,      // private trades
+        network::streams::live_trades,    // all trades
+        network::streams::order_book,     // all orders
+        network::streams::price_data,     // ticker price feeds
     };
   }
 
   // connect to a single stream
   bool stream_subscribe(currency_pair const& cp, network::streams const stream, bool enabled,
-    factory_function f) override;
+      factory_function f) override;
 
   // connect to (multiple) streams
   //  bool websocket_connect(net::contexts& io_contexts, stream_set const&
@@ -193,10 +186,7 @@ class bitstamp_network : public exchange
 
   double get_fee_percent(const currency_pair& cp) override;
   double get_fee_fixed(const currency_pair& cp) override;
-  double get_transfer_fee(currency const& /*c1*/) override
-  {
-    return 0;
-  }
+  double get_transfer_fee(currency const& /*c1*/) override { return 0; }
 
   void custom_functions(basic_account* /*acct*/) override{};
 

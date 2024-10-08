@@ -17,10 +17,7 @@ namespace indicators {
   struct moving_average_volume_weighted : indicator_base
   {
     // fields required for auto gui generation
-    const std::string get_name() const override
-    {
-      return "Moving Average (Volume Weighted)";
-    }
+    const std::string get_name() const override { return "Moving Average (Volume Weighted)"; }
     const std::string get_description() const override
     {
       return "Moving Average with Volume weighted values";
@@ -28,9 +25,9 @@ namespace indicators {
     const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 14),
-      std::make_tuple<QString, param_types>("mode", ohlc_modes::mid_open_close)};
+        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+        std::make_tuple<QString, param_types>("Window size", 14),
+        std::make_tuple<QString, param_types>("mode", ohlc_modes::mid_open_close)};
 
     // ---------------------------------------
     // Default constructor
@@ -84,10 +81,7 @@ namespace indicators {
       return mean_;
     }
 
-    inline double getLastResult()
-    {
-      return mean_;
-    }
+    inline double getLastResult() { return mean_; }
 
 private:
     int window_size_;

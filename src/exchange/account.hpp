@@ -39,9 +39,8 @@ struct basic_account
   void delete_trade(std::uint64_t id)
   {
     auto it = std::find_if(
-      offers_.begin(), offers_.end(), [&](trade_data const& t) { return t.id_ == id; });
-    if (it != offers_.end())
-      offers_.erase(it);
+        offers_.begin(), offers_.end(), [&](trade_data const& t) { return t.id_ == id; });
+    if (it != offers_.end()) offers_.erase(it);
   }
 
   // ----------------------------------------------------------------------------
@@ -50,19 +49,13 @@ struct basic_account
     std::scoped_lock l(currency_mtx_);
     //
     auto it = ranges::find_if(currencies_, [&curr](currency const& c) { return (c == curr); });
-    if (it == currencies_.end())
-    {
-      currencies_.push_back(curr);
-    }
+    if (it == currencies_.end()) { currencies_.push_back(curr); }
     else
     {
       // copy the new currency info, but keep the old widget if it exists
       auto temp = it->widget_;
       *it = curr;
-      if (temp != nullptr)
-      {
-        it->widget_ = temp;
-      }
+      if (temp != nullptr) { it->widget_ = temp; }
     }
   }
 
@@ -72,10 +65,7 @@ struct basic_account
     return std::move(l);
   }
   //
-  void unlock_currencies(lock_type&& l)
-  {
-    l.unlock();
-  }
+  void unlock_currencies(lock_type&& l) { l.unlock(); }
 };
 
 // For compatibility with Qt Variant and Signals/Slots
@@ -92,17 +82,14 @@ struct ledger_wallet : public basic_account
   bool testnet_;
   //
   virtual ~ledger_wallet() {}
-  virtual std::string_view get_receive_address(currency const&)
-  {
-    return public_;
-  }
+  virtual std::string_view get_receive_address(currency const&) { return public_; }
   //
   void compute_ledger_reserve()
   {
     std::scoped_lock l(currency_mtx_);
     // sort so that XRP is always first
     std::sort(currencies_.begin(), currencies_.end(),
-      [](currency const& a, currency const&) -> bool { return (a.is_xrp()); });
+        [](currency const& a, currency const&) -> bool { return (a.is_xrp()); });
     //
     int reserve = 0;
     currency* xrp = nullptr;
@@ -135,12 +122,9 @@ struct bitstamp_account : public ledger_wallet
   // bitstamp has a different deposit address for IOUs
   virtual std::string_view get_receive_address(currency const& c) override
   {
-    if (c.is_xrp())
-      return public_;
-    if (c == currency_code{currency::bitstamp_trust, "USD"})
-      return currency::bitstamp_trust;
-    if (c == currency_code{currency::bitstamp_trust, "EUR"})
-      return currency::bitstamp_trust;
+    if (c.is_xrp()) return public_;
+    if (c == currency_code{currency::bitstamp_trust, "USD"}) return currency::bitstamp_trust;
+    if (c == currency_code{currency::bitstamp_trust, "EUR"}) return currency::bitstamp_trust;
     return "";
   }
 };

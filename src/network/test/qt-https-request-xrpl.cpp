@@ -25,15 +25,9 @@ void handler(QByteArray byteArray)
   {
     std::cout << "json quick check ok\n\n";
     pass_count++;
-    if (pass_count == 1)
-    {
-      QCoreApplication::quit();
-    }
+    if (pass_count == 1) { QCoreApplication::quit(); }
   }
-  else
-  {
-    pass_count--;
-  }
+  else { pass_count--; }
 }
 
 int main(int argc, char* argv[])
@@ -53,7 +47,7 @@ int main(int argc, char* argv[])
   content["params"] = nlohmann::json::array({paramlist});
 
   net::http::client_ptr client =
-    net::http::qhttp_request_client::create(networkmanager, server_addr, content.dump());
+      net::http::qhttp_request_client::create(networkmanager, server_addr, content.dump());
   client->post_request(handler);
 
   a.exec();

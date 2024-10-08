@@ -28,10 +28,7 @@ QwtText ohlc_date_scaledraw::label(double value) const
   {
     interval = QwtDate::IntervalType(int(interval) + 1);
   }
-  if (interval == QwtDate::Day && dt.date().day() == 1)
-  {
-    return QLocale().toString(dt, "MMM");
-  }
+  if (interval == QwtDate::Day && dt.date().day() == 1) { return QLocale().toString(dt, "MMM"); }
   if (interval == QwtDate::Month && dt.date().month() == 1)
   {
     return QLocale().toString(dt, "yyyy");

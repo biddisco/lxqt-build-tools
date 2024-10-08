@@ -12,7 +12,7 @@
 #   file while saving edits to disk
 # - Please do _not_ reformat a full source file without dire need.
 
-# PLEASE NOTE: This file requires clang-format V14.0
+# PLEASE NOTE: This file requires clang-format V16.0
 
 ---
 AccessModifierOffset: -4
@@ -23,11 +23,13 @@ AlignEscapedNewlines: Right
 AlignOperands: false
 AlignTrailingComments: true
 AllowAllParametersOfDeclarationOnNextLine: false
-AllowShortBlocksOnASingleLine: false
-AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: Empty
-AllowShortIfStatementsOnASingleLine: false
-AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Always
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: true
 AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
@@ -46,9 +48,11 @@ BraceWrapping:
     BeforeCatch: true
     BeforeElse: true
     IndentBraces: false
+BreakAfterAttributes: Leave
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Custom
 BreakBeforeInheritanceComma: true
+BreakBeforeInlineASMColon: OnlyMultiline
 BreakBeforeTernaryOperators: false
 BreakConstructorInitializersBeforeComma: true
 BreakStringLiterals: true
@@ -57,7 +61,7 @@ CommentPragmas: "///"
 CompactNamespaces: true
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 ConstructorInitializerIndentWidth: 2
-ContinuationIndentWidth: 2
+ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true
 DerivePointerAlignment: false
 #ExperimentalAutoDetectBinPacking: true # Do weird reformatting
@@ -79,6 +83,11 @@ IndentCaseLabels: false
 IndentWidth: 2
 IndentWrappedFunctionNames: false
 IndentPPDirectives: AfterHash
+InsertBraces: false
+IntegerLiteralSeparator:
+  Binary: 4
+  Decimal: 0
+  Hex: 4
 KeepEmptyLinesAtTheStartOfBlocks: false
 Language: Cpp
 # MacroBlockBegin: ''
@@ -94,6 +103,8 @@ PenaltyReturnTypeOnItsOwnLine: 20
 PointerAlignment: Left
 PPIndentWidth: 1
 ReflowComments: false
+RequiresClausePosition: OwnLine
+RequiresExpressionIndentation: OuterScope
 SortIncludes:    true
 SpaceAfterCStyleCast: true
 SpaceAfterTemplateKeyword: true

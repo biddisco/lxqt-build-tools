@@ -84,16 +84,10 @@ extern char** environ;
 # define GROX_DP_LAZY(printer, Expr) printer.eval([&] { return Expr; })
 # if (__cplusplus >= 201703L)
 #  define GROX_DP_ONLY(printer, Expr)                                                              \
-   if constexpr (printer.is_enabled())                                                             \
-   {                                                                                               \
-    printer.Expr;                                                                                  \
-   };
+    if constexpr (printer.is_enabled()) { printer.Expr; };
 # else
 #  define GROX_DP_ONLY(printer, Expr)                                                              \
-   if (printer.is_enabled())                                                                       \
-   {                                                                                               \
-    printer.Expr;                                                                                  \
-   };
+    if (printer.is_enabled()) { printer.Expr; };
 # endif
 
 // ------------------------------------------------------------

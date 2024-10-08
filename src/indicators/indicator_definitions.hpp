@@ -26,17 +26,17 @@ namespace indicators {
   struct typelist;
 
   // Typelist of all indicator types
-  using indicator_typelist = typelist<             // for clang-format
-    moving_average,                                //
-    moving_average_volume_weighted,                //
-    moving_average_exponential,                    //
-    moving_average_exponential_volume_weighted,    //
-    relative_strength_indicator,                   //
-    stochastic_relative_strength_indicator,        //
-    volatility_bollinger_bands,                    //
-    volatility_garman_klass,                       //
-    volatility_rogers_satchell                     //
-    >;
+  using indicator_typelist = typelist<               // for clang-format
+      moving_average,                                //
+      moving_average_volume_weighted,                //
+      moving_average_exponential,                    //
+      moving_average_exponential_volume_weighted,    //
+      relative_strength_indicator,                   //
+      stochastic_relative_strength_indicator,        //
+      volatility_bollinger_bands,                    //
+      volatility_garman_klass,                       //
+      volatility_rogers_satchell                     //
+      >;
 
   // Generate a variant containing each type from the typelist
   // and a vector with one instance of each type in the typelist
@@ -49,21 +49,18 @@ namespace indicators {
     // variant with every type in the typelist
     using type = std::variant<Ts...>;
     // vector containing one of each variant type
-    static std::vector<type> generate()
-    {
-      return {Ts{}...};
-    }
+    static std::vector<type> generate() { return {Ts{}...}; }
   };
 
   using variant_type = types_generator<indicator_typelist>::type;
   inline std::vector<variant_type> available_indicators =
-    types_generator<indicator_typelist>::generate();
+      types_generator<indicator_typelist>::generate();
 
   // ----------------------------------------------------------------------------
   // iterate over the parameters returned from an indicator selection dialog and
   // find the datasets of the right resolution in the datasets view
   static std::vector<ohlc_dataset*> get_datasets(
-    param_list const& params, std::shared_ptr<ohlc_dataset_view> view)
+      param_list const& params, std::shared_ptr<ohlc_dataset_view> view)
   {
     std::vector<ohlc_dataset*> result;
     for (auto const& p : params)
@@ -96,10 +93,10 @@ namespace indicators {
   /// The algorithm might not return a single value, so we provide
   /// overloads that can handle vectors of values
   template <typename Algorithm, typename Datain,
-    typename std::enable_if_t<std::is_same<typename Algorithm::result_type, double>::value, bool>
-      Enable = false>
+      typename std::enable_if_t<std::is_same<typename Algorithm::result_type, double>::value, bool>
+          Enable = false>
   void call_algorithm_operator(
-    Algorithm& alg, const Datain& in_data, std::vector<point_chart_data*>& out_datasets)
+      Algorithm& alg, const Datain& in_data, std::vector<point_chart_data*>& out_datasets)
   {
     for (auto const& ohlc : in_data->data())
     {
@@ -110,11 +107,11 @@ namespace indicators {
   }
 
   template <typename Algorithm, typename Datain,
-    typename std::enable_if_t<
-      std::is_same<typename Algorithm::result_type, std::vector<float>>::value, bool>
-      Enable = false>
+      typename std::enable_if_t<
+          std::is_same<typename Algorithm::result_type, std::vector<float>>::value, bool>
+          Enable = false>
   void call_algorithm_operator(
-    Algorithm& alg, const Datain& in_data, std::vector<point_chart_data*>& out_datasets)
+      Algorithm& alg, const Datain& in_data, std::vector<point_chart_data*>& out_datasets)
   {
     for (auto const& ohlc : in_data->data())
     {

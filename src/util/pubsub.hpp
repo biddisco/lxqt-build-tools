@@ -16,21 +16,12 @@ namespace grox {
 
     void publish(Message&... message)
     {
-      for (auto& subscriber : subscriptions)
-      {
-        subscriber(message...);
-      }
+      for (auto& subscriber : subscriptions) { subscriber(message...); }
     }
 
-    void subscribe(Signature callback)
-    {
-      subscriptions.push_back(callback);
-    }
+    void subscribe(Signature callback) { subscriptions.push_back(callback); }
 
-    void clear()
-    {
-      subscriptions.clear();
-    }
+    void clear() { subscriptions.clear(); }
   };
 
 }    // namespace grox

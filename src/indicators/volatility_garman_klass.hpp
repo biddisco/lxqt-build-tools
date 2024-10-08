@@ -17,10 +17,7 @@ namespace indicators {
 
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string get_name() const override
-    {
-      return "Garman-Klass";
-    }
+    const std::string get_name() const override { return "Garman-Klass"; }
     const std::string get_description() const override
     {
       return "Garman-Klass volatility (default 14 period)";
@@ -30,15 +27,15 @@ namespace indicators {
     const QChar sigma = QChar(0xc3, 0x03);
 
     param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 20),
-      std::make_tuple<QString, param_types>("scale factor", 1.0),
-      std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
+        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+        std::make_tuple<QString, param_types>("Window size", 20),
+        std::make_tuple<QString, param_types>("scale factor", 1.0),
+        std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
 
     // ---------------------------------------
     // Default constructor
     volatility_garman_klass(
-      int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
+        int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
       : average_{}
       , buffer1_(window_size)
       , buffer2_(window_size)
@@ -49,10 +46,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    int num_outputs() const override
-    {
-      return 1 + (2 * num_bands_);
-    }
+    int num_outputs() const override { return 1 + (2 * num_bands_); }
 
     // ---------------------------------------
     // initialize internals from a parameter list
@@ -110,10 +104,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    inline double getLastResult()
-    {
-      return band_above_;
-    }
+    inline double getLastResult() { return band_above_; }
 
 private:
     moving_average average_;

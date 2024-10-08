@@ -135,16 +135,16 @@ bool exerciseSingleSign()
 {
   std::vector<bool> passes;
 
-  passes.emplace_back(
-    demonstrateSigning(ripple::KeyType::secp256k1, "alice", "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn"));
+  passes.emplace_back(demonstrateSigning(
+      ripple::KeyType::secp256k1, "alice", "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn"));
 
   passes.emplace_back(
-    demonstrateSigning(ripple::KeyType::ed25519, "alice", "r9mC1zjD9u5SJXw56pdPhxoDSHaiNcisET"));
+      demonstrateSigning(ripple::KeyType::ed25519, "alice", "r9mC1zjD9u5SJXw56pdPhxoDSHaiNcisET"));
 
   // Genesis account w/ not-so-secret key.
   // Never hardcode a real secret key.
   passes.emplace_back(demonstrateSigning(ripple::KeyType::secp256k1,
-    "snoPBrXtMeMyMHUVTgbuqAfg1SUTb", "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"));
+      "snoPBrXtMeMyMHUVTgbuqAfg1SUTb", "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"));
 
   {
     passes.emplace_back(false);
@@ -205,30 +205,12 @@ class Credentials
   {
   }
 
-  std::string const& name() const
-  {
-    return name_;
-  }
-  ripple::KeyType const& keyType() const
-  {
-    return keyType_;
-  }
-  ripple::Seed const& seed() const
-  {
-    return seed_;
-  }
-  ripple::SecretKey const& secretKey() const
-  {
-    return keys_.second;
-  }
-  ripple::PublicKey const& publicKey() const
-  {
-    return keys_.first;
-  }
-  ripple::AccountID const& id() const
-  {
-    return id_;
-  }
+  std::string const& name() const { return name_; }
+  ripple::KeyType const& keyType() const { return keyType_; }
+  ripple::Seed const& seed() const { return seed_; }
+  ripple::SecretKey const& secretKey() const { return keys_.second; }
+  ripple::PublicKey const& publicKey() const { return keys_.first; }
+  ripple::AccountID const& id() const { return id_; }
 };
 
 // Build a transaction that can be multisigned.  All fields must be filled in,
@@ -271,8 +253,7 @@ bool multisign(ripple::STTx& tx, Credentials const& signer)
   element[sfTxnSignature] = multisig;
 
   // If a Signers array does not yet exist make one.
-  if (!tx.isFieldPresent(sfSigners))
-    tx.setFieldArray(sfSigners, {});
+  if (!tx.isFieldPresent(sfSigners)) tx.setFieldArray(sfSigners, {});
 
   // Insert the signer into the array.
   STArray& signers{tx.peekFieldArray(sfSigners)};
@@ -281,7 +262,7 @@ bool multisign(ripple::STTx& tx, Credentials const& signer)
   // Sort the Signers array by Account.  If it is not sorted when submitted
   // to the network then it will be rejected.
   std::sort(signers.begin(), signers.end(),
-    [](STObject const& a, STObject const& b) { return (a[sfAccount] < b[sfAccount]); });
+      [](STObject const& a, STObject const& b) { return (a[sfAccount] < b[sfAccount]); });
 
   // Verify that the signature is valid.
   Rules defaultRules{{}};

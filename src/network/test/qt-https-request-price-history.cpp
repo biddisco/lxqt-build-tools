@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
   QNetworkAccessManager networkmanager;
   //
   std::string url =
-    fmt::format("https://{}:{}/api-internal/price-history/xrpgbp/", "www.bitstamp.net", 443);
+      fmt::format("https://{}:{}/api-internal/price-history/xrpgbp/", "www.bitstamp.net", 443);
   auto* client = net::http::qhttp_request_client::create(networkmanager, url);
   client->get_request(&handle_price_history);
   //

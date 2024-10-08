@@ -83,23 +83,20 @@ class xrpl_network : public exchange
   static std::shared_ptr<exchange> xrpl_instance()
   {
     static std::shared_ptr<exchange> xrpl_ptr = nullptr;
-    if (xrpl_ptr == nullptr)
-      xrpl_ptr = std::make_shared<xrpl_network>(false);
+    if (xrpl_ptr == nullptr) xrpl_ptr = std::make_shared<xrpl_network>(false);
     return xrpl_ptr;
   }
   static std::shared_ptr<exchange> xrpltestnet_instance()
   {
     static std::shared_ptr<exchange> testnet_ptr = nullptr;
-    if (testnet_ptr == nullptr)
-      testnet_ptr = std::make_shared<xrpl_network>(true);
+    if (testnet_ptr == nullptr) testnet_ptr = std::make_shared<xrpl_network>(true);
     return testnet_ptr;
   }
 
   public:
   static std::shared_ptr<exchange> get_instance(bool testnet)
   {
-    if (testnet)
-      return xrpltestnet_instance();
+    if (testnet) return xrpltestnet_instance();
     return xrpl_instance();
   }
   static std::shared_ptr<xrpl_network> get_xrpl_instance(bool testnet)
@@ -137,7 +134,7 @@ class xrpl_network : public exchange
 
   // connect to an individual stream
   bool stream_subscribe(currency_pair const& cp, network::streams const stream, bool enabled,
-    factory_function f) override;
+      factory_function f) override;
 
   // connect to (multiple) streams
   //  bool websocket_connect(net::contexts& io_contexts, stream_set const& streams) override;
@@ -151,20 +148,14 @@ class xrpl_network : public exchange
   bool subscribe_accounts();
   //
   void add_wallet(ledger_wallet const& w);
-  void clear_wallets()
-  {
-    subscribed_wallets_.clear();
-  }
+  void clear_wallets() { subscribed_wallets_.clear(); }
   ledger_wallet* get_wallet_by_addr(std::string_view addr);
   ledger_wallet* get_wallet_by_name(std::string_view name);
 
   std::vector<basic_account*> wallets() override
   {
     std::vector<basic_account*> accts;
-    for (auto& acct : subscribed_wallets_)
-    {
-      accts.push_back(&acct);
-    }
+    for (auto& acct : subscribed_wallets_) { accts.push_back(&acct); }
     return accts;
   }
 
@@ -207,7 +198,7 @@ class xrpl_network : public exchange
   double get_transfer_fee(currency const& c1) override;
 
   void trustline(
-    basic_account* acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags);
+      basic_account* acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags);
 
   void custom_functions(basic_account* acct) override;
 

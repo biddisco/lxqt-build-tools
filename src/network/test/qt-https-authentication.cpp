@@ -32,13 +32,13 @@ static print_threshold<Level, 2> test1_dbg("https://");
 
 // ----------------------------------------------------------------------------
 void account_request(QNetworkAccessManager& networkmanager_, const std::string& url_path,
-  const std::string& url_query, net::http::rx_req_handler_type&& handler)
+    const std::string& url_query, net::http::rx_req_handler_type&& handler)
 {
   secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
   encryption encryptor(api_key, randbytes);
   //
   std::chrono::milliseconds timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::system_clock::now().time_since_epoch());
+      std::chrono::system_clock::now().time_since_epoch());
 
   // setup REST request fields
   std::string url_host = bitstamp_https_address;
@@ -85,7 +85,7 @@ void account_request(QNetworkAccessManager& networkmanager_, const std::string& 
   std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
 
   std::string urlstring = fmt::format(
-    "https://{}:{}{}{}", bitstamp_https_address, bitstamp_https_port, url_path, url_query);
+      "https://{}:{}{}{}", bitstamp_https_address, bitstamp_https_port, url_path, url_query);
 
   QNetworkRequest request(QUrl(urlstring.c_str()));
   request.setRawHeader("Content-Type", content_type.c_str());
@@ -100,7 +100,7 @@ void account_request(QNetworkAccessManager& networkmanager_, const std::string& 
   request.setRawHeader("X-Auth-Version", x_auth_version.c_str());
 
   auto* client =
-    net::http::qhttp_request_client::create_signed(networkmanager_, request, std::move(payload));
+      net::http::qhttp_request_client::create_signed(networkmanager_, request, std::move(payload));
   client->post_request(std::move(handler));
 }
 

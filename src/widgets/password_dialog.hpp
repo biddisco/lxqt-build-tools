@@ -20,7 +20,7 @@ class password_dialog : public QDialog
   public:
   password_dialog(bool simple);
   password_dialog(
-    const std::array<std::string, 5>& strings, std::vector<ledger_wallet> const& wallets);
+      const std::array<std::string, 5>& strings, std::vector<ledger_wallet> const& wallets);
   ~password_dialog();
 
   // Exchange details

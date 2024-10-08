@@ -12,20 +12,14 @@ namespace indicators {
   {
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string get_name() const override
-    {
-      return "RSI";
-    }
-    const std::string get_description() const override
-    {
-      return "RSI default 14 period";
-    }
+    const std::string get_name() const override { return "RSI"; }
+    const std::string get_description() const override { return "RSI default 14 period"; }
     const overlay_type overlay = overlay_type::minmax_limit;
     const y_limits ylimits = {0.0, 1.0};
 
     param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 14)};
+        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+        std::make_tuple<QString, param_types>("Window size", 14)};
 
     // ---------------------------------------
     // Default constructor
@@ -98,10 +92,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    inline double getLastResult()
-    {
-      return rsi_;
-    }
+    inline double getLastResult() { return rsi_; }
 
 private:
     double pos_diff;

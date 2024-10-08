@@ -19,20 +19,14 @@ namespace indicators {
   {
     // ---------------------------------------
     // fields required for auto gui generation
-    const std::string get_name() const override
-    {
-      return "Moving Average";
-    }
-    const std::string get_description() const override
-    {
-      return "Simple Moving Average";
-    }
+    const std::string get_name() const override { return "Moving Average"; }
+    const std::string get_description() const override { return "Simple Moving Average"; }
     const overlay_type overlay = overlay_type::mode_select;
 
     param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 14),
-      std::make_tuple<QString, param_types>("mode", ohlc_modes::mid_open_close)};
+        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+        std::make_tuple<QString, param_types>("Window size", 14),
+        std::make_tuple<QString, param_types>("mode", ohlc_modes::mid_open_close)};
 
     // ---------------------------------------
     // Default constructor
@@ -61,7 +55,7 @@ namespace indicators {
       mode_ = std::get<ohlc_modes>(std::get<1>(params[2]));
       //
       decay_acc_ = ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>>(
-        ba::tag::rolling_window::window_size = window_size_);
+          ba::tag::rolling_window::window_size = window_size_);
       mean_ = 0;
     }
 
@@ -79,10 +73,7 @@ namespace indicators {
       return operator()(price);
     }
 
-    inline double getLastResult()
-    {
-      return mean_;
-    }
+    inline double getLastResult() { return mean_; }
 
     void generate(std::shared_ptr<ohlc_dataset_view>&) {}
 

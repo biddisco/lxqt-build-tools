@@ -24,10 +24,7 @@ namespace grox::debug::detail {
   template <typename T, typename Enabled = std::false_type>
   struct demangle_helper
   {
-    char const* type_id() const
-    {
-      return typeid(T).name();
-    }
+    char const* type_id() const { return typeid(T).name(); }
   };
 
   // if available : demangle an arbitrary c++ type using gnu utility
@@ -39,10 +36,7 @@ namespace grox::debug::detail {
     {
     }
 
-    char const* type_id() const
-    {
-      return demangled_ ? demangled_.get() : typeid(T).name();
-    }
+    char const* type_id() const { return demangled_ ? demangled_.get() : typeid(T).name(); }
 
 private:
     std::unique_ptr<char, decltype(&std::free)> demangled_;

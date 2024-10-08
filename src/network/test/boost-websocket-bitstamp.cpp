@@ -28,10 +28,7 @@ std::atomic<int> counter{0};
 //------------------------------------------------------------------------------
 void new_trade_data(std::string&& data)
 {
-  if (data.find("bts:subscription_succeeded") != data.npos)
-  {
-    counter++;
-  }
+  if (data.find("bts:subscription_succeeded") != data.npos) { counter++; }
   std::cout << "\n\nReceived\n\n" << data << std::endl;
 }
 
@@ -80,7 +77,7 @@ int main(int argc, char** argv)
 
   using namespace std::placeholders;
   auto ws_orderbook = net::ws::create_session(
-    io_contexts_.ioc, io_contexts_.ctx, argv[1], argv[2], channel, new_trade_data);
+      io_contexts_.ioc, io_contexts_.ctx, argv[1], argv[2], channel, new_trade_data);
 
   int completed = 0;
   const int sec = 8;
@@ -101,8 +98,7 @@ int main(int argc, char** argv)
   io_contexts_.ioc.stop();
   for (auto& t : ioc_threads_)
   {
-    if (t.joinable())
-      t.join();
+    if (t.joinable()) t.join();
   }
 
   std::cout << "Exiting" << std::endl;

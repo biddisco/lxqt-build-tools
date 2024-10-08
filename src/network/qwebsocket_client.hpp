@@ -28,13 +28,10 @@ private:
 
 public:
     explicit qwebsocket_client(const std::string& id, const QUrl& url, const QString subscribe,
-      const rx_msg_handler_type handler, QObject* parent = nullptr);
+        const rx_msg_handler_type handler, QObject* parent = nullptr);
     ~qwebsocket_client();
 
-    const std::string& id()
-    {
-      return id_;
-    }
+    const std::string& id() { return id_; }
     void startConnection();
     void stopConnection();
 

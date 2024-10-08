@@ -12,12 +12,6 @@ class ohlc_data_exception : public std::exception
     : index_(bad_index)
   {
   }
-  const char* what() const noexcept override
-  {
-    return "Data integrity error";
-  }
-  std::uint64_t index()
-  {
-    return index_;
-  }
+  const char* what() const noexcept override { return "Data integrity error"; }
+  std::uint64_t index() { return index_; }
 };

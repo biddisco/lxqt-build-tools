@@ -37,32 +37,21 @@ currency_widget::currency_widget(int decimals, QWidget* parent)
   connect(ui->amount_edit, SIGNAL(returnPressed()), this, SLOT(get_amount()));
 
   connect(ui->buy_sell_combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-    [=](int /*index*/) { buy_sell_status(); });
+      [=](int /*index*/) { buy_sell_status(); });
 }
 
 // ----------------------------------------------------------------------------
-currency_widget::~currency_widget()
-{
-  delete ui;
-}
+currency_widget::~currency_widget() { delete ui; }
 
 // ----------------------------------------------------------------------------
 void currency_widget::set_data(
-  currency const* c, basic_account* acct, std::shared_ptr<exchange> network)
+    currency const* c, basic_account* acct, std::shared_ptr<exchange> network)
 {
   currency_ = *c;
-  if (acct)
-    account_ = acct;
-  if (network)
-    network_ = network;
-  if (c->code_.size() == 40)
-  {
-    ui->currency->setText(hex_to_currency(c->code_).c_str());
-  }
-  else
-  {
-    ui->currency->setText(c->code_.c_str());
-  }
+  if (acct) account_ = acct;
+  if (network) network_ = network;
+  if (c->code_.size() == 40) { ui->currency->setText(hex_to_currency(c->code_).c_str()); }
+  else { ui->currency->setText(c->code_.c_str()); }
   ui->issuer->setText(c->issuer_.c_str());
   //
   ui->balance->setText(to_string(c->balance_, *c).c_str());
@@ -82,22 +71,10 @@ void currency_widget::transfer_setup_xrp(double fraction)
 }
 
 // ----------------------------------------------------------------------------
-void currency_widget::q1x_clicked()
-{
-  transfer_setup_xrp(0.25);
-}
-void currency_widget::q2x_clicked()
-{
-  transfer_setup_xrp(0.50);
-}
-void currency_widget::q3x_clicked()
-{
-  transfer_setup_xrp(0.75);
-}
-void currency_widget::q4x_clicked()
-{
-  transfer_setup_xrp(1.00);
-}
+void currency_widget::q1x_clicked() { transfer_setup_xrp(0.25); }
+void currency_widget::q2x_clicked() { transfer_setup_xrp(0.50); }
+void currency_widget::q3x_clicked() { transfer_setup_xrp(0.75); }
+void currency_widget::q4x_clicked() { transfer_setup_xrp(1.00); }
 
 // ----------------------------------------------------------------------------
 void currency_widget::show_hide()
@@ -174,10 +151,7 @@ void currency_widget::show_hide()
 }
 
 // ----------------------------------------------------------------------------
-double currency_widget::get_amount()
-{
-  return std::stod(ui->amount_edit->text().toStdString());
-}
+double currency_widget::get_amount() { return std::stod(ui->amount_edit->text().toStdString()); }
 
 // ----------------------------------------------------------------------------
 void currency_widget::execute_payment()
@@ -190,10 +164,7 @@ void currency_widget::execute_payment()
   payment.balance_ = amount_;
   QVariant v = ui->dest_combo->currentData();
   basic_account* to_wallet = v.value<basic_account*>();
-  if (to_wallet != nullptr)
-  {
-    network_->make_payment(payment, account_, to_wallet);
-  }
+  if (to_wallet != nullptr) { network_->make_payment(payment, account_, to_wallet); }
   else
   {
     ledger_wallet w;
@@ -209,16 +180,14 @@ void currency_widget::execute_trade()
   bool feesincluded = ui->FeesIncluded->isChecked();
   int N = ui->num_orders->value();
   currency_code taker_payc =
-    currency_code{ui->buy_sell_combo->currentData().toString().toStdString(),
-      ui->buy_sell_combo->currentText().toStdString()};
+      currency_code{ui->buy_sell_combo->currentData().toString().toStdString(),
+          ui->buy_sell_combo->currentText().toStdString()};
   //
-  if (ui->amount_edit->text().isEmpty())
-    return;
+  if (ui->amount_edit->text().isEmpty()) return;
 
   // total amount to be used
   double taker_gets = ui->amount_edit->text().toDouble();
-  if (taker_gets == 0)
-    return;
+  if (taker_gets == 0) return;
 
   QString now(QDateTime::currentDateTime().toString("dd.MM.yy hh:mm:ss"));
   double price_min = ui->min_price->value();
@@ -257,26 +226,23 @@ void currency_widget::execute_trade()
     }
     //
     trade_data t{
-      network_,
-      account_->name_,
-      taker_payc,         // taker pays this currency
-      this->currency_,    // taker gets this currency
-      taker_pay,          // taker pays this amount (total)
-      taker_get,          // taker gets this amount (total)
-      price,              // exchange rate : TODO - check fee settings
-      network_->get_fee_percent({taker_payc, this->currency_}),
-      network_->get_fee_percent({taker_payc, this->currency_}),
-      0,    // Id
-      now.toStdString(),
-      false,
+        network_,
+        account_->name_,
+        taker_payc,         // taker pays this currency
+        this->currency_,    // taker gets this currency
+        taker_pay,          // taker pays this amount (total)
+        taker_get,          // taker gets this amount (total)
+        price,              // exchange rate : TODO - check fee settings
+        network_->get_fee_percent({taker_payc, this->currency_}),
+        network_->get_fee_percent({taker_payc, this->currency_}),
+        0,    // Id
+        now.toStdString(),
+        false,
     };
     trades.push_back(t);
   }
   check_trades_dialog d(this, trades);
-  if (d.exec() == QDialog::Accepted)
-  {
-    network_->place_buy_sell_orders(account_, trades);
-  }
+  if (d.exec() == QDialog::Accepted) { network_->place_buy_sell_orders(account_, trades); }
 }
 
 // ----------------------------------------------------------------------------
@@ -286,17 +252,17 @@ void currency_widget::buy_sell_status()
   if (buy)
   {
     QPalette palette = ui->buy_sell->palette();
-    palette.setColor(QPalette::WindowText, QRgb(0x00CF00));
+    palette.setColor(QPalette::WindowText, QRgb(0x00'CF00));
     ui->buy_sell->setPalette(palette);
     ui->buy_sell->setText(
-      "Buy " + ui->buy_sell_combo->currentText() + " <- " + currency_.code_.c_str());
+        "Buy " + ui->buy_sell_combo->currentText() + " <- " + currency_.code_.c_str());
   }
   else
   {
     QPalette palette = ui->buy_sell->palette();
-    palette.setColor(QPalette::WindowText, QRgb(0xFF4040));
+    palette.setColor(QPalette::WindowText, QRgb(0xFF'4040));
     ui->buy_sell->setPalette(palette);
     ui->buy_sell->setText(
-      QString("Sell ") + currency_.code_.c_str() + " -> " + ui->buy_sell_combo->currentText());
+        QString("Sell ") + currency_.code_.c_str() + " -> " + ui->buy_sell_combo->currentText());
   }
 }

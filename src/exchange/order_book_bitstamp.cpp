@@ -38,8 +38,7 @@ static print_threshold<Level, debug_level> bobook_dbg("bit-book");
 // accept json reply from bitstamp order book query and turn into numeric arrays
 void bitstamp_order_book::accept_json_bitstamp(const QString data)
 {
-  if (!startswith(data, QStringLiteral("{\"data\":")))
-    return;
+  if (!startswith(data, QStringLiteral("{\"data\":"))) return;
   //
   auto l = take_bid_ask_lock();
 
@@ -67,15 +66,15 @@ void bitstamp_order_book::bid_ask_string_to_number(json& jdata, offer_data& data
   data.total.resize(jdata.size(), 0);
   //
   std::transform(jdata.begin(), jdata.end(), ranges::view::zip(data.rate, data.size).begin(),
-    [](const auto& entry)    //
-    {
-      std::string s1 = entry[0];
-      std::string s2 = entry[1];
+      [](const auto& entry)    //
+      {
+        std::string s1 = entry[0];
+        std::string s2 = entry[1];
 #ifdef GROX_ARBITRAGE_TEST_MODE
-      // increase the price on the exchange to test our buy/sell algorithm
-      return std::pair<double, double>{std::stod(s1) + GROX_ARBITRAGE_TEST_MODE, std::stod(s2)};
+        // increase the price on the exchange to test our buy/sell algorithm
+        return std::pair<double, double>{std::stod(s1) + GROX_ARBITRAGE_TEST_MODE, std::stod(s2)};
 #else
       return std::pair<double, double>{ std::stod(s1), std::stod(s2) };
 #endif
-    });
+      });
 }

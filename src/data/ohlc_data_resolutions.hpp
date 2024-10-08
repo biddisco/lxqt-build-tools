@@ -19,26 +19,11 @@ struct candle_res
   // A simple name that will appear in menus
   char const* name_;
   // operators to make access easy
-  constexpr operator double() const
-  {
-    return res_;
-  }
-  constexpr operator const char*() const
-  {
-    return name_;
-  }
-  bool operator<(candle_res const& other)
-  {
-    return res_ < other.res_;
-  }
-  bool operator>(candle_res const& other)
-  {
-    return res_ > other.res_;
-  }
-  bool operator==(candle_res const& other)
-  {
-    return res_ == other.res_;
-  }
+  constexpr operator double() const { return res_; }
+  constexpr operator const char*() const { return name_; }
+  bool operator<(candle_res const& other) { return res_ < other.res_; }
+  bool operator>(candle_res const& other) { return res_ > other.res_; }
+  bool operator==(candle_res const& other) { return res_ == other.res_; }
 
   friend std::ostream& operator<<(std::ostream& os, candle_res const& res)
   {
@@ -71,7 +56,7 @@ class ohlc_data_resolutions
   static std::vector<candle_res> const& available_resolutions()
   {
     static const std::vector<candle_res> resolutions = {minute, minute3, minute5, minute10,
-      minute15, minute30, hour, hour2, hour4, hour6, hour12, day, day2, day3, day7, day15};
+        minute15, minute30, hour, hour2, hour4, hour6, hour12, day, day2, day3, day7, day15};
     return resolutions;
   }
 
@@ -79,8 +64,7 @@ class ohlc_data_resolutions
   {
     for (auto const& r : available_resolutions())
     {
-      if (r.res_ == res)
-        return r;
+      if (r.res_ == res) return r;
     }
     throw std::runtime_error("Resolution not found");
   }
@@ -91,14 +75,12 @@ class ohlc_data_resolutions
   // gcd(hour4, hour6) = hour2
   static candle_res gcd(candle_res a, candle_res b)
   {
-    if (a > b)
-      std::swap(a, b);
+    if (a > b) std::swap(a, b);
     while (a.res_ > ohlc_data_resolutions::minute)
     {
       while (b.res_ >= a.res_)
       {
-        if (b.res_ == a.res_)
-          return b;
+        if (b.res_ == a.res_) return b;
         b = get_resolution(b.base_);
       }
       a = get_resolution(a.base_);

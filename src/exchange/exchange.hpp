@@ -44,8 +44,7 @@ static std::string stream_to_pretty_text(network::streams stream)
   // Transform fir char after each break
   txt[0] = std::toupper(txt[0]);
   std::for_each(txt.begin() + 1, txt.end(), [](char& c) {
-    if ((*(&c - 1)) == '_')
-      c = std::toupper(c);
+    if ((*(&c - 1)) == '_') c = std::toupper(c);
   });
   std::transform(txt.begin(), txt.end(), txt.begin(), [](char& c) { return (c == '_') ? ' ' : c; });
   return txt;
@@ -55,10 +54,7 @@ static network::streams stream_from_pretty_text(std::string txt)
 {
   std::transform(txt.begin(), txt.end(), txt.begin(), [](char c) { return std::tolower(c); });
   auto stream = magic_enum::enum_cast<network::streams>(txt);
-  if (stream.has_value())
-  {
-    return stream.value();
-  }
+  if (stream.has_value()) { return stream.value(); }
   return network::streams::invalid;
 }
 
@@ -132,10 +128,7 @@ class exchange
   // ---------------------------------------
   // timer used for http/other updates
   // ---------------------------------------
-  QTimer* get_clock_timer()
-  {
-    return timer_;
-  }
+  QTimer* get_clock_timer() { return timer_; }
 
   // ---------------------------------------
   // factory functions to be used for callbacks to stream subscribe/unsubscribe events
@@ -156,7 +149,7 @@ class exchange
   void mark_stream_subscribed(currency_pair cp, network::streams s, bool enabled);
   // un/subscribe to an individual ticker stream
   virtual bool stream_subscribe(
-    currency_pair const& cp, network::streams const stream, bool enabled, factory_function f) = 0;
+      currency_pair const& cp, network::streams const stream, bool enabled, factory_function f) = 0;
 
   //  virtual bool websocket_connect(net::contexts& io_contexts, stream_set const& streams) = 0;
   //  virtual bool websocket_disconnect(net::contexts& io_contexts, stream_set const& streams) = 0;
@@ -187,10 +180,7 @@ class exchange
   // ---------------------------------------
   virtual bool can_send(const currency& c, exchange* dest) = 0;
   virtual bool make_payment(const currency& c, basic_account* src, basic_account* dest) = 0;
-  virtual std::string get_name() const
-  {
-    return exchange_name_;
-  }
+  virtual std::string get_name() const { return exchange_name_; }
   virtual void cancel_order(trade_data const& t) = 0;
   virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const&) = 0;
   virtual std::vector<basic_account*> wallets() = 0;

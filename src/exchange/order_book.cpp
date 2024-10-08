@@ -58,10 +58,7 @@ order_book_base::order_book_base()
 }
 
 // ----------------------------------------------------------------------------
-order_book_base::~order_book_base()
-{
-  obook_dbg<0>.debug(str<>("order_book_base"), "destructing");
-}
+order_book_base::~order_book_base() { obook_dbg<0>.debug(str<>("order_book_base"), "destructing"); }
 
 // ----------------------------------------------------------------------------
 orderbook_lock order_book_base::take_bid_ask_lock() const
@@ -79,12 +76,10 @@ void order_book_base::update_graph_limits(bool primary)
   // auto l = take_bid_ask_lock();
   // just in case multiple invocations overlap, not critical
   static std::atomic<bool> in_function = false;
-  if (in_function)
-    return;
+  if (in_function) return;
   //
   in_function = true;
-  if (asks_.rate.empty() || bids_.rate.empty())
-    return;
+  if (asks_.rate.empty() || bids_.rate.empty()) return;
   double scale = primary ? 0.50 : 0.50;
   double tscale = primary ? 10 : 25;
   int index = primary ? 0 : 1;
@@ -140,30 +135,30 @@ std::string order_book_base::make_order_book_string()
   {
     // title format string
     temp << fmt::format("{:8s} {:10s} {:10s} | {:10s} {:10s} {:8s}\n", "Total", "Size", "Bid",
-      "Ask", "Size", "Total");
+        "Ask", "Size", "Total");
     // iterate over bids_/asks_
-    auto zipped =
-      ranges::views::zip(bids_.total, bids_.size, bids_.rate, asks_.rate, asks_.size, asks_.total);
+    auto zipped = ranges::views::zip(
+        bids_.total, bids_.size, bids_.rate, asks_.rate, asks_.size, asks_.total);
     for (auto const& z : zipped)
     {
       temp << fmt::format("{:8.0f} {:10.2f} {:10.4f} | {:10.4f} {:10.2f} {:8.0f}\n", std::get<0>(z),
-        std::get<1>(z), std::get<2>(z), std::get<3>(z), std::get<4>(z), std::get<5>(z));
+          std::get<1>(z), std::get<2>(z), std::get<3>(z), std::get<4>(z), std::get<5>(z));
     }
   }
   else
   {
     // title format string
     temp << fmt::format("{:8s} {:10s} {:10s} {:10s} | {:10s} {:10s} {:10s} {:8s}\n", "Total",
-      "Size", "Orig", "Bid", "Ask", "Size", "Orig", "Total");
+        "Size", "Orig", "Bid", "Ask", "Size", "Orig", "Total");
     // iterate over bids_/asks_
     auto zipped = ranges::views::zip(bids_.total, bids_.size, bids_.orig, bids_.rate, asks_.rate,
-      asks_.size, asks_.orig, asks_.total);
+        asks_.size, asks_.orig, asks_.total);
     for (auto const& z : zipped)
     {
       temp << fmt::format(
-        "{:8.0f} {:10.2f} {:10.2f} {:10.4f} | {:10.4f} {:10.2f} {:10.2f} {:8.0f}\n", std::get<0>(z),
-        std::get<1>(z), std::get<2>(z), std::get<3>(z), std::get<4>(z), std::get<5>(z),
-        std::get<6>(z), std::get<7>(z));
+          "{:8.0f} {:10.2f} {:10.2f} {:10.4f} | {:10.4f} {:10.2f} {:10.2f} {:8.0f}\n",
+          std::get<0>(z), std::get<1>(z), std::get<2>(z), std::get<3>(z), std::get<4>(z),
+          std::get<5>(z), std::get<6>(z), std::get<7>(z));
     }
   }
   //
@@ -173,7 +168,7 @@ std::string order_book_base::make_order_book_string()
 // ----------------------------------------------------------------------------
 // given a max amount to spend, how much of this ask to take
 std::pair<double, double> order_book_base::buy_nibble(
-  double max_spend, double fee_percent, double fee_fixed, double size, double rate) const
+    double max_spend, double fee_percent, double fee_fixed, double size, double rate) const
 {
   double fee_mx = fee_percent / 100.0;
   if (max_spend > 0)
@@ -194,7 +189,7 @@ std::pair<double, double> order_book_base::buy_nibble(
 // ----------------------------------------------------------------------------
 // given some tokens to sell, how much of this bid to take
 std::pair<double, double> order_book_base::sell_nibble(
-  double max_tokens, double fee_percent, double fee_fixed, double size, double rate) const
+    double max_tokens, double fee_percent, double fee_fixed, double size, double rate) const
 {
   double fee_mx = fee_percent / 100.0;
   double t_recv = std::min(size, max_tokens);
@@ -206,13 +201,12 @@ std::pair<double, double> order_book_base::sell_nibble(
 // ----------------------------------------------------------------------------
 // buy on this orderbook, sell on the other - can we earn from arbitrage
 order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base const& other,
-  double budget, fee_data buy_fee, fee_data sell_fee, double test_offset,
-  std::string& string_output) const
+    double budget, fee_data buy_fee, fee_data sell_fee, double test_offset,
+    std::string& string_output) const
 {
   auto l = take_bid_ask_lock();
   //
-  if (asks_.size.size() == 0 || other.bids_.size.size() == 0)
-    return {};
+  if (asks_.size.size() == 0 || other.bids_.size.size() == 0) return {};
   //
   auto here_ask_zipped = ranges::views::zip(asks_.size, asks_.rate);
   auto there_bid_zipped = ranges::views::zip(other.bids_.total, other.bids_.rate);
@@ -234,9 +228,9 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
   }
   //
   temp << fmt::format(
-    "{:11s} {:11s} {:10s} {:10s} | {:11s} {:11s} {:10s} {:11s} | {:10s} {:10s} {:10s} {:10s}\n",
-    "Buy", "Avail", "Price", "Cost", "Sell", "Avail", "Price", "Receive", "Gain", "%", "C_Gain",
-    "C_%");
+      "{:11s} {:11s} {:10s} {:10s} | {:11s} {:11s} {:10s} {:11s} | {:10s} {:10s} {:10s} {:10s}\n",
+      "Buy", "Avail", "Price", "Cost", "Sell", "Avail", "Price", "Receive", "Gain", "%", "C_Gain",
+      "C_%");
   //
   std::vector<trade_set> trades;
   //
@@ -254,7 +248,7 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
     //
     double tokens_bought, funds_spent;
     std::tie(tokens_bought, funds_spent) =
-      buy_nibble(spend_budget, buy_fee.percent, buy_fee.fixed, ask_size, ask_rate);
+        buy_nibble(spend_budget, buy_fee.percent, buy_fee.fixed, ask_size, ask_rate);
     spend_budget -= funds_spent;
     if (spend_budget < 0)
     {
@@ -275,7 +269,7 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
       // Assuming we have bought on this exchange, how much can we sell on the other
       double tokens_sold, funds_received;
       std::tie(tokens_sold, funds_received) =
-        sell_nibble(tokens_to_sell, sell_fee.percent, sell_fee.fixed, sell_size, sell_rate);
+          sell_nibble(tokens_to_sell, sell_fee.percent, sell_fee.fixed, sell_size, sell_rate);
 
       double gain = 0.0;
       double pc = 0.0;
@@ -286,7 +280,7 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
       if (tokens_sold < tokens_bought)
       {
         std::tie(tokens_bought_partial, funds_spent_partital) =
-          buy_nibble(0, buy_fee.percent, buy_fee.fixed, tokens_sold, ask_rate);
+            buy_nibble(0, buy_fee.percent, buy_fee.fixed, tokens_sold, ask_rate);
       }
       // compute profit/loss
       gain = funds_received - funds_spent_partital;
@@ -301,21 +295,21 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
       //            if (cum_pc <= 0.01) break;
 
       trades.push_back(trade_set{tokens_bought, ask_size, ask_rate, funds_spent_partital,
-        tokens_sold, sell_size, sell_rate, funds_received, gain, pc});
+          tokens_sold, sell_size, sell_rate, funds_received, gain, pc});
 
       if (multi_part_sell_index > 0)
       {
         temp << fmt::format("{:11s} {:11s} {:10s} {:10s} | {:11.4f} {:11.4f} {:10.4f} {:11.4f} | "
                             "{:10.4f} {:10.4f} {:10.4f} {:10.4f}\n",
-          "---", "---", "---", "---", tokens_sold, sell_size, sell_rate, funds_received, gain, pc,
-          cum_gain, cum_pc);
+            "---", "---", "---", "---", tokens_sold, sell_size, sell_rate, funds_received, gain, pc,
+            cum_gain, cum_pc);
       }
       else
       {
         temp << fmt::format("{:11.4f} {:11.4f} {:10.4f} {:10.4f} | {:11.4f} {:11.4f} {:10.4f} "
                             "{:11.4f} | {:10.4f} {:10.4f} {:10.4f} {:10.4f}\n",
-          tokens_bought, ask_size, ask_rate, funds_spent_partital, tokens_sold, sell_size,
-          sell_rate, funds_received, gain, pc, cum_gain, cum_pc);
+            tokens_bought, ask_size, ask_rate, funds_spent_partital, tokens_sold, sell_size,
+            sell_rate, funds_received, gain, pc, cum_gain, cum_pc);
       }
 
       tokens_to_sell -= tokens_sold;
@@ -326,10 +320,7 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
 
       // if all sales at this price have been made, look at the next price slot
       // (should not be < 0 - numeric precision)
-      if (sell_size <= 0.0)
-      {
-        std::tie(sell_size, sell_rate) = *(++sell_point);
-      }
+      if (sell_size <= 0.0) { std::tie(sell_size, sell_rate) = *(++sell_point); }
       // end of a multi-part sale - display a summary
       if (tokens_to_sell <= 0.0 && multi_part_sell_index > 0)
       {
@@ -338,15 +329,14 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
         //
         temp << fmt::format("{:11s} {:11s} {:10s} {:10.4f} | {:11.4f} {:11s} {:10s} {:11.4f} | "
                             "{:10.4f} {:10.4f} {:10.4f} {:10.4f}\n",
-          "---", "---", "---", multi_part_funds_spent, multi_part_tokens_sold, "---", "---",
-          multi_part_funds_received, gain, pc, cum_gain, cum_pc);
+            "---", "---", "---", multi_part_funds_spent, multi_part_tokens_sold, "---", "---",
+            multi_part_funds_received, gain, pc, cum_gain, cum_pc);
       }
       multi_part_sell_index++;
     }
 
     // always keep some small-change in the account
-    if (spend_budget < 0.5)
-      break;
+    if (spend_budget < 0.5) break;
   }
   // dump out the trade details
   if (trades.size() > 0)

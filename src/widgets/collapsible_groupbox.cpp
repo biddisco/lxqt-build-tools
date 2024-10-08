@@ -17,12 +17,10 @@ inline QWindow* findWindowForWidget(const QWidget* widget)
   for (;;)
   {
     QWindow* wh = widget->window()->windowHandle();
-    if (wh != nullptr)
-      return wh;
+    if (wh != nullptr) return wh;
 
     widget = qobject_cast<const QWidget*>(widget->parent());
-    if (widget == nullptr)
-      return nullptr;
+    if (widget == nullptr) return nullptr;
   }
 }
 
@@ -34,13 +32,11 @@ inline QScreen* findScreenForWidget(const QWidget* widget)
     if (wh != nullptr)
     {
       QScreen* scr = wh->screen();
-      if (scr != nullptr)
-        return scr;
+      if (scr != nullptr) return scr;
     }
 
     widget = qobject_cast<const QWidget*>(widget->parent());
-    if (widget == nullptr)
-      return nullptr;
+    if (widget == nullptr) return nullptr;
   }
 }
 
@@ -72,8 +68,7 @@ void CollapsibleGroupBox::collapseLayout(QLayout* lay)
     if (lit->widget())
     {
       auto w = lit->widget();
-      if (w != m_clExpButton)
-        w->setVisible(false);
+      if (w != m_clExpButton) w->setVisible(false);
     }
     else if (lit->spacerItem())
       collapseSpacer(lit->spacerItem());
@@ -123,10 +118,7 @@ void CollapsibleGroupBox::expandSpacer(QSpacerItem* spacer)
   spacer->changeSize(sz.width(), sz.height(), pol.horizontalPolicy(), pol.verticalPolicy());
 }
 
-void CollapsibleGroupBox::onScreenChanged()
-{
-  resizeCollapseButton();
-}
+void CollapsibleGroupBox::onScreenChanged() { resizeCollapseButton(); }
 
 void CollapsibleGroupBox::onVisibilityChanged(bool checked)
 {
@@ -137,18 +129,14 @@ void CollapsibleGroupBox::onVisibilityChanged(bool checked)
     m_spacerSizes.clear();
     collapseLayout(this->layout());
   }
-  else
-  {
-    expandLayout(this->layout());
-  }
+  else { expandLayout(this->layout()); }
 }
 
 void CollapsibleGroupBox::resizeCollapseButton()
 {
   const QScreen* scr = findScreenForWidget(this);
 
-  if (scr == nullptr)
-    return;
+  if (scr == nullptr) return;
 
   const auto& size = this->size();
 
@@ -160,11 +148,9 @@ void CollapsibleGroupBox::resizeCollapseButton()
   int yOffset = 0;
 #endif
 
-  if (scr == nullptr)
-    return;
+  if (scr == nullptr) return;
 
-  if (QString::compare(QApplication::style()->objectName(), "fusion") == 0)
-    baseSize = 15.0;
+  if (QString::compare(QApplication::style()->objectName(), "fusion") == 0) baseSize = 15.0;
 
   const qreal dpi = scr->logicalDotsPerInchX();
   const qreal btnSize = floor((baseSize * dpi / 96.0) + 0.5);
@@ -172,7 +158,4 @@ void CollapsibleGroupBox::resizeCollapseButton()
   m_clExpButton->setGeometry(size.width() - btnSize, yOffset, btnSize, btnSize);
 }
 
-void CollapsibleGroupBox::resizeEvent(QResizeEvent*)
-{
-  resizeCollapseButton();
-}
+void CollapsibleGroupBox::resizeEvent(QResizeEvent*) { resizeCollapseButton(); }

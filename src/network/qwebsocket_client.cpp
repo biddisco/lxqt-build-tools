@@ -38,7 +38,7 @@ namespace net::ws {
 
   // ------------------------------------------------------------------
   qwebsocket_client::qwebsocket_client(const std::string& id, const QUrl& url, QString subscribe,
-    rx_msg_handler_type handler, QObject* parent)
+      rx_msg_handler_type handler, QObject* parent)
     : QObject(parent)
     , rx_handler_(handler)
     , url_(url)
@@ -54,7 +54,7 @@ namespace net::ws {
     if (websocket_)
     {
       qwebsocket_dbg<2>.error(
-        fmt::format("{:20s}, Client::destructor : websocket delete - out of order", id_));
+          fmt::format("{:20s}, Client::destructor : websocket delete - out of order", id_));
       delete websocket_;
     }
   }
@@ -69,39 +69,39 @@ namespace net::ws {
 
     // connection state
     connect(websocket_, &QWebSocket::connected, this, &qwebsocket_client::onConnected,
-      Qt::DirectConnection);
+        Qt::DirectConnection);
     connect(websocket_, &QWebSocket::disconnected, this, &qwebsocket_client::onDisconnected),
-      Qt::DirectConnection;
+        Qt::DirectConnection;
     connect(websocket_, &QWebSocket::stateChanged, this, &qwebsocket_client::onStateChanged,
-      Qt::DirectConnection);
+        Qt::DirectConnection);
     connect(websocket_, &QWebSocket::aboutToClose, this, &qwebsocket_client::onAboutToClose,
-      Qt::DirectConnection);
+        Qt::DirectConnection);
 
     // errors
     connect(websocket_, QOverload<const QList<QSslError>&>::of(&QWebSocket::sslErrors), this,
-      &qwebsocket_client::onSslErrors, Qt::DirectConnection);
+        &qwebsocket_client::onSslErrors, Qt::DirectConnection);
     connect(websocket_, SIGNAL(error(QAbstractSocket::SocketError)),
-      SLOT(onError(QAbstractSocket::SocketError)), Qt::DirectConnection);
+        SLOT(onError(QAbstractSocket::SocketError)), Qt::DirectConnection);
 
     // text messages
     connect(websocket_, &QWebSocket::textFrameReceived, this,
-      &qwebsocket_client::onTextFrameReceived, Qt::DirectConnection);
+        &qwebsocket_client::onTextFrameReceived, Qt::DirectConnection);
     // connect(websocket_, &QWebSocket::textMessageReceived, this,
     //   &qwebsocket_client::onTextMessageReceived, Qt::DirectConnection);
     connect(websocket_, &QWebSocket::textMessageReceived, this, rx_handler_, Qt::DirectConnection);
 
     // binary messages
     connect(websocket_, &QWebSocket::binaryFrameReceived, this,
-      &qwebsocket_client::onBinaryFrameReceived, Qt::DirectConnection);
+        &qwebsocket_client::onBinaryFrameReceived, Qt::DirectConnection);
     connect(websocket_, &QWebSocket::binaryMessageReceived, this,
-      &qwebsocket_client::onBinaryMessageReceived, Qt::DirectConnection);
+        &qwebsocket_client::onBinaryMessageReceived, Qt::DirectConnection);
 
     // others
     connect(websocket_, &QWebSocket::readChannelFinished, this,
-      &qwebsocket_client::onReadChannelFinished, Qt::DirectConnection);
+        &qwebsocket_client::onReadChannelFinished, Qt::DirectConnection);
     connect(websocket_, &QWebSocket::pong, this, &qwebsocket_client::onPong, Qt::DirectConnection);
     connect(websocket_, &QWebSocket::bytesWritten, this, &qwebsocket_client::onBytesWritten,
-      Qt::DirectConnection);
+        Qt::DirectConnection);
 
     qwebsocket_dbg<2>.debug(fmt::format("{:20s} openConnection {}", id_, url_));
     QNetworkRequest request = QNetworkRequest(QUrl(url_));
@@ -133,7 +133,7 @@ namespace net::ws {
     if (websocket_)
     {
       qwebsocket_dbg<2>.error(fmt::format("{:20s} Disconnected : Unexpected : CloseCode is : {} {}",
-        id_, QVariant::fromValue(websocket_->closeCode()).toString(), websocket_->errorString()));
+          id_, QVariant::fromValue(websocket_->closeCode()).toString(), websocket_->errorString()));
     }
     emit finished();
   }
@@ -142,7 +142,7 @@ namespace net::ws {
   void qwebsocket_client::onStateChanged(QAbstractSocket::SocketState socketState)
   {
     qwebsocket_dbg<2>.debug(
-      fmt::format("{:20s} StateChanged {}", id_, QVariant::fromValue(socketState).toString()));
+        fmt::format("{:20s} StateChanged {}", id_, QVariant::fromValue(socketState).toString()));
   }
 
   // ------------------------------------------------------------------
@@ -152,8 +152,8 @@ namespace net::ws {
     {
       auto reason = websocket_->closeReason();
       qwebsocket_dbg<0>.error(fmt::format(
-        "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
-        QVariant::fromValue(websocket_->closeCode()).toString(), websocket_->errorString()));
+          "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
+          QVariant::fromValue(websocket_->closeCode()).toString(), websocket_->errorString()));
     }
     /*setTimeout(setupWebSocket, 1000);*/
   }
@@ -175,21 +175,21 @@ namespace net::ws {
   void qwebsocket_client::onError(QAbstractSocket::SocketError socketError)
   {
     qwebsocket_dbg<0>.error(
-      fmt::format("{:20s} SslErrors : Error :{}", id_, websocket_->errorString()));
+        fmt::format("{:20s} SslErrors : Error :{}", id_, websocket_->errorString()));
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onTextFrameReceived(const QString& frame, bool isLastFrame)
   {
     qwebsocket_dbg<9>.error(
-      fmt::format("{:20s} TextFrameReceived - this should be overriden", id_));
+        fmt::format("{:20s} TextFrameReceived - this should be overriden", id_));
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onTextMessageReceived(QString message)
   {
     qwebsocket_dbg<0>.error(
-      fmt::format("{:20s} TextMessageReceived - this should be overriden", id_));
+        fmt::format("{:20s} TextMessageReceived - this should be overriden", id_));
     emit processIncomingMessage(message);
   }
 

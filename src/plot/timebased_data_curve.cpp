@@ -26,21 +26,15 @@ timebased_data_curve::timebased_data_curve(QString const& title)
 
 // ----------------------------------------------------------------------------
 void timebased_data_curve::drawSeries(QPainter* painter, QwtScaleMap const& xMap,
-  QwtScaleMap const& yMap, QRectF const& canvasRect, int from, int to) const
+    QwtScaleMap const& yMap, QRectF const& canvasRect, int from, int to) const
 {
   // find the min/max indices that we need to iterate over,
   // add +1 to min to clip 1 inside at the left of the x axis
   // right hand side is trucated by int conversion and always clipped anyway
   point_chart_data const* time_data = dynamic_cast<point_chart_data const*>(data());
-  if (time_data->size() == 0)
-  {
-    return;
-  }
+  if (time_data->size() == 0) { return; }
 
-  if (!compute_time_limits(time_data, xMap, yMap, canvasRect, from, to))
-  {
-    return;
-  }
+  if (!compute_time_limits(time_data, xMap, yMap, canvasRect, from, to)) { return; }
 
   QwtPlotCurve::drawSeries(painter, xMap, yMap, canvasRect, from, to);
 }

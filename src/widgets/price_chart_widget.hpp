@@ -77,7 +77,7 @@ class price_chart_widget : public QWidget
 
   public:
   price_chart_widget(
-    QWidget*, std::shared_ptr<ohlc_dataset_view>, std::shared_ptr<exchange> ex, currency_pair cp);
+      QWidget*, std::shared_ptr<ohlc_dataset_view>, std::shared_ptr<exchange> ex, currency_pair cp);
   ~price_chart_widget();
 
   void connect_gui();
@@ -87,15 +87,12 @@ class price_chart_widget : public QWidget
   {
     crypto_price_plot_->update_live_data(new_sample);
   }
-  void replot()
-  {
-    crypto_price_plot_->replot();
-  }
+  void replot() { crypto_price_plot_->replot(); }
 
   void show_plot_axes();
 
   std::tuple<indicator_plot*, timebased_data_curve*> add_indicator_plot(QString const& title,
-    point_chart_data* data, QColor const& color, indicators::y_limits ylimits = {0.0, 0.0});
+      point_chart_data* data, QColor const& color, indicators::y_limits ylimits = {0.0, 0.0});
 
   void remove_indicator_plot(indicator_plot* filter_plot, timebased_data_curve* curve);
 
