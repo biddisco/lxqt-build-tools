@@ -48,6 +48,7 @@ namespace grox::senders {
       {
       }
     }
+    throw std::runtime_error("Mainwindow could not be obtained");
     return nullptr;
   }
 

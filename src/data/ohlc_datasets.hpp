@@ -7,17 +7,18 @@
 // Grox
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/timebased_chart_data.hpp"
+#include "util/pubsub.hpp"
 
 using ohlctv_vector = QVector<ohlctv_sample>;
 
 // ----------------------------------------------------------------------------
 struct ohlc_datasets : timebased_chart_data<ohlctv_sample>
 {
-  // live trade data to be included
-  ohlc_chart_data* live_samples_;
-
   // for debugging, show the dataset name
   std::string ticker_str_;
+
+  // when this dataset grows, subscribers will be notified
+  grox::PublishSubscribe<> new_data_subscribers_;
 
   ohlc_datasets(candle_res res, std::string const& name);
   ~ohlc_datasets();
@@ -30,8 +31,8 @@ struct ohlc_datasets : timebased_chart_data<ohlctv_sample>
   static int64_t validate_ohlc(
     ohlctv_vector const& samples, candle_res res, double time, std::string name);
 
-  // Resample the current dataset to a new resolution, it is assumed (without checks) that the new
-  // lower resolution is an exact multiple of the current one giving a simple N:1 downsizing
-  ohlc_datasets* resample(candle_res res1, candle_res res2);
-  ohlc_datasets* resample_update(candle_res res1, ohlc_datasets* other, candle_res res2);
+  // DownSample the current dataset to a lower resolution, it is assumed (without checks) that
+  // the lower resolution is an exact multiple of the current one giving a simple N:1 downsizing
+  ohlc_datasets* downsample(candle_res res);
+  ohlc_datasets* downsample_update(ohlc_datasets* other);
 };

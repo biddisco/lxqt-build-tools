@@ -25,21 +25,29 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, const currency_pair& 
   : exchange_(exchange)
   , ticker_string_(currency_pair_string(cp))
 {
+  // insert empty highest resolution live dataset
+  ohlc_datasets* min_res_live = new ohlc_datasets(ohlc_data_resolutions::minute, ticker_string_);
+  live_samples_.insert(std::make_pair(ohlc_data_resolutions::minute, min_res_live));
+
   // insert empty highest resolution candle dataset
   ohlc_datasets* min_res = new ohlc_datasets(ohlc_data_resolutions::minute, ticker_string_);
   candles_.insert(std::make_pair(ohlc_data_resolutions::minute, min_res));
-  // load highest res data
+
+  // load highest res data from disk
   read_from_disk();
+
   // generate lower res datasets from loaded data
   auto const& resolutions = ohlc_data_resolutions::available_resolutions();
   for (size_t i = 1; i < resolutions.size(); ++i)
   {
     auto const& res = resolutions[i];
-    auto new_data =
-      get_dataset(res.base_)->resample(res, ohlc_data_resolutions::get_resolution(res.base_));
+    auto origin_data = get_dataset(res.base_);
+    auto new_data = origin_data->downsample(res);
     if (new_data)
     {
       add_dataset(res, new_data);
+      origin_data->new_data_subscribers_.subscribe(
+        [origin_data, new_data]() { new_data->downsample_update(origin_data); });
     }
   }
 }
@@ -260,15 +268,13 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(
 // ----------------------------------------------------------------------------
 ohlc_chart_data* ohlc_dataset_view::get_live_data(candle_res res)
 {
-  ohlc_datasets* temp = get_dataset(res);
-  return temp->live_samples_;
+  return get_live_dataset(res);
 }
 
 // ----------------------------------------------------------------------------
 const ohlc_chart_data* ohlc_dataset_view::get_live_data(candle_res res) const
 {
-  const ohlc_datasets* temp = get_dataset(res);
-  return temp->live_samples_;
+  return get_live_dataset(res);
 }
 
 //// ----------------------------------------------------------------------------

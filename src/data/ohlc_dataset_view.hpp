@@ -22,6 +22,9 @@ class ohlc_dataset_view
   // a map of datasets, key is resolution
   std::map<double, ohlc_datasets*> candles_;
 
+  // a map of datasets, key is resolution
+  std::map<double, ohlc_datasets*> live_samples_;
+
   // needed for IO and debug messages
   std::string exchange_;
   std::string ticker_string_;
@@ -44,6 +47,14 @@ class ohlc_dataset_view
   {
     if (candles_.find(resolution) != candles_.end())
       return candles_.at(resolution);
+    return nullptr;
+  }
+
+  // access the underlying data vector
+  ohlc_datasets* get_live_dataset(double resolution) const
+  {
+    if (live_samples_.find(resolution) != candles_.end())
+      return live_samples_.at(resolution);
     return nullptr;
   }
 

@@ -23,9 +23,6 @@ ohlc_datasets::ohlc_datasets(candle_res res, std::string const& name)
   : timebased_chart_data<ohlctv_sample>(res)
   , ticker_str_(name)
 {
-  // we do not destroy these in the destructor because they are given to the
-  // plot curve object which deletes them when it is destroyed
-  live_samples_ = new ohlc_chart_data(res);
 }
 
 // ----------------------------------------------------------------------------
@@ -44,7 +41,7 @@ uint64_t ohlc_datasets::merge_data(ohlctv_vector const& new_ohlc_samples_)
   if (data().size() == 0)
   {
     data() = new_ohlc_samples_;
-    return size();
+    update += size();
   }
   else if (!new_ohlc_samples_.empty())
   {
@@ -66,6 +63,8 @@ uint64_t ohlc_datasets::merge_data(ohlctv_vector const& new_ohlc_samples_)
     data().append(new_ohlc_samples_);
     update += new_ohlc_samples_.size();
   }
+  if (update > 0)
+    new_data_subscribers_.publish();
   return update;
 }
 
@@ -117,26 +116,28 @@ int64_t ohlc_datasets::validate_ohlc(
 }
 
 // ----------------------------------------------------------------------------
-// resample from res2 to res1
-ohlc_datasets* ohlc_datasets::resample(candle_res res1, candle_res res2)
+// downsample from this (res_hi) to res_lo
+ohlc_datasets* ohlc_datasets::downsample(candle_res res_lo)
 {
-  ohlc_datasets* result = new ohlc_datasets(res1, ticker_str_);
-  result->resample_update(res1, this, res2);
+  ohlc_datasets* result = new ohlc_datasets(res_lo, ticker_str_);
+  result->downsample_update(this);
   return result;
 }
 
 // ----------------------------------------------------------------------------
-// res1 is resolution of this dataset, res2 is (higher) resolution of other
-ohlc_datasets* ohlc_datasets::resample_update(
-  candle_res res1, ohlc_datasets* other, candle_res res2)
+// update this dataset by resampling new candles from another dataset
+ohlc_datasets* ohlc_datasets::downsample_update(ohlc_datasets* other)
 {
   if (other->data().empty())
     return this;
 
+  candle_res res_hi = other->get_resolution();
+  candle_res res_lo = this->get_resolution();
+
   // how many of the hi-res candles in the new lower-res candle?
-  int subsamples = static_cast<int>(res1 / res2);
-  ohlc_dbg<6>.debug(str<>("resample"), ticker_str_, str<3>(res2.name_), "subsamples",
-    str<3>(res1.name_), ffmt<dec3>(subsamples));
+  int subsamples = static_cast<int>(res_lo / res_hi);
+  ohlc_dbg<6>.debug(str<>("resample"), ticker_str_, str<3>(res_hi.name_), "subsamples",
+    str<3>(res_lo.name_), ffmt<dec3>(subsamples));
 
   // Get the final time-point of this dataset if present -
   // and increment it by 1 hi-res sample to get next start time
@@ -146,7 +147,7 @@ ohlc_datasets* ohlc_datasets::resample_update(
   {
     orig_size = size();
     orig_T = data().back().time;
-    start_T = orig_T + res2;
+    start_T = orig_T + res_hi;
   }
   // empty, resample from the first point of the hi-res dataset
   else
@@ -154,12 +155,12 @@ ohlc_datasets* ohlc_datasets::resample_update(
     start_T = other->data().front().time;
   }
   // the start time must start an integral candle at the new resolution
-  while (static_cast<int>(0.5 + start_T / res2) % subsamples != 0)
+  while (static_cast<int>(0.5 + start_T / res_hi) % subsamples != 0)
   {
     ohlc_dbg<7>.debug(str<>("candle modulus"), ticker_str_,
-      ffmt<dec3>(static_cast<int>(0.5 + start_T / res2) % subsamples), "of",
+      ffmt<dec3>(static_cast<int>(0.5 + start_T / res_hi) % subsamples), "of",
       ffmt<dec3>(subsamples));
-    start_T += res2;
+    start_T += res_hi;
   }
 
   // What index in the high res data maps to selected time start_T
@@ -171,14 +172,15 @@ ohlc_datasets* ohlc_datasets::resample_update(
 
   // we will start a fresh candle from this start_T
   ohlctv_sample current_ohlc = other->data()[init_sample];
-  current_ohlc.time = res1 * static_cast<uint64_t>(current_ohlc.time / res1);
+  current_ohlc.time = res_lo * static_cast<uint64_t>(current_ohlc.time / res_lo);
 
   // iterate over all higher res samples for T onwards
+  bool modified = false;
   for (ohlctv_vector::const_iterator it = other->data().begin() + init_sample;
        it < other->data().end(); ++it)
   {
-    double quantized_time = res1 * static_cast<uint64_t>(it->time / res1);
-    int subsample = static_cast<int>(0.5 + it->time / res2) % subsamples;
+    double quantized_time = res_lo * static_cast<uint64_t>(it->time / res_lo);
+    int subsample = static_cast<int>(0.5 + it->time / res_hi) % subsamples;
     // if we are starting a new candle
     if (subsample == 0)
     {
@@ -194,11 +196,14 @@ ohlc_datasets* ohlc_datasets::resample_update(
     if (subsample == (subsamples - 1))
     {
       append(current_ohlc);
+      modified = true;
     }
   }
-  ohlc_dbg<1>.debug(str<>("resampled"), ticker_str_, str<3>(res1.name_), "from",
+  ohlc_dbg<1>.debug(str<>("resampled"), ticker_str_, str<3>(res_lo.name_), "from",
     msecs_unix_to_calendar_time(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of", size());
-  validate_ohlc(data(), res1, orig_T, ticker_str_);
+  validate_ohlc(data(), res_lo, orig_T, ticker_str_);
 
+  if (modified)
+    new_data_subscribers_.publish();
   return this;
 }

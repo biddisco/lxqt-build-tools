@@ -210,10 +210,6 @@ class bitstamp_network : public exchange
   // trigger this to restart the timer from a Qt thread
   void restart_candlestick_timer();
 
-  // after new data is received, trigger this to update plots
-  void new_ohlc_data(ticker_data, double);
-
   public slots:
   void candlestick_timer_event();
-  void new_ohlc_data_event(ticker_data, double);
 };

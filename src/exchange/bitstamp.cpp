@@ -78,9 +78,6 @@ bitstamp_network::bitstamp_network()
   accounts_.push_back(default_acct);
   using namespace std::literals;
   token_expiry_ = std::chrono::system_clock::now() - 60 * 1s;
-  // after new data has been received, trigger this to process new candles and replot
-  connect(this, SIGNAL(new_ohlc_data(ticker_data, double)), this,
-    SLOT(new_ohlc_data_event(ticker_data, double)));
 }
 
 // ----------------------------------------------------------------------------
@@ -1179,45 +1176,15 @@ void bitstamp_network::handle_new_ohlc_data(ticker_data tdata, std::string_view 
     bitstamp_dbg<0>.debug(str<>("data merged up to"), tdata->view_->get_ticker_string(),
       msecs_unix_to_calendar_time(last_time));
     tdata->view_->delete_live_data_up_to(last_time);
-    tdata->chart_widget_->update();
-    //
-    emit new_ohlc_data(tdata, ohlc_data_resolutions::minute);
+    // replot on a Qt thread
+    QMetaObject::invokeMethod(
+      grox::senders::getMainWindow(), [=]() { tdata->chart_widget_->replot(); });
   }
   catch (std::exception& e)
   {
     bitstamp_dbg<0>.error(str<>("JSON error"), "decoding OHLC data:", e.what(), "\n", data, "\n\n");
     std::terminate();
   }
-}
-
-// ----------------------------------------------------------------------------
-void bitstamp_network::new_ohlc_data_event(ticker_data tdata, double old_res)
-{
-  (void) (old_res);
-  bitstamp_dbg<5>.debug(str<>("new ohlc data"), "resolution", old_res);
-  //
-  // get all available candle resolutions, except highest res
-  // since we we use that one to generate all the others
-  auto const& resolutions = ohlc_data_resolutions::available_resolutions();
-  for (size_t i = 1; i < resolutions.size(); ++i)
-  {
-    auto const& res = resolutions[i];
-    auto data = tdata->view_->get_dataset(res);
-    if (data)
-    {
-      data->resample_update(res, tdata->view_->get_dataset(res.base_),
-        ohlc_data_resolutions::get_resolution(res.base_));
-    }
-    else
-    {
-      data = tdata->view_->get_dataset(res.base_)->resample(
-        res, ohlc_data_resolutions::get_resolution(res.base_));
-      tdata->view_->add_dataset(res, data);
-    }
-  }
-
-  // don't change axes, just update data series and replot
-  tdata->chart_widget_->replot();
 }
 
 // the bitstamp minute candle only updates around

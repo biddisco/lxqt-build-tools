@@ -19,7 +19,7 @@ class timebased_chart_data : public QwtArraySeriesData<DataType>
   using QwtArraySeriesData<DataType>::cachedBoundingRect;
 
   public:
-  timebased_chart_data(double resolution)
+  timebased_chart_data(candle_res resolution)
     : QwtArraySeriesData<DataType>()
     , resolution_(resolution)
   {
