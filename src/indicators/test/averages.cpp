@@ -18,7 +18,7 @@
 #include <highfive/H5File.hpp>
 // Grox
 #include "currency/currency.hpp"
-#include "data/ohlc_datasets.hpp"
+#include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
 #include "indicators/indicator_definitions.hpp"
 #include "io/hdf5_ohlc_manager.hpp"

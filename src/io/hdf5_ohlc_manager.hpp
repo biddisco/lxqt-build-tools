@@ -9,7 +9,7 @@
 #include "currency/currency.hpp"
 #include "currency/ohlctv_sample.hpp"
 #include "data/abstract_data_manager.hpp"
-#include "data/ohlc_datasets.hpp"
+#include "data/ohlc_dataset.hpp"
 
 /// dataset_manager is the interface between an array and the (hdf5) file
 /// user to hold the underlying dataset on disk.

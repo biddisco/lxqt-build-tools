@@ -264,8 +264,7 @@ void price_chart_widget::connect_gui()
           alg.initialize();
 
           // convert the dataset name selections in the dialog into actual datasets
-          std::vector<ohlc_datasets*> in_datasets =
-            indicators::get_datasets(alg.params, hdf5_ohlc_);
+          std::vector<ohlc_dataset*> in_datasets = indicators::get_datasets(alg.params, hdf5_ohlc_);
 
           if (in_datasets.size() != 1)
           {

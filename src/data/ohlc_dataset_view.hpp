@@ -8,7 +8,7 @@
 // Grox
 #include "currency/currency.hpp"
 #include "currency/ohlctv_sample.hpp"
-#include "data/ohlc_datasets.hpp"
+#include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
 #include "data/timebased_chart_data.hpp"
 
@@ -20,10 +20,10 @@ class ohlc_dataset_view
 {
   private:
   // a map of datasets, key is resolution
-  std::map<double, ohlc_datasets*> candles_;
+  std::map<double, ohlc_dataset*> candles_;
 
   // a map of datasets, key is resolution
-  std::map<double, ohlc_datasets*> live_samples_;
+  std::map<double, ohlc_dataset*> live_samples_;
 
   // needed for IO and debug messages
   std::string exchange_;
@@ -37,13 +37,13 @@ class ohlc_dataset_view
 
   std::vector<double> get_dataset_resolutions();
 
-  void add_dataset(double resolution, ohlc_datasets* new_data)
+  void add_dataset(double resolution, ohlc_dataset* new_data)
   {
     candles_[resolution] = new_data;
   }
 
   // access the underlying data vector
-  ohlc_datasets* get_dataset(double resolution) const
+  ohlc_dataset* get_dataset(double resolution) const
   {
     if (candles_.find(resolution) != candles_.end())
       return candles_.at(resolution);
@@ -51,7 +51,7 @@ class ohlc_dataset_view
   }
 
   // access the underlying data vector
-  ohlc_datasets* get_live_dataset(double resolution) const
+  ohlc_dataset* get_live_dataset(double resolution) const
   {
     if (live_samples_.find(resolution) != candles_.end())
       return live_samples_.at(resolution);

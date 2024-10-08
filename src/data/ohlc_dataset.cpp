@@ -4,7 +4,7 @@
 #include <QVector>
 // Grox
 #include "data/ohlc_data_exception.hpp"
-#include "data/ohlc_datasets.hpp"
+#include "data/ohlc_dataset.hpp"
 #include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
 #include "util/datetime_utils.hpp"
@@ -19,14 +19,14 @@ template <int Level>
 static print_threshold<Level, debug_level> ohlc_dbg("Datasets");
 
 // ----------------------------------------------------------------------------
-ohlc_datasets::ohlc_datasets(candle_res res, std::string const& name)
+ohlc_dataset::ohlc_dataset(candle_res res, std::string const& name)
   : timebased_chart_data<ohlctv_sample>(res)
   , ticker_str_(name)
 {
 }
 
 // ----------------------------------------------------------------------------
-ohlc_datasets::~ohlc_datasets()
+ohlc_dataset::~ohlc_dataset()
 {
   // qwt curves, own the samples they plot, so we do not need to delete
   //    ohlc_samples_;
@@ -34,7 +34,7 @@ ohlc_datasets::~ohlc_datasets()
 }
 
 // ----------------------------------------------------------------------------
-uint64_t ohlc_datasets::merge_data(ohlctv_vector const& new_ohlc_samples_)
+uint64_t ohlc_dataset::merge_data(ohlctv_vector const& new_ohlc_samples_)
 {
   uint64_t update = 0;
   // initial data may be empty, so just copy without merge/update
@@ -76,7 +76,7 @@ uint64_t offset_index(double init, double time, double res)
 }
 
 // ----------------------------------------------------------------------------
-int64_t ohlc_datasets::validate_ohlc(
+int64_t ohlc_dataset::validate_ohlc(
   ohlctv_vector const& samples, candle_res res, double time, std::string name)
 {
   if (samples.empty())
@@ -117,16 +117,16 @@ int64_t ohlc_datasets::validate_ohlc(
 
 // ----------------------------------------------------------------------------
 // downsample from this (res_hi) to res_lo
-ohlc_datasets* ohlc_datasets::downsample(candle_res res_lo)
+ohlc_dataset* ohlc_dataset::downsample(candle_res res_lo)
 {
-  ohlc_datasets* result = new ohlc_datasets(res_lo, ticker_str_);
+  ohlc_dataset* result = new ohlc_dataset(res_lo, ticker_str_);
   result->downsample_update(this);
   return result;
 }
 
 // ----------------------------------------------------------------------------
 // update this dataset by resampling new candles from another dataset
-ohlc_datasets* ohlc_datasets::downsample_update(ohlc_datasets* other)
+ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
 {
   if (other->data().empty())
     return this;

@@ -81,7 +81,7 @@ void hdf5_ohlc_manager::read_impl(
     data.clear();
   }
   //
-  ohlc_datasets::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
+  ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
   man_dbg<0>.debug(str<>("file close"), path, "read_hdf5", ffmt<dec9>(data.size()));
 }
 
@@ -97,7 +97,7 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
   QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate)
 {
   std::string path = group + "/" + dataname;
-  int valid = ohlc_datasets::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
+  int valid = ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
   if (valid != data.size())
   {
     man_dbg<0>.error(str<>("Error"), path, "Aborting write");

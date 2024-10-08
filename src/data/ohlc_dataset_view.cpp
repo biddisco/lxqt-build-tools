@@ -26,11 +26,11 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, const currency_pair& 
   , ticker_string_(currency_pair_string(cp))
 {
   // insert empty highest resolution live dataset
-  ohlc_datasets* min_res_live = new ohlc_datasets(ohlc_data_resolutions::minute, ticker_string_);
+  ohlc_dataset* min_res_live = new ohlc_dataset(ohlc_data_resolutions::minute, ticker_string_);
   live_samples_.insert(std::make_pair(ohlc_data_resolutions::minute, min_res_live));
 
   // insert empty highest resolution candle dataset
-  ohlc_datasets* min_res = new ohlc_datasets(ohlc_data_resolutions::minute, ticker_string_);
+  ohlc_dataset* min_res = new ohlc_dataset(ohlc_data_resolutions::minute, ticker_string_);
   candles_.insert(std::make_pair(ohlc_data_resolutions::minute, min_res));
 
   // load highest res data from disk
@@ -66,7 +66,7 @@ ohlc_dataset_view::~ohlc_dataset_view()
 void ohlc_dataset_view::merge_data(
   const double res, QVector<ohlctv_sample> const& new_ohlc_samples_)
 {
-  ohlc_datasets* data = get_dataset(res);
+  ohlc_dataset* data = get_dataset(res);
   // returns the number of samples that are 'new'
   uint64_t update = data->merge_data(new_ohlc_samples_);
   // write new samples to the main datafile
@@ -280,7 +280,7 @@ const ohlc_chart_data* ohlc_dataset_view::get_live_data(candle_res res) const
 //// ----------------------------------------------------------------------------
 //ohlc_chart_curve* ohlc_dataset_view::get_live_curve()
 //{
-//  ohlc_datasets* temp = get_dataset(ohlc_data_resolutions::minute);
+//  ohlc_dataset* temp = get_dataset(ohlc_data_resolutions::minute);
 //  return temp->live_curve_;
 //}
 

@@ -62,10 +62,10 @@ namespace indicators {
   // ----------------------------------------------------------------------------
   // iterate over the parameters returned from an indicator selection dialog and
   // find the datasets of the right resolution in the datasets view
-  static std::vector<ohlc_datasets*> get_datasets(
+  static std::vector<ohlc_dataset*> get_datasets(
     param_list const& params, std::shared_ptr<ohlc_dataset_view> view)
   {
-    std::vector<ohlc_datasets*> result;
+    std::vector<ohlc_dataset*> result;
     for (auto const& p : params)
     {
       if (const candle_res* c = std::get_if<candle_res>(&std::get<1>(p)))

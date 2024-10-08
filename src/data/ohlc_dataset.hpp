@@ -12,7 +12,7 @@
 using ohlctv_vector = QVector<ohlctv_sample>;
 
 // ----------------------------------------------------------------------------
-struct ohlc_datasets : timebased_chart_data<ohlctv_sample>
+struct ohlc_dataset : timebased_chart_data<ohlctv_sample>
 {
   // for debugging, show the dataset name
   std::string ticker_str_;
@@ -20,8 +20,8 @@ struct ohlc_datasets : timebased_chart_data<ohlctv_sample>
   // when this dataset grows, subscribers will be notified
   grox::PublishSubscribe<> new_data_subscribers_;
 
-  ohlc_datasets(candle_res res, std::string const& name);
-  ~ohlc_datasets();
+  ohlc_dataset(candle_res res, std::string const& name);
+  ~ohlc_dataset();
 
   // Add new downloaded data to the existing dataset
   uint64_t merge_data(ohlctv_vector const& new_ohlc_samples);
@@ -33,6 +33,6 @@ struct ohlc_datasets : timebased_chart_data<ohlctv_sample>
 
   // DownSample the current dataset to a lower resolution, it is assumed (without checks) that
   // the lower resolution is an exact multiple of the current one giving a simple N:1 downsizing
-  ohlc_datasets* downsample(candle_res res);
-  ohlc_datasets* downsample_update(ohlc_datasets* other);
+  ohlc_dataset* downsample(candle_res res);
+  ohlc_dataset* downsample_update(ohlc_dataset* other);
 };

@@ -8,7 +8,7 @@
 #include <QLineEdit>
 #include <QString>
 // Grox
-#include "data/ohlc_datasets.hpp"
+#include "data/ohlc_dataset.hpp"
 #include "indicators/indicator_definitions.hpp"
 #include "widgets/indicator_dialog.hpp"
 

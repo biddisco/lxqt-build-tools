@@ -2,8 +2,8 @@ set(grox_data_SRCS
     abstract_data_manager.hpp
     ohlc_data_exception.hpp
     ohlc_data_resolutions.hpp
-    ohlc_datasets.cpp
-    ohlc_datasets.hpp
+    ohlc_dataset.cpp
+    ohlc_dataset.hpp
     ohlc_dataset_view.cpp
     ohlc_dataset_view.hpp
     ohlc_heikin_ashi.hpp
