@@ -49,7 +49,15 @@ namespace indicators {
     // variant with every type in the typelist
     using type = std::variant<Ts...>;
     // vector containing one of each variant type
-    static std::vector<type> generate() { return {Ts{}...}; }
+    static std::vector<type> generate()
+    {
+      std::vector<type> temp = {Ts{}...};
+      for (auto& v : temp)
+      {
+        std::visit([](auto& i) { i.init_params(); }, v);
+      }
+      return temp;
+    }
   };
 
   using indicator_variant = types_generator<indicator_typelist>::type;

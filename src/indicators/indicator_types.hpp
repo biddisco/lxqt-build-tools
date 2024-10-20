@@ -11,15 +11,20 @@
 #include "debug/print.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
 template <int Level>
-inline print_threshold<Level, 5> indicator_dbg("Indicate");
+inline grox::debug::print_threshold<Level, 5> indicator_dbg("Indicate");
 
+// ----------------------------------------------------------------------------
 namespace indicators {
 
   using param_types = std::variant<double, int, ohlc_modes, bool, candle_res>;
   using param_list = std::vector<std::tuple<QString, param_types>>;
 
+  // ----------------------------------------------------------------------------
+  /// greek symbol for sigma, used in certain indicator texts
+  static constexpr QChar sigma = QChar(0xc3, 0x03);
+
+  // ----------------------------------------------------------------------------
   /// The overlay type tells the indicator plot how/where to place the chart
   enum class overlay_type : int
   {
@@ -35,6 +40,7 @@ namespace indicators {
     no_overlay = 4,
   };
 
+  // ----------------------------------------------------------------------------
   /// Used in conjunction with minmax_limit to set the y-axis range
   struct y_limits
   {
@@ -42,24 +48,61 @@ namespace indicators {
     double max;
   };
 
-  struct indicator_base
+  // ----------------------------------------------------------------------------
+  class indicator_base
   {
+public:
+    /// by default indicators produce double precision output
     using result_type = double;
-    std::string name;
 
-    virtual ~indicator_base()
+protected:
+    /// generic vars that can be provided at construction time
+    std::string name_;
+    std::string description_;
+    overlay_type overlay_;
+
+    /// list of parameters/types that need to be supplied for GUI generation and execution
+    param_list params_;
+
+public:
+    // ----------------------------------------------------------------------------
+    indicator_base(const std::string& name, const std::string& desc, overlay_type overlay)
+      : name_(name)
+      , description_(desc)
+      , overlay_(overlay)
     {
-      // indicator_dbg<2>.debug(str<>(name.c_str()));
+      indicator_dbg<2>.debug(pika::debug::detail::str<>(get_name().c_str()));
     }
 
-    virtual const std::string get_name() const { return ""; }
+    // ----------------------------------------------------------------------------
+    virtual ~indicator_base()
+    {
+      indicator_dbg<2>.debug(pika::debug::detail::str<>(get_name().c_str()));
+    }
 
-    virtual const std::string get_description() const { return ""; }
+    // ----------------------------------------------------------------------------
+    virtual void initialize() = 0;
+    virtual void init_params() = 0;
 
+    // ----------------------------------------------------------------------------
+    virtual const std::string get_name() const { return name_; }
+    virtual const std::string get_description() const { return description_; }
+
+    // ----------------------------------------------------------------------------
+    /// in principle an indicator can return multiple graph series, which might require
+    /// different display types, currently they are all the same, so 'n' is ignored
+    virtual const overlay_type get_overlay(int n) const { return overlay_; }
+
+    // ----------------------------------------------------------------------------
+    virtual const param_list& get_params() const { return params_; }
+    virtual void set_params(const param_list& p) { params_ = p; }
+
+    // ----------------------------------------------------------------------------
+    virtual const y_limits get_ylimits() const { return {0.0, 1.0}; }
+
+    // ----------------------------------------------------------------------------
     virtual int num_inputs() const { return 1; }
     virtual int num_outputs() const { return 1; }
-
-    virtual overlay_type output_overlay_type(int n) const { return overlay_type::price; }
 
     // ----------------------------------------------------------------------------
     // create a dataset for each indicator output

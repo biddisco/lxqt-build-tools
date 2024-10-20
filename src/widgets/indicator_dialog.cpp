@@ -176,11 +176,11 @@ void indicator_dialog::refresh_gui(int index)
   ui.description->setText(QString(desc.c_str()));
 
   QGridLayout* layout = new QGridLayout;
-  int nparams = std::visit([](auto const& obj) { return obj.params.size(); }, alg);
+  int nparams = std::visit([](auto const& obj) { return obj.get_params().size(); }, alg);
   for (int i = 0; i < nparams; ++i)
   {
     // get the i-th param from the variant algorithm list
-    auto p = std::visit([=](auto const& obj) { return obj.params[i]; }, alg);
+    auto p = std::visit([=](auto const& obj) { return obj.get_params()[i]; }, alg);
     // draw datasets in left column, params in right
     int column = std::visit([&](auto const& v) { return get_column(v); }, std::get<1>(p));
 
@@ -204,24 +204,28 @@ void indicator_dialog::refresh_gui(int index)
 
 // ----------------------------------------------------------------------------
 // copy user params from dialog into default indicator param object
-// so that they are there again next time the dialog is opened
+// so that they persist and are there again next time the dialog is opened
 void indicator_dialog::update_parameters()
 {
   int index = ui.algorithm->currentIndex();
   // get a reference to indicator in the global indicators list
   auto& alg = indicators::available_indicators[index];
-  // get the number of params it has
-  int nparams = std::visit([](auto const& obj) { return obj.params.size(); }, alg);
-  for (int i = 0; i < nparams; ++i)
-  {
-    // get a reference to the i-th param from the variant algorithm list
-    auto& p = std::visit([=](auto& obj) -> auto& { return obj.params[i]; }, alg);
 
+  // create a new param list from the gui widget
+  indicators::param_list new_params;
+  new_params = std::visit([](auto const& obj) { return obj.get_params(); }, alg);
+
+  for (int i = 0; i < new_params.size(); ++i)
+  {
     // get the widget that represents the param
     QWidget* widget = params[i];
+
     // update the param value from the widget
-    std::visit([&](auto& v) { set_param(widget, v); }, std::get<1>(p));
+    std::visit([i, widget](auto& value) { set_param(widget, value); }, std::get<1>(new_params[i]));
   }
+
+  // overwrite the original params with the new default / updated values
+  std::visit([&](auto& obj) { obj.set_params(new_params); }, alg);
 }
 
 // ----------------------------------------------------------------------------

@@ -10,39 +10,35 @@
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  struct stochastic_oscillator : indicator_base
+  class stochastic_oscillator : public indicator_base
   {
-    // fields required for auto gui generation
-    const std::string get_name() const override { return "Stochastic Oscillator"; }
-    const std::string get_description() const override
-    {
-      return "Stochastic Oscillator default 14 period";
-    }
-    const overlay_type overlay = overlay_type::minmax_limit;
-    const y_limits ylimits = {0.0, 1.0};
-
-    param_list params = {
-        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-        std::make_tuple<QString, param_types>("Window size", 14)};
-
+public:
     // ---------------------------------------
-    // Default constructor
+    /// Default constructor
     stochastic_oscillator()
-      : buffer_{}
+      : indicator_base("Stochastic Oscillator", "Stochastic Oscillator", overlay_type::minmax_limit)
+      , buffer_{}
       , stoch_val_{0.5}
       , mode_{1}
     {
     }
 
     // ---------------------------------------
-    // initialize internals from a parameter list
-    void initialize()
+    /// fields required for auto gui generation
+    void init_params() override
     {
-      auto window_size = std::get<int>(std::get<1>(params[1]));
+      params_ = {//
+          std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+          std::make_tuple<QString, param_types>("Window size", 14)};
+    }
+
+    // ---------------------------------------
+    /// initialize internals from a parameter list
+    void initialize() override
+    {
+      auto window_size = std::get<int>(std::get<1>(params_[1]));
       buffer_ = boost::circular_buffer<double>(window_size);
-      //auto mode = std::get<int>(std::get<1>(params[2]));
-      //
-      //mode_ = mode;
+      // mode_ = std::get<int>(std::get<1>(params_[2]));
     }
 
     // ---------------------------------------

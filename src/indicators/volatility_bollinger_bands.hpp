@@ -9,32 +9,17 @@
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  struct volatility_bollinger_bands : indicator_base
+  class volatility_bollinger_bands : public indicator_base
   {
+public:
     using result_type = std::vector<float>;
 
     // ---------------------------------------
-    // fields required for auto gui generation
-    const std::string get_name() const override { return "Bollinger-Bands"; }
-    const std::string get_description() const override
-    {
-      return "Bollinger-Bands default 14 period";
-    }
-    const overlay_type overlay = overlay_type::price;
-
-    const QChar sigma = QChar(0xc3, 0x03);
-
-    param_list params = {
-        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-        std::make_tuple<QString, param_types>("Window size", 14),
-        std::make_tuple<QString, param_types>("mode", ohlc_modes::close),
-        std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 2)};
-
-    // ---------------------------------------
-    // Default constructor
+    /// Default constructor
     volatility_bollinger_bands(
         int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 2)
-      : average_{}
+      : indicator_base("Bollinger-Bands", "Bollinger-Bands", overlay_type::price)
+      , average_{}
       , num_bands_{num_bands}
       , window_size_(window_size)
       , mode_(mode)
@@ -43,16 +28,29 @@ namespace indicators {
     }
 
     // ---------------------------------------
+    /// fields required for auto gui generation
+    void init_params() override
+    {
+      params_ = {//
+          std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+          std::make_tuple<QString, param_types>("Window size", 14),
+          std::make_tuple<QString, param_types>("mode", ohlc_modes::close),
+          std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 2)};
+    }
+
+    // ---------------------------------------
+    /// override outputs as we produce upper/lower bands
     int num_outputs() const override { return 1 + (2 * num_bands_); }
 
     // ---------------------------------------
-    // initialize internals from a parameter list
-    void initialize()
+    /// initialize internals from a parameter list
+    void initialize() override
     {
-      window_size_ = std::get<int>(std::get<1>(params[1]));
-      mode_ = std::get<ohlc_modes>(std::get<1>(params[2]));
-      num_bands_ = std::get<int>(std::get<1>(params[3]));
-      average_ = moving_average(window_size_, mode_);
+      init_params();
+      window_size_ = std::get<int>(std::get<1>(params_[1]));
+      mode_ = std::get<ohlc_modes>(std::get<1>(params_[2]));
+      num_bands_ = std::get<int>(std::get<1>(params_[3]));
+      // average_ = moving_average(window_size_, mode_);
       buffer_ = boost::circular_buffer<float>(window_size_);
     }
 

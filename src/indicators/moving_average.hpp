@@ -15,50 +15,43 @@ namespace indicators {
   namespace ba = boost::accumulators;
 
   //----------------------------------------------------------------------------
-  struct moving_average : indicator_base
+  class moving_average : public indicator_base
   {
-    // ---------------------------------------
-    // fields required for auto gui generation
-    const std::string get_name() const override { return "Moving Average"; }
-    const std::string get_description() const override { return "Simple Moving Average"; }
-    const overlay_type overlay = overlay_type::mode_select;
-
-    param_list params = {
-        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-        std::make_tuple<QString, param_types>("Window size", 14),
-        std::make_tuple<QString, param_types>("mode", ohlc_modes::mid_open_close)};
-
+public:
     // ---------------------------------------
     // Default constructor
     moving_average(int window_size = 14, ohlc_modes mode = ohlc_modes::low)
-      : window_size_(window_size)
+      : indicator_base("Moving Average", "Simple Moving Average", overlay_type::mode_select)
+      , window_size_(window_size)
       , mode_(mode)
       , mean_(0)
       , decay_acc_(ba::tag::rolling_window::window_size = window_size)
     {
     }
 
-    moving_average& operator=(const moving_average& other)
+    // ---------------------------------------
+    /// fields required for auto gui generation
+    void init_params() override
     {
-      window_size_ = other.window_size_;
-      mode_ = other.mode_;
-      mean_ = other.mean_;
-      decay_acc_ = other.decay_acc_;
-      return *this;
+      params_ = {//
+          std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+          std::make_tuple<QString, param_types>("Window size", 14),
+          std::make_tuple<QString, param_types>("mode", ohlc_modes::mid_open_close)};
     }
 
     // ---------------------------------------
-    // initialize internals from a parameter list
-    void initialize()
+    /// initialize internals from a parameter list
+    void initialize() override
     {
-      window_size_ = std::get<int>(std::get<1>(params[1]));
-      mode_ = std::get<ohlc_modes>(std::get<1>(params[2]));
+      window_size_ = std::get<int>(std::get<1>(params_[1]));
+      mode_ = std::get<ohlc_modes>(std::get<1>(params_[2]));
       //
       decay_acc_ = ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>>(
           ba::tag::rolling_window::window_size = window_size_);
       mean_ = 0;
     }
 
+    // ---------------------------------------
     double operator()(const double price)
     {
       // insert data into boost accumulator
@@ -67,15 +60,15 @@ namespace indicators {
       return mean_;
     }
 
+    // ---------------------------------------
     double operator()(ohlctv_sample const& ohlc)
     {
       double price = ohlc_mode_extract(mode_, ohlc);
       return operator()(price);
     }
 
+    // ---------------------------------------
     inline double getLastResult() { return mean_; }
-
-    void generate(std::shared_ptr<ohlc_dataset_view>&) {}
 
 private:
     int window_size_;

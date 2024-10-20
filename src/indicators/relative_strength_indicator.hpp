@@ -8,23 +8,14 @@
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  struct relative_strength_indicator : indicator_base
+  class relative_strength_indicator : public indicator_base
   {
+public:
     // ---------------------------------------
-    // fields required for auto gui generation
-    const std::string get_name() const override { return "RSI"; }
-    const std::string get_description() const override { return "RSI default 14 period"; }
-    const overlay_type overlay = overlay_type::minmax_limit;
-    const y_limits ylimits = {0.0, 1.0};
-
-    param_list params = {
-        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-        std::make_tuple<QString, param_types>("Window size", 14)};
-
-    // ---------------------------------------
-    // Default constructor
+    /// Default constructor
     relative_strength_indicator()
-      : pos_diff{0}
+      : indicator_base("RSI", "Relatve Strength Indicator", overlay_type::minmax_limit)
+      , pos_diff{0}
       , neg_diff{0}
       , count{0}
       , av_neg_d{0}
@@ -37,11 +28,20 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    // initialize internals from a parameter list
-    void initialize()
+    /// fields required for auto gui generation
+    void init_params() override
     {
-      auto window_size = std::get<int>(std::get<1>(params[1]));
-      //auto mode = std::get<int>(std::get<1>(params[2]));
+      params_ = {//
+          std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+          std::make_tuple<QString, param_types>("Window size", 14)};
+    }
+
+    // ---------------------------------------
+    /// initialize internals from a parameter list
+    void initialize() override
+    {
+      auto window_size = std::get<int>(std::get<1>(params_[1]));
+      //auto mode = std::get<int>(std::get<1>(params_[2]));
       //
       period_ = window_size;
       pos_diff = 0;

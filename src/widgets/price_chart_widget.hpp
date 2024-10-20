@@ -25,7 +25,7 @@ struct indicator_data
 {
   QString text;
   QString params;
-  //  indicators::indicator_variant indicator;
+  std::shared_ptr<indicators::indicator_base> indicator;
   indicator_plot* plot;
   std::vector<timebased_data_curve*> curves;
 };
@@ -65,7 +65,7 @@ class price_chart_widget : public QWidget
   private:
   Ui::price_chart_widget* ui;
   //
-  ohlc_price_plot* crypto_price_plot_;
+  ohlc_price_plot* price_plot_;
   std::vector<indicator_plot*> filter_plots_;
   indicator_plot* assets_plot_;
   QPushButton* btn_indicator_;
@@ -87,9 +87,9 @@ class price_chart_widget : public QWidget
 
   void update_live_data(ohlctv_sample const& new_sample)
   {
-    crypto_price_plot_->update_live_data(new_sample);
+    price_plot_->update_live_data(new_sample);
   }
-  void replot() { crypto_price_plot_->replot(); }
+  void replot() { price_plot_->replot(); }
 
   void show_plot_axes();
 

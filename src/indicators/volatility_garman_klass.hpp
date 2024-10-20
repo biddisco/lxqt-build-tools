@@ -11,32 +11,17 @@
 
 namespace indicators {
   //----------------------------------------------------------------------------
-  struct volatility_garman_klass : indicator_base
+  struct volatility_garman_klass : public indicator_base
   {
+public:
     using result_type = std::vector<float>;
 
     // ---------------------------------------
-    // fields required for auto gui generation
-    const std::string get_name() const override { return "Garman-Klass"; }
-    const std::string get_description() const override
-    {
-      return "Garman-Klass volatility (default 14 period)";
-    }
-    const overlay_type overlay = overlay_type::price;
-
-    const QChar sigma = QChar(0xc3, 0x03);
-
-    param_list params = {
-        std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-        std::make_tuple<QString, param_types>("Window size", 20),
-        std::make_tuple<QString, param_types>("scale factor", 1.0),
-        std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
-
-    // ---------------------------------------
-    // Default constructor
+    /// Default constructor
     volatility_garman_klass(
         int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
-      : average_{}
+      : indicator_base("Garman-Klass", "Garman-Klass volatility", overlay_type::price)
+      , average_{}
       , buffer1_(window_size)
       , buffer2_(window_size)
       , scale_{1.0}
@@ -46,16 +31,28 @@ namespace indicators {
     }
 
     // ---------------------------------------
+    /// fields required for auto gui generation
+    void init_params() override
+    {
+      params_ = {//
+          std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+          std::make_tuple<QString, param_types>("Window size", 20),
+          std::make_tuple<QString, param_types>("scale factor", 1.0),
+          std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
+    }
+
+    // ---------------------------------------
+    /// override outputs as we produce upper/lower bands
     int num_outputs() const override { return 1 + (2 * num_bands_); }
 
     // ---------------------------------------
-    // initialize internals from a parameter list
-    void initialize()
+    /// initialize internals from a parameter list
+    void initialize() override
     {
-      auto resolution_ = std::get<candle_res>(std::get<1>(params[0]));
-      window_size_ = std::get<int>(std::get<1>(params[1]));
-      scale_ = std::get<double>(std::get<1>(params[2]));
-      num_bands_ = std::get<int>(std::get<1>(params[3]));
+      auto resolution_ = std::get<candle_res>(std::get<1>(params_[0]));
+      window_size_ = std::get<int>(std::get<1>(params_[1]));
+      scale_ = std::get<double>(std::get<1>(params_[2]));
+      num_bands_ = std::get<int>(std::get<1>(params_[3]));
       buffer1_ = boost::circular_buffer<float>(window_size_);
       buffer2_ = boost::circular_buffer<float>(window_size_);
     }
