@@ -7,6 +7,7 @@
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
+#include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/relative_strength_indicator.hpp"
 #include "indicators/stochastic_oscillator.hpp"

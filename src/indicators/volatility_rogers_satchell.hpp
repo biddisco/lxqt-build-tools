@@ -4,6 +4,7 @@
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
+#include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 
