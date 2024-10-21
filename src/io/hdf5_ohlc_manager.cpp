@@ -16,7 +16,7 @@ using namespace grox::debug;
 constexpr int debug_level = 9;
 //
 template <int Level>
-static print_threshold<Level, debug_level> man_dbg("DManager");
+inline constexpr print_threshold<Level, debug_level> man_dbg("DManager");
 
 // ----------------------------------------------------------------------------
 hdf5_ohlc_manager::hdf5_ohlc_manager() {}

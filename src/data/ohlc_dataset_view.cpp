@@ -18,7 +18,7 @@ using namespace grox::debug;
 constexpr int debug_level = 5;
 //
 template <int Level>
-static print_threshold<Level, debug_level> man_dbg("DataView");
+inline constexpr print_threshold<Level, debug_level> man_dbg("DataView");
 
 // ----------------------------------------------------------------------------
 ohlc_dataset_view::ohlc_dataset_view(std::string exchange, const currency_pair& cp)

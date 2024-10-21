@@ -12,7 +12,7 @@
 
 // ----------------------------------------------------------------------------
 template <int Level>
-inline grox::debug::print_threshold<Level, 5> indicator_dbg("Indicate");
+inline constexpr grox::debug::print_threshold<Level, 5> indicator_dbg("Indicate");
 
 // ----------------------------------------------------------------------------
 namespace indicators {

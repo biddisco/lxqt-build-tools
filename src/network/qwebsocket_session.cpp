@@ -13,7 +13,7 @@
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
 template <int Level>
-static print_threshold<Level, 5> qsession_dbg("QSession");
+inline constexpr print_threshold<Level, 5> qsession_dbg("QSession");
 // ----------------------------------------------------------------------------
 
 namespace net::ws {

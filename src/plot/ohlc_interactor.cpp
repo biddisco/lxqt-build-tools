@@ -19,7 +19,7 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> inter_dbg("interact");
+inline constexpr print_threshold<Level, debug_level> inter_dbg("interact");
 
 // ----------------------------------------------------------------------------
 class ohlc_interactor::PrivateData

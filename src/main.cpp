@@ -28,7 +28,7 @@ using namespace pika::debug::detail;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
 template <int Level>
-static print_threshold<Level, 5> app_dbg("App-Main");
+inline constexpr print_threshold<Level, 5> app_dbg("App-Main");
 
 // save these to pass to Qt init.
 static int argc;

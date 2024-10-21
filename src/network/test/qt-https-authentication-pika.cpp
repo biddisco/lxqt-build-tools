@@ -36,7 +36,7 @@ namespace {
   using namespace grox::debug;
   constexpr int gdeb_level = 3;
   template <int Level>
-  static print_threshold<Level, gdeb_level> test1_dbg("https://");
+  inline constexpr print_threshold<Level, gdeb_level> test1_dbg("https://");
 }    // namespace
 
 // ----------------------------------------------------------------------------

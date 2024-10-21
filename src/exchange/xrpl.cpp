@@ -29,7 +29,7 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> xrpl_dbg("XRPLFunc");
+inline constexpr print_threshold<Level, debug_level> xrpl_dbg("XRPLFunc");
 
 // ----------------------------------------------------------------------------
 std::string currency_to_hex(std::string_view currency)

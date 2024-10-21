@@ -29,7 +29,7 @@ using namespace nlohmann;
 constexpr int debug_level = 2;
 //
 template <int Level>
-static print_threshold<Level, debug_level> bobook_dbg("bit-book");
+inline constexpr print_threshold<Level, debug_level> bobook_dbg("bit-book");
 
 // ----------------------------------------------------------------------------
 // Bitstamp specific order book processing routines

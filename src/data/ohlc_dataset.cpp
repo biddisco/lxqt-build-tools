@@ -16,7 +16,7 @@ using namespace grox::debug;
 constexpr int debug_level = 1;
 //
 template <int Level>
-static print_threshold<Level, debug_level> ohlc_dbg("Datasets");
+inline constexpr print_threshold<Level, debug_level> ohlc_dbg("Datasets");
 
 // ----------------------------------------------------------------------------
 ohlc_dataset::ohlc_dataset(candle_res res, std::string const& name)

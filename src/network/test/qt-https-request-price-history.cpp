@@ -19,7 +19,7 @@ static std::atomic<int> counter{0};
 using namespace grox::debug;
 //
 template <int Level>
-static print_threshold<Level, 6> test_dbg("Test");
+inline constexpr print_threshold<Level, 6> test_dbg("Test");
 
 // ----------------------------------------------------------------------------
 struct price

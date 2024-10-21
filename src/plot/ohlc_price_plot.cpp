@@ -45,7 +45,7 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> plot_dbg("OHLCplot");
+inline constexpr print_threshold<Level, debug_level> plot_dbg("OHLCplot");
 
 // ----------------------------------------------------------------------------
 void fill_text_label(QwtText& label)

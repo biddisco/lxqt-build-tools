@@ -29,7 +29,7 @@ using namespace nlohmann;
 constexpr int debug_level = 6;
 //
 template <int Level>
-static print_threshold<Level, debug_level> xbook_dbg("xrplbook");
+inline constexpr print_threshold<Level, debug_level> xbook_dbg("xrplbook");
 
 // ----------------------------------------------------------------------------
 // XRP ledger specific order book processing routines

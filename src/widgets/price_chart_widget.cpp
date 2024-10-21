@@ -30,7 +30,7 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> pplot_dbg("PricePlt");
+inline constexpr print_threshold<Level, debug_level> pplot_dbg("PricePlt");
 
 // ----------------------------------------------------------------------------
 price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dataset_view> ohlc,

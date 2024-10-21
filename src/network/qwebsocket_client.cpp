@@ -34,7 +34,7 @@ namespace net::ws {
   // ----------------------------------------------------------------------------
   using namespace grox::debug;
   template <int Level>
-  static print_threshold<Level, 5> qwebsocket_dbg("QWebsock");
+  inline constexpr print_threshold<Level, 5> qwebsocket_dbg("QWebsock");
 
   // ------------------------------------------------------------------
   qwebsocket_client::qwebsocket_client(const std::string& id, const QUrl& url, QString subscribe,

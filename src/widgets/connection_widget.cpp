@@ -17,7 +17,7 @@ using namespace grox::debug;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
 template <int Level>
-static print_threshold<Level, 2> conn_dbg("CxWidget");
+inline constexpr print_threshold<Level, 2> conn_dbg("CxWidget");
 
 // ----------------------------------------------------------------------------
 connection_widget::connection_widget(QWidget* parent, exchange* ex)

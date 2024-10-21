@@ -37,7 +37,7 @@ namespace ex = pika::execution::experimental;
 
 // ----------------------------------------------------------------------------
 template <int Level>
-static print_threshold<Level, 3> bitstamp_dbg("Bitstamp");
+inline constexpr print_threshold<Level, 3> bitstamp_dbg("Bitstamp");
 
 // ----------------------------------------------------------------------------
 std::string what(const std::exception_ptr& eptr = std::current_exception())

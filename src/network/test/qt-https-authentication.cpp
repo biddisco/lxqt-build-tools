@@ -28,7 +28,7 @@ QNetworkAccessManager networkmanager;
 using namespace grox::debug;
 //
 template <int Level>
-static print_threshold<Level, 2> test1_dbg("https://");
+inline constexpr print_threshold<Level, 2> test1_dbg("https://");
 
 // ----------------------------------------------------------------------------
 void account_request(QNetworkAccessManager& networkmanager_, const std::string& url_path,

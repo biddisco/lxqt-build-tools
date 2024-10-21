@@ -40,7 +40,7 @@ using namespace grox::senders;
 using namespace nlohmann;
 //
 template <int Level>
-static print_threshold<Level, 7> xrpnet_dbg("XRP-legr");
+inline constexpr print_threshold<Level, 7> xrpnet_dbg("XRP-legr");
 
 // ----------------------------------------------------------------------------
 xrpl_network::xrpl_network(bool testnet)

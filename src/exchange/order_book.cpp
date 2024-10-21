@@ -28,7 +28,7 @@ using namespace nlohmann;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> obook_dbg("ord-book");
+inline constexpr print_threshold<Level, debug_level> obook_dbg("ord-book");
 
 // ----------------------------------------------------------------------------
 // WARNING

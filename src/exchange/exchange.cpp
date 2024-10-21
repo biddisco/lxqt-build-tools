@@ -10,7 +10,7 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> exchange_dbg("Exchange");
+inline constexpr print_threshold<Level, debug_level> exchange_dbg("Exchange");
 
 // ----------------------------------------------------------------------------
 exchange::exchange()

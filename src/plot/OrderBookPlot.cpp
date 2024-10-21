@@ -23,7 +23,7 @@ using namespace grox::debug;
 constexpr int debug_level = 9;
 //
 template <int Level>
-static print_threshold<Level, debug_level> book_dbg("ord-plot");
+inline constexpr print_threshold<Level, debug_level> book_dbg("ord-plot");
 
 // ----------------------------------------------------------------------------
 OrderBookPlot::OrderBookPlot(QWidget* parent, std::shared_ptr<order_book_base> order_book)

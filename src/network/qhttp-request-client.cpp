@@ -11,7 +11,7 @@
 using namespace grox::debug;
 //
 template <int Level>
-static print_threshold<Level, 1> http_dbg("https://");
+inline constexpr print_threshold<Level, 1> http_dbg("https://");
 
 // ----------------------------------------------------------------------------
 namespace net::http {
