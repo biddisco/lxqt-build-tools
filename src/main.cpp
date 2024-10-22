@@ -404,7 +404,7 @@ void init_resource_partitioner_handler(
   // set the schedule mode for the default pool
   //  rp.create_thread_pool("default", pika::resource::scheduling_policy::shared_priority, mode);
   rp.create_thread_pool("default", pika::resource::scheduling_policy::unspecified, mode);
-  rp.add_resource(rp.numa_domains()[0].cores()[0].pus()[0], qt_pool_name);
+  rp.add_resource(rp.sockets()[0].cores()[0].pus()[0], qt_pool_name);
 }
 
 //----------------------------------------------------------------------------
