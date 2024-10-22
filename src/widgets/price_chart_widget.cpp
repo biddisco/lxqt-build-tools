@@ -236,44 +236,43 @@ void price_chart_widget::connect_gui()
       // now execute the algorithm
       std::visit(
           [this](auto& alg) {
-            alg.initialize();
             using atype = std::decay<decltype(alg)>::type;
-            // std::cout << grox::debug::print_type<atype>() << std::endl;
+
             // create a new copy of the algorithm
             std::shared_ptr<atype> temp = std::make_shared<atype>();
             *temp = alg;
+            temp->initialize();
 
             // convert the dataset name selections in the dialog into actual datasets
-            std::vector<ohlc_dataset*> in_datasets =
-                indicators::get_datasets(alg.get_params(), hdf5_ohlc_);
+            std::vector<ohlc_dataset*> in_datasets = temp->get_datasets(hdf5_ohlc_);
 
             // create a dataset for each indicator output
-            std::vector<point_chart_data*> out_datasets = alg.create_outputs(in_datasets);
+            std::vector<point_chart_data*> out_datasets = temp->create_outputs(in_datasets);
 
             // iterate over the input dataset, executing the algorithm for each point
-            indicators::call_algorithm_operator(alg, in_datasets, out_datasets);
+            indicators::call_algorithm_operator(*temp, in_datasets, out_datasets);
 
             QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"),
                 QColor("darkRed"), QColor("darkCyan"), QColor("darkMagenta"), QColor("green"),
                 QColor("darkGreen"), QColor("yellow"), QColor("blue")};
             auto colour = colours[colour_count++ % 10];
 
-            QString name = QString(alg.get_name().c_str());
+            QString name = QString(temp->get_name().c_str());
             indicator_plot* plot = nullptr;
-            QString params = QString(indicators::param_string(alg.get_params()).c_str());
+            QString params = QString(indicators::param_string(temp->get_params()).c_str());
 
             // create an indicator_data object with empty curves data
             indicator_data i_data{name, params, temp, plot, {}};
 
-            for (int i = 0; i < alg.num_outputs(); ++i)
+            for (int i = 0; i < temp->num_outputs(); ++i)
             {
-              auto ot = alg.get_overlay(i);
+              auto ot = temp->get_overlay(i);
               timebased_data_curve* curve;
               if (ot == indicators::overlay_type::price)
                 curve = price_plot_->add_overlay_curve(name, out_datasets[i], colour);
               else if (ot == indicators::overlay_type::mode_select)
               {
-                ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(alg.get_params()[2]));
+                ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(temp->get_params()[2]));
                 if (mode == ohlc_modes::volume)
                   curve = price_plot_->add_overlay_volume_curve(name, out_datasets[i], colour);
                 else if (mode == ohlc_modes::value)
@@ -285,9 +284,6 @@ void price_chart_widget::connect_gui()
                 std::tie(i_data.plot, curve) = add_indicator_plot(name, out_datasets[i], colour);
               i_data.curves.push_back(curve);
             }
-
-            using alg_type = std::decay<decltype(alg)>;
-            // std::shared_ptr<indicators::indicator_base> algp = std::make_shared<alg_type>();
 
             ind_model_.indicators_.push_back(i_data);
             ind_model_.dataAdded();

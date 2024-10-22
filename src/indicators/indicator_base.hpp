@@ -83,6 +83,22 @@ public:
       }
       return output_datasets;
     }
+
+    // ----------------------------------------------------------------------------
+    // iterate over the parameters returned from an indicator selection dialog and
+    // find the datasets of the right resolution in the datasets view
+    std::vector<ohlc_dataset*> get_datasets(std::shared_ptr<ohlc_dataset_view> view)
+    {
+      std::vector<ohlc_dataset*> result;
+      for (auto const& p : get_params())
+      {
+        if (const candle_res* c = std::get_if<candle_res>(&std::get<1>(p)))
+        {
+          result.push_back(view->get_dataset(*c));
+        }
+      }
+      return result;
+    }
   };
 
 }    // namespace indicators

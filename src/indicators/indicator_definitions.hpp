@@ -66,23 +66,6 @@ namespace indicators {
       types_generator<indicator_typelist>::generate();
 
   // ----------------------------------------------------------------------------
-  // iterate over the parameters returned from an indicator selection dialog and
-  // find the datasets of the right resolution in the datasets view
-  static std::vector<ohlc_dataset*> get_datasets(
-      param_list const& params, std::shared_ptr<ohlc_dataset_view> view)
-  {
-    std::vector<ohlc_dataset*> result;
-    for (auto const& p : params)
-    {
-      if (const candle_res* c = std::get_if<candle_res>(&std::get<1>(p)))
-      {
-        result.push_back(view->get_dataset(*c));
-      }
-    }
-    return result;
-  }
-
-  // ----------------------------------------------------------------------------
   /// The algorithm might not return a single value, so we provide
   /// overloads that can handle vectors of values
   template <typename Algorithm,
