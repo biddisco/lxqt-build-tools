@@ -33,6 +33,11 @@ template <int Level>
 inline constexpr print_threshold<Level, debug_level> pplot_dbg("PricePlt");
 
 // ----------------------------------------------------------------------------
+QColor chart_colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QColor("darkRed"),
+    QColor("darkCyan"), QColor("darkMagenta"), QColor("green"), QColor("darkGreen"),
+    QColor("yellow"), QColor("blue")};
+
+// ----------------------------------------------------------------------------
 price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dataset_view> ohlc,
     std::shared_ptr<exchange> ex, currency_pair cp)
   : QWidget(parent)
@@ -227,9 +232,6 @@ void price_chart_widget::connect_gui()
     auto result = in_dialog.exec();
     if (result == QDialog::Accepted)
     {
-      std::shared_ptr<indicators::moving_average> temp =
-          std::make_shared<indicators::moving_average>();
-
       static int colour_count = 0;
       // copy the algorithm out of the dialog
       auto indicator = in_dialog.get_algorithm();
@@ -238,41 +240,36 @@ void price_chart_widget::connect_gui()
           [this](auto& alg) {
             using atype = std::decay<decltype(alg)>::type;
 
-            // create a new copy of the algorithm
-            std::shared_ptr<atype> temp = std::make_shared<atype>();
-            *temp = alg;
-            temp->initialize();
+            // create a new instance of the algorithm with internals copied from dialog
+            std::shared_ptr<atype> algorithm = indicators::indicator_base::create(alg);
 
             // convert the dataset name selections in the dialog into actual datasets
-            std::vector<ohlc_dataset*> in_datasets = temp->get_datasets(hdf5_ohlc_);
+            std::vector<ohlc_dataset*> in_datasets = algorithm->get_datasets(hdf5_ohlc_);
 
             // create a dataset for each indicator output
-            std::vector<point_chart_data*> out_datasets = temp->create_outputs(in_datasets);
+            std::vector<point_chart_data*> out_datasets = algorithm->create_outputs(in_datasets);
 
             // iterate over the input dataset, executing the algorithm for each point
-            indicators::call_algorithm_operator(*temp, in_datasets, out_datasets);
+            indicators::call_algorithm_operator(*algorithm, in_datasets, out_datasets);
 
-            QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"),
-                QColor("darkRed"), QColor("darkCyan"), QColor("darkMagenta"), QColor("green"),
-                QColor("darkGreen"), QColor("yellow"), QColor("blue")};
-            auto colour = colours[colour_count++ % 10];
+            auto colour = chart_colours[colour_count++ % 10];
 
-            QString name = QString(temp->get_name().c_str());
             indicator_plot* plot = nullptr;
-            QString params = QString(indicators::param_string(temp->get_params()).c_str());
+            QString name = QString(algorithm->get_name().c_str());
+            QString params = QString(indicators::param_string(algorithm->get_params()).c_str());
 
             // create an indicator_data object with empty curves data
-            indicator_data i_data{name, params, temp, plot, {}};
+            indicator_data i_data{name, params, algorithm, plot, {}};
 
-            for (int i = 0; i < temp->num_outputs(); ++i)
+            for (int i = 0; i < algorithm->num_outputs(); ++i)
             {
-              auto ot = temp->get_overlay(i);
+              auto ot = algorithm->get_overlay(i);
               timebased_data_curve* curve;
               if (ot == indicators::overlay_type::price)
                 curve = price_plot_->add_overlay_curve(name, out_datasets[i], colour);
               else if (ot == indicators::overlay_type::mode_select)
               {
-                ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(temp->get_params()[2]));
+                ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(algorithm->get_params()[2]));
                 if (mode == ohlc_modes::volume)
                   curve = price_plot_->add_overlay_volume_curve(name, out_datasets[i], colour);
                 else if (mode == ohlc_modes::value)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <variant>
 #include <vector>
 
@@ -28,6 +29,20 @@ protected:
     param_list params_;
 
 public:
+    /// constructor factory for a type
+    template <typename Algorithm>
+    static std::shared_ptr<Algorithm> create(const Algorithm& alg)
+    {
+      // create a new instance of the algorithm
+      std::shared_ptr<Algorithm> result = std::make_shared<Algorithm>();
+      // copy from dialog into new instance
+      *result = alg;
+      // init internal structures
+      result->initialize();
+      //
+      return result;
+    }
+
     // ----------------------------------------------------------------------------
     indicator_base(const std::string& name, const std::string& desc, overlay_type overlay)
       : name_(name)
