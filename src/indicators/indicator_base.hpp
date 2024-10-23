@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "data/ohlc_data_resolutions.hpp"
+#include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
 #include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
@@ -28,10 +29,15 @@ protected:
     /// list of parameters/types that need to be supplied for GUI generation and execution
     param_list params_;
 
+    /// list of input datasets
+    std::vector<ohlc_dataset*> in_datasets_;
+    std::vector<point_chart_data*> out_datasets_;
+
 public:
     /// constructor factory for a type
     template <typename Algorithm>
-    static std::shared_ptr<Algorithm> create(const Algorithm& alg)
+    static std::shared_ptr<Algorithm>
+    create(const Algorithm& alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_)
     {
       // create a new instance of the algorithm
       std::shared_ptr<Algorithm> result = std::make_shared<Algorithm>();
@@ -39,6 +45,8 @@ public:
       *result = alg;
       // init internal structures
       result->initialize();
+      // create a dataset for each indicator output
+      result->create_outputs(hdf5_ohlc_);
       //
       return result;
     }
@@ -83,20 +91,24 @@ public:
     virtual int num_outputs() const { return 1; }
 
     // ----------------------------------------------------------------------------
+    virtual const std::vector<ohlc_dataset*>& get_input_data() const { return in_datasets_; }
+    virtual std::vector<point_chart_data*>& get_output_datasets() { return out_datasets_; }
+
+    // ----------------------------------------------------------------------------
     // create a dataset for each indicator output
     // default implementation uses first input resolution and size
-    std::vector<point_chart_data*> create_outputs(std::vector<ohlc_dataset*> in_datasets) const
+    void create_outputs(std::shared_ptr<ohlc_dataset_view> view)
     {
-      const candle_res res = in_datasets[0]->get_resolution();
-      const std::size_t size = in_datasets[0]->data().size();
-      std::vector<point_chart_data*> output_datasets;
+      in_datasets_ = get_datasets(view);
+      //
+      const candle_res res = in_datasets_[0]->get_resolution();
+      const std::size_t size = in_datasets_[0]->data().size();
       for (int i = 0; i < num_outputs(); ++i)
       {
         point_chart_data* indicator_data = new point_chart_data(res);
         indicator_data->data().reserve(size);
-        output_datasets.push_back(indicator_data);
+        out_datasets_.push_back(indicator_data);
       }
-      return output_datasets;
     }
 
     // ----------------------------------------------------------------------------

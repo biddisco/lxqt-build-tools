@@ -71,14 +71,16 @@ namespace indicators {
   template <typename Algorithm,
       typename std::enable_if_t<std::is_same<typename Algorithm::result_type, double>::value, bool>
           Enable = false>
-  void call_algorithm_operator(Algorithm& alg, const std::vector<ohlc_dataset*> in_datasets,
-      std::vector<point_chart_data*>& out_datasets)
+  void call_algorithm_operator(Algorithm& alg)
   {
-    for (auto const& ohlc : in_datasets[0]->data())
+    const auto input = alg.get_input_data()[0];
+    auto output = alg.get_output_datasets()[0];
+    //
+    for (auto const& ohlc : input->data())
     {
       auto vals = alg.operator()(ohlc);
       QPointF xyval(ohlc.time, vals);
-      out_datasets[0]->data().push_back(xyval);
+      output->data().push_back(xyval);
     }
   }
 
@@ -86,16 +88,18 @@ namespace indicators {
       typename std::enable_if_t<
           std::is_same<typename Algorithm::result_type, std::vector<float>>::value, bool>
           Enable = false>
-  void call_algorithm_operator(Algorithm& alg, const std::vector<ohlc_dataset*> in_datasets,
-      std::vector<point_chart_data*>& out_datasets)
+  void call_algorithm_operator(Algorithm& alg)
   {
-    for (auto const& ohlc : in_datasets[0]->data())
+    auto const input = alg.get_input_data()[0];
+    auto outputs = alg.get_output_datasets();
+    //
+    for (auto const& ohlc : input->data())
     {
       auto vals = alg.operator()(ohlc);
       for (int i = 0; i < alg.num_outputs(); ++i)
       {
         QPointF xyval(ohlc.time, vals[i]);
-        out_datasets[i]->data().push_back(xyval);
+        outputs[i]->data().push_back(xyval);
       }
     }
   }

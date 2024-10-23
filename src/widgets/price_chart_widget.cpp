@@ -238,19 +238,14 @@ void price_chart_widget::connect_gui()
       // now execute the algorithm
       std::visit(
           [this](auto& alg) {
-            using atype = std::decay<decltype(alg)>::type;
+            using algorithm_type = std::decay<decltype(alg)>::type;
 
             // create a new instance of the algorithm with internals copied from dialog
-            std::shared_ptr<atype> algorithm = indicators::indicator_base::create(alg);
-
-            // convert the dataset name selections in the dialog into actual datasets
-            std::vector<ohlc_dataset*> in_datasets = algorithm->get_datasets(hdf5_ohlc_);
-
-            // create a dataset for each indicator output
-            std::vector<point_chart_data*> out_datasets = algorithm->create_outputs(in_datasets);
+            std::shared_ptr<algorithm_type> algorithm =
+                indicators::indicator_base::create(alg, hdf5_ohlc_);
 
             // iterate over the input dataset, executing the algorithm for each point
-            indicators::call_algorithm_operator(*algorithm, in_datasets, out_datasets);
+            indicators::call_algorithm_operator(*algorithm);
 
             auto colour = chart_colours[colour_count++ % 10];
 
@@ -266,19 +261,24 @@ void price_chart_widget::connect_gui()
               auto ot = algorithm->get_overlay(i);
               timebased_data_curve* curve;
               if (ot == indicators::overlay_type::price)
-                curve = price_plot_->add_overlay_curve(name, out_datasets[i], colour);
+                curve = price_plot_->add_overlay_curve(
+                    name, algorithm->get_output_datasets()[i], colour);
               else if (ot == indicators::overlay_type::mode_select)
               {
                 ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(algorithm->get_params()[2]));
                 if (mode == ohlc_modes::volume)
-                  curve = price_plot_->add_overlay_volume_curve(name, out_datasets[i], colour);
+                  curve = price_plot_->add_overlay_volume_curve(
+                      name, algorithm->get_output_datasets()[i], colour);
                 else if (mode == ohlc_modes::value)
-                  std::tie(i_data.plot, curve) = add_indicator_plot(name, out_datasets[i], colour);
+                  std::tie(i_data.plot, curve) =
+                      add_indicator_plot(name, algorithm->get_output_datasets()[i], colour);
                 else
-                  curve = price_plot_->add_overlay_curve(name, out_datasets[i], colour);
+                  curve = price_plot_->add_overlay_curve(
+                      name, algorithm->get_output_datasets()[i], colour);
               }
               else
-                std::tie(i_data.plot, curve) = add_indicator_plot(name, out_datasets[i], colour);
+                std::tie(i_data.plot, curve) =
+                    add_indicator_plot(name, algorithm->get_output_datasets()[i], colour);
               i_data.curves.push_back(curve);
             }
 
