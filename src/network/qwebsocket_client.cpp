@@ -65,7 +65,7 @@ namespace net::ws {
     qwebsocket_dbg<2>.debug(fmt::format("{:20s} startConnection", id_, url_));
     //
     websocket_ = new QWebSocket;
-    websocket_->setPauseMode(QAbstractSocket::PauseNever);    // @todo PauseOnSslErrors
+    (*websocket_).setPauseMode(QAbstractSocket::PauseNever);    // @todo PauseOnSslErrors
 
     // connection state
     connect(websocket_, &QWebSocket::connected, this, &qwebsocket_client::onConnected,
@@ -105,7 +105,7 @@ namespace net::ws {
 
     qwebsocket_dbg<2>.debug(fmt::format("{:20s} openConnection {}", id_, url_));
     QNetworkRequest request = QNetworkRequest(QUrl(url_));
-    websocket_->open(request);
+    (*websocket_).open(request);
   }
 
   // ------------------------------------------------------------------
@@ -115,7 +115,7 @@ namespace net::ws {
     {
       qwebsocket_dbg<2>.debug(fmt::format("{:20s} stopConnection : invoking WebSocket close", id_));
       QMetaObject::invokeMethod(websocket_, "close", Qt::QueuedConnection);
-      websocket_->deleteLater();
+      (*websocket_).deleteLater();
       websocket_ = nullptr;
     }
   }
@@ -124,7 +124,7 @@ namespace net::ws {
   void qwebsocket_client::onConnected()
   {
     qwebsocket_dbg<2>.debug(fmt::format("{:20s} Connected : sending subscribe", id_));
-    websocket_->sendTextMessage(subscribe_);
+    (*websocket_).sendTextMessage(subscribe_);
   }
 
   // ------------------------------------------------------------------
@@ -133,7 +133,8 @@ namespace net::ws {
     if (websocket_)
     {
       qwebsocket_dbg<2>.error(fmt::format("{:20s} Disconnected : Unexpected : CloseCode is : {} {}",
-          id_, QVariant::fromValue(websocket_->closeCode()).toString(), websocket_->errorString()));
+          id_, QVariant::fromValue((*websocket_).closeCode()).toString(),
+          (*websocket_).errorString()));
     }
     emit finished();
   }
@@ -150,10 +151,10 @@ namespace net::ws {
   {
     if (websocket_)
     {
-      auto reason = websocket_->closeReason();
+      auto reason = (*websocket_).closeReason();
       qwebsocket_dbg<0>.error(fmt::format(
           "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
-          QVariant::fromValue(websocket_->closeCode()).toString(), websocket_->errorString()));
+          QVariant::fromValue((*websocket_).closeCode()).toString(), (*websocket_).errorString()));
     }
     /*setTimeout(setupWebSocket, 1000);*/
   }
@@ -168,14 +169,14 @@ namespace net::ws {
     // The proper way to handle self-signed certificates is to add a custom root
     // to the CA store.
 
-    websocket_->ignoreSslErrors();
+    (*websocket_).ignoreSslErrors();
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onError(QAbstractSocket::SocketError socketError)
   {
     qwebsocket_dbg<0>.error(
-        fmt::format("{:20s} SslErrors : Error :{}", id_, websocket_->errorString()));
+        fmt::format("{:20s} SslErrors : Error :{}", id_, (*websocket_).errorString()));
   }
 
   // ------------------------------------------------------------------

@@ -1,6 +1,8 @@
 #pragma once
 
 //
+#include <atomic>
+//
 #include <QString>
 #include <QtCore/QList>
 #include <QtCore/QObject>
@@ -20,11 +22,11 @@ namespace net::ws {
     Q_OBJECT
 public:
 private:
-    QWebSocket* websocket_;             // internal websocket
-    rx_msg_handler_type rx_handler_;    // handler for message received
-    QUrl url_;                          // the address/port
-    QString subscribe_;                 // the channel subscription request
-    std::string id_;                    // a name we use for debugging
+    std::atomic<QWebSocket*> websocket_;    // internal websocket
+    rx_msg_handler_type rx_handler_;        // handler for message received
+    QUrl url_;                              // the address/port
+    QString subscribe_;                     // the channel subscription request
+    std::string id_;                        // a name we use for debugging
 
 public:
     explicit qwebsocket_client(const std::string& id, const QUrl& url, const QString subscribe,
