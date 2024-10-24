@@ -59,7 +59,7 @@ struct currency : public currency_code
   {
   }
 
-  currency(const currency_code& c)
+  currency(currency_code const& c)
     : currency_code(c)
     , balance_(0)
     , avail_(0)
@@ -94,7 +94,7 @@ struct currency : public currency_code
     return code_;
   }
 
-  // const currency_code& code() const
+  // currency_code const& code() const
   // {
   //   return *this;
   // }
@@ -121,10 +121,10 @@ std::string currency_pair_lowercase_string(currency_pair const& p);
 // ----------------------------------------------------------------------------
 // displays an amount such as 1.34 as a string, but uses different numbers
 // of decimal places depending on the currency type (fiat always 2)
-std::string to_string(double amount, const currency& c);
+std::string to_string(double amount, currency const& c);
 
 template <typename T>
-std::string to_string_with_precision(const T a_value, const int n = 6)
+std::string to_string_with_precision(const T a_value, int const n = 6)
 {
   std::ostringstream out;
   out.precision(n);

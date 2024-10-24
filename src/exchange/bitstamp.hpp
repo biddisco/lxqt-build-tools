@@ -48,10 +48,10 @@ class bitstamp_network : public exchange
   public:
   //
   static inline const std::string bitstamp_https_address = "www.bitstamp.net";
-  static inline const int bitstamp_https_port = 443;
+  static inline int const bitstamp_https_port = 443;
   //
   static inline const std::string bitstamp_websocket_address = "ws.bitstamp.net";
-  static inline const int bitstamp_websocket_port = 443;
+  static inline int const bitstamp_websocket_port = 443;
 
   public:
   // ---------------------------------------
@@ -90,7 +90,7 @@ class bitstamp_network : public exchange
   bitstamp_account& account() { return accounts_[0]; }
 
   // Is sending this currency to the destination exchange supported
-  bool can_send(const currency& c, exchange* dest) override;
+  bool can_send(currency const& c, exchange* dest) override;
 
   // ---------------------------------------
   // return the order book for this exchange
@@ -159,7 +159,7 @@ class bitstamp_network : public exchange
   void cancel_order(trade_data const& t) override;
 
   // ----------------------------------------------------------------------------
-  net::http::client_ptr signed_request(const std::string& url_path, const std::string& url_query);
+  net::http::client_ptr signed_request(std::string const& url_path, std::string const& url_query);
 
   // ----------------------------------------------------------------------------
   // OHLC candlestick updating
@@ -184,13 +184,13 @@ class bitstamp_network : public exchange
   // function called from websocket subscription to live orderbook data
   static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, const QString);
 
-  double get_fee_percent(const currency_pair& cp) override;
-  double get_fee_fixed(const currency_pair& cp) override;
+  double get_fee_percent(currency_pair const& cp) override;
+  double get_fee_fixed(currency_pair const& cp) override;
   double get_transfer_fee(currency const& /*c1*/) override { return 0; }
 
   void custom_functions(basic_account* /*acct*/) override{};
 
-  stream_set ticker_subscribe(const currency_pair& cp) override;
+  stream_set ticker_subscribe(currency_pair const& cp) override;
 
   signals:
 

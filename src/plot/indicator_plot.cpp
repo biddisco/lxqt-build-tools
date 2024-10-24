@@ -124,7 +124,7 @@ void indicator_plot::showItem(QwtPlotItem* item, bool on)
 // ----------------------------------------------------------------------------
 void indicator_plot::update_time_axis(double t1, double t2, bool emit_signal)
 {
-  const bool doAutoReplot = autoReplot();
+  bool const doAutoReplot = autoReplot();
   setAutoReplot(false);
 
   // update the X axis with new min max

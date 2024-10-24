@@ -21,7 +21,7 @@ template <int Level>
 inline constexpr print_threshold<Level, debug_level> man_dbg("DataView");
 
 // ----------------------------------------------------------------------------
-ohlc_dataset_view::ohlc_dataset_view(std::string exchange, const currency_pair& cp)
+ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency_pair const& cp)
   : exchange_(exchange)
   , ticker_string_(currency_pair_string(cp))
 {
@@ -61,7 +61,7 @@ ohlc_dataset_view::~ohlc_dataset_view()
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_view::merge_data(
-    const double res, QVector<ohlctv_sample> const& new_ohlc_samples_)
+    double const res, QVector<ohlctv_sample> const& new_ohlc_samples_)
 {
   ohlc_dataset* data = get_dataset(res);
   // returns the number of samples that are 'new'
@@ -203,7 +203,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max(double res, double start_time, doubl
 
   // live data is always at highest resolution, but if it is out of range, ignore it
   std::lock_guard l(live_mutex_);
-  const ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
+  ohlc_chart_data const* live_samples = get_live_data(ohlc_data_resolutions::minute);
   auto mm2 = get_min_max(live_samples, res, start_time, end_time);
   if (mm2.valid_ == false) { return mm1; }
   return mm1.update(mm2);
@@ -247,7 +247,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(
 ohlc_chart_data* ohlc_dataset_view::get_live_data(candle_res res) { return get_live_dataset(res); }
 
 // ----------------------------------------------------------------------------
-const ohlc_chart_data* ohlc_dataset_view::get_live_data(candle_res res) const
+ohlc_chart_data const* ohlc_dataset_view::get_live_data(candle_res res) const
 {
   return get_live_dataset(res);
 }
@@ -312,7 +312,7 @@ ohlctv_sample ohlc_dataset_view::get_trade_data_by_volume(double volume, double 
 {
   ohlc_chart_data* samples = get_samples();
   auto index = samples->sample_index(time);
-  const auto data = samples->data();
+  auto const data = samples->data();
   // we use a factor of 10 to play safe, this can be adjusted
   ohlctv_sample ohlc{0, 0, -1, 0, 0, 0};
   while (ohlc.volume < volume * safety && index < data.size())

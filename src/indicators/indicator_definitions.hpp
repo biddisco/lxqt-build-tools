@@ -73,7 +73,7 @@ namespace indicators {
           Enable = false>
   void call_algorithm_operator(Algorithm& alg)
   {
-    const auto input = alg.get_input_data()[0];
+    auto const input = alg.get_input_data()[0];
     auto output = alg.get_output_datasets()[0];
     //
     for (auto const& ohlc : input->data())

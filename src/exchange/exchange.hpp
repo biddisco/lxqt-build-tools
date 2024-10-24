@@ -72,8 +72,8 @@ struct ticker_subscription
   std::map<network::streams, std::shared_ptr<net::ws::qwebsocket_session>> websockets_;
   //
   grox::PublishSubscribe<const currency_pair, const grox::live_trade_data> live_trade_subscribers_;
-  grox::PublishSubscribe<const currency_pair> orderbook_subscribers_;
-  grox::PublishSubscribe<const candle_res> new_ohlc_subscribers_;
+  grox::PublishSubscribe<currency_pair const> orderbook_subscribers_;
+  grox::PublishSubscribe<candle_res const> new_ohlc_subscribers_;
 };
 
 using ticker_data = std::shared_ptr<ticker_subscription>;
@@ -161,10 +161,10 @@ class exchange
   // withut subscribing to any streams for live trades/other
   // ---------------------------------------
   // query which tickers (currency pairs) are subscribed
-  virtual bool ticker_subscribed(const currency_pair& cp);
+  virtual bool ticker_subscribed(currency_pair const& cp);
   // un/subscribe to a ticker
-  virtual stream_set ticker_subscribe(const currency_pair& cp);
-  virtual void ticker_unsubscribe(const currency_pair& cp);
+  virtual stream_set ticker_subscribe(currency_pair const& cp);
+  virtual void ticker_unsubscribe(currency_pair const& cp);
   // return list of subscribed tickers
   exchange_map const& tickers_subscribed() const;
   // exchange_map& tickers_subscribed();
@@ -173,14 +173,14 @@ class exchange
   // ---------------------------------------
   // setup / query tickers
   // ---------------------------------------
-  virtual bool add_currency_pair(const currency_pair& cp);
+  virtual bool add_currency_pair(currency_pair const& cp);
   virtual currency_pairlist const& get_currency_pairs();
 
   // ---------------------------------------
   // currency management
   // ---------------------------------------
-  virtual bool can_send(const currency& c, exchange* dest) = 0;
-  virtual bool make_payment(const currency& c, basic_account* src, basic_account* dest) = 0;
+  virtual bool can_send(currency const& c, exchange* dest) = 0;
+  virtual bool make_payment(currency const& c, basic_account* src, basic_account* dest) = 0;
   virtual std::string get_name() const { return exchange_name_; }
   virtual void cancel_order(trade_data const& t) = 0;
   virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const&) = 0;
@@ -194,8 +194,8 @@ class exchange
   // ---------------------------------------
   // fees
   // ---------------------------------------
-  virtual double get_fee_percent(const currency_pair& cp) = 0;
-  virtual double get_fee_fixed(const currency_pair& cp) = 0;
+  virtual double get_fee_percent(currency_pair const& cp) = 0;
+  virtual double get_fee_fixed(currency_pair const& cp) = 0;
   virtual double get_transfer_fee(currency const& c1) = 0;
   virtual void custom_functions(basic_account* acct) = 0;
 

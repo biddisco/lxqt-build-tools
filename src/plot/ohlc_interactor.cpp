@@ -73,9 +73,9 @@ ohlc_interactor::~ohlc_interactor() { delete m_data; }
 QWidget* ohlc_interactor::parentWidget() { return qobject_cast<QWidget*>(parent()); }
 
 //! \return Parent widget, where the rescaling happens
-const QWidget* ohlc_interactor::parentWidget() const
+QWidget const* ohlc_interactor::parentWidget() const
 {
-  return qobject_cast<const QWidget*>(parent());
+  return qobject_cast<QWidget const*>(parent());
 }
 
 // ----------------------------------------------------------------------------
@@ -88,10 +88,10 @@ timebased_chart_plot* ohlc_interactor::plot()
 
 // ----------------------------------------------------------------------------
 //! Return plot widget, containing the observed plot canvas
-const timebased_chart_plot* ohlc_interactor::plot() const
+timebased_chart_plot const* ohlc_interactor::plot() const
 {
-  const QWidget* w = parentWidget();
-  return qobject_cast<const timebased_chart_plot*>(w);
+  QWidget const* w = parentWidget();
+  return qobject_cast<timebased_chart_plot const*>(w);
 }
 
 // ----------------------------------------------------------------------------
@@ -138,8 +138,8 @@ void ohlc_interactor::panCanvas(int dx, int dy)
   const QwtScaleMap map = plot->canvasMap(QwtAxis::XBottom);
 
   // get the X axis extent, transform it into pixels
-  const double p1 = map.transform(plot->axisScaleDiv(QwtAxis::XBottom).lowerBound());
-  const double p2 = map.transform(plot->axisScaleDiv(QwtAxis::XBottom).upperBound());
+  double const p1 = map.transform(plot->axisScaleDiv(QwtAxis::XBottom).lowerBound());
+  double const p2 = map.transform(plot->axisScaleDiv(QwtAxis::XBottom).upperBound());
   // slide it left or right by dx amount
   double t1 = map.invTransform(p1 - dx);
   double t2 = map.invTransform(p2 - dx);

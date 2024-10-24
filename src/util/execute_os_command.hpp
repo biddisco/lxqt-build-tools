@@ -22,7 +22,7 @@
 //   return result;
 // }
 
-std::string execute_os_command(const char* cmd)
+std::string execute_os_command(char const* cmd)
 {
   std::array<char, 128> buffer;
   std::string result;

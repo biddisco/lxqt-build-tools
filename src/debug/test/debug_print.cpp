@@ -16,7 +16,7 @@ using namespace grox;
 using namespace pika::debug::detail;
 
 // ------------------------------------------------------------------
-std::string diff(const std::string& s1, const std::string& s2)
+std::string diff(std::string const& s1, std::string const& s2)
 {
   std::stringstream tmp;
   int index = 0;
@@ -31,7 +31,7 @@ std::string diff(const std::string& s1, const std::string& s2)
 }
 
 // ------------------------------------------------------------------
-bool compare(const std::string& expected, const std::string& value)
+bool compare(std::string const& expected, std::string const& value)
 {
   if (bool ok = (expected == value))
   {
@@ -58,7 +58,7 @@ bool test_print_type(std::string expected, T&&... t)
 // ------------------------------------------------------------------
 TEST(debug_print, print_type)
 {
-  const char* ptr = "This is a test";
+  char const* ptr = "This is a test";
   EXPECT_TRUE(test_print_type("char const*", ptr));
   EXPECT_TRUE(test_print_type("char const*", ptr));
   EXPECT_TRUE(test_print_type("char const*, char const*", ptr, ptr));

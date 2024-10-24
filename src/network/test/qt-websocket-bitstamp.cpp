@@ -10,7 +10,7 @@
 #include "network/qwebsocket_session.hpp"
 
 std::atomic<int> counter{0};
-const int test_seconds = 5;
+int const test_seconds = 5;
 
 // ------------------------------------------------------------------
 void onTextMessageReceived(QString message)

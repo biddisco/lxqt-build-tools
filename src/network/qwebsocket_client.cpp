@@ -12,20 +12,20 @@
 QT_USE_NAMESPACE
 
 template <>
-struct fmt::formatter<QString> : formatter<const char*>
+struct fmt::formatter<QString> : formatter<char const*>
 {
-  auto format(const QString& s, format_context& ctx)
+  auto format(QString const& s, format_context& ctx)
   {
-    return formatter<const char*>::format((const char*) s.toUtf8(), ctx);
+    return formatter<char const*>::format((char const*) s.toUtf8(), ctx);
   }
 };
 
 template <>
-struct fmt::formatter<QUrl> : formatter<const char*>
+struct fmt::formatter<QUrl> : formatter<char const*>
 {
-  auto format(const QUrl& s, format_context& ctx)
+  auto format(QUrl const& s, format_context& ctx)
   {
-    return formatter<const char*>::format((const char*) s.toString().toUtf8(), ctx);
+    return formatter<char const*>::format((char const*) s.toString().toUtf8(), ctx);
   }
 };
 
@@ -37,7 +37,7 @@ namespace net::ws {
   inline constexpr print_threshold<Level, 5> qwebsocket_dbg("QWebsock");
 
   // ------------------------------------------------------------------
-  qwebsocket_client::qwebsocket_client(const std::string& id, const QUrl& url, QString subscribe,
+  qwebsocket_client::qwebsocket_client(std::string const& id, QUrl const& url, QString subscribe,
       rx_msg_handler_type handler, QObject* parent)
     : QObject(parent)
     , rx_handler_(handler)
@@ -78,7 +78,7 @@ namespace net::ws {
         Qt::DirectConnection);
 
     // errors
-    connect(websocket_, QOverload<const QList<QSslError>&>::of(&QWebSocket::sslErrors), this,
+    connect(websocket_, QOverload<QList<QSslError> const&>::of(&QWebSocket::sslErrors), this,
         &qwebsocket_client::onSslErrors, Qt::DirectConnection);
     connect(websocket_, SIGNAL(error(QAbstractSocket::SocketError)),
         SLOT(onError(QAbstractSocket::SocketError)), Qt::DirectConnection);
@@ -160,7 +160,7 @@ namespace net::ws {
   }
 
   // ------------------------------------------------------------------
-  void qwebsocket_client::onSslErrors(const QList<QSslError>& errors)
+  void qwebsocket_client::onSslErrors(QList<QSslError> const& errors)
   {
     qwebsocket_dbg<0>.error(fmt::format("{:20s} SslErrors", id_));
     Q_UNUSED(errors);
@@ -180,7 +180,7 @@ namespace net::ws {
   }
 
   // ------------------------------------------------------------------
-  void qwebsocket_client::onTextFrameReceived(const QString& frame, bool isLastFrame)
+  void qwebsocket_client::onTextFrameReceived(QString const& frame, bool isLastFrame)
   {
     qwebsocket_dbg<9>.error(
         fmt::format("{:20s} TextFrameReceived - this should be overriden", id_));
@@ -195,13 +195,13 @@ namespace net::ws {
   }
 
   // ------------------------------------------------------------------
-  void qwebsocket_client::onBinaryFrameReceived(const QByteArray& frame, bool isLastFrame)
+  void qwebsocket_client::onBinaryFrameReceived(QByteArray const& frame, bool isLastFrame)
   {
     qwebsocket_dbg<5>.error(fmt::format("{:20s} BinaryFrameReceived", id_));
   }
 
   // ------------------------------------------------------------------
-  void qwebsocket_client::onBinaryMessageReceived(const QByteArray& message)
+  void qwebsocket_client::onBinaryMessageReceived(QByteArray const& message)
   {
     qwebsocket_dbg<5>.error(fmt::format("{:20s} BinaryMessageReceived", id_));
   }
@@ -213,7 +213,7 @@ namespace net::ws {
   }
 
   // ------------------------------------------------------------------
-  void qwebsocket_client::onPong(quint64 elapsedTime, const QByteArray& payload)
+  void qwebsocket_client::onPong(quint64 elapsedTime, QByteArray const& payload)
   {
     qwebsocket_dbg<9>.error(fmt::format("{:20s} Pong", id_));
   }

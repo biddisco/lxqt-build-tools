@@ -22,10 +22,10 @@ void timebased_chart_plot::onCrossHairsMoved(QPointF const& pos)
     // QPointF pos = crosshairs_->invTransform(crosshairs_->trackerPosition());
 
     const QLineF line =
-        crosshairs_->curveLineAt(static_cast<const QwtPlotCurve*>(curves[0]), pos.x());
+        crosshairs_->curveLineAt(static_cast<QwtPlotCurve const*>(curves[0]), pos.x());
     if (!line.isNull())
     {
-      const double curveY = line.pointAt((pos.x() - line.p1().x()) / line.dx()).y();
+      double const curveY = line.pointAt((pos.x() - line.p1().x()) / line.dx()).y();
       new_pos.setY(curveY);
       // r.moveBottom(pos.y());
     }

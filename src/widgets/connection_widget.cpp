@@ -154,7 +154,7 @@ void connection_widget::setup_gui()
   settings.beginGroup(QString::fromStdString(exchange_->get_name()));
   // get all subscribed tickers on this exchange from ini file
   QStringList children = settings.childGroups();
-  for (const auto& ticker : children)
+  for (auto const& ticker : children)
   {
     QList<QStandardItem*> list = model_->findItems(ticker, Qt::MatchExactly);
     // list length should never be >1
@@ -202,7 +202,7 @@ void connection_widget::setup_gui()
     {
       // sub groups are tickers on the exchange
       QStringList children = settings.childGroups();
-      for (const auto& ticker : children)
+      for (auto const& ticker : children)
       {
         std::string cps = ticker.toStdString();
         currency_pair cp = string_to_pair(cps, "-");

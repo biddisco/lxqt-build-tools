@@ -20,7 +20,7 @@ namespace net::http {
 
   // ----------------------------------------------------------------------------
   client_ptr qhttp_request_client::create(QNetworkAccessManager& networkmanager,
-      const std::string& url /*, rx_req_handler_type&& handler*/)
+      std::string const& url /*, rx_req_handler_type&& handler*/)
   {
     //return std::make_shared<qhttp_request_client>(networkmanager, url, move(handler));
     return new qhttp_request_client(networkmanager, url /*, move(handler)*/);
@@ -28,7 +28,7 @@ namespace net::http {
 
   // ----------------------------------------------------------------------------
   client_ptr qhttp_request_client::create(QNetworkAccessManager& networkmanager,
-      const std::string& url, std::string&& content /*, rx_req_handler_type&& handler*/)
+      std::string const& url, std::string&& content /*, rx_req_handler_type&& handler*/)
   {
     // return std::make_shared<qhttp_request_client>(
     //   networkmanager, url, std::forward<std::string>(content), std::move(handler));
@@ -48,7 +48,7 @@ namespace net::http {
 
   // ----------------------------------------------------------------------------
   qhttp_request_client::qhttp_request_client(QNetworkAccessManager& networkmanager,
-      const std::string& url /*, rx_req_handler_type&& handler*/)
+      std::string const& url /*, rx_req_handler_type&& handler*/)
     : networkmanager_(networkmanager)
     , url_(url)
   {
@@ -62,7 +62,7 @@ namespace net::http {
 
   // ----------------------------------------------------------------------------
   qhttp_request_client::qhttp_request_client(QNetworkAccessManager& networkmanager,
-      const std::string& url, std::string&& content /*, rx_req_handler_type&& handler*/)
+      std::string const& url, std::string&& content /*, rx_req_handler_type&& handler*/)
     : networkmanager_(networkmanager)
     , url_(url)
     , content_(std::move(content))
@@ -171,14 +171,14 @@ namespace net::http {
 
   // ----------------------------------------------------------------------------
   void qhttp_request_client::onSslErrors(
-      client_ptr self, QNetworkReply* reply, const QList<QSslError>& errors)
+      client_ptr self, QNetworkReply* reply, QList<QSslError> const& errors)
   {
     reply->ignoreSslErrors();
     return;
 
     // http_dbg<0>.debug(str<>("onSslErrors"), self);
     // QString errorString;
-    // foreach (const QSslError& error, errors)
+    // foreach (QSslError const& error, errors)
     // {
     //   if (!errorString.isEmpty())
     //     errorString += '\n';

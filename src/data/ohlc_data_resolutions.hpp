@@ -20,7 +20,7 @@ struct candle_res
   char const* name_;
   // operators to make access easy
   constexpr operator double() const { return res_; }
-  constexpr operator const char*() const { return name_; }
+  constexpr operator char const*() const { return name_; }
   bool operator<(candle_res const& other) { return res_ < other.res_; }
   bool operator>(candle_res const& other) { return res_ > other.res_; }
   bool operator==(candle_res const& other) { return res_ == other.res_; }

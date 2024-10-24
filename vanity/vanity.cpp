@@ -47,7 +47,7 @@ constexpr std::string_view RippleAlphabet =
 std::string out_filename;
 
 //-----------------------------------------------------------------------------
-bool is_bad_char(const char c)
+bool is_bad_char(char const c)
 {
   return (std::find(RippleAlphabet.begin(), RippleAlphabet.end(), c) == RippleAlphabet.end());
 }

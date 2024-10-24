@@ -23,10 +23,10 @@ class QWT_EXPORT ohlc_interactor : public QObject
   virtual ~ohlc_interactor();
 
   QWidget* parentWidget();
-  const QWidget* parentWidget() const;
+  QWidget const* parentWidget() const;
   //
   timebased_chart_plot* plot();
-  const timebased_chart_plot* plot() const;
+  timebased_chart_plot const* plot() const;
 
   void setAxisEnabled(QwtAxisId axisId, bool on);
   bool isAxisEnabled(QwtAxisId) const;

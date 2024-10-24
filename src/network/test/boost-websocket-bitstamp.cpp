@@ -80,7 +80,7 @@ int main(int argc, char** argv)
       io_contexts_.ioc, io_contexts_.ctx, argv[1], argv[2], channel, new_trade_data);
 
   int completed = 0;
-  const int sec = 8;
+  int const sec = 8;
   // wait 5 seconds and collect some data
   for (int i = 0; i < sec && (counter.load() < 2); i++)
   {

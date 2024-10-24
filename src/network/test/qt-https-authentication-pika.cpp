@@ -29,7 +29,7 @@ static std::string api_user;
 static std::string api_key;
 static std::string api_secret;
 const std::string bitstamp_https_address = "www.bitstamp.net";
-const int bitstamp_https_port = 443;
+int const bitstamp_https_port = 443;
 
 // ----------------------------------------------------------------------------
 namespace {
@@ -40,8 +40,8 @@ namespace {
 }    // namespace
 
 // ----------------------------------------------------------------------------
-void account_request(QNetworkAccessManager& networkmanager_, const std::string& url_path,
-    const std::string& url_query, net::http::rx_req_handler_type&& handler)
+void account_request(QNetworkAccessManager& networkmanager_, std::string const& url_path,
+    std::string const& url_query, net::http::rx_req_handler_type&& handler)
 {
   secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
   encryption encryptor(api_key, randbytes);

@@ -37,7 +37,7 @@ public:
     /// constructor factory for a type
     template <typename Algorithm>
     static std::shared_ptr<Algorithm>
-    create(const Algorithm& alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_)
+    create(Algorithm const& alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_)
     {
       // create a new instance of the algorithm
       std::shared_ptr<Algorithm> result = std::make_shared<Algorithm>();
@@ -52,7 +52,7 @@ public:
     }
 
     // ----------------------------------------------------------------------------
-    indicator_base(const std::string& name, const std::string& desc, overlay_type overlay)
+    indicator_base(std::string const& name, std::string const& desc, overlay_type overlay)
       : name_(name)
       , description_(desc)
       , overlay_(overlay)
@@ -80,8 +80,8 @@ public:
     virtual const overlay_type get_overlay(int n) const { return overlay_; }
 
     // ----------------------------------------------------------------------------
-    virtual const param_list& get_params() const { return params_; }
-    virtual void set_params(const param_list& p) { params_ = p; }
+    virtual param_list const& get_params() const { return params_; }
+    virtual void set_params(param_list const& p) { params_ = p; }
 
     // ----------------------------------------------------------------------------
     virtual const y_limits get_ylimits() const { return {0.0, 1.0}; }
@@ -91,7 +91,7 @@ public:
     virtual int num_outputs() const { return 1; }
 
     // ----------------------------------------------------------------------------
-    virtual const std::vector<ohlc_dataset*>& get_input_data() const { return in_datasets_; }
+    virtual std::vector<ohlc_dataset*> const& get_input_data() const { return in_datasets_; }
     virtual std::vector<point_chart_data*>& get_output_datasets() { return out_datasets_; }
 
     // ----------------------------------------------------------------------------
@@ -119,7 +119,7 @@ public:
       std::vector<ohlc_dataset*> result;
       for (auto const& p : get_params())
       {
-        if (const candle_res* c = std::get_if<candle_res>(&std::get<1>(p)))
+        if (candle_res const* c = std::get_if<candle_res>(&std::get<1>(p)))
         {
           result.push_back(view->get_dataset(*c));
         }

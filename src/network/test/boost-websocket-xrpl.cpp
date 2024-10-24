@@ -64,7 +64,7 @@ void websocket_subscribe_offers()
       std::bind(new_orderbook_data, nullptr, currency_pair{currency{}, currency{}}, _1));
 
   int completed = 0;
-  const int sec = 8;
+  int const sec = 8;
   // wait 5 seconds and collect some data
   for (int i = 0; i < sec && (counter.load() == 0); i++)
   {

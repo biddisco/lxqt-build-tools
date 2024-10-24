@@ -40,7 +40,7 @@ template <int Level>
 inline constexpr print_threshold<Level, 3> bitstamp_dbg("Bitstamp");
 
 // ----------------------------------------------------------------------------
-std::string what(const std::exception_ptr& eptr = std::current_exception())
+std::string what(std::exception_ptr const& eptr = std::current_exception())
 {
   if (!eptr) { throw std::bad_exception(); }
 
@@ -48,15 +48,15 @@ std::string what(const std::exception_ptr& eptr = std::current_exception())
   {
     std::rethrow_exception(eptr);
   }
-  catch (const std::exception& e)
+  catch (std::exception const& e)
   {
     return e.what();
   }
-  catch (const std::string& e)
+  catch (std::string const& e)
   {
     return e;
   }
-  catch (const char* e)
+  catch (char const* e)
   {
     return e;
   }
@@ -323,7 +323,7 @@ void bitstamp_network::shut_down()
             str<>("websocket close"), currency_pair_string(ticker), fmt::ptr(websocket.get()));
         websocket.reset();
       }
-      catch (const std::exception& e)
+      catch (std::exception const& e)
       {
         std::cerr << e.what() << std::endl;
       }
@@ -342,7 +342,7 @@ bitstamp_order_book const& bitstamp_network::get_orderbook(currency_pair const& 
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::can_send(const currency& c, exchange* dest)
+bool bitstamp_network::can_send(currency const& c, exchange* dest)
 {
   auto xrp_net = dynamic_cast<xrpl_network*>(dest);
   if (xrp_net && !xrp_net->testnet())
@@ -355,7 +355,7 @@ bool bitstamp_network::can_send(const currency& c, exchange* dest)
 }
 
 // ----------------------------------------------------------------------------
-double bitstamp_network::get_fee_percent(const currency_pair& cp)
+double bitstamp_network::get_fee_percent(currency_pair const& cp)
 {
   std::pair<std::string, std::string> cpair;
   if (std::get<0>(cp).is_xrp())
@@ -368,12 +368,12 @@ double bitstamp_network::get_fee_percent(const currency_pair& cp)
     cpair = std::make_pair(
         lowercase(std::get<1>(cp).to_string().first), lowercase(std::get<0>(cp).to_string().first));
   }
-  const auto val = fee_map_.at(cpair);
+  auto const val = fee_map_.at(cpair);
   return val;
 }
 
 // ----------------------------------------------------------------------------
-double bitstamp_network::get_fee_fixed(const currency_pair& cp) { return 0.0; }
+double bitstamp_network::get_fee_fixed(currency_pair const& cp) { return 0.0; }
 
 // ----------------------------------------------------------------------------
 bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic_account* dest)
@@ -495,7 +495,7 @@ void bitstamp_network::handle_account_info(std::string_view data)
     {
       double xrpusd_fee = std::stod(jdata["xrpusd_fee"].get_ptr<json::string_t*>()->c_str());
       std::pair<std::string, std::string> cpair = std::make_pair("xrp", "usd");
-      const auto [it, success] = fee_map_.insert({cpair, xrpusd_fee});
+      auto const [it, success] = fee_map_.insert({cpair, xrpusd_fee});
       if (success) { bitstamp_dbg<0>.debug(str<>("new fee xrp/usd"), xrpusd_fee); }
       else
       {
@@ -508,7 +508,7 @@ void bitstamp_network::handle_account_info(std::string_view data)
     {
       double xrpeur_fee = std::stod(jdata["xrpeur_fee"].get_ptr<json::string_t*>()->c_str());
       std::pair<std::string, std::string> cpair = std::make_pair("xrp", "eur");
-      const auto [it, success] = fee_map_.insert({cpair, xrpeur_fee});
+      auto const [it, success] = fee_map_.insert({cpair, xrpeur_fee});
       if (success) { bitstamp_dbg<0>.debug(str<>("new fee xrp/eur"), xrpeur_fee); }
       else
       {
@@ -518,7 +518,7 @@ void bitstamp_network::handle_account_info(std::string_view data)
     }
     emit update_wallet_widget(&acct);
   }
-  catch (const std::exception_ptr& e)
+  catch (std::exception_ptr const& e)
   {
     bitstamp_dbg<0>.error(str<>("Account info failed"));
     std::rethrow_exception(e);
@@ -544,7 +544,7 @@ void bitstamp_network::handle_websocket_token(std::string_view data)
         token_valid(token_expiry_) ? "valid until" : "expired",
         fmt::format("{:%Y-%m-%d %X}", round<std::chrono::seconds>(token_expiry_.load())));
   }
-  catch (const std::exception_ptr& e)
+  catch (std::exception_ptr const& e)
   {
     bitstamp_dbg<0>.error(str<>("websocket token"), "Failed to renew");
     std::rethrow_exception(e);
@@ -603,7 +603,7 @@ void bitstamp_network::handle_tickers_available(std::string_view data)
       add_currency_pair({c1, c2});
     }
   }
-  catch (const std::exception_ptr& e)
+  catch (std::exception_ptr const& e)
   {
     bitstamp_dbg<0>.error(str<>("Ticker data error"));
     std::rethrow_exception(e);
@@ -697,7 +697,7 @@ void bitstamp_network::process_order(json& jdata, std::string_view event)
 
 // ----------------------------------------------------------------------------
 net::http::client_ptr bitstamp_network::signed_request(
-    const std::string& url_path, const std::string& url_query)
+    std::string const& url_path, std::string const& url_query)
 {
   std::string api_key = get_bitstamp_instance()->account().API_key;
   std::string api_secret = get_bitstamp_instance()->account().API_secret;
@@ -1072,7 +1072,7 @@ void bitstamp_network::place_buy_sell_orders(
 }
 
 // ----------------------------------------------------------------------------
-stream_set bitstamp_network::ticker_subscribe(const currency_pair& cp)
+stream_set bitstamp_network::ticker_subscribe(currency_pair const& cp)
 {
   // exit if this exchange has already subscribed to this ticker
   std::string cps = currency_pair_string(cp);

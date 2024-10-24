@@ -35,7 +35,7 @@ void hdf5_ohlc_manager::create_data_dir()
 }
 
 // ----------------------------------------------------------------------------
-void hdf5_check(const char* msg, herr_t err)
+void hdf5_check(char const* msg, herr_t err)
 {
   if (err < 0) { throw std::runtime_error(std::string("HDF5 Error") + msg); }
 }
@@ -145,7 +145,7 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
     uint64_t offset = data.size() - update;
     Selection sel = dataset.select({offset * ohlc_size}, {update * ohlc_size});
     // write data from the old endpoint into the new hyperslab
-    sel.write_raw(reinterpret_cast<const double*>(&data[offset]));
+    sel.write_raw(reinterpret_cast<double const*>(&data[offset]));
   }
   // truncating a dataset
   else if (truncate)

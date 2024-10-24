@@ -19,15 +19,15 @@ inline constexpr print_threshold<Level, 5> qsession_dbg("QSession");
 namespace net::ws {
 
   // ----------------------------------------------------------------------------
-  std::shared_ptr<qwebsocket_session> qwebsocket_session::create(const std::string& id,
+  std::shared_ptr<qwebsocket_session> qwebsocket_session::create(std::string const& id,
       const QString address, const QString subscription, const rx_msg_handler_type handler)
   {
     return std::make_shared<qwebsocket_session>(id, address, subscription, handler);
   }
 
   // ----------------------------------------------------------------------------
-  std::shared_ptr<qwebsocket_session> qwebsocket_session::create(const std::string& id,
-      const std::string& address, int port, const QString subscription,
+  std::shared_ptr<qwebsocket_session> qwebsocket_session::create(std::string const& id,
+      std::string const& address, int port, const QString subscription,
       const rx_msg_handler_type handler)
   {
     QString addr = QStringLiteral("wss://") + QString::fromStdString(address) +
@@ -36,8 +36,8 @@ namespace net::ws {
   }
 
   // ----------------------------------------------------------------------------
-  std::shared_ptr<qwebsocket_session> qwebsocket_session::create(const std::string& id,
-      const std::string& address, int port, util::string_t subscription,
+  std::shared_ptr<qwebsocket_session> qwebsocket_session::create(std::string const& id,
+      std::string const& address, int port, util::string_t subscription,
       const rx_msg_handler_type handler)
   {
     QString addr = QStringLiteral("wss://") + QString::fromStdString(address) +
@@ -48,7 +48,7 @@ namespace net::ws {
   }
 
   // ----------------------------------------------------------------------------
-  qwebsocket_session::qwebsocket_session(const std::string& id, const QString address,
+  qwebsocket_session::qwebsocket_session(std::string const& id, const QString address,
       const QString subscription, const rx_msg_handler_type handler)
   {
     // create a client

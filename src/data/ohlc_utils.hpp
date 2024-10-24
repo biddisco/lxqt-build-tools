@@ -41,7 +41,7 @@ inline double ohlc_mode_extract(const ohlc_modes mode, ohlctv_sample const& ohlc
   }
 }
 
-inline std::ostream& operator<<(std::ostream& os, const ohlc_modes& m)
+inline std::ostream& operator<<(std::ostream& os, ohlc_modes const& m)
 {
   os << int(m);
   return os;

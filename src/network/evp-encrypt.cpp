@@ -79,7 +79,7 @@ void aes_encrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption:
   int out_len1 = (int) ctext.size();
 
   rc = EVP_EncryptUpdate(
-      ctx.get(), (byte*) &ctext[0], &out_len1, (const byte*) &ptext[0], (int) ptext.size());
+      ctx.get(), (byte*) &ctext[0], &out_len1, (byte const*) &ptext[0], (int) ptext.size());
   if (rc != 1) throw std::runtime_error("EVP_EncryptUpdate failed");
 
   int out_len2 = (int) ctext.size() - out_len1;
@@ -102,7 +102,7 @@ void aes_decrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption:
   int out_len1 = (int) rtext.size();
 
   rc = EVP_DecryptUpdate(
-      ctx.get(), (byte*) &rtext[0], &out_len1, (const byte*) &ctext[0], (int) ctext.size());
+      ctx.get(), (byte*) &rtext[0], &out_len1, (byte const*) &ctext[0], (int) ctext.size());
   if (rc != 1) throw std::runtime_error("EVP_DecryptUpdate failed");
 
   int out_len2 = (int) rtext.size() - out_len1;

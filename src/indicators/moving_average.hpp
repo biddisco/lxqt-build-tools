@@ -53,7 +53,7 @@ public:
     }
 
     // ---------------------------------------
-    double operator()(const double price)
+    double operator()(double const price)
     {
       // insert data into boost accumulator
       decay_acc_(price);

@@ -34,7 +34,7 @@ TEST(moving_averages, moving_average)
   hdf5_ohlc_manager data_manager;
   data_manager.init(data_dir, filename);
 
-  const int N_samples = 128;
+  int const N_samples = 128;
   QVector<ohlctv_sample> result;
   data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
 
@@ -73,7 +73,7 @@ TEST(moving_averages, exponential_moving_average)
   hdf5_ohlc_manager data_manager;
   data_manager.init(data_dir, filename);
 
-  const int N_samples = 128;
+  int const N_samples = 128;
   QVector<ohlctv_sample> result;
   data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
 
@@ -111,7 +111,7 @@ TEST(moving_averages, volume_weighted_moving_average)
   hdf5_ohlc_manager data_manager;
   data_manager.init(data_dir, filename);
 
-  const int N_samples = 128;
+  int const N_samples = 128;
   QVector<ohlctv_sample> result;
   data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
 
@@ -149,7 +149,7 @@ TEST(moving_averages, moving_average_exponential_volume_weighted)
   hdf5_ohlc_manager data_manager;
   data_manager.init(data_dir, filename);
 
-  const int N_samples = 128;
+  int const N_samples = 128;
   QVector<ohlctv_sample> result;
   data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
 

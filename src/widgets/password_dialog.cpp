@@ -46,7 +46,7 @@ password_dialog::password_dialog(bool simple)
 }
 
 password_dialog::password_dialog(
-    const std::array<std::string, 5>& strings, std::vector<ledger_wallet> const& wallets)
+    std::array<std::string, 5> const& strings, std::vector<ledger_wallet> const& wallets)
   : password_dialog(false)
 {
   // exchange data

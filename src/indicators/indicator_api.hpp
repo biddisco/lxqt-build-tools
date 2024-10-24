@@ -40,7 +40,7 @@ class paramlist_t
     {
     }
 
-    std::shared_ptr<const parameter_API_vtable> binding;
+    std::shared_ptr<parameter_API_vtable const> binding;
   };
 
   std::vector<parameter_ptr> parameter_ptrs;
@@ -52,7 +52,7 @@ class paramlist_t
   void draw(std::ostream& out, size_t position) const
   {
     out << std::string(position, ' ') << "<document>" << std::endl;
-    for (const auto& ptr : parameter_ptrs) ptr.binding->call_draw(out, position + 2);
+    for (auto const& ptr : parameter_ptrs) ptr.binding->call_draw(out, position + 2);
     out << std::string(position, ' ') << "</document>" << std::endl;
   }
 };
@@ -83,7 +83,7 @@ class history_t
     assert(documents.size());
     return documents.back();
   }
-  const paramlist_t& current() const
+  paramlist_t const& current() const
   {
     assert(documents.size());
     return documents.back();
@@ -92,7 +92,7 @@ class history_t
   void draw(std::ostream& out, size_t position) const
   {
     out << std::string(position, ' ') << "<history>" << std::endl;
-    for (const auto& doc : documents) doc.draw(out, position + 2);
+    for (auto const& doc : documents) doc.draw(out, position + 2);
     out << std::string(position, ' ') << "</history>" << std::endl;
   }
 };

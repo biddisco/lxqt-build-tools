@@ -122,7 +122,7 @@ int main(int argc, char** argv)
     session->write(/*std::move(*/ request /*)*/);
   });
 
-  const int sec = 5;
+  int const sec = 5;
   // wait 5 seconds and collect some data
   for (int i = 0; i < sec && (reply_ready.load() == 0); i++)
   {

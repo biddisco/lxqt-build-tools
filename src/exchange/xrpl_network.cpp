@@ -162,7 +162,7 @@ bool xrpl_network::stream_subscribe(
 }
 
 // ----------------------------------------------------------------------------
-stream_set xrpl_network::ticker_subscribe(const currency_pair& cp)
+stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
 {
   // exit if this exchange has already subscribed to this ticker
   std::string cps = currency_pair_string(cp);
@@ -943,10 +943,10 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
 double xrpl_network::get_transfer_fee(currency const& c1) { return currency_fees_[c1.issuer_]; }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_fee_percent(const currency_pair& cp) { return 0.0; }
+double xrpl_network::get_fee_percent(currency_pair const& cp) { return 0.0; }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_fee_fixed(const currency_pair& cp) { return 0.0; }
+double xrpl_network::get_fee_fixed(currency_pair const& cp) { return 0.0; }
 
 // ----------------------------------------------------------------------------
 void xrpl_network::trustline(

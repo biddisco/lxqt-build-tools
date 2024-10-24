@@ -120,10 +120,10 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   QFont label_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   fixed_char_size_x_ = QFontMetrics(label_font).tightBoundingRect(X).width();
   fixed_char_size_y_ = QFontMetrics(label_font).tightBoundingRect(X).height();
-  const int margin = 0.5 * fixed_char_size_y_;       // margin space in x and y
-  const int indent = 4;                              // text offset in x direction
-  const int label_xtext = 3 * fixed_char_size_x_;    // "15d", "30m" etc
-  const int label_xsize = 2 * indent + 2 * margin + label_xtext;
+  int const margin = 0.5 * fixed_char_size_y_;       // margin space in x and y
+  int const indent = 4;                              // text offset in x direction
+  int const label_xtext = 3 * fixed_char_size_x_;    // "15d", "30m" etc
+  int const label_xsize = 2 * indent + 2 * margin + label_xtext;
 
   // setup small label we use to show current candle resolution
   candle_label_ = new QwtTextLabel(this);
@@ -365,7 +365,7 @@ void ohlc_price_plot::exportPlot()
 // ----------------------------------------------------------------------------
 void ohlc_price_plot::update_time_axis(double t1, double t2, bool emit_signal)
 {
-  const bool doAutoReplot = autoReplot();
+  bool const doAutoReplot = autoReplot();
   setAutoReplot(false);
 
   // update the X axis with new min max
@@ -421,8 +421,8 @@ bool ohlc_price_plot::update_candle_size()
 // ----------------------------------------------------------------------------
 void ohlc_price_plot::adjust_data_scaling()
 {
-  const double t1 = axisScaleDiv(QwtAxis::XBottom).lowerBound();
-  const double t2 = axisScaleDiv(QwtAxis::XBottom).upperBound();
+  double const t1 = axisScaleDiv(QwtAxis::XBottom).lowerBound();
+  double const t2 = axisScaleDiv(QwtAxis::XBottom).upperBound();
   if (t2 > t1)
   {
     auto minmax = ohlc_dataset_view_->get_min_max_window(get_candle_resolution(), t1, t2, 0.05);
@@ -433,7 +433,7 @@ void ohlc_price_plot::adjust_data_scaling()
 // ----------------------------------------------------------------------------
 void ohlc_price_plot::display_picker_info(const QPointF pos)
 {
-  const double time = pos.x();
+  double const time = pos.x();
   int64_t index = -1;
   auto* dataset = ohlc_dataset_view_->get_dataset(get_candle_resolution());
   if (dataset->size() > 0) { index = dataset->sample_index(time); }
@@ -445,7 +445,7 @@ void ohlc_price_plot::display_picker_info(const QPointF pos)
   //
   ohlctv_sample const& sample = dataset->data().at(index);
 
-  const char* c = "red";
+  char const* c = "red";
   if (sample.open <= sample.close) c = "green";
 
   std::string fstr = fmt::format(                                  //

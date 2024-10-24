@@ -261,7 +261,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   NetworkDockWidget->setWidget(net_layout_);
   NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   NetworkDockWidget->setMinimumSize(128, 196);
-  const auto NetworkautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+  auto const NetworkautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
       SideBarLocation::SideBarRight, NetworkDockWidget);
   NetworkautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
@@ -277,7 +277,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   AlgorithmsDockWidget->setWidget(algowidget_);
   AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   AlgorithmsDockWidget->setMinimumSize(128, 196);
-  const auto AlgorithmsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+  auto const AlgorithmsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
       SideBarLocation::SideBarRight, AlgorithmsDockWidget);
   AlgorithmsautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
@@ -291,7 +291,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   AccountsDockWidget->setWidget(accounts_frame_);
   AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   AccountsDockWidget->setMinimumSize(128, 196);
-  const auto AccountsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+  auto const AccountsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
       SideBarLocation::SideBarRight, AccountsDockWidget);
   AccountsautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
@@ -305,7 +305,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   OrdersDockWidget->setWidget(orders_frame_);
   OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContentMinimumSize);
   OrdersDockWidget->setMinimumSize(128, 196);
-  const auto OrdersautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+  auto const OrdersautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
       SideBarLocation::SideBarRight, OrdersDockWidget);
   OrdersautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
@@ -827,7 +827,7 @@ void GroxMainWindow::loadConnectionSetups()
 
   // sub groups are tickers on the exchange
   QStringList children = settings.childGroups();
-  for (const auto& ticker : children)
+  for (auto const& ticker : children)
   {
     std::string cps = ticker.toStdString();
     currency_pair cp = string_to_pair(cps, "-");

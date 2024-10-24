@@ -66,7 +66,7 @@ void bitstamp_order_book::bid_ask_string_to_number(json& jdata, offer_data& data
   data.total.resize(jdata.size(), 0);
   //
   std::transform(jdata.begin(), jdata.end(), ranges::view::zip(data.rate, data.size).begin(),
-      [](const auto& entry)    //
+      [](auto const& entry)    //
       {
         std::string s1 = entry[0];
         std::string s2 = entry[1];

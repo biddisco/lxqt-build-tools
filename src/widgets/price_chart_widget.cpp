@@ -415,7 +415,7 @@ void price_chart_widget::remove_indicator_plot(
     // if there are no curves left, delete the plot and widget, the parent splitter will adjust
     QwtPlotItemList const& items = filter_plot->itemList();
     int num_curves = std::count_if(items.constBegin(), items.constEnd(),
-        [](const auto it) { return (it->rtti() == QwtPlotItem::Rtti_PlotCurve); });
+        [](auto const it) { return (it->rtti() == QwtPlotItem::Rtti_PlotCurve); });
     if (num_curves == 0) { delete filter_plot; }
   }
   show_plot_axes();

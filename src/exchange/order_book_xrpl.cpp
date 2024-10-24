@@ -271,7 +271,7 @@ bool xrpl_order_book::insert_offer(xrpl_offer const& offer)
   if (it == orders.end())
   {
     account_bid_ask_data bid_ask{{}, {}};
-    const auto [it2, success] = orders.insert({offer.Account, bid_ask});
+    auto const [it2, success] = orders.insert({offer.Account, bid_ask});
     if (success)
       it = it2;
     else
@@ -376,7 +376,7 @@ void xrpl_order_book::handle_offer_change(json const& trans, json const& affecte
   bool fatal = true;
   for (auto& el : affected.items())
   {
-    const json* node;
+    json const* node;
     node_edit edit_type;
 
     // 3 types that affect out order book

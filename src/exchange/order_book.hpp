@@ -142,5 +142,5 @@ class order_book_base : QObject
     return {0.0, prev_ymax[index]};
   }
 
-  std::tuple<const offer_data&, const offer_data&> get_bidask_data() { return {bids_, asks_}; }
+  std::tuple<offer_data const&, offer_data const&> get_bidask_data() { return {bids_, asks_}; }
 };

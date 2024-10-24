@@ -52,7 +52,7 @@ public:
     }
 
     // ---------------------------------------
-    moving_average_volume_weighted& operator=(const moving_average_volume_weighted& other)
+    moving_average_volume_weighted& operator=(moving_average_volume_weighted const& other)
     {
       window_size_ = other.window_size_;
       mode_ = other.mode_;

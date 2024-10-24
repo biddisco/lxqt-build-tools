@@ -118,7 +118,7 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter, QwtScaleMap const& xMap,
     symbolBrushCopy[Direction::Decreasing] = symbolBrush(Direction::Decreasing);
   }
 
-  const bool doAlign = QwtPainter::roundingAlignment(painter);
+  bool const doAlign = QwtPainter::roundingAlignment(painter);
 
   double symbolWidth = scaledSymbolWidth(xMap, yMap, canvasRect);
   if (doAlign) symbolWidth = std::floor(0.5 * symbolWidth) * 2.0;
@@ -185,7 +185,7 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter, QwtScaleMap const& xMap,
 void ohlc_chart_curve::drawVolume(QPainter* painter, QwtScaleMap const& xMap,
     QwtScaleMap const& yMap, QRectF const& canvasRect, int from, int to) const
 {
-  const bool doAlign = QwtPainter::roundingAlignment(painter);
+  bool const doAlign = QwtPainter::roundingAlignment(painter);
 
   double symbolWidth = scaledSymbolWidth(xMap, yMap, canvasRect);
   if (doAlign) symbolWidth = std::floor(0.5 * symbolWidth) * 2.0;

@@ -12,7 +12,7 @@
 
 /*
 struct fmt::formatter<QString> : formatter<const char*> {
-  auto format(const QString& s, format_context& ctx) {
+  auto format(QString const& s, format_context& ctx) {
     return formatter<const char*>::format((const char *)value.toUtf8(), ctx);
   }
 };
@@ -83,9 +83,9 @@ inline auto make_string = [](auto&& r) -> Result {
 };
 
 inline std::pair<std::string_view, std::string_view> split_currency_pair_string(
-    std::string_view str, const char delim = '/')
+    std::string_view str, char const delim = '/')
 {
-  const auto range =
+  auto const range =
       str | ranges::views::split(delim) | ranges::views::transform(make_string<std::string_view>);
   return std::make_pair(ranges::front(range), *next(ranges::begin(range)));
 }

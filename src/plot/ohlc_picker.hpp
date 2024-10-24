@@ -51,7 +51,7 @@ class ohlc_picker : public QwtPlotPicker
 
   QPointF last_coord() { return last_coord_; }
 
-  double quantize_x_coord(const double pos) const
+  double quantize_x_coord(double const pos) const
   {
     // get the pixel/plot coordinate transform
     timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas()->parentWidget());
@@ -117,7 +117,7 @@ class ohlc_picker : public QwtPlotPicker
     //
     // display price inside price axis
     //
-    const QwtScaleDraw* ydraw = plot_->axisScaleDraw(QwtAxis::YRight);
+    QwtScaleDraw const* ydraw = plot_->axisScaleDraw(QwtAxis::YRight);
     QwtText yaxis_text = ydraw->label(last_coord_.y());
     QColor c("#555555");
     c.setAlpha(200);
@@ -151,7 +151,7 @@ class ohlc_picker : public QwtPlotPicker
     //
     // display date inside date axis
     //
-    const QwtScaleDraw* xdraw = plot_->axisScaleDraw(QwtAxis::XBottom);
+    QwtScaleDraw const* xdraw = plot_->axisScaleDraw(QwtAxis::XBottom);
     const QDateTime dt = QDateTime::fromMSecsSinceEpoch(px);
     QString str2 = QLocale().toString(dt, "dd-MM-yy hh:mm");
     QwtText date_text(str2);
@@ -197,10 +197,10 @@ class ohlc_picker : public QwtPlotPicker
 
   struct compareX
   {
-    inline bool operator()(const double x, QPointF const& pos) const { return (x < pos.x()); }
+    inline bool operator()(double const x, QPointF const& pos) const { return (x < pos.x()); }
   };
 
-  QLineF curveLineAt(const QwtPlotCurve* curve, double x) const
+  QLineF curveLineAt(QwtPlotCurve const* curve, double x) const
   {
     // need datatype if we want to use this method
     //timebased_chart_data *data = dynamic_cast<timebased_chart_data>(curve->data());

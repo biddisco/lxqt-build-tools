@@ -74,7 +74,7 @@ int main(int argc, char** argv)
     session->write(target, version);
   });
 
-  const int sec = 5;
+  int const sec = 5;
   // wait 5 seconds and collect some data
   for (int i = 0; i < sec && (counter.load() == 0); i++)
   {

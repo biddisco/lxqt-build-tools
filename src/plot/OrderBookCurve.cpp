@@ -35,7 +35,7 @@ void OrderBookCurve::drawLines(QPainter* p, QwtScaleMap const& xMap, QwtScaleMap
   // if another thread is mdifying data, just exit without repainting
   if (!lock.owns_lock()) { return; }
 
-  const int numOfSegments = m_segPen.size();
+  int const numOfSegments = m_segPen.size();
   if (numOfSegments)
   {
     p->save();

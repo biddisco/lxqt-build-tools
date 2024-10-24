@@ -156,7 +156,7 @@ int qt_main(pika::program_options::variables_map& vm)
   //
   bool authenticated = false;
   // do we have a ram filesystem mounted? (ubuntu specific env var)
-  const char* tempfs_dir = std::getenv("XDG_RUNTIME_DIR");
+  char const* tempfs_dir = std::getenv("XDG_RUNTIME_DIR");
   if (!authenticated && tempfs_dir)
   {
     std::string filepath = {std::string(tempfs_dir) + "/grox.txt"};
@@ -325,7 +325,7 @@ int qt_main(pika::program_options::variables_map& vm)
     //
     auto const& x1 = xrpl_network::get_xrpl_instance(false)->wallets();
     auto const& x2 = xrpl_network::get_xrpl_instance(true)->wallets();
-    for (const auto lw : x1)
+    for (auto const lw : x1)
     {
       auto w = static_cast<ledger_wallet*>(lw);
       app_dbg<5>.debug("XRP_name       : ", w->name_);
@@ -333,7 +333,7 @@ int qt_main(pika::program_options::variables_map& vm)
       app_dbg<5>.debug("XRP_secret     : ", w->private_);
       app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
     }
-    for (const auto lw : x2)
+    for (auto const lw : x2)
     {
       auto w = static_cast<ledger_wallet*>(lw);
       app_dbg<5>.debug("XRP_name       : ", w->name_);

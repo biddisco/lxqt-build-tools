@@ -63,7 +63,7 @@ public:
 
       double accum = 0.0;
       std::for_each(
-          std::begin(buffer_), std::end(buffer_), [&](const double val) { accum += val * val; });
+          std::begin(buffer_), std::end(buffer_), [&](double const val) { accum += val * val; });
 
       // stddev of 'true' mean (not sample mean) uses N-1
       float N = buffer_.size() > 1 ? (buffer_.size() - 1) : 1;

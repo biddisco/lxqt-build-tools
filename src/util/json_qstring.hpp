@@ -10,9 +10,9 @@ namespace util {
 
   using string_t = nljson::string_t;
 
-  void to_json(nljson& j, const QString& qstr);
+  void to_json(nljson& j, QString const& qstr);
   void from_json(const nljson j, QString& qstr);
 
-  void to_json(nljson& j, const QByteArray& qba);
+  void to_json(nljson& j, QByteArray const& qba);
   void from_json(nljson& j, QByteArray& qba);
 }    // namespace util

@@ -26,10 +26,10 @@ namespace net::http {
 public:
     // constructor for url type get
     qhttp_request_client(QNetworkAccessManager& networkmanager,
-        const std::string& url /*, rx_req_handler_type&& handler*/);
+        std::string const& url /*, rx_req_handler_type&& handler*/);
 
     // constructor for json type post
-    qhttp_request_client(QNetworkAccessManager& networkmanager, const std::string& url,
+    qhttp_request_client(QNetworkAccessManager& networkmanager, std::string const& url,
         std::string&& content /*, rx_req_handler_type&& handler*/);
 
     // constructor for signed/custom request
@@ -39,9 +39,9 @@ public:
     ~qhttp_request_client();
 
     static client_ptr create(QNetworkAccessManager& networkmanager,
-        const std::string& url /*, rx_req_handler_type&& handler*/);
+        std::string const& url /*, rx_req_handler_type&& handler*/);
 
-    static client_ptr create(QNetworkAccessManager& networkmanager, const std::string& url,
+    static client_ptr create(QNetworkAccessManager& networkmanager, std::string const& url,
         std::string&& content /*, rx_req_handler_type&& handler*/);
 
     static client_ptr create_signed(QNetworkAccessManager& networkmanager, QNetworkRequest request,
@@ -52,7 +52,7 @@ public:
     void attach_handler(QNetworkReply* reply);
 
     static void reply_finished(client_ptr self, QNetworkReply* reply);
-    static void onSslErrors(client_ptr self, QNetworkReply* reply, const QList<QSslError>& errors);
+    static void onSslErrors(client_ptr self, QNetworkReply* reply, QList<QSslError> const& errors);
 
 private:
     void post_request();

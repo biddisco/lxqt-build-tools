@@ -75,20 +75,20 @@ exchange::exchange_map& exchange::tickers_subscribed()
 }
 */
 // ----------------------------------------------------------------------------
-bool exchange::ticker_subscribed(const currency_pair& cp)
+bool exchange::ticker_subscribed(currency_pair const& cp)
 {
   auto present = (tickers_subscribed_.contains(cp));
   return present;
 }
 
 // ----------------------------------------------------------------------------
-stream_set exchange::ticker_subscribe(const currency_pair& cp)
+stream_set exchange::ticker_subscribe(currency_pair const& cp)
 {
   throw std::runtime_error("Exchange classes must implement this function");
 }
 
 // ----------------------------------------------------------------------------
-void exchange::ticker_unsubscribe(const currency_pair& cp)
+void exchange::ticker_unsubscribe(currency_pair const& cp)
 {
   if (ticker_subscribed(cp)) { tickers_subscribed_.erase(cp); }
 }
@@ -97,7 +97,7 @@ void exchange::ticker_unsubscribe(const currency_pair& cp)
 currency_pairlist const& exchange::get_currency_pairs() { return tickers_available_; }
 
 // ----------------------------------------------------------------------------
-bool exchange::add_currency_pair(const currency_pair& cp)
+bool exchange::add_currency_pair(currency_pair const& cp)
 {
   tickers_available_.push_back(cp);
   return true;

@@ -43,7 +43,7 @@ public:
     }
 
     // ---------------------------------------
-    double operator()(const double val)
+    double operator()(double const val)
     {
       buffer_.push_back(val);
 

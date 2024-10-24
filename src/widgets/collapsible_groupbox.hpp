@@ -21,7 +21,7 @@ class QSpacerItem;
 class CollapsibleGroupBox : public QGroupBox
 {
   public:
-  explicit CollapsibleGroupBox(const QString& title, QWidget* parent = nullptr);
+  explicit CollapsibleGroupBox(QString const& title, QWidget* parent = nullptr);
 
   protected:
   void resizeEvent(QResizeEvent*) override;
@@ -34,8 +34,8 @@ class CollapsibleGroupBox : public QGroupBox
   void expandSpacer(QSpacerItem* spacer);
 
   QToolButton* m_clExpButton;
-  QMap<const void*, QMargins> m_layoutMargins;
-  QMap<const void*, QPair<QSize, QSizePolicy>> m_spacerSizes;
+  QMap<void const*, QMargins> m_layoutMargins;
+  QMap<void const*, QPair<QSize, QSizePolicy>> m_spacerSizes;
 
   private slots:
   void onScreenChanged();
