@@ -102,6 +102,7 @@ PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 20
 PointerAlignment: Left
 PPIndentWidth: 1
+QualifierAlignment: Right
 ReflowComments: false
 RequiresClausePosition: OwnLine
 RequiresExpressionIndentation: OuterScope
