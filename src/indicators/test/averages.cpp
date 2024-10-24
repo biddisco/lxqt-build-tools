@@ -1,11 +1,3 @@
-/*
- *  Copyright (c), 2017, Adrien Devresse
- *
- *  Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- *
- */
 #include <functional>
 #include <iostream>
 #include <string>
@@ -29,6 +21,7 @@ std::string filename = "grox.hdf5";
 using namespace HighFive;
 namespace ba = boost::accumulators;
 
+//----------------------------------------------------------------------------
 TEST(moving_averages, moving_average)
 {
   hdf5_ohlc_manager data_manager;
@@ -46,7 +39,6 @@ TEST(moving_averages, moving_average)
   std::stringstream tmp;
   for (auto ohlc : result)
   {
-    // std::cout << i++ << " " << ohlc << std::endl;
     auto val = alg(ohlc);
     tmp << fmt::format("{:7.05f}, ", val);
   }
@@ -64,10 +56,10 @@ TEST(moving_averages, moving_average)
       "0.27490, 0.27484, 0.27460, 0.27459, 0.27482, 0.27532, 0.27585, 0.27627, 0.27660, 0.27693, "
       "0.27726, 0.27758, 0.27797, 0.27847, 0.27900, 0.27950, 0.28007, 0.28065, 0.28115, 0.28137, "
       "0.28145, 0.28142, 0.28134, 0.28115, 0.28076, 0.28032, 0.28012, 0.27989, ";
-  // std::cout << tmp.str();
   EXPECT_EQ(expected, tmp.str());
 }
 
+//----------------------------------------------------------------------------
 TEST(moving_averages, exponential_moving_average)
 {
   hdf5_ohlc_manager data_manager;
@@ -84,7 +76,6 @@ TEST(moving_averages, exponential_moving_average)
   std::stringstream tmp;
   for (auto ohlc : result)
   {
-    // std::cout << i++ << " " << ohlc << std::endl;
     auto val = alg(ohlc);
     tmp << fmt::format("{:7.05f}, ", val);
   }
@@ -102,10 +93,10 @@ TEST(moving_averages, exponential_moving_average)
       "0.27419, 0.27429, 0.27449, 0.27487, 0.27544, 0.27602, 0.27658, 0.27708, 0.27751, 0.27782, "
       "0.27808, 0.27828, 0.27847, 0.27873, 0.27901, 0.27939, 0.27992, 0.28050, 0.28107, 0.28128, "
       "0.28127, 0.28112, 0.28090, 0.28050, 0.27971, 0.27891, 0.27863, 0.27834, ";
-  // std::cout << tmp.str();
   EXPECT_EQ(expected, tmp.str());
 }
 
+//----------------------------------------------------------------------------
 TEST(moving_averages, volume_weighted_moving_average)
 {
   hdf5_ohlc_manager data_manager;
@@ -122,7 +113,6 @@ TEST(moving_averages, volume_weighted_moving_average)
   std::stringstream tmp;
   for (auto ohlc : result)
   {
-    // std::cout << i++ << " " << ohlc << std::endl;
     auto val = alg(ohlc);
     tmp << fmt::format("{:7.05f}, ", val);
   }
@@ -140,10 +130,10 @@ TEST(moving_averages, volume_weighted_moving_average)
       "0.27396, 0.27391, 0.27376, 0.27380, 0.27404, 0.27552, 0.27562, 0.27627, 0.27823, 0.27857, "
       "0.27862, 0.27862, 0.27872, 0.27900, 0.27976, 0.28003, 0.28052, 0.28111, 0.28140, 0.28154, "
       "0.28152, 0.28152, 0.28153, 0.28151, 0.28148, 0.28118, 0.28117, 0.28109, ";
-  // std::cout << tmp.str();
   EXPECT_EQ(expected, tmp.str());
 }
 
+//----------------------------------------------------------------------------
 TEST(moving_averages, moving_average_exponential_volume_weighted)
 {
   hdf5_ohlc_manager data_manager;
@@ -160,7 +150,6 @@ TEST(moving_averages, moving_average_exponential_volume_weighted)
   std::stringstream tmp;
   for (auto ohlc : result)
   {
-    // std::cout << i++ << " " << ohlc << std::endl;
     auto val = alg(ohlc);
     tmp << fmt::format("{:7.05f}, ", val);
   }
@@ -178,10 +167,10 @@ TEST(moving_averages, moving_average_exponential_volume_weighted)
       "0.27491, 0.27479, 0.27466, 0.27455, 0.27449, 0.27462, 0.27474, 0.27493, 0.27535, 0.27575, "
       "0.27611, 0.27642, 0.27671, 0.27699, 0.27734, 0.27768, 0.27803, 0.27842, 0.27879, 0.27913, "
       "0.27943, 0.27969, 0.27992, 0.28012, 0.28029, 0.28040, 0.28050, 0.28057, ";
-  // std::cout << tmp.str();
   EXPECT_EQ(expected, tmp.str());
 }
 
+//----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
   testing::InitGoogleTest(&argc, argv);
