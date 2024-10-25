@@ -47,7 +47,6 @@ public:
     /// initialize internals from a parameter list
     void initialize() override
     {
-      init_params();
       window_size_ = std::get<int>(std::get<1>(params_[1]));
       mode_ = std::get<ohlc_modes>(std::get<1>(params_[2]));
       num_bands_ = std::get<int>(std::get<1>(params_[3]));
