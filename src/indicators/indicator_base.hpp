@@ -57,13 +57,13 @@ public:
       , description_(desc)
       , overlay_(overlay)
     {
-      indicator_dbg<2>.debug(pika::debug::detail::str<>(get_name().c_str()));
+      // indicator_dbg<2>.debug(pika::debug::detail::str<>(get_name().c_str()));
     }
 
     // ----------------------------------------------------------------------------
     virtual ~indicator_base()
     {
-      indicator_dbg<2>.debug(pika::debug::detail::str<>(get_name().c_str()));
+      // indicator_dbg<2>.debug(pika::debug::detail::str<>(get_name().c_str()));
     }
 
     // ----------------------------------------------------------------------------
