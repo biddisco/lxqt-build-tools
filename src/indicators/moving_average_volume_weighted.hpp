@@ -52,16 +52,6 @@ public:
     }
 
     // ---------------------------------------
-    moving_average_volume_weighted& operator=(moving_average_volume_weighted const& other)
-    {
-      window_size_ = other.window_size_;
-      mode_ = other.mode_;
-      mean_ = other.mean_;
-      buffer_ = other.buffer_;
-      return *this;
-    }
-
-    // ---------------------------------------
     double compute()
     {
       double ptot = 0;
