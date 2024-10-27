@@ -755,7 +755,7 @@ net::http::client_ptr bitstamp_network::signed_request(
       "https://{}:{}{}{}", bitstamp_https_address, bitstamp_https_port, url_path, url_query);
   bitstamp_dbg<7>.debug(str<>("account_request"), urlstring, string_to_sign);
 
-  QNetworkRequest request(QUrl(urlstring.c_str()));
+  QNetworkRequest request(QUrl(to_qstring(urlstring)));
   request.setRawHeader("Content-Type", content_type.c_str());
   request.setRawHeader("User-Agent", "mystery");
   request.setRawHeader("Accept", "application/json");

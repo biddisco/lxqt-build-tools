@@ -6,6 +6,7 @@
 //
 #include "debug/print.hpp"
 #include "network/qhttp-request-client.hpp"
+#include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -53,7 +54,7 @@ namespace net::http {
     , url_(url)
   {
     debug_count_++;
-    request_.setUrl(QUrl(url_.c_str()));
+    request_.setUrl(QUrl(to_qstring(url_)));
     request_.setRawHeader("Content-Type", "application/x-www-form-urlencoded");
     request_.setRawHeader("User-Agent", "mystery");
     request_.setRawHeader("Accept", "application/json");
@@ -68,7 +69,7 @@ namespace net::http {
     , content_(std::move(content))
   {
     debug_count_++;
-    request_.setUrl(QUrl(url_.c_str()));
+    request_.setUrl(QUrl(to_qstring(url_)));
     request_.setRawHeader("Content-Type", "application/json");
     request_.setRawHeader("User-Agent", "mystery");
     request_.setRawHeader("Accept", "application/json");

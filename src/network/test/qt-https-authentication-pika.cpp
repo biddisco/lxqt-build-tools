@@ -96,7 +96,7 @@ void account_request(QNetworkAccessManager& networkmanager_, std::string const& 
   std::string urlstring = fmt::format(
       "https://{}:{}{}{}", bitstamp_https_address, bitstamp_https_port, url_path, url_query);
 
-  QNetworkRequest request(QUrl(urlstring.c_str()));
+  QNetworkRequest request(QUrl(to_qstring(urlstring)));
   request.setRawHeader("Content-Type", content_type.c_str());
   request.setRawHeader("User-Agent", "mystery");
   request.setRawHeader("Accept", "application/json");
