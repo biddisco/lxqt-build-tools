@@ -31,6 +31,9 @@ inline bool startswith(std::string_view str, std::string_view sub)
 inline bool startswith(QString str, QString sub) { return str.startsWith(sub); }
 
 // ----------------------------------------------------------------------------
+inline QString to_qstring(std::string const& str) { return QString::fromStdString(str); }
+
+// ----------------------------------------------------------------------------
 inline std::string string_join(std::string_view s1, std::string_view s2)
 {
   std::string result;

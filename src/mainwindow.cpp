@@ -78,7 +78,7 @@ std::shared_ptr<price_chart_widget> create_price_chart_widget(
   // put the price plot into a dock widget
   using namespace ads;
   std::string title = currency_pair_string(cp) + " price " + tdata->exchange_->get_name();
-  CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
+  CDockWidget* PlotDockWidget = new CDockWidget(to_qstring(title));
   PlotDockWidget->setWidget(chart_widget.get());
   PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   global_settings.dock_manager_->addDockWidgetFloating(PlotDockWidget);
@@ -104,7 +104,7 @@ QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
   // put the order book into a dock widget
   using namespace ads;
   std::string obtitle = cps + " text " + name;
-  CDockWidget* obPlotDockWidget = new CDockWidget(QString(obtitle.c_str()));
+  CDockWidget* obPlotDockWidget = new CDockWidget(to_qstring(obtitle));
   obPlotDockWidget->setWidget(orderbook_text);
   obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   global_settings.dock_manager_->addDockWidgetFloating(obPlotDockWidget);
@@ -123,7 +123,7 @@ OrderBookPlot* create_order_book_plot_widget(
   orderbook_plot->setMinimumSize(384, 256);
   //
   std::string obptitle = cps + " depth " + name;
-  CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
+  CDockWidget* obpDockWidget = new CDockWidget(to_qstring(obptitle));
   obpDockWidget->setWidget(orderbook_plot);
   obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   global_settings.dock_manager_->addDockWidgetFloating(obpDockWidget);
@@ -343,7 +343,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         // widget with panels for tickers/selected/streams
         connection_widget* conwidget = new connection_widget(this, ex);
         conwidget->setup_gui();
-        net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
+        net_layout_->addTab(conwidget, to_qstring(ex->get_name()));
         global_settings.dock_manager_->openPerspective(active_perspective_);
       },
       Qt::QueuedConnection);
@@ -384,7 +384,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         // widget with panels for tickers/selected/streams
         connection_widget* conwidget = new connection_widget(this, ex);
         conwidget->setup_gui();
-        net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
+        net_layout_->addTab(conwidget, to_qstring(ex->get_name()));
         global_settings.dock_manager_->openPerspective(active_perspective_);
       },
       Qt::QueuedConnection);
@@ -394,7 +394,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       [this](exchange* ex) {    // widget with panels for tickers/selected/streams
         connection_widget* conwidget = new connection_widget(this, ex);
         conwidget->setup_gui();
-        net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
+        net_layout_->addTab(conwidget, to_qstring(ex->get_name()));
         global_settings.dock_manager_->openPerspective(active_perspective_);
       },
       Qt::QueuedConnection);
@@ -413,7 +413,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       if (network->get_name() == "XRPL") w->widget_->set_data(*static_cast<ledger_wallet*>(w));
       accounts_frame_->layout()->addWidget(w->widget_);
       // update wallet combo with name
-      algo_form_->all_acct_combo->addItem(QString(w->name_.c_str()));
+      algo_form_->all_acct_combo->addItem(to_qstring(w->name_));
     }
   }
   accounts_frame_->layout()->addItem(
@@ -789,7 +789,7 @@ void GroxMainWindow::saveConnectionSetups()
       // begin ticker group
       auto cp = ticker.first;
       std::string key = currency_pair_string(cp);
-      settings.beginGroup(QString(key.data()));
+      settings.beginGroup(to_qstring(key));
 
       // for each stream available
       for (auto const& s : streams)
