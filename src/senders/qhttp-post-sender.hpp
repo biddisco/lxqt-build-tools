@@ -29,7 +29,7 @@
 namespace grox::senders {
 
   using namespace grox::debug;
-  constexpr int gdeb_level = 3;
+  constexpr int gdeb_level = 2;
   template <int Level>
   inline constexpr print_threshold<Level, gdeb_level> qt_trig("QT_TRIGG");
 
@@ -174,10 +174,10 @@ namespace grox::senders {
           , client_(nullptr)
           , req_type_{req_type}
         {
-          PIKA_DETAIL_DP(qt_trig<2>, debug(str<>("create"), client_));
+          PIKA_DETAIL_DP(qt_trig<3>, debug(str<>("create"), client_));
         }
 
-        ~operation_state() { PIKA_DETAIL_DP(qt_trig<2>, debug(str<>("destroy"), client_)); }
+        ~operation_state() { PIKA_DETAIL_DP(qt_trig<3>, debug(str<>("destroy"), client_)); }
 
         friend constexpr auto tag_invoke(ex::start_t, operation_state& os) noexcept
         {

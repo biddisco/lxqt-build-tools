@@ -918,7 +918,7 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data tdata)
         })    //
       | stdexec::then([this, cp, tdata](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
-          bitstamp_dbg<0>.debug(str<>("OHLC (lambda)"), tdata->view_->get_ticker_string());
+          bitstamp_dbg<4>.debug(str<>("OHLC (lambda)"), tdata->view_->get_ticker_string());
           handle_new_ohlc_data(tdata, data);
           update_ohlc_data(cp, tdata);
         })    //
