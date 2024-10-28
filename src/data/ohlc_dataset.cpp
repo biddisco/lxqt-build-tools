@@ -34,9 +34,9 @@ ohlc_dataset::~ohlc_dataset()
 }
 
 // ----------------------------------------------------------------------------
-uint64_t ohlc_dataset::merge_data(ohlctv_vector const& new_ohlc_samples_)
+std::uint64_t ohlc_dataset::merge_data(ohlctv_vector const& new_ohlc_samples_)
 {
-  uint64_t update = 0;
+  std::uint64_t update = 0;
   // initial data may be empty, so just copy without merge/update
   if (data().size() == 0)
   {
@@ -63,7 +63,11 @@ uint64_t ohlc_dataset::merge_data(ohlctv_vector const& new_ohlc_samples_)
     data().append(new_ohlc_samples_);
     update += new_ohlc_samples_.size();
   }
-  if (update > 0) new_data_subscribers_.publish();
+  if (update > 0)
+  {
+    ohlc_dbg<2>.debug(str<>("publish"), ticker_str_, "new samples", ffmt<dec4>(update));
+    new_data_subscribers_.publish(update);
+  }
   return update;
 }
 
@@ -190,6 +194,11 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
       msecs_unix_to_calendar_time(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of", size());
   validate_ohlc(data(), res_lo, orig_T, ticker_str_);
 
-  if (modified) new_data_subscribers_.publish();
+  if (modified)
+  {
+    ohlc_dbg<1>.debug(str<>("publish"), ticker_str_, str<3>(res_lo.name_), "new samples",
+        ffmt<dec4>(size() - orig_size));
+    new_data_subscribers_.publish(size() - orig_size);
+  }
   return this;
 }

@@ -18,13 +18,13 @@ struct ohlc_dataset : timebased_chart_data<ohlctv_sample>
   std::string ticker_str_;
 
   // when this dataset grows, subscribers will be notified
-  grox::PublishSubscribe<> new_data_subscribers_;
+  grox::PublishSubscribe<std::uint64_t> new_data_subscribers_;
 
   ohlc_dataset(candle_res res, std::string const& name);
   ~ohlc_dataset();
 
   // Add new downloaded data to the existing dataset
-  uint64_t merge_data(ohlctv_vector const& new_ohlc_samples);
+  std::uint64_t merge_data(ohlctv_vector const& new_ohlc_samples);
 
   // Checks that all data from time T (if present) has consecutive time stamps.
   // Important when merging new downloaded data with old to ensure no gaps have crept in
