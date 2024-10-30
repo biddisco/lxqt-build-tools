@@ -20,16 +20,108 @@ namespace Ui {
   class price_chart_widget;
 }
 
-// ----------------------------------------------------------------------------
-struct indicator_data
+/// indicator_ptr - contains a shared_ptr to a vtable which invokes the indicator API
+struct indicator_ptr
 {
-  QString text;
-  QString params;
-  std::shared_ptr<indicators::indicator_base> indicator;
-  indicator_plot* plot;
+  // ----------------------------------------------------------------------------
+  /// invokes indicator_API - vtable of functions
+  struct indicator_API_vtable
+  {
+    virtual ~indicator_API_vtable() = default;
+    // access the base pointer
+    virtual indicators::indicator_base* ptr() = 0;
+    // access the specialized operator overloads
+    virtual void call_operator(std::uint64_t) = 0;
+  };
+
+  // ----------------------------------------------------------------------------
+  /// indicator_API_binding - templated binding of type to parameter API
+  template <typename Algorithm>
+  struct indicator_API_binding : indicator_API_vtable
+  {
+    indicator_API_binding(Algorithm const& x)
+      : alg_(x)
+    {
+    }
+
+    // ----------------------------------------------------------------------------
+    indicators::indicator_base* ptr() override { return &alg_; }
+
+    // ----------------------------------------------------------------------------
+    void call_operator(std::uint64_t N) override { call_operator_impl(N); }
+
+    // ----------------------------------------------------------------------------
+    /// The algorithm might not return a single value, so we provide
+    /// overloads that can handle vectors of values
+    template <typename T = Algorithm,
+        typename std::enable_if_t<std::is_same<typename T::result_type, double>::value, bool>
+            Enable = false>
+    void call_operator_impl(std::uint64_t N)
+    {
+      auto const input = alg_.get_input_data()[0];
+      auto output = alg_.get_output_datasets()[0];
+      //
+      if (N == 0)
+      {
+        for (auto const& ohlc : input->data())
+        {
+          auto vals = alg_.operator()(ohlc);
+          QPointF xyval(ohlc.time, vals);
+          output->data().push_back(xyval);
+        }
+      }
+    }
+
+    // ----------------------------------------------------------------------------
+    template <typename T = Algorithm,
+        typename std::enable_if_t<std::is_same<typename T::result_type, std::vector<float>>::value,
+            bool>
+            Enable = false>
+    void call_operator_impl(std::uint64_t N)
+    {
+      auto const input = alg_.get_input_data()[0];
+      auto outputs = alg_.get_output_datasets();
+      //
+      if (N == 0)
+      {
+        for (auto const& ohlc : input->data())
+        {
+          auto vals = alg_.operator()(ohlc);
+          for (int i = 0; i < alg_.num_outputs(); ++i)
+          {
+            QPointF xyval(ohlc.time, vals[i]);
+            outputs[i]->data().push_back(xyval);
+          }
+        }
+      }
+    }
+
+    Algorithm alg_;
+  };
+
+  // ----------------------------------------------------------------------------
+  /// constructor - creates the internal vtable enabled object
+  template <typename Algorithm>
+  indicator_ptr(Algorithm const& alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_)
+  {
+    // this is backwards - the shared pointer holds the API binding instead of the alg
+    binding = std::make_shared<indicator_API_binding<Algorithm>>(alg);
+    std::shared_ptr<Algorithm> temp = alg.create(alg, hdf5_ohlc_);
+    // copy through and then let the other go
+    std::dynamic_pointer_cast<indicator_API_binding<Algorithm>>(binding)->alg_ = *temp;
+  }
+
+  // ----------------------------------------------------------------------------
+  void call_operator(std::uint64_t N) { binding->call_operator(N); }
+
+  // ----------------------------------------------------------------------------
+  indicators::indicator_base* ptr() const { return binding->ptr(); }
+
+  // ----------------------------------------------------------------------------
+  std::shared_ptr<indicator_API_vtable> binding;
+  indicator_plot* plot{nullptr};
   std::vector<timebased_data_curve*> curves;
 };
-Q_DECLARE_METATYPE(indicator_data*)
 
 // ----------------------------------------------------------------------------
 class indicators_model : public QAbstractTableModel
@@ -54,7 +146,7 @@ class indicators_model : public QAbstractTableModel
 
   //    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const = 0;
 
-  std::vector<indicator_data> indicators_;
+  std::vector<indicator_ptr> indicators_;
 };
 
 // ----------------------------------------------------------------------------

@@ -19,6 +19,7 @@
 #include "indicators/indicator_types.hpp"
 #include "plot/ohlc_chart_curve.hpp"
 #include "plot/timebased_data_curve.hpp"
+#include "util/stringutils.hpp"
 #include "widgets/digital_clock.hpp"
 #include "widgets/indicator_dialog.hpp"
 #include "widgets/price_chart_widget.hpp"
@@ -239,50 +240,43 @@ void price_chart_widget::connect_gui()
       std::visit(
           [this](auto& alg) {
             using algorithm_type = std::decay<decltype(alg)>::type;
-
-            // create a new instance of the algorithm with internals copied from dialog
-            std::shared_ptr<algorithm_type> algorithm =
-                indicators::indicator_base::create(alg, hdf5_ohlc_);
-
+            // create algorithm vtable callable
+            indicator_ptr algp(alg, hdf5_ohlc_);
             // iterate over the input dataset, executing the algorithm for each point
-            indicators::call_algorithm_operator(*algorithm);
+            algp.call_operator(0);
 
             auto colour = chart_colours[colour_count++ % 10];
 
-            indicator_plot* plot = nullptr;
-            QString name = QString(algorithm->get_name().c_str());
-            QString params = QString(indicators::param_string(algorithm->get_params()).c_str());
-
+            QString name = QString(algp.ptr()->get_name().c_str());
             // create an indicator_data object with empty curves data
-            indicator_data i_data{name, params, algorithm, plot, {}};
 
-            for (int i = 0; i < algorithm->num_outputs(); ++i)
+            for (int i = 0; i < algp.ptr()->num_outputs(); ++i)
             {
-              auto ot = algorithm->get_overlay(i);
+              auto ot = algp.ptr()->get_overlay(i);
               timebased_data_curve* curve;
               if (ot == indicators::overlay_type::price)
                 curve = price_plot_->add_overlay_curve(
-                    name, algorithm->get_output_datasets()[i], colour);
+                    name, algp.ptr()->get_output_datasets()[i], colour);
               else if (ot == indicators::overlay_type::mode_select)
               {
-                ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(algorithm->get_params()[2]));
+                ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(algp.ptr()->get_params()[2]));
                 if (mode == ohlc_modes::volume)
                   curve = price_plot_->add_overlay_volume_curve(
-                      name, algorithm->get_output_datasets()[i], colour);
+                      name, algp.ptr()->get_output_datasets()[i], colour);
                 else if (mode == ohlc_modes::value)
-                  std::tie(i_data.plot, curve) =
-                      add_indicator_plot(name, algorithm->get_output_datasets()[i], colour);
+                  std::tie(algp.plot, curve) =
+                      add_indicator_plot(name, algp.ptr()->get_output_datasets()[i], colour);
                 else
                   curve = price_plot_->add_overlay_curve(
-                      name, algorithm->get_output_datasets()[i], colour);
+                      name, algp.ptr()->get_output_datasets()[i], colour);
               }
               else
-                std::tie(i_data.plot, curve) =
-                    add_indicator_plot(name, algorithm->get_output_datasets()[i], colour);
-              i_data.curves.push_back(curve);
+                std::tie(algp.plot, curve) =
+                    add_indicator_plot(name, algp.ptr()->get_output_datasets()[i], colour);
+              algp.curves.push_back(curve);
             }
 
-            ind_model_.indicators_.push_back(i_data);
+            ind_model_.indicators_.push_back(algp);
             ind_model_.dataAdded();
             this->replot();
           },
@@ -441,8 +435,11 @@ QVariant indicators_model::data(QModelIndex const& index, int role) const
   auto it = std::next(indicators_.begin(), index.row());
   if (role == Qt::DisplayRole)
   {
-    if (index.column() == 0) { return (QString(it->text)); }
-    else if (index.column() == 1) { return (QString(it->params)); }
+    if (index.column() == 0) { return (to_qstring(it->ptr()->get_name())); }
+    else if (index.column() == 1)
+    {
+      return to_qstring(indicators::param_string(it->ptr()->get_params()));
+    }
     else if (index.column() == 2) { return (QString("")); }
   }
   else if (role == Qt::BackgroundRole && index.column() == 2)
