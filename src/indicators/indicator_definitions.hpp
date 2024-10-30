@@ -66,45 +66,6 @@ namespace indicators {
       types_generator<indicator_typelist>::generate();
 
   // ----------------------------------------------------------------------------
-  /// The algorithm might not return a single value, so we provide
-  /// overloads that can handle vectors of values
-  template <typename Algorithm,
-      typename std::enable_if_t<std::is_same<typename Algorithm::result_type, double>::value, bool>
-          Enable = false>
-  void call_algorithm_operator(Algorithm& alg)
-  {
-    auto const input = alg.get_input_data()[0];
-    auto output = alg.get_output_datasets()[0];
-    //
-    for (auto const& ohlc : input->data())
-    {
-      auto vals = alg.operator()(ohlc);
-      QPointF xyval(ohlc.time, vals);
-      output->data().push_back(xyval);
-    }
-  }
-
-  template <typename Algorithm,
-      typename std::enable_if_t<
-          std::is_same<typename Algorithm::result_type, std::vector<float>>::value, bool>
-          Enable = false>
-  void call_algorithm_operator(Algorithm& alg)
-  {
-    auto const input = alg.get_input_data()[0];
-    auto outputs = alg.get_output_datasets();
-    //
-    for (auto const& ohlc : input->data())
-    {
-      auto vals = alg.operator()(ohlc);
-      for (int i = 0; i < alg.num_outputs(); ++i)
-      {
-        QPointF xyval(ohlc.time, vals[i]);
-        outputs[i]->data().push_back(xyval);
-      }
-    }
-  }
-
-  // ----------------------------------------------------------------------------
   template <class T>
   struct streamer
   {

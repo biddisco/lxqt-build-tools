@@ -57,13 +57,12 @@ public:
       , description_(desc)
       , overlay_(overlay)
     {
-      // indicator_dbg<2>.debug(pika::debug::detail::str<>(get_name().c_str()));
     }
 
     // ----------------------------------------------------------------------------
     virtual ~indicator_base()
     {
-      // indicator_dbg<2>.debug(pika::debug::detail::str<>(get_name().c_str()));
+      for (auto d : in_datasets_) { d->new_data_subscribers_.unsubscribe("indicator"); }
     }
 
     // ----------------------------------------------------------------------------
@@ -99,7 +98,7 @@ public:
     // default implementation uses first input resolution and size
     void create_outputs(std::shared_ptr<ohlc_dataset_view> view)
     {
-      in_datasets_ = get_datasets(view);
+      in_datasets_ = connect_input_datasets(view);
       //
       const candle_res res = in_datasets_[0]->get_resolution();
       const std::size_t size = in_datasets_[0]->data().size();
@@ -114,14 +113,22 @@ public:
     // ----------------------------------------------------------------------------
     // iterate over the parameters returned from an indicator selection dialog and
     // find the datasets of the right resolution in the datasets view
-    std::vector<ohlc_dataset*> get_datasets(std::shared_ptr<ohlc_dataset_view> view)
+    std::vector<ohlc_dataset*> connect_input_datasets(std::shared_ptr<ohlc_dataset_view> view)
     {
+      using namespace grox::debug;
       std::vector<ohlc_dataset*> result;
       for (auto const& p : get_params())
       {
         if (candle_res const* c = std::get_if<candle_res>(&std::get<1>(p)))
         {
-          result.push_back(view->get_dataset(*c));
+          auto dataset = view->get_dataset(*c);
+          result.push_back(dataset);
+          dataset->new_data_subscribers_.subscribe("indicator", [this](std::uint64_t N) {
+            indicator_dbg<0>.debug(str<>("Help!"), "new samples", ffmt<dec4>(N));
+            indicator_dbg<0>.debug(str<>(get_name().c_str()), "new samples", ffmt<dec4>(N));
+            // todo - only call if all inputs are updated
+            // /*indicators::*/ call_algorithm_operator(N);
+          });
         }
       }
       return result;

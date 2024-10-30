@@ -19,7 +19,7 @@ namespace grox {
   struct PublishSubscribe
   {
     using Signature = std::function<void(Message...)>;
-    std::vector<Signature> subscriptions;
+    std::unordered_map<std::string, Signature> subscriptions;
 
     void publish(Message... message) const
     {
@@ -27,11 +27,16 @@ namespace grox {
       {
         using namespace grox::debug;
         pubsub_dbg<6>.debug(str<>("publish"), print_type<Signature>());
-        for (auto& subscriber : subscriptions) { subscriber(message...); }
+        for (auto& subscriber : subscriptions) { subscriber.second(message...); }
       }
     }
 
-    void subscribe(Signature callback) { subscriptions.push_back(callback); }
+    void subscribe(std::string const& id, Signature callback)
+    {
+      subscriptions.insert(std::make_pair(id, callback));
+    }
+
+    void unsubscribe(std::string const& id) { subscriptions.erase(id); }
 
     void clear() { subscriptions.clear(); }
   };
