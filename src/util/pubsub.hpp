@@ -26,8 +26,11 @@ namespace grox {
       if (subscriptions.size() > 0)
       {
         using namespace grox::debug;
-        pubsub_dbg<6>.debug(str<>("publish"), print_type<Signature>());
-        for (auto& subscriber : subscriptions) { subscriber.second(message...); }
+        for (auto& subscriber : subscriptions)
+        {
+          pubsub_dbg<0>.debug(str<>("publish"), subscriber.first, print_type<Signature>());
+          subscriber.second(message...);
+        }
       }
     }
 

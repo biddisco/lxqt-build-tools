@@ -1,7 +1,6 @@
 set(grox_indicators_SRCS
     # basic definitions
-    indicator_api.hpp
-    indicator_api.cpp
+    indicator_ptr.hpp
     indicator_base.hpp
     indicator_definitions.hpp
     indicator_types.hpp
@@ -22,12 +21,13 @@ set(grox_indicators_SRCS
 
 add_library(
   grox_indicators
-  ${grox_indicators_SRCS}
+  INTERFACE
+  # ${grox_indicators_SRCS}
 )
 
 target_include_directories(
   grox_indicators
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..
+  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 
 target_link_libraries(

@@ -1,0 +1,142 @@
+#pragma once
+
+#include <assert.h>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "debug/print.hpp"
+#include "indicators/indicator_base.hpp"
+
+class indicator_plot;
+class timebased_data_curve;
+
+namespace indicators {
+  /// indicator_ptr - contains a shared_ptr to a vtable which invokes the indicator API
+  struct indicator_ptr
+  {
+    // ----------------------------------------------------------------------------
+    /// invokes indicator_API - vtable of functions
+    struct indicator_API_vtable
+    {
+      virtual ~indicator_API_vtable() = default;
+      // access the base pointer
+      virtual indicators::indicator_base* ptr() = 0;
+      // access the specialized operator overloads
+      virtual void call_operator(std::uint64_t) = 0;
+    };
+
+    // ----------------------------------------------------------------------------
+    /// indicator_API_binding - templated binding of type to parameter API
+    template <typename Algorithm>
+    struct indicator_API_binding : indicator_API_vtable
+    {
+      indicator_API_binding(Algorithm const& x)
+        : alg_(x)
+      {
+      }
+
+      // ----------------------------------------------------------------------------
+      indicators::indicator_base* ptr() override { return &alg_; }
+
+      // ----------------------------------------------------------------------------
+      void call_operator(std::uint64_t N) override { call_operator_impl(N); }
+
+      // ----------------------------------------------------------------------------
+      /// The algorithm might not return a single value, so we provide
+      /// overloads that can handle vectors of values
+      template <typename T = Algorithm,
+          typename std::enable_if_t<std::is_same<typename T::result_type, double>::value, bool>
+              Enable = false>
+      void call_operator_impl(std::uint64_t N)
+      {
+        auto const input = alg_.get_input_data()[0];
+        auto output = alg_.get_output_datasets()[0];
+        //
+        if (N == 0)
+        {
+          for (auto const& ohlc : input->data())
+          {
+            auto vals = alg_.operator()(ohlc);
+            QPointF xyval(ohlc.time, vals);
+            output->data().push_back(xyval);
+          }
+        }
+      }
+
+      // ----------------------------------------------------------------------------
+      template <typename T = Algorithm,
+          typename std::enable_if_t<
+              std::is_same<typename T::result_type, std::vector<float>>::value, bool>
+              Enable = false>
+      void call_operator_impl(std::uint64_t N)
+      {
+        auto const input = alg_.get_input_data()[0];
+        auto outputs = alg_.get_output_datasets();
+        //
+        if (N == 0)
+        {
+          for (auto const& ohlc : input->data())
+          {
+            auto vals = alg_.operator()(ohlc);
+            for (int i = 0; i < alg_.num_outputs(); ++i)
+            {
+              QPointF xyval(ohlc.time, vals[i]);
+              outputs[i]->data().push_back(xyval);
+            }
+          }
+        }
+      }
+
+      Algorithm alg_;
+    };
+
+    // ----------------------------------------------------------------------------
+    /// constructor - creates the internal vtable enabled object
+    template <typename Algorithm>
+    indicator_ptr(Algorithm const& alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_)
+    {
+      // this is backwards - the shared pointer holds the API binding
+      // instead of the algorithm - the create function returns a shared_pointer
+      // to an algorithm, so we copy it out and throw away the shared wrapper
+      binding = std::make_shared<indicator_API_binding<Algorithm>>(alg);
+      //  @todo : redo the create function to fix this
+      std::shared_ptr<Algorithm> temp = alg.create(alg, hdf5_ohlc_);
+      // copy through and then let the other go
+      std::dynamic_pointer_cast<indicator_API_binding<Algorithm>>(binding)->alg_ = *temp;
+
+      // iterate over the input dataset(S), executing the algorithm for each point
+      call_operator(0);
+
+      // register a handler to make sure we pickup updates to datasets
+      using namespace grox::debug;
+      for (auto d : ptr()->get_input_data())
+      {
+        d->new_data_subscribers_.subscribe("indicator", [this](std::uint64_t N) {
+          indicator_dbg<0>.debug(str<>("Help!"), "new samples", ffmt<dec4>(N));
+          indicator_dbg<0>.debug(str<>(ptr()->get_name().c_str()), "new samples", ffmt<dec4>(N));
+          // todo - only call if all inputs are updated
+          // /*indicators::*/ call_algorithm_operator(N);
+        });
+      }
+    }
+
+    // ----------------------------------------------------------------------------
+    ~indicator_ptr()
+    {
+      for (auto d : ptr()->get_input_data()) { d->new_data_subscribers_.unsubscribe("indicator"); }
+    }
+
+    // ----------------------------------------------------------------------------
+    void call_operator(std::uint64_t N) { binding->call_operator(N); }
+
+    // ----------------------------------------------------------------------------
+    indicators::indicator_base* ptr() const { return binding->ptr(); }
+
+    // ----------------------------------------------------------------------------
+    std::shared_ptr<indicator_API_vtable> binding;
+    indicator_plot* plot{nullptr};
+    std::vector<timebased_data_curve*> curves;
+  };
+}    // namespace indicators

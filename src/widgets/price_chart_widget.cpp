@@ -241,9 +241,7 @@ void price_chart_widget::connect_gui()
           [this](auto& alg) {
             using algorithm_type = std::decay<decltype(alg)>::type;
             // create algorithm vtable callable
-            indicator_ptr algp(alg, hdf5_ohlc_);
-            // iterate over the input dataset, executing the algorithm for each point
-            algp.call_operator(0);
+            indicators::indicator_ptr algp(alg, hdf5_ohlc_);
 
             auto colour = chart_colours[colour_count++ % 10];
 

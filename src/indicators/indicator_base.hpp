@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <variant>
 #include <vector>
 
 #include "data/ohlc_data_resolutions.hpp"
