@@ -59,10 +59,7 @@ public:
     }
 
     // ----------------------------------------------------------------------------
-    virtual ~indicator_base()
-    {
-      for (auto d : in_datasets_) { d->new_data_subscribers_.unsubscribe("indicator"); }
-    }
+    virtual ~indicator_base() {}
 
     // ----------------------------------------------------------------------------
     virtual void initialize() = 0;
@@ -122,12 +119,6 @@ public:
         {
           auto dataset = view->get_dataset(*c);
           result.push_back(dataset);
-          dataset->new_data_subscribers_.subscribe("indicator", [this](std::uint64_t N) {
-            indicator_dbg<0>.debug(str<>("Help!"), "new samples", ffmt<dec4>(N));
-            indicator_dbg<0>.debug(str<>(get_name().c_str()), "new samples", ffmt<dec4>(N));
-            // todo - only call if all inputs are updated
-            // /*indicators::*/ call_algorithm_operator(N);
-          });
         }
       }
       return result;

@@ -46,8 +46,11 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency_pair const& 
     if (new_data)
     {
       add_dataset(res, new_data);
-      origin_data->new_data_subscribers_.subscribe("dataset_view",
-          [origin_data, new_data](std::uint64_t) { new_data->downsample_update(origin_data); });
+      origin_data->new_data_subscribers_.subscribe(
+          "dataset_view", [origin_data, new_data](std::uint64_t N) {
+            man_dbg<5>.debug(str<>("dataset_view"), "new samples", ffmt<dec4>(N));
+            new_data->downsample_update(origin_data);
+          });
     }
   }
 }

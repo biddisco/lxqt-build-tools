@@ -28,7 +28,7 @@ namespace grox {
         using namespace grox::debug;
         for (auto& subscriber : subscriptions)
         {
-          pubsub_dbg<0>.debug(str<>("publish"), subscriber.first, print_type<Signature>());
+          pubsub_dbg<6>.debug(str<>("publish"), subscriber.first, print_type<Signature>());
           subscriber.second(message...);
         }
       }

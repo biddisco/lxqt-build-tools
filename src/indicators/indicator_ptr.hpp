@@ -25,6 +25,8 @@ namespace indicators {
       virtual indicators::indicator_base* ptr() = 0;
       // access the specialized operator overloads
       virtual void call_operator(std::uint64_t) = 0;
+      //
+      virtual void register_callbacks() = 0;
     };
 
     // ----------------------------------------------------------------------------
@@ -38,7 +40,29 @@ namespace indicators {
       }
 
       // ----------------------------------------------------------------------------
+      ~indicator_API_binding()
+      {
+        for (auto d : alg_.get_input_data()) { d->new_data_subscribers_.unsubscribe("indicator"); }
+      }
+
+      // ----------------------------------------------------------------------------
       indicators::indicator_base* ptr() override { return &alg_; }
+
+      // ----------------------------------------------------------------------------
+      void register_callbacks() override
+      {
+        // register a handler to make sure we pickup updates to datasets
+        using namespace grox::debug;
+        for (auto d : alg_.get_input_data())
+        {
+          d->new_data_subscribers_.subscribe("indicator", [this](std::uint64_t N) {
+            indicator_dbg<0>.debug(str<>("Help!"), "new samples", ffmt<dec4>(N));
+            indicator_dbg<0>.debug(str<>(alg_.get_name().c_str()), "new samples", ffmt<dec4>(N));
+            // todo - only call if all inputs are updated
+            call_operator(N);
+          });
+        }
+      }
 
       // ----------------------------------------------------------------------------
       void call_operator(std::uint64_t N) override { call_operator_impl(N); }
@@ -108,25 +132,12 @@ namespace indicators {
 
       // iterate over the input dataset(S), executing the algorithm for each point
       call_operator(0);
-
-      // register a handler to make sure we pickup updates to datasets
-      using namespace grox::debug;
-      for (auto d : ptr()->get_input_data())
-      {
-        d->new_data_subscribers_.subscribe("indicator", [this](std::uint64_t N) {
-          indicator_dbg<0>.debug(str<>("Help!"), "new samples", ffmt<dec4>(N));
-          indicator_dbg<0>.debug(str<>(ptr()->get_name().c_str()), "new samples", ffmt<dec4>(N));
-          // todo - only call if all inputs are updated
-          // /*indicators::*/ call_algorithm_operator(N);
-        });
-      }
+      // hook updates
+      binding->register_callbacks();
     }
 
     // ----------------------------------------------------------------------------
-    ~indicator_ptr()
-    {
-      for (auto d : ptr()->get_input_data()) { d->new_data_subscribers_.unsubscribe("indicator"); }
-    }
+    ~indicator_ptr() {}
 
     // ----------------------------------------------------------------------------
     void call_operator(std::uint64_t N) { binding->call_operator(N); }
