@@ -36,6 +36,11 @@ namespace grox {
 
     void subscribe(std::string const& id, Signature callback)
     {
+      using namespace grox::debug;
+      if (subscriptions.contains(id))
+      {
+        pubsub_dbg<0>.error(str<>("duplicate subscribe"), id, print_type<Signature>());
+      }
       subscriptions.insert(std::make_pair(id, callback));
     }
 
