@@ -15,6 +15,7 @@
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "util/execute_os_command.hpp"
+#include "util/stringutils.hpp"
 
 static std::atomic<int> reply_ready = 0;
 static std::string api_user;
