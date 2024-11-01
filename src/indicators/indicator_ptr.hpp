@@ -42,7 +42,12 @@ namespace indicators {
       // ----------------------------------------------------------------------------
       ~indicator_API_binding()
       {
-        for (auto d : alg_.get_input_data()) { d->new_data_subscribers_.unsubscribe("indicator"); }
+        using namespace grox::debug;
+        for (auto d : alg_.get_input_data())
+        {
+          indicator_dbg<0>.debug(str<>("UnSubscribing"), d->get_resolution());
+          d->new_data_subscribers_.unsubscribe("indicator");
+        }
       }
 
       // ----------------------------------------------------------------------------
@@ -55,6 +60,7 @@ namespace indicators {
         using namespace grox::debug;
         for (auto d : alg_.get_input_data())
         {
+          indicator_dbg<0>.debug(str<>("Subscribing"), d->get_resolution());
           d->new_data_subscribers_.subscribe("indicator", [this](std::uint64_t N) {
             indicator_dbg<0>.debug(str<>("Help!"), "new samples", ffmt<dec4>(N));
             indicator_dbg<0>.debug(str<>(alg_.get_name().c_str()), "new samples", ffmt<dec4>(N));

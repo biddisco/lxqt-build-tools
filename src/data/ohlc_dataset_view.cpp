@@ -46,9 +46,14 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency_pair const& 
     if (new_data)
     {
       add_dataset(res, new_data);
+      man_dbg<5>.debug(str<>("subscribing"), new_data->ticker_str_, new_data->get_resolution(),
+          "to", origin_data->ticker_str_, origin_data->get_resolution());
       origin_data->new_data_subscribers_.subscribe(
-          "dataset_view", [origin_data, new_data](std::uint64_t N) {
-            man_dbg<5>.debug(str<>("dataset_view"), "new samples", ffmt<dec4>(N));
+          "dataset_view" + new_data->ticker_str_ + new_data->get_resolution().name_,
+          [origin_data, new_data](std::uint64_t N) {
+            man_dbg<5>.debug(str<>("dataset_view"), new_data->ticker_str_,
+                new_data->get_resolution(), "received new samples", ffmt<dec4>(N), "updating from",
+                origin_data->ticker_str_, origin_data->get_resolution());
             new_data->downsample_update(origin_data);
           });
     }
@@ -58,7 +63,11 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency_pair const& 
 // ----------------------------------------------------------------------------
 ohlc_dataset_view::~ohlc_dataset_view()
 {
-  for (auto d : candles_) { delete d.second; }
+  for (auto d : candles_)
+  {
+    d.second->new_data_subscribers_.clear();
+    delete d.second;
+  }
   candles_.clear();
 }
 
