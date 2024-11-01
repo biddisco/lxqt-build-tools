@@ -60,9 +60,9 @@ namespace indicators {
         using namespace grox::debug;
         for (auto d : alg_.get_input_data())
         {
-          indicator_dbg<0>.debug(str<>("Subscribing"), d->get_resolution());
-          d->new_data_subscribers_.subscribe("indicator", [this](std::uint64_t N) {
-            indicator_dbg<0>.debug(str<>("Help!"), "new samples", ffmt<dec4>(N));
+          std::string id = alg_.get_name() + std::to_string((uintptr_t) (&alg_));
+          indicator_dbg<0>.debug(str<>("Subscribing"), id, d->get_resolution());
+          d->new_data_subscribers_.subscribe(id, [this](std::uint64_t N) {
             indicator_dbg<0>.debug(str<>(alg_.get_name().c_str()), "new samples", ffmt<dec4>(N));
             // todo - only call if all inputs are updated
             call_operator(N);
@@ -84,14 +84,13 @@ namespace indicators {
         auto const input = alg_.get_input_data()[0];
         auto output = alg_.get_output_datasets()[0];
         //
-        if (N == 0)
+        auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
+        for (auto it = i1; it != input->data().end(); ++it)
         {
-          for (auto const& ohlc : input->data())
-          {
-            auto vals = alg_.operator()(ohlc);
-            QPointF xyval(ohlc.time, vals);
-            output->data().push_back(xyval);
-          }
+          auto const& ohlc = *it;
+          auto vals = alg_.operator()(ohlc);
+          QPointF xyval(ohlc.time, vals);
+          output->data().push_back(xyval);
         }
       }
 
@@ -105,16 +104,15 @@ namespace indicators {
         auto const input = alg_.get_input_data()[0];
         auto outputs = alg_.get_output_datasets();
         //
-        if (N == 0)
+        auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
+        for (auto it = i1; it != input->data().end(); ++it)
         {
-          for (auto const& ohlc : input->data())
+          auto const& ohlc = *it;
+          auto vals = alg_.operator()(ohlc);
+          for (int i = 0; i < alg_.num_outputs(); ++i)
           {
-            auto vals = alg_.operator()(ohlc);
-            for (int i = 0; i < alg_.num_outputs(); ++i)
-            {
-              QPointF xyval(ohlc.time, vals[i]);
-              outputs[i]->data().push_back(xyval);
-            }
+            QPointF xyval(ohlc.time, vals[i]);
+            outputs[i]->data().push_back(xyval);
           }
         }
       }
