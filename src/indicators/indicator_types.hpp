@@ -17,7 +17,7 @@ inline constexpr grox::debug::print_threshold<Level, 5> indicator_dbg("Indicate"
 // ----------------------------------------------------------------------------
 namespace indicators {
 
-  using param_types = std::variant<double, int, ohlc_modes, bool, candle_res>;
+  using param_types = std::variant<double, int, ohlc_modes, bool, candle_data>;
   using param_list = std::vector<std::tuple<QString, param_types>>;
 
   // ----------------------------------------------------------------------------

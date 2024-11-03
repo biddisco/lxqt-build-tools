@@ -34,7 +34,8 @@ public:
     void init_params() override
     {
       params_ = {//
-          std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
+          std::make_tuple<QString, param_types>(
+              "Samples", candle_data{ohlc_data_resolutions::minute15, 0}),
           std::make_tuple<QString, param_types>("Window size", 20),
           std::make_tuple<QString, param_types>("scale factor", 1.0),
           std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
@@ -48,7 +49,6 @@ public:
     /// initialize internals from a parameter list
     void initialize() override
     {
-      auto resolution_ = std::get<candle_res>(std::get<1>(params_[0]));
       window_size_ = std::get<int>(std::get<1>(params_[1]));
       scale_ = std::get<double>(std::get<1>(params_[2]));
       num_bands_ = std::get<int>(std::get<1>(params_[3]));

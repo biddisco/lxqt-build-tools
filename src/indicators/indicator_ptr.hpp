@@ -45,8 +45,8 @@ namespace indicators {
         using namespace grox::debug;
         for (auto d : alg_.get_input_data())
         {
-          indicator_dbg<0>.debug(str<>("UnSubscribing"), d->get_resolution());
-          d->new_data_subscribers_.unsubscribe("indicator");
+          indicator_dbg<0>.debug(str<>("UnSubscribing"), d.dataset_->get_resolution());
+          d.dataset_->new_data_subscribers_.unsubscribe("indicator");
         }
       }
 
@@ -61,8 +61,8 @@ namespace indicators {
         for (auto d : alg_.get_input_data())
         {
           std::string id = alg_.get_name() + std::to_string((uintptr_t) (&alg_));
-          indicator_dbg<0>.debug(str<>("Subscribing"), id, d->get_resolution());
-          d->new_data_subscribers_.subscribe(id, [this](std::uint64_t N) {
+          indicator_dbg<0>.debug(str<>("Subscribing"), id, d.dataset_->get_resolution());
+          d.dataset_->new_data_subscribers_.subscribe(id, [this](std::uint64_t N) {
             indicator_dbg<0>.debug(str<>(alg_.get_name().c_str()), "new samples", ffmt<dec4>(N));
             // todo - only call if all inputs are updated
             call_operator(N);
@@ -81,7 +81,7 @@ namespace indicators {
               Enable = false>
       void call_operator_impl(std::uint64_t N)
       {
-        auto const input = alg_.get_input_data()[0];
+        auto const input = alg_.get_input_data()[0].dataset_;
         auto output = alg_.get_output_datasets()[0];
         //
         auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
@@ -101,7 +101,7 @@ namespace indicators {
               Enable = false>
       void call_operator_impl(std::uint64_t N)
       {
-        auto const input = alg_.get_input_data()[0];
+        auto const input = alg_.get_input_data()[0].dataset_;
         auto outputs = alg_.get_output_datasets();
         //
         auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
@@ -135,7 +135,7 @@ namespace indicators {
       std::dynamic_pointer_cast<indicator_API_binding<Algorithm>>(binding)->alg_ = *temp;
 
       // iterate over the input dataset(S), executing the algorithm for each point
-      call_operator(0);
+      call_operator(temp->get_input_data()[0].samples_);
       // hook updates
       binding->register_callbacks();
     }

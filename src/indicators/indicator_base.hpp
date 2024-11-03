@@ -19,6 +19,12 @@ public:
     /// by default indicators produce double precision output
     using result_type = double;
 
+    struct input_data
+    {
+      ohlc_dataset* dataset_;
+      std::uint64_t samples_;
+    };
+
 protected:
     /// generic vars that can be provided at construction time
     std::string name_;
@@ -29,7 +35,8 @@ protected:
     param_list params_;
 
     /// list of input datasets
-    std::vector<ohlc_dataset*> in_datasets_;
+    std::vector<std::uint64_t> in_ranges_;
+    std::vector<input_data> in_datasets_;
     std::vector<point_chart_data*> out_datasets_;
 
 public:
@@ -86,7 +93,7 @@ public:
     virtual int num_outputs() const { return 1; }
 
     // ----------------------------------------------------------------------------
-    virtual std::vector<ohlc_dataset*> const& get_input_data() const { return in_datasets_; }
+    virtual std::vector<input_data> const& get_input_data() const { return in_datasets_; }
     virtual std::vector<point_chart_data*>& get_output_datasets() { return out_datasets_; }
 
     // ----------------------------------------------------------------------------
@@ -96,8 +103,8 @@ public:
     {
       in_datasets_ = connect_input_datasets(view);
       //
-      const candle_res res = in_datasets_[0]->get_resolution();
-      const std::size_t size = in_datasets_[0]->data().size();
+      const candle_res res = in_datasets_[0].dataset_->get_resolution();
+      const std::size_t size = in_datasets_[0].dataset_->data().size();
       for (int i = 0; i < num_outputs(); ++i)
       {
         point_chart_data* indicator_data = new point_chart_data(res);
@@ -109,16 +116,16 @@ public:
     // ----------------------------------------------------------------------------
     // iterate over the parameters returned from an indicator selection dialog and
     // find the datasets of the right resolution in the datasets view
-    std::vector<ohlc_dataset*> connect_input_datasets(std::shared_ptr<ohlc_dataset_view> view)
+    std::vector<input_data> connect_input_datasets(std::shared_ptr<ohlc_dataset_view> view)
     {
       using namespace grox::debug;
-      std::vector<ohlc_dataset*> result;
+      std::vector<input_data> result;
       for (auto const& p : get_params())
       {
-        if (candle_res const* c = std::get_if<candle_res>(&std::get<1>(p)))
+        if (candle_data const* d = std::get_if<candle_data>(&std::get<1>(p)))
         {
-          auto dataset = view->get_dataset(*c);
-          result.push_back(dataset);
+          auto dataset = view->get_dataset(d->res_);
+          result.push_back({dataset, d->numSamples_});
         }
       }
       return result;

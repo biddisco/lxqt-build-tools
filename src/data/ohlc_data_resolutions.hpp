@@ -88,3 +88,44 @@ class ohlc_data_resolutions
     return ohlc_data_resolutions::minute;
   }
 };
+
+// ----------------------------------------------------------------------------
+struct candle_data
+{
+  candle_res res_;
+  std::uint64_t numSamples_;
+
+  static std::uint64_t samples(candle_res res, std::string timestring)
+  {
+    std::uint64_t samples = 0;
+    if (timestring == "1h") { samples = (60 * 60 * 1000ll) / res; }
+    else if (timestring == "1d") { samples = (24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "1w") { samples = (7 * 24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "1m") { samples = (30 * 24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "1y") { samples = (365 * 24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "all") { samples = std::numeric_limits<std::uint64_t>::max(); }
+    return samples;
+  }
+
+  std::string as_string() const
+  {
+    if (numSamples_ == (60 * 60 * 1000ll) / res_)
+      return "1h";
+    else if (numSamples_ == (24 * 60 * 60 * 1000ll) / res_)
+      return "1d";
+    else if (numSamples_ == (7 * 24 * 60 * 60 * 1000ll) / res_)
+      return "1w";
+    else if (numSamples_ == (30 * 24 * 60 * 60 * 1000ll) / res_)
+      return "1m";
+    else if (numSamples_ == (365 * 24 * 60 * 60 * 1000ll) / res_)
+      return "1y";
+    else if (numSamples_ == std::numeric_limits<std::uint64_t>::max())
+      return "all";
+    return "all";
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, candle_data const& data)
+  {
+    return os << data.res_.name_;
+  }
+};
