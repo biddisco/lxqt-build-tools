@@ -7,7 +7,7 @@
 #include <QObject>
 #include <QTimer>
 // extern
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 // grox
 #include "currency/currency.hpp"
 #include "currency/json_data_types.hpp"

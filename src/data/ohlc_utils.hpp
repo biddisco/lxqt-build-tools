@@ -5,7 +5,7 @@
 #include <optional>
 #include <vector>
 // extern
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 // grox
 #include "currency/ohlctv_sample.hpp"
 
