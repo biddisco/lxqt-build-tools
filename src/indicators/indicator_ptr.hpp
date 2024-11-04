@@ -43,7 +43,7 @@ namespace indicators {
       ~indicator_API_binding()
       {
         using namespace grox::debug;
-        for (auto d : alg_.get_input_data())
+        for (auto d : alg_.get_inputs())
         {
           indicator_dbg<0>.debug(str<>("UnSubscribing"), d.dataset_->get_resolution());
           d.dataset_->new_data_subscribers_.unsubscribe("indicator");
@@ -58,7 +58,7 @@ namespace indicators {
       {
         // register a handler to make sure we pickup updates to datasets
         using namespace grox::debug;
-        for (auto d : alg_.get_input_data())
+        for (auto d : alg_.get_inputs())
         {
           std::string id = alg_.get_name() + std::to_string((uintptr_t) (&alg_));
           indicator_dbg<0>.debug(str<>("Subscribing"), id, d.dataset_->get_resolution());
@@ -81,8 +81,8 @@ namespace indicators {
               Enable = false>
       void call_operator_impl(std::uint64_t N)
       {
-        auto const input = alg_.get_input_data()[0].dataset_;
-        auto output = alg_.get_output_datasets()[0];
+        auto const input = alg_.get_inputs()[0].dataset_;
+        auto output = alg_.get_outputs()[0];
         //
         auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
         for (auto it = i1; it != input->data().end(); ++it)
@@ -101,8 +101,8 @@ namespace indicators {
               Enable = false>
       void call_operator_impl(std::uint64_t N)
       {
-        auto const input = alg_.get_input_data()[0].dataset_;
-        auto outputs = alg_.get_output_datasets();
+        auto const input = alg_.get_inputs()[0].dataset_;
+        auto outputs = alg_.get_outputs();
         //
         auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
         for (auto it = i1; it != input->data().end(); ++it)
@@ -135,7 +135,11 @@ namespace indicators {
       std::dynamic_pointer_cast<indicator_API_binding<Algorithm>>(binding)->alg_ = *temp;
 
       // iterate over the input dataset(S), executing the algorithm for each point
-      call_operator(temp->get_input_data()[0].samples_);
+      std::uint64_t N = temp->get_inputs()[0].samples_;
+      if ((N == std::numeric_limits<std::uint64_t>::max()) ||
+          (N > temp->get_inputs()[0].dataset_->size()))
+        N = 0;
+      call_operator(N);
       // hook updates
       binding->register_callbacks();
     }

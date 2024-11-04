@@ -93,8 +93,8 @@ public:
     virtual int num_outputs() const { return 1; }
 
     // ----------------------------------------------------------------------------
-    virtual std::vector<input_data> const& get_input_data() const { return in_datasets_; }
-    virtual std::vector<point_chart_data*>& get_output_datasets() { return out_datasets_; }
+    virtual std::vector<input_data> const& get_inputs() const { return in_datasets_; }
+    virtual std::vector<point_chart_data*>& get_outputs() { return out_datasets_; }
 
     // ----------------------------------------------------------------------------
     // create a dataset for each indicator output

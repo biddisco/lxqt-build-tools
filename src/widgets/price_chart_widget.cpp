@@ -253,24 +253,23 @@ void price_chart_widget::connect_gui()
               auto ot = algp.ptr()->get_overlay(i);
               timebased_data_curve* curve;
               if (ot == indicators::overlay_type::price)
-                curve = price_plot_->add_overlay_curve(
-                    name, algp.ptr()->get_output_datasets()[i], colour);
+                curve = price_plot_->add_overlay_curve(name, algp.ptr()->get_outputs()[i], colour);
               else if (ot == indicators::overlay_type::mode_select)
               {
                 ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(algp.ptr()->get_params()[2]));
                 if (mode == ohlc_modes::volume)
                   curve = price_plot_->add_overlay_volume_curve(
-                      name, algp.ptr()->get_output_datasets()[i], colour);
+                      name, algp.ptr()->get_outputs()[i], colour);
                 else if (mode == ohlc_modes::value)
                   std::tie(algp.plot, curve) =
-                      add_indicator_plot(name, algp.ptr()->get_output_datasets()[i], colour);
+                      add_indicator_plot(name, algp.ptr()->get_outputs()[i], colour);
                 else
-                  curve = price_plot_->add_overlay_curve(
-                      name, algp.ptr()->get_output_datasets()[i], colour);
+                  curve =
+                      price_plot_->add_overlay_curve(name, algp.ptr()->get_outputs()[i], colour);
               }
               else
                 std::tie(algp.plot, curve) =
-                    add_indicator_plot(name, algp.ptr()->get_output_datasets()[i], colour);
+                    add_indicator_plot(name, algp.ptr()->get_outputs()[i], colour);
               algp.curves.push_back(curve);
             }
 
