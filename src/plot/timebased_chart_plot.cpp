@@ -37,7 +37,7 @@ void timebased_chart_plot::onCrossHairsMoved(QPointF const& pos)
   //  QPointF devicePos(xmap.transform(pos.x()), pos.y() /*ymap.transform(ymid)*/);
 
   // fake a mouse move event to cause crosshairs to be drawn
-  QMouseEvent mouseEvent(QEvent::Type::MouseMove, device_pos, Qt::MouseButton::NoButton,
+  QMouseEvent mouseEvent(QEvent::Type::MouseMove, device_pos, pos, Qt::MouseButton::NoButton,
       Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
   crosshairs_->injectMouseMoveEvent(&mouseEvent);
 }

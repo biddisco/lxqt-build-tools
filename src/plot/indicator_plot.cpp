@@ -6,6 +6,7 @@
 #include <QDateTime>
 #include <QFontDatabase>
 #include <QMouseEvent>
+#include <QTimeZone>
 #include <QWheelEvent>
 // Qwt
 #include <QwtDateScaleDraw>
@@ -45,7 +46,7 @@ indicator_plot::indicator_plot(QWidget* parent)
   // find difference between local time and UTC, for 'correct' date/time axis
   QDateTime local(QDateTime::currentDateTime());
   QDateTime UTC(local.toUTC());
-  QDateTime dt(UTC.date(), UTC.time(), Qt::LocalTime);
+  QDateTime dt(UTC.date(), UTC.time(), QTimeZone());    // Qt::LocalTime);
 
   // X axis : setup date/time axis scaling and tick draw
   timescaleDraw_ = new ohlc_date_scaledraw(Qt::TimeSpec::OffsetFromUTC);
