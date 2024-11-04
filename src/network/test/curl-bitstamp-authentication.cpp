@@ -47,7 +47,7 @@ int main(int argc, char** argv)
   encryption encyptor(api_secret, randbytes);
 
   std::chrono::milliseconds timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::system_clock::now().time_since_epoch());
+      std::chrono::system_clock::now().time_since_epoch());
 
   uuid_t uuid;
   uuid_string_t nonce;

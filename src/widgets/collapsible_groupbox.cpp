@@ -12,21 +12,19 @@
 //
 #include "widgets/collapsible_groupbox.hpp"
 
-inline QWindow* findWindowForWidget(const QWidget* widget)
+inline QWindow* findWindowForWidget(QWidget const* widget)
 {
   for (;;)
   {
     QWindow* wh = widget->window()->windowHandle();
-    if (wh != nullptr)
-      return wh;
+    if (wh != nullptr) return wh;
 
-    widget = qobject_cast<const QWidget*>(widget->parent());
-    if (widget == nullptr)
-      return nullptr;
+    widget = qobject_cast<QWidget const*>(widget->parent());
+    if (widget == nullptr) return nullptr;
   }
 }
 
-inline QScreen* findScreenForWidget(const QWidget* widget)
+inline QScreen* findScreenForWidget(QWidget const* widget)
 {
   for (;;)
   {
@@ -34,17 +32,15 @@ inline QScreen* findScreenForWidget(const QWidget* widget)
     if (wh != nullptr)
     {
       QScreen* scr = wh->screen();
-      if (scr != nullptr)
-        return scr;
+      if (scr != nullptr) return scr;
     }
 
-    widget = qobject_cast<const QWidget*>(widget->parent());
-    if (widget == nullptr)
-      return nullptr;
+    widget = qobject_cast<QWidget const*>(widget->parent());
+    if (widget == nullptr) return nullptr;
   }
 }
 
-CollapsibleGroupBox::CollapsibleGroupBox(const QString& title, QWidget* parent)
+CollapsibleGroupBox::CollapsibleGroupBox(QString const& title, QWidget* parent)
   : QGroupBox(title, parent)
 {
   m_clExpButton = new QToolButton(this);
@@ -64,7 +60,7 @@ void CollapsibleGroupBox::collapseLayout(QLayout* lay)
 {
   assert(!m_layoutMargins.contains(lay));
 
-  const int cnt = lay->count();
+  int const cnt = lay->count();
   for (int idx = 0; idx < cnt; idx++)
   {
     auto lit = lay->itemAt(idx);
@@ -72,8 +68,7 @@ void CollapsibleGroupBox::collapseLayout(QLayout* lay)
     if (lit->widget())
     {
       auto w = lit->widget();
-      if (w != m_clExpButton)
-        w->setVisible(false);
+      if (w != m_clExpButton) w->setVisible(false);
     }
     else if (lit->spacerItem())
       collapseSpacer(lit->spacerItem());
@@ -97,7 +92,7 @@ void CollapsibleGroupBox::expandLayout(QLayout* lay)
 {
   assert(m_layoutMargins.contains(lay));
 
-  const int cnt = lay->count();
+  int const cnt = lay->count();
   for (int idx = 0; idx < cnt; idx++)
   {
     auto lit = lay->itemAt(idx);
@@ -117,16 +112,13 @@ void CollapsibleGroupBox::expandSpacer(QSpacerItem* spacer)
 {
   assert(m_spacerSizes.contains(spacer));
 
-  const auto& sz = m_spacerSizes[spacer].first;
-  const auto& pol = m_spacerSizes[spacer].second;
+  auto const& sz = m_spacerSizes[spacer].first;
+  auto const& pol = m_spacerSizes[spacer].second;
 
   spacer->changeSize(sz.width(), sz.height(), pol.horizontalPolicy(), pol.verticalPolicy());
 }
 
-void CollapsibleGroupBox::onScreenChanged()
-{
-  resizeCollapseButton();
-}
+void CollapsibleGroupBox::onScreenChanged() { resizeCollapseButton(); }
 
 void CollapsibleGroupBox::onVisibilityChanged(bool checked)
 {
@@ -137,20 +129,16 @@ void CollapsibleGroupBox::onVisibilityChanged(bool checked)
     m_spacerSizes.clear();
     collapseLayout(this->layout());
   }
-  else
-  {
-    expandLayout(this->layout());
-  }
+  else { expandLayout(this->layout()); }
 }
 
 void CollapsibleGroupBox::resizeCollapseButton()
 {
-  const QScreen* scr = findScreenForWidget(this);
+  QScreen const* scr = findScreenForWidget(this);
 
-  if (scr == nullptr)
-    return;
+  if (scr == nullptr) return;
 
-  const auto& size = this->size();
+  auto const& size = this->size();
 
 #ifdef Q_OS_WIN
   qreal baseSize = 15.0;
@@ -160,11 +148,9 @@ void CollapsibleGroupBox::resizeCollapseButton()
   int yOffset = 0;
 #endif
 
-  if (scr == nullptr)
-    return;
+  if (scr == nullptr) return;
 
-  if (QString::compare(QApplication::style()->objectName(), "fusion") == 0)
-    baseSize = 15.0;
+  if (QString::compare(QApplication::style()->objectName(), "fusion") == 0) baseSize = 15.0;
 
   const qreal dpi = scr->logicalDotsPerInchX();
   const qreal btnSize = floor((baseSize * dpi / 96.0) + 0.5);
@@ -172,7 +158,4 @@ void CollapsibleGroupBox::resizeCollapseButton()
   m_clExpButton->setGeometry(size.width() - btnSize, yOffset, btnSize, btnSize);
 }
 
-void CollapsibleGroupBox::resizeEvent(QResizeEvent*)
-{
-  resizeCollapseButton();
-}
+void CollapsibleGroupBox::resizeEvent(QResizeEvent*) { resizeCollapseButton(); }

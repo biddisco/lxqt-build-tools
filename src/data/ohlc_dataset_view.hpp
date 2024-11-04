@@ -8,7 +8,7 @@
 // Grox
 #include "currency/currency.hpp"
 #include "currency/ohlctv_sample.hpp"
-#include "data/ohlc_datasets.hpp"
+#include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
 #include "data/timebased_chart_data.hpp"
 
@@ -20,42 +20,46 @@ class ohlc_dataset_view
 {
   private:
   // a map of datasets, key is resolution
-  std::map<double, ohlc_datasets*> candles_;
+  std::map<double, ohlc_dataset*> candles_;
 
+  // a map of datasets, key is resolution
+  std::map<double, ohlc_dataset*> live_samples_;
+
+  // needed for IO and debug messages
   std::string exchange_;
   std::string ticker_string_;
 
   public:
-  ohlc_dataset_view(std::string exchange, const currency_pair& cp);
+  ohlc_dataset_view(std::string exchange, currency_pair const& cp);
   ~ohlc_dataset_view();
 
   void read_from_disk();
 
   std::vector<double> get_dataset_resolutions();
 
-  void add_dataset(double resolution, ohlc_datasets* new_data)
-  {
-    candles_[resolution] = new_data;
-  }
+  void add_dataset(double resolution, ohlc_dataset* new_data) { candles_[resolution] = new_data; }
 
   // access the underlying data vector
-  ohlc_datasets* get_dataset(double resolution) const
+  ohlc_dataset* get_dataset(double resolution) const
   {
-    if (candles_.find(resolution) != candles_.end())
-      return candles_.at(resolution);
+    if (candles_.find(resolution) != candles_.end()) return candles_.at(resolution);
     return nullptr;
   }
 
-  ohlc_chart_data* get_samples()
+  // access the underlying data vector
+  ohlc_dataset* get_live_dataset(double resolution) const
   {
-    return candles_.begin()->second->ohlc_samples_;
+    if (live_samples_.find(resolution) != candles_.end()) return live_samples_.at(resolution);
+    return nullptr;
   }
+
+  ohlc_chart_data* get_samples() { return candles_.begin()->second; }
 
   // Add new downloaded data to an existing dataset
   void merge_data(double res, QVector<ohlctv_sample> const& new_ohlc_samples_);
 
   // access the underlying data vector for live samples
-  const ohlc_chart_data* get_live_data(candle_res res) const;
+  ohlc_chart_data const* get_live_data(candle_res res) const;
   ohlc_chart_data* get_live_data(candle_res res);
   void delete_live_data_up_to(double msecs);
   // add a new trade sample to build live OHLC candles, returns true when
@@ -65,13 +69,13 @@ class ohlc_dataset_view
   // Get the min/max OHLC values for a given time range
   // Returns the lowest of the lows, and highest of the highs in the OHLC samples
   ohlcv_minmax get_min_max(
-    ohlc_chart_data const* dataset, double res, double start_time, double end_time) const;
+      ohlc_chart_data const* dataset, double res, double start_time, double end_time) const;
   ohlcv_minmax get_min_max(double res, double start_time, double end_time) const;
 
   // Returns the min/max values, expanded by a small % so that scaling of graph
   // axes can adjust to allow a small window on ehter side of the min/max
   ohlcv_minmax get_min_max_window(
-    double res, double start_time, double end_time, double percent) const;
+      double res, double start_time, double end_time, double percent) const;
 
   // can be used to repair data by deleting items after date, (then redownloading them)
   void truncate_from_time(double t);
@@ -87,10 +91,7 @@ class ohlc_dataset_view
   double get_estimated_sell_price(double volume, double time, double safety = 10);
   double get_estimated_buy_price(double volume, double time, double safety = 10);
 
-  std::string_view const get_ticker_string()
-  {
-    return ticker_string_;
-  }
+  std::string_view const get_ticker_string() { return ticker_string_; }
 
   mutable std::mutex live_mutex_;
 };

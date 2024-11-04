@@ -1,3 +1,5 @@
+#pragma once
+
 #include <memory>
 #include <string>
 #include <typeinfo>
@@ -24,10 +26,7 @@ namespace grox::debug::detail {
   template <typename T, typename Enabled = std::false_type>
   struct demangle_helper
   {
-    char const* type_id() const
-    {
-      return typeid(T).name();
-    }
+    char const* type_id() const { return typeid(T).name(); }
   };
 
   // if available : demangle an arbitrary c++ type using gnu utility
@@ -39,10 +38,7 @@ namespace grox::debug::detail {
     {
     }
 
-    char const* type_id() const
-    {
-      return demangled_ ? demangled_.get() : typeid(T).name();
-    }
+    char const* type_id() const { return demangled_ ? demangled_.get() : typeid(T).name(); }
 
 private:
     std::unique_ptr<char, decltype(&std::free)> demangled_;
@@ -59,7 +55,7 @@ private:
 // --------------------------------------------------------------------
 namespace grox::debug {
   template <typename T = void>    // print a single type
-  inline std::string print_type(const char* = "")
+  inline std::string print_type(char const* = "")
   {
     return std::string(detail::cxx_type_id<T>().type_id());
   }
@@ -71,7 +67,7 @@ namespace grox::debug {
   }
 
   template <typename T, typename... Args>    // print a list of types
-  inline std::enable_if_t<sizeof...(Args) != 0, std::string> print_type(const char* delim = "")
+  inline std::enable_if_t<sizeof...(Args) != 0, std::string> print_type(char const* delim = "")
   {
     std::string temp(print_type<T>());
     return temp + delim + print_type<Args...>(delim);

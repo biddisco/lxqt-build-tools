@@ -45,7 +45,7 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> plot_dbg("OHLCplot");
+inline constexpr print_threshold<Level, debug_level> plot_dbg("OHLCplot");
 
 // ----------------------------------------------------------------------------
 void fill_text_label(QwtText& label)
@@ -74,14 +74,8 @@ class ohlc_price_scaledraw : public QwtScaleDraw
     form_ = 'f';
     dec_ = 4;
     int exponent = 0;
-    if (range < 0)
-    {
-      throw std::logic_error("invalid range in graph axes");
-    }
-    else
-    {
-      exponent = static_cast<int>(std::floor(std::log10(range)));
-    }
+    if (range < 0) { throw std::logic_error("invalid range in graph axes"); }
+    else { exponent = static_cast<int>(std::floor(std::log10(range))); }
 
     // if negative we need decimal places
     if (exponent < 0)
@@ -101,10 +95,7 @@ class ohlc_price_scaledraw : public QwtScaleDraw
       form_ = 'f';
       dig_ = exponent + 1;
     }
-    else
-    {
-      dig_ = dec_ + 2;
-    }
+    else { dig_ = dec_ + 2; }
     fstr = fmt::format("%{}.{}{}", dig_, dec_, form_);
     plot_dbg<0>.debug(str<>("Format string"), range, exponent, dig_, dec_, form_, fstr);
   }
@@ -129,10 +120,10 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   QFont label_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   fixed_char_size_x_ = QFontMetrics(label_font).tightBoundingRect(X).width();
   fixed_char_size_y_ = QFontMetrics(label_font).tightBoundingRect(X).height();
-  const int margin = 0.5 * fixed_char_size_y_;       // margin space in x and y
-  const int indent = 4;                              // text offset in x direction
-  const int label_xtext = 3 * fixed_char_size_x_;    // "15d", "30m" etc
-  const int label_xsize = 2 * indent + 2 * margin + label_xtext;
+  int const margin = 0.5 * fixed_char_size_y_;       // margin space in x and y
+  int const indent = 4;                              // text offset in x direction
+  int const label_xtext = 3 * fixed_char_size_x_;    // "15d", "30m" etc
+  int const label_xsize = 2 * indent + 2 * margin + label_xtext;
 
   // setup small label we use to show current candle resolution
   candle_label_ = new QwtTextLabel(this);
@@ -148,7 +139,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   candle_status_->setFont(label_font);
   // OHLCV format string : "O:<num>" = 5(OHLCV)*2 + 4(OHLC)*9 + 1(V)*14 = 61chars
   candle_status_->setGeometry(
-    label_xsize, 0, 65 * fixed_char_size_x_, 2 * margin + 2 * fixed_char_size_y_);
+      label_xsize, 0, 65 * fixed_char_size_x_, 2 * margin + 2 * fixed_char_size_y_);
 
   // default start up resolution
   candle_resolution_ = ohlc_data_resolutions::minute;
@@ -171,7 +162,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   setAxisLabelAlignment(QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom);
 
   ohlcv_minmax minmax = data->get_min_max(ohlc_data_resolutions::minute,
-    data->get_first_sample_time(), data->get_last_sample_time_msec(false));
+      data->get_first_sample_time(), data->get_last_sample_time_msec(false));
 
   // Y axis : setup price axis scaling and tick draw
   // NB : We do not need to explicitly set a left Y axis (volume)
@@ -246,7 +237,7 @@ void ohlc_price_plot::bind_graphs()
   for (auto r : resolutions)
   {
     auto* data = ohlc_dataset_view_->get_dataset(r);
-    auto* curve = new ohlc_chart_curve(data->ohlc_samples_);
+    auto* curve = new ohlc_chart_curve(data);
     curves_.insert(std::make_pair(r, curve));
 
     if (r == ohlc_data_resolutions::minute)
@@ -308,24 +299,19 @@ bool ohlc_price_plot::adjust_candle_size(double res)
       if (r < xm)
       {
         // if we have not changed value, just exit
-        if (r == last_auto_res_)
-          return false;
+        if (r == last_auto_res_) return false;
         res = last_auto_res_ = r;
         //
         break;
       }
     }
   }
-  else
-  {
-    last_auto_res_ = 0;
-  }
+  else { last_auto_res_ = 0; }
   // user selected resolution
   for (auto const& r : ohlc_data_resolutions::available_resolutions())
   {
     auto* data = ohlc_dataset_view_->get_dataset(r);
-    if (!curves_.contains(r))
-      continue;
+    if (!curves_.contains(r)) continue;
 
     auto* curve = curves_[r];
     curve->setVisible(r == res);
@@ -350,7 +336,7 @@ bool ohlc_price_plot::adjust_candle_size(double res)
 void ohlc_price_plot::setMode(int style)
 {
   QwtPlotTradingCurve::SymbolStyle symbolStyle =
-    static_cast<QwtPlotTradingCurve::SymbolStyle>(style);
+      static_cast<QwtPlotTradingCurve::SymbolStyle>(style);
 
   QwtPlotItemList curves = itemList(QwtPlotItem::Rtti_PlotTradingCurve);
   for (int i = 0; i < curves.size(); i++)
@@ -379,7 +365,7 @@ void ohlc_price_plot::exportPlot()
 // ----------------------------------------------------------------------------
 void ohlc_price_plot::update_time_axis(double t1, double t2, bool emit_signal)
 {
-  const bool doAutoReplot = autoReplot();
+  bool const doAutoReplot = autoReplot();
   setAutoReplot(false);
 
   // update the X axis with new min max
@@ -394,10 +380,7 @@ void ohlc_price_plot::update_time_axis(double t1, double t2, bool emit_signal)
 
   // if the mapping has changed a lot, we might need to change candle sizes
   // scale change might trigger a candle resolution update
-  if (auto_candle_resolution())
-  {
-    adjust_candle_size(0);
-  }
+  if (auto_candle_resolution()) { adjust_candle_size(0); }
   minmax = ohlc_dataset_view_->get_min_max_window(get_candle_resolution(), t1, t2, 0.05);
 
   // update the Y price axis with min max
@@ -408,14 +391,13 @@ void ohlc_price_plot::update_time_axis(double t1, double t2, bool emit_signal)
   setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
 
   plot_dbg<8>.debug(str<>("min_max"),
-    ohlc_data_resolutions::get_resolution(get_candle_resolution()).name_,
-    msecs_unix_to_calendar_time(t1), "->", msecs_unix_to_calendar_time(t2), "(", minmax.min_price_,
-    ",", minmax.max_price_, ")");
+      ohlc_data_resolutions::get_resolution(get_candle_resolution()).name_,
+      msecs_unix_to_calendar_time(t1), "->", msecs_unix_to_calendar_time(t2), "(",
+      minmax.min_price_, ",", minmax.max_price_, ")");
 
   setAutoReplot(doAutoReplot);
   replot();
-  if (emit_signal)
-    emit timeAxisChanged(t1, t2, false);
+  if (emit_signal) emit timeAxisChanged(t1, t2, false);
 }
 
 // ----------------------------------------------------------------------------
@@ -430,26 +412,17 @@ double ohlc_price_plot::quantize_x_coord(double x)
 bool ohlc_price_plot::update_candle_size()
 {
   bool changed = false;
-  if (auto_candle_resolution())
-  {
-    changed = adjust_candle_size(0);
-  }
-  else
-  {
-    changed = adjust_candle_size(get_candle_resolution());
-  }
-  if (changed)
-  {
-    adjust_data_scaling();
-  }
+  if (auto_candle_resolution()) { changed = adjust_candle_size(0); }
+  else { changed = adjust_candle_size(get_candle_resolution()); }
+  if (changed) { adjust_data_scaling(); }
   return changed;
 }
 
 // ----------------------------------------------------------------------------
 void ohlc_price_plot::adjust_data_scaling()
 {
-  const double t1 = axisScaleDiv(QwtAxis::XBottom).lowerBound();
-  const double t2 = axisScaleDiv(QwtAxis::XBottom).upperBound();
+  double const t1 = axisScaleDiv(QwtAxis::XBottom).lowerBound();
+  double const t2 = axisScaleDiv(QwtAxis::XBottom).upperBound();
   if (t2 > t1)
   {
     auto minmax = ohlc_dataset_view_->get_min_max_window(get_candle_resolution(), t1, t2, 0.05);
@@ -460,36 +433,32 @@ void ohlc_price_plot::adjust_data_scaling()
 // ----------------------------------------------------------------------------
 void ohlc_price_plot::display_picker_info(const QPointF pos)
 {
-  const double time = pos.x();
+  double const time = pos.x();
   int64_t index = -1;
   auto* dataset = ohlc_dataset_view_->get_dataset(get_candle_resolution());
-  if (dataset->ohlc_samples_->size() > 0)
-  {
-    index = dataset->ohlc_samples_->sample_index(time);
-  }
-  if (index < 0 || size_t(index) >= dataset->ohlc_samples_->size())
+  if (dataset->size() > 0) { index = dataset->sample_index(time); }
+  if (index < 0 || size_t(index) >= dataset->size())
   {
     candle_status_->setText("");
     return;
   }
   //
-  ohlctv_sample const& sample = dataset->ohlc_samples_->data().at(index);
+  ohlctv_sample const& sample = dataset->data().at(index);
 
-  const char* c = "red";
-  if (sample.open <= sample.close)
-    c = "green";
+  char const* c = "red";
+  if (sample.open <= sample.close) c = "green";
 
-  std::string fstr = fmt::format(                                //
-    "<font color=\"white\"> O: <font color=\"{}\">{:<9.5f}"      //
-    "<font color=\"white\"> H: <font color=\"{}\">{:<9.5f}"      //
-    "<font color=\"white\"> L: <font color=\"{}\">{:<9.5f}"      //
-    "<font color=\"white\"> C: <font color=\"{}\">{:<9.5f}"      //
-    "<font color=\"white\"> V: <font color=\"{}\">{:<14.2f}",    //
-    c, sample.open,                                              //
-    c, sample.high,                                              //
-    c, sample.low,                                               //
-    c, sample.close,                                             //
-    c, sample.volume                                             //
+  std::string fstr = fmt::format(                                  //
+      "<font color=\"white\"> O: <font color=\"{}\">{:<9.5f}"      //
+      "<font color=\"white\"> H: <font color=\"{}\">{:<9.5f}"      //
+      "<font color=\"white\"> L: <font color=\"{}\">{:<9.5f}"      //
+      "<font color=\"white\"> C: <font color=\"{}\">{:<9.5f}"      //
+      "<font color=\"white\"> V: <font color=\"{}\">{:<14.2f}",    //
+      c, sample.open,                                              //
+      c, sample.high,                                              //
+      c, sample.low,                                               //
+      c, sample.close,                                             //
+      c, sample.volume                                             //
   );
 
   QwtText status(fstr.c_str());
@@ -500,7 +469,7 @@ void ohlc_price_plot::display_picker_info(const QPointF pos)
 
 // ----------------------------------------------------------------------------
 QwtPlotCurve* ohlc_price_plot::add_buy_sell_curve(
-  QString const& title, QVector<QPointF> const& samples, QColor const& color)
+    QString const& title, QVector<QPointF> const& samples, QColor const& color)
 {
   auto m_curve = new QwtPlotCurve(title);
   m_curve->setYAxis(QwtPlot::yRight);
@@ -520,7 +489,7 @@ QwtPlotCurve* ohlc_price_plot::add_buy_sell_curve(
 
 // ----------------------------------------------------------------------------
 timebased_data_curve* ohlc_price_plot::add_overlay_curve(
-  QString const& title, point_chart_data* data, QColor const& color)
+    QString const& title, point_chart_data* data, QColor const& color)
 {
   auto m_curve = new timebased_data_curve(title);
   m_curve->setYAxis(QwtPlot::yRight);
@@ -541,7 +510,7 @@ timebased_data_curve* ohlc_price_plot::add_overlay_curve(
 
 // ----------------------------------------------------------------------------
 timebased_data_curve* ohlc_price_plot::add_overlay_volume_curve(
-  QString const& title, point_chart_data* data, QColor const& color)
+    QString const& title, point_chart_data* data, QColor const& color)
 {
   auto m_curve = new timebased_data_curve(title);
   m_curve->setYAxis(QwtPlot::yLeft);

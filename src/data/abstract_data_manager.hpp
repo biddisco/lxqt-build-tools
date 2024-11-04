@@ -19,7 +19,7 @@ class abstract_dataset_manager
   // templated functions to read/write data of type T
   template <typename T>
   void write_file(std::string group, std::string dataname, QVector<T> const& data,
-    const uint64_t update, bool truncate)
+      const uint64_t update, bool truncate)
   {
     this->write_impl(group, dataname, data, update, truncate);
   }
@@ -38,9 +38,9 @@ class abstract_dataset_manager
 
   // virtual functions that implement data loads for different types
   virtual void write_impl(std::string group, std::string dataname,
-    QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate){};
+      QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate){};
 
   virtual void read_impl(std::string group, std::string dataname, QVector<ohlctv_sample>& data){};
   virtual void read_impl(
-    std::string group, std::string dataname, QVector<ohlctv_sample>& data, std::uint64_t N){};
+      std::string group, std::string dataname, QVector<ohlctv_sample>& data, std::uint64_t N){};
 };

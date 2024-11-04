@@ -34,14 +34,14 @@ void trade_widget::set_data(trade_data const& t)
 {
   trade_ = t;
   QPalette palette = ui->network->palette();
-  palette.setColor(QPalette::WindowText, QRgb(0x2020FF));
+  palette.setColor(QPalette::WindowText, QRgb(0x20'20FF));
   ui->network->setPalette(palette);
   ui->network->setText(QString::fromStdString(t.network_->get_name()));
   //
   if (t.get_trade_type() == trade_type::buy)
   {
     QPalette palette = ui->buy_sell->palette();
-    palette.setColor(QPalette::WindowText, QRgb(0x00FF00));
+    palette.setColor(QPalette::WindowText, QRgb(0x00'FF00));
     ui->buy_sell->setPalette(palette);
     ui->buy_sell->setText("Buy");
     //
@@ -54,7 +54,7 @@ void trade_widget::set_data(trade_data const& t)
   else
   {
     QPalette palette = ui->buy_sell->palette();
-    palette.setColor(QPalette::WindowText, QRgb(0xFF0000));
+    palette.setColor(QPalette::WindowText, QRgb(0xFF'0000));
     ui->buy_sell->setPalette(palette);
     ui->buy_sell->setText("Sell");
     //
@@ -78,13 +78,10 @@ void trade_widget::set_data(trade_data const& t)
   ui->date_time->setText(t.datetime_.c_str());
 }
 
-trade_widget::~trade_widget()
-{
-  delete ui;
-}
+trade_widget::~trade_widget() { delete ui; }
 
 void trade_widget::connect_events()
 {
   connect(
-    ui->cancel, &QToolButton::clicked, this, [this]() { trade_.network_->cancel_order(trade_); });
+      ui->cancel, &QToolButton::clicked, this, [this]() { trade_.network_->cancel_order(trade_); });
 }

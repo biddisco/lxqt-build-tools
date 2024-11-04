@@ -22,18 +22,16 @@
 //   return result;
 // }
 
-std::string execute_os_command(const char* cmd)
+std::string execute_os_command(char const* cmd)
 {
   std::array<char, 128> buffer;
   std::string result;
   std::string cmd2 = std::string(cmd) + " 2>&1";    // try to capture stderr too
   auto pipe = popen(cmd2.c_str(), "r");             // get rid of shared_ptr
-  if (!pipe)
-    throw std::runtime_error("popen() failed!");
+  if (!pipe) throw std::runtime_error("popen() failed!");
   while (!feof(pipe))
   {
-    if (fgets(buffer.data(), buffer.size(), pipe) != nullptr)
-      result += buffer.data();
+    if (fgets(buffer.data(), buffer.size(), pipe) != nullptr) result += buffer.data();
   }
   auto rc = pclose(pipe);
   if (rc != EXIT_SUCCESS)

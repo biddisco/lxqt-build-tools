@@ -48,10 +48,10 @@ class bitstamp_network : public exchange
   public:
   //
   static inline const std::string bitstamp_https_address = "www.bitstamp.net";
-  static inline const int bitstamp_https_port = 443;
+  static inline int const bitstamp_https_port = 443;
   //
   static inline const std::string bitstamp_websocket_address = "ws.bitstamp.net";
-  static inline const int bitstamp_websocket_port = 443;
+  static inline int const bitstamp_websocket_port = 443;
 
   public:
   // ---------------------------------------
@@ -60,8 +60,7 @@ class bitstamp_network : public exchange
   static std::shared_ptr<exchange> get_instance()
   {
     static std::shared_ptr<exchange> bitstamp_ptr = nullptr;
-    if (bitstamp_ptr == nullptr)
-      bitstamp_ptr = std::make_shared<bitstamp_network>();
+    if (bitstamp_ptr == nullptr) bitstamp_ptr = std::make_shared<bitstamp_network>();
     return bitstamp_ptr;
   }
 
@@ -84,20 +83,14 @@ class bitstamp_network : public exchange
   std::vector<basic_account*> wallets() override
   {
     std::vector<basic_account*> accts;
-    for (auto& acct : accounts_)
-    {
-      accts.push_back(&acct);
-    }
+    for (auto& acct : accounts_) { accts.push_back(&acct); }
     return accts;
   }
 
-  bitstamp_account& account()
-  {
-    return accounts_[0];
-  }
+  bitstamp_account& account() { return accounts_[0]; }
 
   // Is sending this currency to the destination exchange supported
-  bool can_send(const currency& c, exchange* dest) override;
+  bool can_send(currency const& c, exchange* dest) override;
 
   // ---------------------------------------
   // return the order book for this exchange
@@ -115,17 +108,17 @@ class bitstamp_network : public exchange
   stream_set websocket_streams() override
   {
     return {
-      network::streams::my_orders,      // private orders
-      network::streams::my_trades,      // private trades
-      network::streams::live_trades,    // all trades
-      network::streams::order_book,     // all orders
-      network::streams::price_data,     // ticker price feeds
+        network::streams::my_orders,      // private orders
+        network::streams::my_trades,      // private trades
+        network::streams::live_trades,    // all trades
+        network::streams::order_book,     // all orders
+        network::streams::price_data,     // ticker price feeds
     };
   }
 
   // connect to a single stream
   bool stream_subscribe(currency_pair const& cp, network::streams const stream, bool enabled,
-    factory_function f) override;
+      factory_function f) override;
 
   // connect to (multiple) streams
   //  bool websocket_connect(net::contexts& io_contexts, stream_set const&
@@ -166,7 +159,7 @@ class bitstamp_network : public exchange
   void cancel_order(trade_data const& t) override;
 
   // ----------------------------------------------------------------------------
-  net::http::client_ptr signed_request(const std::string& url_path, const std::string& url_query);
+  net::http::client_ptr signed_request(std::string const& url_path, std::string const& url_query);
 
   // ----------------------------------------------------------------------------
   // OHLC candlestick updating
@@ -191,16 +184,13 @@ class bitstamp_network : public exchange
   // function called from websocket subscription to live orderbook data
   static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, const QString);
 
-  double get_fee_percent(const currency_pair& cp) override;
-  double get_fee_fixed(const currency_pair& cp) override;
-  double get_transfer_fee(currency const& /*c1*/) override
-  {
-    return 0;
-  }
+  double get_fee_percent(currency_pair const& cp) override;
+  double get_fee_fixed(currency_pair const& cp) override;
+  double get_transfer_fee(currency const& /*c1*/) override { return 0; }
 
   void custom_functions(basic_account* /*acct*/) override{};
 
-  stream_set ticker_subscribe(const currency_pair& cp) override;
+  stream_set ticker_subscribe(currency_pair const& cp) override;
 
   signals:
 
@@ -210,10 +200,6 @@ class bitstamp_network : public exchange
   // trigger this to restart the timer from a Qt thread
   void restart_candlestick_timer();
 
-  // after new data is received, trigger this to update plots
-  void new_ohlc_data(ticker_data, double);
-
   public slots:
   void candlestick_timer_event();
-  void new_ohlc_data_event(ticker_data, double);
 };

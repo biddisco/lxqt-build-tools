@@ -6,6 +6,7 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 //
+#include "util/stringutils.hpp"
 #include "widgets/trade_widget.hpp"
 
 // ----------------------------------------------------------------------------
@@ -35,32 +36,30 @@ class check_trades_dialog : public QDialog
 
     // Add ok and cancel buttons
     QDialogButtonBox* buttonBox =
-      new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     connect(buttonBox, SIGNAL(accepted()), this, SLOT(accept()));
     connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
     this->layout()->addWidget(buttonBox);
   }
 
   static void create_trade_widgets(
-    QWidget* main_frame, std::string const& name, std::vector<trade_data> const& trades)
+      QWidget* main_frame, std::string const& name, std::vector<trade_data> const& trades)
   {
     // Delete the old order widgets for this network
-    QWidget* old_frame = main_frame->findChild<QWidget*>(QString(name.c_str()));
-    if (old_frame)
-      delete old_frame;
+    QWidget* old_frame = main_frame->findChild<QWidget*>(to_qstring(name));
+    if (old_frame) delete old_frame;
 
     // no need to create anything new if trades are empty
-    if (trades.size() == 0)
-      return;
+    if (trades.size() == 0) return;
 
     QFrame* orders_frame = new QFrame(main_frame);
-    orders_frame->setObjectName(QString(name.c_str()));
+    orders_frame->setObjectName(to_qstring(name));
     orders_frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     orders_frame->setLayout(new QVBoxLayout());
 
     // Add a label to say which network these orders are for
     QLabel* label = new QLabel(orders_frame);
-    label->setText(QString("Orders : ") + name.c_str());
+    label->setText(QString("Orders : ") + to_qstring(name));
     orders_frame->layout()->addWidget(label);
 
     //

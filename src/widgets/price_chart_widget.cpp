@@ -13,11 +13,13 @@
 #include "ui_price_chart_widget.h"
 //
 #include "config/config.hpp"
+#include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
 #include "indicators/indicator_definitions.hpp"
 #include "indicators/indicator_types.hpp"
 #include "plot/ohlc_chart_curve.hpp"
 #include "plot/timebased_data_curve.hpp"
+#include "util/stringutils.hpp"
 #include "widgets/digital_clock.hpp"
 #include "widgets/indicator_dialog.hpp"
 #include "widgets/price_chart_widget.hpp"
@@ -29,11 +31,16 @@ using namespace grox::debug;
 constexpr int debug_level = 0;
 //
 template <int Level>
-static print_threshold<Level, debug_level> pplot_dbg("PricePlt");
+inline constexpr print_threshold<Level, debug_level> pplot_dbg("PricePlt");
+
+// ----------------------------------------------------------------------------
+QColor chart_colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QColor("darkRed"),
+    QColor("darkCyan"), QColor("darkMagenta"), QColor("green"), QColor("darkGreen"),
+    QColor("yellow"), QColor("blue")};
 
 // ----------------------------------------------------------------------------
 price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dataset_view> ohlc,
-  std::shared_ptr<exchange> ex, currency_pair cp)
+    std::shared_ptr<exchange> ex, currency_pair cp)
   : QWidget(parent)
   , ui(new Ui::price_chart_widget)
   , hdf5_ohlc_(ohlc)
@@ -45,8 +52,8 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   //
   // Create candlestick plot
   //
-  crypto_price_plot_ = new ohlc_price_plot(this, hdf5_ohlc_);
-  ui->candlestick_layout->addWidget(crypto_price_plot_);
+  price_plot_ = new ohlc_price_plot(this, hdf5_ohlc_);
+  ui->candlestick_layout->addWidget(price_plot_);
 
   //
   // Create stream/filters plot
@@ -57,10 +64,7 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   //  assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
 
   QStringList slist("Auto");
-  for (auto const& r : ohlc_data_resolutions::available_resolutions())
-  {
-    slist << r.name_;
-  }
+  for (auto const& r : ohlc_data_resolutions::available_resolutions()) { slist << r.name_; }
   ui->candle_res->addItems(slist);
 
   ind_vis_ = new QTableView(this);
@@ -101,11 +105,8 @@ price_chart_widget::~price_chart_widget()
 {
   pplot_dbg<0>.debug(str<>("~price_chart_widget"));
   delete ui;
-  delete crypto_price_plot_;
-  for (auto p : filter_plots_)
-  {
-    delete p;
-  }
+  delete price_plot_;
+  for (auto p : filter_plots_) { delete p; }
   //  delete assets_plot_;
 }
 
@@ -114,104 +115,86 @@ void price_chart_widget::connect_gui()
 {
   // Graph resolution buttons
   connect(
-    ui->gt_6, &QAbstractButton::clicked, this, [this]() { graph_rescale(-2); },
-    Qt::QueuedConnection);
+      ui->gt_6, &QAbstractButton::clicked, this, [this]() { graph_rescale(-2); },
+      Qt::QueuedConnection);
   connect(
-    ui->gt_12, &QAbstractButton::clicked, this, [this]() { graph_rescale(-1); },
-    Qt::QueuedConnection);
+      ui->gt_12, &QAbstractButton::clicked, this, [this]() { graph_rescale(-1); },
+      Qt::QueuedConnection);
   connect(
-    ui->gt_d, &QAbstractButton::clicked, this, [this]() { graph_rescale(0); },
-    Qt::QueuedConnection);
+      ui->gt_d, &QAbstractButton::clicked, this, [this]() { graph_rescale(0); },
+      Qt::QueuedConnection);
   connect(
-    ui->gt_w, &QAbstractButton::clicked, this, [this]() { graph_rescale(1); },
-    Qt::QueuedConnection);
+      ui->gt_w, &QAbstractButton::clicked, this, [this]() { graph_rescale(1); },
+      Qt::QueuedConnection);
   connect(
-    ui->gt_m, &QAbstractButton::clicked, this, [this]() { graph_rescale(2); },
-    Qt::QueuedConnection);
+      ui->gt_m, &QAbstractButton::clicked, this, [this]() { graph_rescale(2); },
+      Qt::QueuedConnection);
   connect(
-    ui->gt_y, &QAbstractButton::clicked, this, [this]() { graph_rescale(3); },
-    Qt::QueuedConnection);
+      ui->gt_y, &QAbstractButton::clicked, this, [this]() { graph_rescale(3); },
+      Qt::QueuedConnection);
   connect(
-    ui->gt_a, &QAbstractButton::clicked, this, [this]() { graph_rescale(4); },
-    Qt::QueuedConnection);
+      ui->gt_a, &QAbstractButton::clicked, this, [this]() { graph_rescale(4); },
+      Qt::QueuedConnection);
 
   connect(
-    ui->candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-    [this](int index) {
-      double res = 0;
-      crypto_price_plot_->set_auto_candle_resolution(index == 0);
-      if (index > 0)
-      {
-        res = ohlc_data_resolutions::available_resolutions()[index - 1];
-      }
-      if (crypto_price_plot_->adjust_candle_size(res))
-      {    // candles changed, so recompute volume range {min,max}
-        crypto_price_plot_->adjust_data_scaling();
-      }
-      crypto_price_plot_->replot();
-    },
-    Qt::QueuedConnection);
+      ui->candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+      [this](int index) {
+        double res = 0;
+        price_plot_->set_auto_candle_resolution(index == 0);
+        if (index > 0) { res = ohlc_data_resolutions::available_resolutions()[index - 1]; }
+        if (price_plot_->adjust_candle_size(res))
+        {    // candles changed, so recompute volume range {min,max}
+          price_plot_->adjust_data_scaling();
+        }
+        price_plot_->replot();
+      },
+      Qt::QueuedConnection);
 
   connect(
-    ui->heikin, QOverload<Qt::CheckState>::of(&QCheckBox::checkStateChanged), this,
-    [this](Qt::CheckState state) {
-      if (state)
-      {
-        crypto_price_plot_->setMode(ohlc_chart_curve::HeikinAshi);
-      }
-      else
-      {
-        crypto_price_plot_->setMode(QwtPlotTradingCurve::SymbolStyle::CandleStick);
-      }
-    },
-    Qt::QueuedConnection);
+      ui->heikin, QOverload<Qt::CheckState>::of(&QCheckBox::checkStateChanged), this,
+      [this](Qt::CheckState state) {
+        if (state) { price_plot_->setMode(ohlc_chart_curve::HeikinAshi); }
+        else { price_plot_->setMode(QwtPlotTradingCurve::SymbolStyle::CandleStick); }
+      },
+      Qt::QueuedConnection);
 
   connect(
-    crypto_price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this,
-    [this](QPointF p) {
-      auto crosshairs = crypto_price_plot_->get_crosshairs();
-      double msecs = crosshairs->quantize_x_coord(p.x());
-      const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msecs);
-      QString s = QLocale::system().toString(dt, "dd-MM-yy hh:mm");
+      price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this,
+      [this](QPointF p) {
+        auto crosshairs = price_plot_->get_crosshairs();
+        double msecs = crosshairs->quantize_x_coord(p.x());
+        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msecs);
+        QString s = QLocale::system().toString(dt, "dd-MM-yy hh:mm");
 
-      QMessageBox::StandardButton reply;
-      reply = QMessageBox::question(
-        this, "Confirm", "Delete from " + s, QMessageBox::Yes | QMessageBox::No);
-      if (reply == QMessageBox::Yes)
-      {
-        hdf5_ohlc_->truncate_from_time(msecs);
-        pplot_dbg<0>.error(str<>("emit update_candlestick_data"));
-        this->replot();
-        // update_candlestick_data();
-      }
-      else
-      {
-        pplot_dbg<0>.debug(str<>("Yes *not* clicked"));
-      }
-    },
-    Qt::QueuedConnection);
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question(
+            this, "Confirm", "Delete from " + s, QMessageBox::Yes | QMessageBox::No);
+        if (reply == QMessageBox::Yes)
+        {
+          hdf5_ohlc_->truncate_from_time(msecs);
+          pplot_dbg<0>.error(str<>("emit update_candlestick_data"));
+          this->replot();
+          // update_candlestick_data();
+        }
+        else { pplot_dbg<0>.debug(str<>("Yes *not* clicked")); }
+      },
+      Qt::QueuedConnection);
 
   connect(
-    crypto_price_plot_, &ohlc_price_plot::timeAxisChanged, this,
-    [this](double t1, double t2) {
-      for (auto p : filter_plots_)
-      {
-        p->update_time_axis(t1, t2, false);
-      }
-    },
-    Qt::QueuedConnection);
+      price_plot_, &ohlc_price_plot::timeAxisChanged, this,
+      [this](double t1, double t2) {
+        for (auto p : filter_plots_) { p->update_time_axis(t1, t2, false); }
+      },
+      Qt::QueuedConnection);
 
   connect(
-    crypto_price_plot_->get_crosshairs(), &ohlc_picker::moved, this,
-    [this](QPointF const& pos) {
-      // coordinates received are in time/price(other) units
-      // so no need to remap the time axis before sending
-      for (auto p : filter_plots_)
-      {
-        p->onCrossHairsMoved(pos);
-      }
-    },
-    Qt::QueuedConnection);
+      price_plot_->get_crosshairs(), &ohlc_picker::moved, this,
+      [this](QPointF const& pos) {
+        // coordinates received are in time/price(other) units
+        // so no need to remap the time axis before sending
+        for (auto p : filter_plots_) { p->onCrossHairsMoved(pos); }
+      },
+      Qt::QueuedConnection);
 
   connect(ind_vis_, &QTableView::clicked, this, [this](QModelIndex const& i) {
     int col = i.column();
@@ -236,10 +219,7 @@ void price_chart_widget::connect_gui()
     else if (col == 3)
     {
       auto it = std::next(ind_model_.indicators_.begin(), row);
-      for (auto* curve : it->curves)
-      {
-        remove_indicator_plot(it->plot, curve);
-      }
+      for (auto* curve : it->curves) { remove_indicator_plot(it->plot, curve); }
       ind_model_.indicators_.erase(it);
       ind_model_.dataAdded();
       this->replot();
@@ -258,82 +238,46 @@ void price_chart_widget::connect_gui()
       auto indicator = in_dialog.get_algorithm();
       // now execute the algorithm
       std::visit(
-        [this](auto& alg) {
-          // using alg_type = decltype(std::decay<decltype(alg)>(alg));
-          // first - initialize algorithm with parameters (set by dialog)
-          alg.initialize();
+          [this](auto& alg) {
+            using algorithm_type = std::decay<decltype(alg)>::type;
+            // create algorithm vtable callable
+            indicators::indicator_ptr algp(alg, hdf5_ohlc_);
 
-          // convert the dataset name selections in the dialog into actual datasets
-          std::vector<ohlc_datasets*> in_datasets =
-            indicators::get_datasets(alg.params, hdf5_ohlc_);
+            auto colour = chart_colours[colour_count++ % 10];
 
-          if (in_datasets.size() != 1)
-          {
-            pplot_dbg<0>.error(str<>("Indicator"), alg.name, "Not yet implemented");
-            throw std::runtime_error("Fix code for indicators with multiple datasets");
-          }
-          auto const& input_dataset = in_datasets[0]->ohlc_samples_;
+            QString name = QString(algp.ptr()->get_name().c_str());
+            // create an indicator_data object with empty curves data
 
-          // create a dataset for each indicator output
-          std::vector<point_chart_data*> out_datasets =
-            indicators::create_outputs(alg, input_dataset->get_resolution(), input_dataset->size());
-
-          // iterate over the input dataset, executing the algorithm for each point
-          indicators::call_algorithm_operator(alg, input_dataset, out_datasets);
-
-          QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QColor("darkRed"),
-            QColor("darkCyan"), QColor("darkMagenta"), QColor("green"), QColor("darkGreen"),
-            QColor("yellow"), QColor("blue")};
-          auto colour = colours[colour_count++ % 10];
-
-          QString name = QString(alg.name.c_str());
-          indicator_plot* plot = nullptr;
-          QString params = QString(indicators::param_string(alg.params).c_str());
-
-          // create an indicator_data object with empty curves data
-          indicator_data i_data{name, params, plot, {}};
-
-          for (int i = 0; i < alg.num_outputs(); ++i)
-          {
-            if (alg.overlay == indicators::overlay_type::price)
+            for (int i = 0; i < algp.ptr()->num_outputs(); ++i)
             {
-              auto* curve = crypto_price_plot_->add_overlay_curve(name, out_datasets[i], colour);
-              i_data.curves.push_back(curve);
-            }
-            else if (alg.overlay == indicators::overlay_type::mode_select)
-            {
-              ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(alg.params[2]));
-              if (mode == ohlc_modes::volume)
+              auto ot = algp.ptr()->get_overlay(i);
+              timebased_data_curve* curve;
+              if (ot == indicators::overlay_type::price)
+                curve = price_plot_->add_overlay_curve(name, algp.ptr()->get_outputs()[i], colour);
+              else if (ot == indicators::overlay_type::mode_select)
               {
-                auto* curve =
-                  crypto_price_plot_->add_overlay_volume_curve(name, out_datasets[i], colour);
-                i_data.curves.push_back(curve);
-              }
-              else if (mode == ohlc_modes::value)
-              {
-                auto [plot, curve] = add_indicator_plot(name, out_datasets[i], colour);
-                i_data.curves.push_back(curve);
-                i_data.plot = plot;
+                ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(algp.ptr()->get_params()[2]));
+                if (mode == ohlc_modes::volume)
+                  curve = price_plot_->add_overlay_volume_curve(
+                      name, algp.ptr()->get_outputs()[i], colour);
+                else if (mode == ohlc_modes::value)
+                  std::tie(algp.plot, curve) =
+                      add_indicator_plot(name, algp.ptr()->get_outputs()[i], colour);
+                else
+                  curve =
+                      price_plot_->add_overlay_curve(name, algp.ptr()->get_outputs()[i], colour);
               }
               else
-              {
-                auto* curve = crypto_price_plot_->add_overlay_curve(name, out_datasets[i], colour);
-                i_data.curves.push_back(curve);
-              }
+                std::tie(algp.plot, curve) =
+                    add_indicator_plot(name, algp.ptr()->get_outputs()[i], colour);
+              algp.curves.push_back(curve);
             }
-            else
-            {
-              auto [plot, curve] = add_indicator_plot(name, out_datasets[i], colour);
-              i_data.curves.push_back(curve);
-              i_data.plot = plot;
-            }
-          }
 
-          ind_model_.indicators_.push_back(i_data);
-          ind_model_.dataAdded();
-          this->replot();
-        },
-        indicator);
+            ind_model_.indicators_.push_back(algp);
+            ind_model_.dataAdded();
+            this->replot();
+          },
+          indicator);
     }
   });
 }
@@ -344,47 +288,23 @@ void price_chart_widget::graph_rescale(int range)
 {
   auto last_time = hdf5_ohlc_->get_last_sample_time_msec(true);
   double t1 = 0, t2 = last_time;
-  if (range == -2)
-  {
-    t1 = last_time - 0.25 * ohlc_data_resolutions::day;
-  }
-  else if (range == -1)
-  {
-    t1 = last_time - 0.5 * ohlc_data_resolutions::day;
-  }
-  else if (range == 0)
-  {
-    t1 = last_time - 1.0 * ohlc_data_resolutions::day;
-  }
-  else if (range == 1)
-  {
-    t1 = last_time - 7 * ohlc_data_resolutions::day;
-  }
-  else if (range == 2)
-  {
-    t1 = last_time - 31 * ohlc_data_resolutions::day;
-  }
-  else if (range == 3)
-  {
-    t1 = last_time - 365 * ohlc_data_resolutions::day;
-  }
+  if (range == -2) { t1 = last_time - 0.25 * ohlc_data_resolutions::day; }
+  else if (range == -1) { t1 = last_time - 0.5 * ohlc_data_resolutions::day; }
+  else if (range == 0) { t1 = last_time - 1.0 * ohlc_data_resolutions::day; }
+  else if (range == 1) { t1 = last_time - 7 * ohlc_data_resolutions::day; }
+  else if (range == 2) { t1 = last_time - 31 * ohlc_data_resolutions::day; }
+  else if (range == 3) { t1 = last_time - 365 * ohlc_data_resolutions::day; }
   // special case, to extend current view with new data
-  else if (range == 100)
-  {
-    t1 = last_time - 365 * ohlc_data_resolutions::day;
-  }
-  else
-  {
-    t1 = hdf5_ohlc_->get_first_sample_time();
-  }
-  crypto_price_plot_->update_time_axis(t1, t2, true);
+  else if (range == 100) { t1 = last_time - 365 * ohlc_data_resolutions::day; }
+  else { t1 = hdf5_ohlc_->get_first_sample_time(); }
+  price_plot_->update_time_axis(t1, t2, true);
 }
 
 // ----------------------------------------------------------------------------
 void price_chart_widget::resizeEvent(QResizeEvent* event)
 {
   QWidget::resizeEvent(event);
-  bool changed = crypto_price_plot_->update_candle_size();
+  bool changed = price_plot_->update_candle_size();
   pplot_dbg<5>.debug(str<>("Resize"), "res changed", changed);
 }
 
@@ -392,7 +312,7 @@ void price_chart_widget::resizeEvent(QResizeEvent* event)
 void price_chart_widget::showEvent(QShowEvent* event)
 {
   QWidget::showEvent(event);
-  bool changed = crypto_price_plot_->update_candle_size();
+  bool changed = price_plot_->update_candle_size();
   pplot_dbg<5>.debug(str<>("Show"), "res changed", changed);
 }
 
@@ -402,14 +322,14 @@ void price_chart_widget::show_plot_axes()
   // turn on x axis lables for bottom graph (all graphs have same time axis)
   if (filter_plots_.size() == 0)
   {
-    crypto_price_plot_->enableAxis(QwtPlot::xBottom, true);
-    crypto_price_plot_->get_crosshairs()->enableDateLabel(true);
+    price_plot_->enableAxis(QwtPlot::xBottom, true);
+    price_plot_->get_crosshairs()->enableDateLabel(true);
   }
   else
   {
     // hide x axis and crosshair date/time label for principal plot
-    crypto_price_plot_->enableAxis(QwtPlot::xBottom, false);
-    crypto_price_plot_->get_crosshairs()->enableDateLabel(false);
+    price_plot_->enableAxis(QwtPlot::xBottom, false);
+    price_plot_->get_crosshairs()->enableDateLabel(false);
 
     // get the last indicator plot and make it's xaxis+label visible
     auto it = filter_plots_.rbegin();
@@ -427,18 +347,12 @@ void price_chart_widget::show_plot_axes()
 
 // ----------------------------------------------------------------------------
 std::tuple<indicator_plot*, timebased_data_curve*> price_chart_widget::add_indicator_plot(
-  QString const& title, point_chart_data* data, QColor const& color, indicators::y_limits ylimits)
+    QString const& title, point_chart_data* data, QColor const& color, indicators::y_limits ylimits)
 {
   auto filter_plot = new indicator_plot(this);
   filter_plot->setMinimumHeight(128);
-  if (ylimits.min == ylimits.max)
-  {
-    filter_plot->setAxisAutoScale(QwtAxis::YRight, true);
-  }
-  else
-  {
-    filter_plot->setAxisScale(QwtAxis::YRight, ylimits.min, ylimits.max);
-  }
+  if (ylimits.min == ylimits.max) { filter_plot->setAxisAutoScale(QwtAxis::YRight, true); }
+  else { filter_plot->setAxisScale(QwtAxis::YRight, ylimits.min, ylimits.max); }
 
   auto m_curve = new timebased_data_curve(title);
   m_curve->setYAxis(QwtPlot::yRight);
@@ -450,12 +364,12 @@ std::tuple<indicator_plot*, timebased_data_curve*> price_chart_widget::add_indic
   m_curve->attach(filter_plot);
 
   // Align the right axis of the indicator with the main price plot
-  auto* scaleWidget = crypto_price_plot_->axisWidget(QwtPlot::yRight);
+  auto* scaleWidget = price_plot_->axisWidget(QwtPlot::yRight);
   double extent = scaleWidget->scaleDraw()->extent(scaleWidget->font());
   filter_plot->axisWidget(QwtPlot::yRight)->scaleDraw()->setMinimumExtent(extent);
 
   // set the initial x min/max rang to tbe the same as the price plot
-  auto interval = crypto_price_plot_->axisInterval(QwtPlot::xBottom);
+  auto interval = price_plot_->axisInterval(QwtPlot::xBottom);
   filter_plot->update_time_axis(interval.minValue(), interval.maxValue(), false);
   filter_plots_.push_back(filter_plot);
 
@@ -468,23 +382,23 @@ std::tuple<indicator_plot*, timebased_data_curve*> price_chart_widget::add_indic
   show_plot_axes();
 
   connect(
-    filter_plot, &indicator_plot::timeAxisChanged, this,
-    [this](double t1, double t2) { crypto_price_plot_->update_time_axis(t1, t2, false); },
-    Qt::QueuedConnection);
+      filter_plot, &indicator_plot::timeAxisChanged, this,
+      [this](double t1, double t2) { price_plot_->update_time_axis(t1, t2, false); },
+      Qt::QueuedConnection);
 
   return std::make_tuple(filter_plot, m_curve);
 }
 
 // ----------------------------------------------------------------------------
 void price_chart_widget::remove_indicator_plot(
-  indicator_plot* filter_plot, timebased_data_curve* curve)
+    indicator_plot* filter_plot, timebased_data_curve* curve)
 {
   // detach curves and autodelete them
   curve->detach();
   delete curve;
   //
   filter_plots_.erase(
-    std::remove(filter_plots_.begin(), filter_plots_.end(), filter_plot), filter_plots_.end());
+      std::remove(filter_plots_.begin(), filter_plots_.end(), filter_plot), filter_plots_.end());
 
   // overlay curves don't have their own filter plot
   if (filter_plot)
@@ -492,11 +406,8 @@ void price_chart_widget::remove_indicator_plot(
     // if there are no curves left, delete the plot and widget, the parent splitter will adjust
     QwtPlotItemList const& items = filter_plot->itemList();
     int num_curves = std::count_if(items.constBegin(), items.constEnd(),
-      [](const auto it) { return (it->rtti() == QwtPlotItem::Rtti_PlotCurve); });
-    if (num_curves == 0)
-    {
-      delete filter_plot;
-    }
+        [](auto const it) { return (it->rtti() == QwtPlotItem::Rtti_PlotCurve); });
+    if (num_curves == 0) { delete filter_plot; }
   }
   show_plot_axes();
 }
@@ -509,39 +420,24 @@ indicators_model::indicators_model(QObject* parent)
 {
 }
 
-int indicators_model::rowCount(QModelIndex const& /*parent*/) const
-{
-  return indicators_.size();
-}
+int indicators_model::rowCount(QModelIndex const& /*parent*/) const { return indicators_.size(); }
 
-int indicators_model::columnCount(QModelIndex const& /*parent*/) const
-{
-  return 4;
-}
+int indicators_model::columnCount(QModelIndex const& /*parent*/) const { return 4; }
 
 QVariant indicators_model::data(QModelIndex const& index, int role) const
 {
   QVariant result;
-  if (!index.isValid())
-  {
-    return result;
-  }
+  if (!index.isValid()) { return result; }
 
   auto it = std::next(indicators_.begin(), index.row());
   if (role == Qt::DisplayRole)
   {
-    if (index.column() == 0)
-    {
-      return (QString(it->text));
-    }
+    if (index.column() == 0) { return (to_qstring(it->ptr()->get_name())); }
     else if (index.column() == 1)
     {
-      return (QString(it->params));
+      return to_qstring(indicators::param_string(it->ptr()->get_params()));
     }
-    else if (index.column() == 2)
-    {
-      return (QString(""));
-    }
+    else if (index.column() == 2) { return (QString("")); }
   }
   else if (role == Qt::BackgroundRole && index.column() == 2)
   {

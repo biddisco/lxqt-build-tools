@@ -23,7 +23,7 @@ using namespace grox::debug;
 constexpr int debug_level = 9;
 //
 template <int Level>
-static print_threshold<Level, debug_level> book_dbg("ord-plot");
+inline constexpr print_threshold<Level, debug_level> book_dbg("ord-plot");
 
 // ----------------------------------------------------------------------------
 OrderBookPlot::OrderBookPlot(QWidget* parent, std::shared_ptr<order_book_base> order_book)
@@ -205,7 +205,7 @@ void OrderBookPlot::new_data_event()
 {
   // push this data into the graph object
   orderbook_lock lock = order_book_->take_bid_ask_lock();
-  const auto& [bids, asks] = order_book_->get_bidask_data();
+  auto const& [bids, asks] = order_book_->get_bidask_data();
   bid_curve_->setRawSamples_locked(bids.rate, bids.total);
   ask_curve_->setRawSamples_locked(asks.rate, asks.total);
 }

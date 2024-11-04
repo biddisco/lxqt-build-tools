@@ -38,17 +38,13 @@ struct ohlc_heikin_ashi
     , prev_(ohlc)
   {
     // if inital ohlc sample is empty, set flag
-    if (prev_.time == 0)
-    {
-      first_ = true;
-    }
+    if (prev_.time == 0) { first_ = true; }
   }
 
   std::optional<ohlctv_sample> operator()(std::optional<ohlctv_sample> ohlc_o)
   {
     // exit or get the value
-    if (!ohlc_o.has_value())
-      return std::nullopt;
+    if (!ohlc_o.has_value()) return std::nullopt;
     ohlctv_sample const& ohlc = ohlc_o.value();
 
     // first point in plot needs a prev open/close
@@ -83,8 +79,7 @@ struct heikin_ashi_transition
   buy_sell_type operator()(std::optional<ohlctv_sample> ha_o)
   {
     // exit or get the value
-    if (!ha_o.has_value())
-      return buy_sell_type::no_event;
+    if (!ha_o.has_value()) return buy_sell_type::no_event;
     ohlctv_sample const& ha = ha_o.value();
 
     // first point in plot needs a prev open/close
@@ -111,8 +106,5 @@ struct add_time_filter
 {
   add_time_filter() {}
 
-  trade_event operator()(buy_sell_type bs, double time)
-  {
-    return {time, bs};
-  }
+  trade_event operator()(buy_sell_type bs, double time) { return {time, bs}; }
 };

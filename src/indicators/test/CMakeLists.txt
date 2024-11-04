@@ -1,13 +1,22 @@
-set(TEST_SRCS averages.cpp)
+set(TEST_SRCS
+    averages.cpp
+    volatility.cpp
+)
 
-foreach(test ${TEST_SRCS})
+foreach(
+  test
+  ${TEST_SRCS}
+)
   cmake_path(
     GET
     test
     STEM
     testname
   )
-  add_executable(${testname} ${test})
+  add_executable(
+    ${testname}
+    ${test}
+  )
   target_link_libraries(
     ${testname}
     PUBLIC grox_indicators

@@ -19,7 +19,7 @@ static std::atomic<int> counter{0};
 using namespace grox::debug;
 //
 template <int Level>
-static print_threshold<Level, 6> test_dbg("Test");
+inline constexpr print_threshold<Level, 6> test_dbg("Test");
 
 // ----------------------------------------------------------------------------
 struct price
@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
   QNetworkAccessManager networkmanager;
   //
   std::string url =
-    fmt::format("https://{}:{}/api-internal/price-history/xrpgbp/", "www.bitstamp.net", 443);
+      fmt::format("https://{}:{}/api-internal/price-history/xrpgbp/", "www.bitstamp.net", 443);
   auto* client = net::http::qhttp_request_client::create(networkmanager, url);
   client->get_request(&handle_price_history);
   //

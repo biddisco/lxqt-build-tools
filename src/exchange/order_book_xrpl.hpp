@@ -32,7 +32,7 @@ class xrpl_order_book : public order_book_base
   void accept_json_ledger_transaction(nlohmann::json jdata);
 
   bool update_offer(
-    grox::xrpl_offer const& prev_offer, grox::xrpl_offer& final_offer, double owner_funds = -1);
+      grox::xrpl_offer const& prev_offer, grox::xrpl_offer& final_offer, double owner_funds = -1);
 
   bool insert_offer(grox::xrpl_offer const& offer);
 

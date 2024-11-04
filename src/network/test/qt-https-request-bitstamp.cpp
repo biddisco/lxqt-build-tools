@@ -20,15 +20,9 @@ void handler(QByteArray byteArray)
   {
     std::cout << "json quick check ok\n\n";
     pass_count++;
-    if (pass_count == test_list.size())
-    {
-      QCoreApplication::quit();
-    }
+    if (pass_count == test_list.size()) { QCoreApplication::quit(); }
   }
-  else
-  {
-    pass_count--;
-  }
+  else { pass_count--; }
 }
 
 int main(int argc, char* argv[])
@@ -39,7 +33,7 @@ int main(int argc, char* argv[])
   for (auto& cp : test_list)
   {
     std::string url = fmt::format("https://{}:{}/api/v2/ohlc/{}/?step=60&start=1704048480&limit=10",
-      "www.bitstamp.net", 443, cp);
+        "www.bitstamp.net", 443, cp);
     auto* client = net::http::qhttp_request_client::create(networkmanager, url);
     client->get_request(&handler);
   }

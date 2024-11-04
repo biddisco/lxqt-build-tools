@@ -7,6 +7,7 @@
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
+#include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/relative_strength_indicator.hpp"
 #include "indicators/stochastic_oscillator.hpp"
@@ -16,25 +17,15 @@ namespace indicators {
   namespace ba = boost::accumulators;
 
   //----------------------------------------------------------------------------
-  struct stochastic_relative_strength_indicator : indicator_base
+  class stochastic_relative_strength_indicator : public indicator_base
   {
+public:
     // ---------------------------------------
-    // fields required for auto gui generation
-    const std::string name = "Stochastic RSI";
-    const std::string description = "Stochastic RSI default 14 period";
-    const overlay_type overlay = overlay_type::minmax_limit;
-    const y_limits ylimits = {0.0, 1.0};
-
-    param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 14),
-      std::make_tuple<QString, param_types>("K smooth", 3),
-    };
-
-    // ---------------------------------------
-    // Default constructor
+    /// Default constructor
     stochastic_relative_strength_indicator()
-      : mov_av_k_(ba::tag::rolling_window::window_size = 3)
+      : indicator_base(
+            "Stochastic RSI", "Stochastic Relatve Strength Indicator", overlay_type::minmax_limit)
+      , mov_av_k_(ba::tag::rolling_window::window_size = 3)
       , rsi_{}
       , osc_{}
       , stoch_rsi_K{0}
@@ -44,21 +35,32 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    // initialize internals from a parameter list
-    void initialize()
+    /// fields required for auto gui generation
+    void init_params() override
     {
-      int k_smooth = std::get<int>(std::get<1>(params[2]));
+      params_ = {
+          //
+          std::make_tuple<QString, param_types>(
+              "Samples", candle_data{ohlc_data_resolutions::minute15, 0}),
+          std::make_tuple<QString, param_types>("Window size", 14),
+          std::make_tuple<QString, param_types>("K smooth", 3),
+      };
+    }
+
+    // ---------------------------------------
+    /// initialize internals from a parameter list
+    void initialize() override
+    {
+      int k_smooth = std::get<int>(std::get<1>(params_[2]));
       mov_av_k_ = ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>>(
-        ba::tag::rolling_window::window_size = k_smooth);
+          ba::tag::rolling_window::window_size = k_smooth);
       //
-      rsi_.params = params;
+      rsi_.set_params(params_);
       rsi_.initialize();
       //
-      osc_.params = params;
+      osc_.set_params(params_);
       osc_.initialize();
-      //auto mode = std::get<int>(std::get<1>(params[2]));
-      //
-      //mode_ = mode;
+      // mode_ = std::get<int>(std::get<1>(params_[2]));
     }
 
     // ---------------------------------------
@@ -72,10 +74,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    inline double getLastResult()
-    {
-      return stoch_rsi_D;
-    }
+    inline double getLastResult() { return stoch_rsi_D; }
 
 private:
     ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>> mov_av_k_;

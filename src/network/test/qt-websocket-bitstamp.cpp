@@ -10,7 +10,7 @@
 #include "network/qwebsocket_session.hpp"
 
 std::atomic<int> counter{0};
-const int test_seconds = 5;
+int const test_seconds = 5;
 
 // ------------------------------------------------------------------
 void onTextMessageReceived(QString message)
@@ -26,10 +26,10 @@ int main(int argc, char* argv[])
 
   QString address = QStringLiteral("wss://ws.bitstamp.net:443");
   QString subscribe =
-    "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": \"order_book_btcusd\"}}";
+      "{\"event\": \"bts:subscribe\",\"data\": {\"channel\": \"order_book_btcusd\"}}";
 
   std::shared_ptr<net::ws::qwebsocket_session> websocket = net::ws::qwebsocket_session::create(
-    "Bitstamp Trades", address, subscribe, net::ws::rx_msg_handler_type(onTextMessageReceived));
+      "Bitstamp Trades", address, subscribe, net::ws::rx_msg_handler_type(onTextMessageReceived));
 
   int completed = 0;
   // wait N seconds and collect some data

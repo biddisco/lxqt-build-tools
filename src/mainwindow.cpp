@@ -63,22 +63,22 @@ using namespace grox::debug;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
 template <int Level>
-static print_threshold<Level, 2> main_dbg("Main-win");
+inline constexpr print_threshold<Level, 2> main_dbg("Main-win");
 
 using namespace ads;
 
 // ----------------------------------------------------------------------------
 std::shared_ptr<price_chart_widget> create_price_chart_widget(
-  std::shared_ptr<ohlc_dataset_view> view, ticker_data tdata, currency_pair cp)
+    std::shared_ptr<ohlc_dataset_view> view, ticker_data tdata, currency_pair cp)
 {
   // create a new price plot object
   std::shared_ptr<price_chart_widget> chart_widget =
-    std::make_shared<price_chart_widget>(nullptr, view, tdata->exchange_, cp);
+      std::make_shared<price_chart_widget>(nullptr, view, tdata->exchange_, cp);
 
   // put the price plot into a dock widget
   using namespace ads;
   std::string title = currency_pair_string(cp) + " price " + tdata->exchange_->get_name();
-  CDockWidget* PlotDockWidget = new CDockWidget(QString(title.c_str()));
+  CDockWidget* PlotDockWidget = new CDockWidget(to_qstring(title));
   PlotDockWidget->setWidget(chart_widget.get());
   PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   global_settings.dock_manager_->addDockWidgetFloating(PlotDockWidget);
@@ -104,7 +104,7 @@ QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
   // put the order book into a dock widget
   using namespace ads;
   std::string obtitle = cps + " text " + name;
-  CDockWidget* obPlotDockWidget = new CDockWidget(QString(obtitle.c_str()));
+  CDockWidget* obPlotDockWidget = new CDockWidget(to_qstring(obtitle));
   obPlotDockWidget->setWidget(orderbook_text);
   obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   global_settings.dock_manager_->addDockWidgetFloating(obPlotDockWidget);
@@ -115,7 +115,7 @@ QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
 
 // ----------------------------------------------------------------------------
 OrderBookPlot* create_order_book_plot_widget(
-  std::string cps, std::string name, std::shared_ptr<order_book_base> orderbook)
+    std::string cps, std::string name, std::shared_ptr<order_book_base> orderbook)
 {
   using namespace ads;
 
@@ -123,7 +123,7 @@ OrderBookPlot* create_order_book_plot_widget(
   orderbook_plot->setMinimumSize(384, 256);
   //
   std::string obptitle = cps + " depth " + name;
-  CDockWidget* obpDockWidget = new CDockWidget(QString(obptitle.c_str()));
+  CDockWidget* obpDockWidget = new CDockWidget(to_qstring(obptitle));
   obpDockWidget->setWidget(orderbook_plot);
   obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   global_settings.dock_manager_->addDockWidgetFloating(obpDockWidget);
@@ -144,9 +144,9 @@ void create_ticker_price_plot(ticker_data tdata, currency_pair cp)
     ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
     tdata->view_->add_live_data(new_sample);
     QMetaObject::invokeMethod(grox::senders::getMainWindow(),
-      [=]() { tdata->chart_widget_->update_live_data(new_sample); });
+        [=]() { tdata->chart_widget_->update_live_data(new_sample); });
   };
-  tdata->live_trade_subscribers_.push_back(live_trade_subscription);
+  tdata->live_trade_subscribers_.subscribe("price_plot", live_trade_subscription);
 }
 
 // ----------------------------------------------------------------------------
@@ -164,7 +164,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
       orderbook_text->setPlainText(datastring);
     });
   };
-  tdata->orderbook_subscribers_.push_back(orderbook_text_sub);
+  tdata->orderbook_subscribers_.subscribe("orderbook_text", orderbook_text_sub);
 
   auto orderbook_plot_sub = [tdata, orderbook_plot](currency_pair cp) {
     QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=]() {
@@ -174,7 +174,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
       orderbook_plot->update_time_and_replot();
     });
   };
-  tdata->orderbook_subscribers_.push_back(orderbook_plot_sub);
+  tdata->orderbook_subscribers_.subscribe("orderbook_plot", orderbook_plot_sub);
 }
 
 // ----------------------------------------------------------------------------
@@ -186,7 +186,8 @@ void ticker_stream_gui_constructor(currency_pair cp, ticker_data tdata, network:
   else if (stream == network::streams::order_book)
     create_ticker_orderbook_widgets(tdata, cp);
   else
-    main_dbg<0>.error(str<>("Stream"), "factory_create unknown stream");
+    main_dbg<0>.error(
+        str<>("Stream"), "factory_create no GUI for stream", network::stream_names[stream]);
 }
 
 // ----------------------------------------------------------------------------
@@ -226,7 +227,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
   // ----------------------------------
   global_settings.data_manager_ =
-    std::dynamic_pointer_cast<abstract_dataset_manager>(std::make_shared<hdf5_ohlc_manager>());
+      std::dynamic_pointer_cast<abstract_dataset_manager>(std::make_shared<hdf5_ohlc_manager>());
   global_settings.data_manager_->init(global_settings.appDataLocation, global_settings.hdfFileName);
 
   // ----------------------------------
@@ -260,8 +261,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   NetworkDockWidget->setWidget(net_layout_);
   NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   NetworkDockWidget->setMinimumSize(128, 196);
-  const auto NetworkautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
-    SideBarLocation::SideBarRight, NetworkDockWidget);
+  auto const NetworkautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+      SideBarLocation::SideBarRight, NetworkDockWidget);
   NetworkautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
 
@@ -276,8 +277,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   AlgorithmsDockWidget->setWidget(algowidget_);
   AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   AlgorithmsDockWidget->setMinimumSize(128, 196);
-  const auto AlgorithmsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
-    SideBarLocation::SideBarRight, AlgorithmsDockWidget);
+  auto const AlgorithmsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+      SideBarLocation::SideBarRight, AlgorithmsDockWidget);
   AlgorithmsautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
@@ -290,8 +291,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   AccountsDockWidget->setWidget(accounts_frame_);
   AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   AccountsDockWidget->setMinimumSize(128, 196);
-  const auto AccountsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
-    SideBarLocation::SideBarRight, AccountsDockWidget);
+  auto const AccountsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+      SideBarLocation::SideBarRight, AccountsDockWidget);
   AccountsautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(AccountsDockWidget->toggleViewAction());
 
@@ -304,8 +305,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   OrdersDockWidget->setWidget(orders_frame_);
   OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContentMinimumSize);
   OrdersDockWidget->setMinimumSize(128, 196);
-  const auto OrdersautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
-    SideBarLocation::SideBarRight, OrdersDockWidget);
+  auto const OrdersautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+      SideBarLocation::SideBarRight, OrdersDockWidget);
   OrdersautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
 
@@ -317,35 +318,35 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
   // when a transaction takes place we might need to update wallet/records
   connect(
-    bitstamp_network_.get(), &bitstamp_network::transaction_event, this,
-    [this]() {
-      transaction_event();
-      display_offers();
-    },
-    Qt::QueuedConnection);
+      bitstamp_network_.get(), &bitstamp_network::transaction_event, this,
+      [this]() {
+        transaction_event();
+        display_offers();
+      },
+      Qt::QueuedConnection);
 
   connect(
-    bitstamp_network_.get(), &bitstamp_network::update_wallet_widget, this,
-    [this](bitstamp_account* acct) {
-      acct->widget_->set_data(*acct);
-      display_offers();
-    },
-    Qt::QueuedConnection);
+      bitstamp_network_.get(), &bitstamp_network::update_wallet_widget, this,
+      [this](bitstamp_account* acct) {
+        acct->widget_->set_data(*acct);
+        display_offers();
+      },
+      Qt::QueuedConnection);
 
   connect(
-    bitstamp_network_.get(), &bitstamp_network::network_initialized, this,
-    [this](exchange* ex) {
-      ex->register_factory("ticker_subscribe",
-        [ex](currency_pair cp, ticker_data, network::streams) { ex->ticker_subscribe(cp); });
-      ex->register_factory("stream_subscribe", ticker_stream_gui_constructor);
-      ex->register_factory("stream_unsubscribe", ticker_stream_gui_destructor);
-      // widget with panels for tickers/selected/streams
-      connection_widget* conwidget = new connection_widget(this, ex);
-      conwidget->setup_gui();
-      net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
-      global_settings.dock_manager_->openPerspective(active_perspective_);
-    },
-    Qt::QueuedConnection);
+      bitstamp_network_.get(), &bitstamp_network::network_initialized, this,
+      [this](exchange* ex) {
+        ex->register_factory("ticker_subscribe",
+            [ex](currency_pair cp, ticker_data, network::streams) { ex->ticker_subscribe(cp); });
+        ex->register_factory("stream_subscribe", ticker_stream_gui_constructor);
+        ex->register_factory("stream_unsubscribe", ticker_stream_gui_destructor);
+        // widget with panels for tickers/selected/streams
+        connection_widget* conwidget = new connection_widget(this, ex);
+        conwidget->setup_gui();
+        net_layout_->addTab(conwidget, to_qstring(ex->get_name()));
+        global_settings.dock_manager_->openPerspective(active_perspective_);
+      },
+      Qt::QueuedConnection);
 #endif
 
 #ifdef GROX_HAVE_XRPL
@@ -357,13 +358,13 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   exchange_list_.push_back(xrpl_testnet_);
 
   connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)), this,
-    SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
+      SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
   connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)), this,
-    SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
+      SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
   connect(xrpl_network_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this,
-    SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
+      SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
   connect(xrpl_testnet_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this,
-    SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
+      SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
   //    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
   //            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
   //    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
@@ -371,32 +372,32 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
   // when a transaction takes place we might need to update wallet/records
   connect(xrpl_network_.get(), SIGNAL(transaction_event()), this, SLOT(transaction_event()),
-    Qt::QueuedConnection);
+      Qt::QueuedConnection);
 
   connect(
-    xrpl_network_.get(), &xrpl_network::network_initialized, this,
-    [this](exchange* ex) {
-      ex->register_factory("ticker_subscribe",
-        [ex](currency_pair cp, ticker_data, network::streams) { ex->ticker_subscribe(cp); });
-      ex->register_factory("stream_subscribe", ticker_stream_gui_constructor);
-      ex->register_factory("stream_unsubscribe", ticker_stream_gui_destructor);
-      // widget with panels for tickers/selected/streams
-      connection_widget* conwidget = new connection_widget(this, ex);
-      conwidget->setup_gui();
-      net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
-      global_settings.dock_manager_->openPerspective(active_perspective_);
-    },
-    Qt::QueuedConnection);
+      xrpl_network_.get(), &xrpl_network::network_initialized, this,
+      [this](exchange* ex) {
+        ex->register_factory("ticker_subscribe",
+            [ex](currency_pair cp, ticker_data, network::streams) { ex->ticker_subscribe(cp); });
+        ex->register_factory("stream_subscribe", ticker_stream_gui_constructor);
+        ex->register_factory("stream_unsubscribe", ticker_stream_gui_destructor);
+        // widget with panels for tickers/selected/streams
+        connection_widget* conwidget = new connection_widget(this, ex);
+        conwidget->setup_gui();
+        net_layout_->addTab(conwidget, to_qstring(ex->get_name()));
+        global_settings.dock_manager_->openPerspective(active_perspective_);
+      },
+      Qt::QueuedConnection);
 
   connect(
-    xrpl_testnet_.get(), &xrpl_network::network_initialized, this,
-    [this](exchange* ex) {    // widget with panels for tickers/selected/streams
-      connection_widget* conwidget = new connection_widget(this, ex);
-      conwidget->setup_gui();
-      net_layout_->addTab(conwidget, QString(ex->get_name().c_str()));
-      global_settings.dock_manager_->openPerspective(active_perspective_);
-    },
-    Qt::QueuedConnection);
+      xrpl_testnet_.get(), &xrpl_network::network_initialized, this,
+      [this](exchange* ex) {    // widget with panels for tickers/selected/streams
+        connection_widget* conwidget = new connection_widget(this, ex);
+        conwidget->setup_gui();
+        net_layout_->addTab(conwidget, to_qstring(ex->get_name()));
+        global_settings.dock_manager_->openPerspective(active_perspective_);
+      },
+      Qt::QueuedConnection);
 #endif
 
   // for each wallet on each network
@@ -409,15 +410,14 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       w->widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
       if (network->get_name() == "Bitstamp")
         w->widget_->set_data(*static_cast<bitstamp_account*>(w));
-      if (network->get_name() == "XRPL")
-        w->widget_->set_data(*static_cast<ledger_wallet*>(w));
+      if (network->get_name() == "XRPL") w->widget_->set_data(*static_cast<ledger_wallet*>(w));
       accounts_frame_->layout()->addWidget(w->widget_);
       // update wallet combo with name
-      algo_form_->all_acct_combo->addItem(QString(w->name_.c_str()));
+      algo_form_->all_acct_combo->addItem(to_qstring(w->name_));
     }
   }
   accounts_frame_->layout()->addItem(
-    new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Preferred));
+      new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Preferred));
 
   // ----------------------------------
   // setup Qt actions/connections between controls
@@ -467,8 +467,7 @@ GroxMainWindow::~GroxMainWindow()
   // release dockmanager
   global_settings.dock_manager_.reset();
   // release all networks
-  for (auto& n : global_settings.networks_)
-    n.reset();
+  for (auto& n : global_settings.networks_) n.reset();
   // release datamanager
   global_settings.data_manager_.reset();
 }
@@ -515,8 +514,8 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
       //do what you need
       main_dbg<6>.debug("Shift click pressed");
       std::array<std::string, 5> strings{bitstamp_network_->account().API_user,
-        bitstamp_network_->account().API_key, bitstamp_network_->account().API_secret,
-        std::to_string(bitstamp_network_->account().tag_), bitstamp_network_->account().public_};
+          bitstamp_network_->account().API_key, bitstamp_network_->account().API_secret,
+          std::to_string(bitstamp_network_->account().tag_), bitstamp_network_->account().public_};
 
       // iterate over wallets to convert type from basic pointers
       // @TODO - improve this
@@ -532,10 +531,7 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
         wallets.push_back(w);
       });
       password_dialog npw = password_dialog(strings, wallets);
-      if (npw.exec() == QDialog::Accepted)
-      {
-        generate_encrypted_ini_data(npw);
-      }
+      if (npw.exec() == QDialog::Accepted) { generate_encrypted_ini_data(npw); }
       return true;
     }
   }
@@ -560,19 +556,19 @@ void GroxMainWindow::connect_gui_controls()
   // ---------------------------------------------------------------------
 
   connect(
-    algo_form_->exec_algo, &QAbstractButton::clicked, this,
-    [this]() {
-      // execute_filter();
-    },
-    Qt::QueuedConnection);
+      algo_form_->exec_algo, &QAbstractButton::clicked, this,
+      [this]() {
+        // execute_filter();
+      },
+      Qt::QueuedConnection);
 
   connect(
-    algo_form_->run_filter, &QPushButton::clicked, this,
-    [this]() {
-      // pplot_dbg<0>.error(str<>("emit execute_filter"));
-      // execute_filter();
-    },
-    Qt::QueuedConnection);
+      algo_form_->run_filter, &QPushButton::clicked, this,
+      [this]() {
+        // pplot_dbg<0>.error(str<>("emit execute_filter"));
+        // execute_filter();
+      },
+      Qt::QueuedConnection);
 
   qs_shutdown_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
   qs_darkmode_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_D)), this, [this]() {
@@ -603,7 +599,7 @@ void GroxMainWindow::execute_xrp()
 {
   QMessageBox::StandardButton reply;
   reply = QMessageBox::question(
-    this, "Confirm", "Execute transaction?", QMessageBox::Yes | QMessageBox::No);
+      this, "Confirm", "Execute transaction?", QMessageBox::Yes | QMessageBox::No);
   if (reply == QMessageBox::Yes)
   {
     main_dbg<0>.debug(str<>("Yes clicked"));
@@ -615,10 +611,7 @@ void GroxMainWindow::execute_xrp()
 
     QApplication::quit();
   }
-  else
-  {
-    main_dbg<0>.debug(str<>("Yes *not* clicked"));
-  }
+  else { main_dbg<0>.debug(str<>("Yes *not* clicked")); }
 }
 
 // ----------------------------------------------------------------------------
@@ -626,16 +619,13 @@ void GroxMainWindow::execute_usd()
 {
   QMessageBox::StandardButton reply;
   reply = QMessageBox::question(
-    this, "Confirm", "Execute transaction?", QMessageBox::Yes | QMessageBox::No);
+      this, "Confirm", "Execute transaction?", QMessageBox::Yes | QMessageBox::No);
   if (reply == QMessageBox::Yes)
   {
     main_dbg<0>.debug(str<>("Yes clicked"));
     QApplication::quit();
   }
-  else
-  {
-    main_dbg<0>.debug(str<>("Yes *not* clicked"));
-  }
+  else { main_dbg<0>.debug(str<>("Yes *not* clicked")); }
 }
 
 // ----------------------------------------------------------------------------
@@ -680,10 +670,7 @@ void GroxMainWindow::perform_arbitrage()
       QString arb_string = QString::fromStdString(arbitrage_string);
       algo_form_->arbitrage_orders->setPlainText(arb_string);
     }
-    else
-    {
-      algo_form_->arbitrage_orders->setPlainText("");
-    }
+    else { algo_form_->arbitrage_orders->setPlainText(""); }
   }
 }
 
@@ -718,7 +705,7 @@ void GroxMainWindow::display_offers()
   }
   // absorb any extra space in the parent by adding a spacer
   orders_frame_->layout()->addItem(
-    new QSpacerItem(1, 1, QSizePolicy::Minimum, QSizePolicy::Expanding));
+      new QSpacerItem(1, 1, QSizePolicy::Minimum, QSizePolicy::Expanding));
 }
 
 // ----------------------------------------------------------------------------
@@ -742,8 +729,8 @@ void GroxMainWindow::showEvent(QShowEvent* event)
   {
     only_once = false;
     auto snd = stdexec::on(grox::senders::qt_mainthread_scheduler(), stdexec::just())    //
-      | stdexec::then([this]() { loadConnectionSetups(); })                              //
-      | stdexec::then([this]() { loadWindowSettings(); });                               //
+        | stdexec::then([this]() { loadConnectionSetups(); })                            //
+        | stdexec::then([this]() { loadWindowSettings(); });                             //
     stdexec::start_detached(std::move(snd));
   }
 }
@@ -802,7 +789,7 @@ void GroxMainWindow::saveConnectionSetups()
       // begin ticker group
       auto cp = ticker.first;
       std::string key = currency_pair_string(cp);
-      settings.beginGroup(QString(key.data()));
+      settings.beginGroup(to_qstring(key));
 
       // for each stream available
       for (auto const& s : streams)
@@ -840,7 +827,7 @@ void GroxMainWindow::loadConnectionSetups()
 
   // sub groups are tickers on the exchange
   QStringList children = settings.childGroups();
-  for (const auto& ticker : children)
+  for (auto const& ticker : children)
   {
     std::string cps = ticker.toStdString();
     currency_pair cp = string_to_pair(cps, "-");
@@ -916,8 +903,8 @@ void GroxMainWindow::stream_process(ohlctv_sample const& ohlc)
 
 // ----------------------------------------------------------------------------
 QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QColor("darkRed"),
-  QColor("darkCyan"), QColor("darkMagenta"), QColor("green"), QColor("darkGreen"), QColor("yellow"),
-  QColor("blue")};
+    QColor("darkCyan"), QColor("darkMagenta"), QColor("green"), QColor("darkGreen"),
+    QColor("yellow"), QColor("blue")};
 /*
 // ----------------------------------------------------------------------------
 void GroxMainWindow::execute_filter()
@@ -1169,8 +1156,8 @@ void GroxMainWindow::createPerspectives_Ui()
     QAction* LoadPerspectiveAction = new QAction(name);
     LoadPerspectiveAction->setCheckable(true);
     connect(
-      LoadPerspectiveAction, &QAction::triggered, this, [this, name]() { openPerspective(name); },
-      Qt::QueuedConnection);
+        LoadPerspectiveAction, &QAction::triggered, this, [this, name]() { openPerspective(name); },
+        Qt::QueuedConnection);
     perspectives_menu_->addAction(LoadPerspectiveAction);
   }
 }
@@ -1179,7 +1166,7 @@ void GroxMainWindow::createPerspectives_Ui()
 void GroxMainWindow::savePerspective()
 {
   QString Name = QInputDialog::getText(
-    this, "Save Perspective", "Enter name:", QLineEdit::Normal, active_perspective_);
+      this, "Save Perspective", "Enter name:", QLineEdit::Normal, active_perspective_);
   if (!Name.isEmpty())
   {
     global_settings.dock_manager_->addPerspective(Name);
@@ -1193,14 +1180,8 @@ void GroxMainWindow::openPerspective(QString const& name)
   active_perspective_ = name;
   for (auto* action : perspectives_menu_->actions())
   {
-    if (action->text() == name)
-    {
-      action->setChecked(true);
-    }
-    else
-    {
-      action->setChecked(false);
-    }
+    if (action->text() == name) { action->setChecked(true); }
+    else { action->setChecked(false); }
   }
   global_settings.dock_manager_->openPerspective(name);
 }
@@ -1210,10 +1191,7 @@ void GroxMainWindow::LoadStyleSheet(int dark)
 {
 #ifdef GROX_DEBUG_RESOURCES
   QDirIterator it(":", QDirIterator::Subdirectories);
-  while (it.hasNext())
-  {
-    qDebug() << it.next();
-  }
+  while (it.hasNext()) { qDebug() << it.next(); }
 #endif
   QString name;
   if (dark == 0)
@@ -1222,14 +1200,8 @@ void GroxMainWindow::LoadStyleSheet(int dark)
     qApp->setStyleSheet("");
     return;
   }
-  else if (dark == 1)
-  {
-    name = ":qdarkstyle/dark/darkstyle.qss";
-  }
-  else if (dark == 2)
-  {
-    name = ":qdarkstyle/light/lightstyle.qss";
-  }
+  else if (dark == 1) { name = ":qdarkstyle/dark/darkstyle.qss"; }
+  else if (dark == 2) { name = ":qdarkstyle/light/lightstyle.qss"; }
   QFile f(name);
   if (!f.exists())
   {

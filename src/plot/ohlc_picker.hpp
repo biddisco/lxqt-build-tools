@@ -41,7 +41,7 @@ class ohlc_picker : public QwtPlotPicker
 
     setTrackerMode(QwtPlotPicker::ActiveOnly);
     setRubberBand(
-      QwtPicker::RubberBand(int(QwtPicker::HLineRubberBand) + int(QwtPicker::VLineRubberBand)));
+        QwtPicker::RubberBand(int(QwtPicker::HLineRubberBand) + int(QwtPicker::VLineRubberBand)));
     setStateMachine(new QwtPickerTrackerMachine());
 
     // pale blue "#9589cf"
@@ -49,17 +49,13 @@ class ohlc_picker : public QwtPlotPicker
     setTrackerPen(QPen(Qt::darkGray));
   }
 
-  QPointF last_coord()
-  {
-    return last_coord_;
-  }
+  QPointF last_coord() { return last_coord_; }
 
-  double quantize_x_coord(const double pos) const
+  double quantize_x_coord(double const pos) const
   {
     // get the pixel/plot coordinate transform
     timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas()->parentWidget());
-    if (!plot_)
-      return pos;
+    if (!plot_) return pos;
     //
     return plot_->quantize_x_coord(pos);
   }
@@ -68,8 +64,7 @@ class ohlc_picker : public QwtPlotPicker
   {
     // get the pixel/plot coordinate transform
     timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas()->parentWidget());
-    if (!plot_)
-      return pos;
+    if (!plot_) return pos;
     //
     const QwtScaleMap map = plot_->canvasMap(QwtAxis::XBottom);
     double p1 = map.invTransform(pos.x());
@@ -99,17 +94,13 @@ class ohlc_picker : public QwtPlotPicker
     return adjusted;
   }
 
-  void enableDateLabel(bool enable)
-  {
-    date_label_enabled_ = enable;
-  }
+  void enableDateLabel(bool enable) { date_label_enabled_ = enable; }
 
   virtual void updateDisplay() QWT_OVERRIDE
   {
     QwtPlotPicker::updateDisplay();
 
-    if (!yaxis_label_)
-      return;
+    if (!yaxis_label_) return;
 
     // -------------------------------------------------
     // Right Y axis widget (such as price)
@@ -126,7 +117,7 @@ class ohlc_picker : public QwtPlotPicker
     //
     // display price inside price axis
     //
-    const QwtScaleDraw* ydraw = plot_->axisScaleDraw(QwtAxis::YRight);
+    QwtScaleDraw const* ydraw = plot_->axisScaleDraw(QwtAxis::YRight);
     QwtText yaxis_text = ydraw->label(last_coord_.y());
     QColor c("#555555");
     c.setAlpha(200);
@@ -142,8 +133,8 @@ class ohlc_picker : public QwtPlotPicker
     yaxis_label_->setText(yaxis_text);
     auto g = yaxis_label_->geometry();
 
-    g.moveTo(
-      yawg.x() + ydraw->maxTickLength() + ydraw->spacing() - 1, yawg.y() + y - s.height() - 8 / 2);
+    g.moveTo(yawg.x() + ydraw->maxTickLength() + ydraw->spacing() - 1,
+        yawg.y() + y - s.height() - 8 / 2);
     yaxis_label_->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
 
     // -------------------------------------------------
@@ -160,7 +151,7 @@ class ohlc_picker : public QwtPlotPicker
     //
     // display date inside date axis
     //
-    const QwtScaleDraw* xdraw = plot_->axisScaleDraw(QwtAxis::XBottom);
+    QwtScaleDraw const* xdraw = plot_->axisScaleDraw(QwtAxis::XBottom);
     const QDateTime dt = QDateTime::fromMSecsSinceEpoch(px);
     QString str2 = QLocale().toString(dt, "dd-MM-yy hh:mm");
     QwtText date_text(str2);
@@ -181,7 +172,7 @@ class ohlc_picker : public QwtPlotPicker
       g = date_label_->geometry();
 
       g.moveTo(
-        xawg.x() + x - s.width() / 2, xawg.y() + xdraw->maxTickLength() + xdraw->spacing() - 1);
+          xawg.x() + x - s.width() / 2, xawg.y() + xdraw->maxTickLength() + xdraw->spacing() - 1);
       date_label_->setGeometry(g.x(), g.y(), s.width() + 4, s.height() + 8);
     }
 
@@ -206,13 +197,10 @@ class ohlc_picker : public QwtPlotPicker
 
   struct compareX
   {
-    inline bool operator()(const double x, QPointF const& pos) const
-    {
-      return (x < pos.x());
-    }
+    inline bool operator()(double const x, QPointF const& pos) const { return (x < pos.x()); }
   };
 
-  QLineF curveLineAt(const QwtPlotCurve* curve, double x) const
+  QLineF curveLineAt(QwtPlotCurve const* curve, double x) const
   {
     // need datatype if we want to use this method
     //timebased_chart_data *data = dynamic_cast<timebased_chart_data>(curve->data());

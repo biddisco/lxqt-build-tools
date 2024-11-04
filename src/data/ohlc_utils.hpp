@@ -5,7 +5,7 @@
 #include <optional>
 #include <vector>
 // extern
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 // grox
 #include "currency/ohlctv_sample.hpp"
 
@@ -29,41 +29,26 @@ inline double ohlc_mode_extract(const ohlc_modes mode, ohlctv_sample const& ohlc
 {
   switch (mode)
   {
-  case ohlc_modes::open:
-    return ohlc.open;
-  case ohlc_modes::close:
-    return ohlc.close;
-  case ohlc_modes::mid_open_close:
-    return 0.5 * (ohlc.open + ohlc.close);
-  case ohlc_modes::high:
-    return ohlc.high;
-  case ohlc_modes::low:
-    return ohlc.low;
-  case ohlc_modes::mid_high_low:
-    return 0.5 * (ohlc.low + ohlc.high);
-  case ohlc_modes::volume:
-    return ohlc.volume;
-  case ohlc_modes::value:
-    return ohlc.volume * (0.5 * (ohlc.open + ohlc.close));
-  default:
-    return 0.0;
+  case ohlc_modes::open: return ohlc.open;
+  case ohlc_modes::close: return ohlc.close;
+  case ohlc_modes::mid_open_close: return 0.5 * (ohlc.open + ohlc.close);
+  case ohlc_modes::high: return ohlc.high;
+  case ohlc_modes::low: return ohlc.low;
+  case ohlc_modes::mid_high_low: return 0.5 * (ohlc.low + ohlc.high);
+  case ohlc_modes::volume: return ohlc.volume;
+  case ohlc_modes::value: return ohlc.volume * (0.5 * (ohlc.open + ohlc.close));
+  default: return 0.0;
   }
 }
 
-inline std::ostream& operator<<(std::ostream& os, const ohlc_modes& m)
+inline std::ostream& operator<<(std::ostream& os, ohlc_modes const& m)
 {
   os << int(m);
   return os;
 }
 
-inline double get_time(ohlctv_sample const& val)
-{
-  return val.time;
-}
-inline double get_time(QPointF const& val)
-{
-  return val.x();
-}
+inline double get_time(ohlctv_sample const& val) { return val.time; }
+inline double get_time(QPointF const& val) { return val.x(); }
 
 struct ohlc_resample
 {
@@ -100,23 +85,18 @@ struct minmax_data<QPointF>
   {
     if (!isValid())
     {
-      if (other.isValid())
-        *this = other;
+      if (other.isValid()) *this = other;
       return *this;
     }
 
-    if (!other.isValid())
-      return *this;
+    if (!other.isValid()) return *this;
 
     min_ = std::min(min_, other.min_);
     max_ = std::min(max_, other.max_);
     return *this;
   }
 
-  bool isValid() const
-  {
-    return valid_;
-  }
+  bool isValid() const { return valid_; }
 };
 
 template <>
@@ -146,22 +126,17 @@ struct minmax_data<ohlctv_sample>
   {
   }
 
-  bool isValid() const
-  {
-    return valid_;
-  }
+  bool isValid() const { return valid_; }
 
   minmax_data<ohlctv_sample>& update(minmax_data<ohlctv_sample> const& other)
   {
     if (!isValid())
     {
-      if (other.isValid())
-        *this = other;
+      if (other.isValid()) *this = other;
       return *this;
     }
 
-    if (!other.isValid())
-      return *this;
+    if (!other.isValid()) return *this;
 
     min_price_ = std::min(min_price_, other.min_price_);
     max_price_ = std::max(max_price_, other.max_price_);
@@ -192,10 +167,7 @@ struct ohlc_candlemaker
   {
     uint64_t candle_old = static_cast<uint64_t>(ohlc_.time / to_resolution_);
     uint64_t candle_cur = static_cast<uint64_t>(ohlc.time / to_resolution_);
-    if (candle_old == candle_cur)
-    {
-      update_ohlctv_sample(ohlc_, ohlc);
-    }
+    if (candle_old == candle_cur) { update_ohlctv_sample(ohlc_, ohlc); }
     else
     {
       ohlc_ = ohlc;
@@ -203,10 +175,7 @@ struct ohlc_candlemaker
     }
     // is this the last candle before we start a new one
     uint64_t candle_next = static_cast<uint64_t>((ohlc.time + from_resolution_) / to_resolution_);
-    if (candle_next > candle_cur)
-    {
-      return ohlc_;
-    }
+    if (candle_next > candle_cur) { return ohlc_; }
     return std::nullopt;
   }
 

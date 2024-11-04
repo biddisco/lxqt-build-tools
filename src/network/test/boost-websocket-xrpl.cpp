@@ -12,10 +12,7 @@ std::atomic<int> counter{0};
 // ----------------------------------------------------------------------------
 static void new_orderbook_data(void* nw, currency_pair const cp, std::string_view data)
 {
-  if (data.find("{\"result\":{\"offers\"") != data.npos)
-  {
-    counter++;
-  }
+  if (data.find("{\"result\":{\"offers\"") != data.npos) { counter++; }
   std::string_view slice = data.substr(0, std::min(std::size_t(64), data.length()));
   std::cout << slice << std::endl;
 }
@@ -63,11 +60,11 @@ void websocket_subscribe_offers()
 
   using namespace std::placeholders;
   auto ws_orderbook = net::ws::create_session(io_contexts_.ioc, io_contexts_.ctx, "s1.ripple.com",
-    "443", subscription,
-    std::bind(new_orderbook_data, nullptr, currency_pair{currency{}, currency{}}, _1));
+      "443", subscription,
+      std::bind(new_orderbook_data, nullptr, currency_pair{currency{}, currency{}}, _1));
 
   int completed = 0;
-  const int sec = 8;
+  int const sec = 8;
   // wait 5 seconds and collect some data
   for (int i = 0; i < sec && (counter.load() == 0); i++)
   {
@@ -90,8 +87,7 @@ int main(int argc, char* argv[])
   io_contexts_.ioc.stop();
   for (auto& t : ioc_threads_)
   {
-    if (t.joinable())
-      t.join();
+    if (t.joinable()) t.join();
   }
 
   std::cout << "Exiting" << std::endl;

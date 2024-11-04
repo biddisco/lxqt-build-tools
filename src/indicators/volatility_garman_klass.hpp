@@ -4,6 +4,7 @@
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
+#include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 
@@ -11,31 +12,18 @@
 
 namespace indicators {
   //----------------------------------------------------------------------------
-  struct volatility_garman_klass : indicator_base
+  struct volatility_garman_klass : public indicator_base
   {
+public:
     using result_type = std::vector<float>;
 
     // ---------------------------------------
-    // fields required for auto gui generation
-    const std::string name = "Garman-Klass";
-    const std::string description = "Garman-=Klass volatility (default 14 period)";
-    const overlay_type overlay = overlay_type::price;
-
-    const QChar sigma = QChar(0xc3, 0x03);
-
-    param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 20),
-      std::make_tuple<QString, param_types>("scale factor", 1.0),
-      std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
-
-    // ---------------------------------------
-    // Default constructor
+    /// Default constructor
     volatility_garman_klass(
-      int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
-      : average_{}
+        int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
+      : indicator_base("Garman-Klass", "Garman-Klass volatility", overlay_type::price)
+      , average_{}
       , buffer1_(window_size)
-      , buffer2_(window_size)
       , scale_{1.0}
       , num_bands_{num_bands}
       , window_size_(window_size)
@@ -43,21 +31,29 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    int num_outputs() const override
+    /// fields required for auto gui generation
+    void init_params() override
     {
-      return 1 + (2 * num_bands_);
+      params_ = {//
+          std::make_tuple<QString, param_types>(
+              "Samples", candle_data{ohlc_data_resolutions::minute15, 0}),
+          std::make_tuple<QString, param_types>("Window size", 20),
+          std::make_tuple<QString, param_types>("scale factor", 1.0),
+          std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
     }
 
     // ---------------------------------------
-    // initialize internals from a parameter list
-    void initialize()
+    /// override outputs as we produce upper/lower bands
+    int num_outputs() const override { return 1 + (2 * num_bands_); }
+
+    // ---------------------------------------
+    /// initialize internals from a parameter list
+    void initialize() override
     {
-      auto resolution_ = std::get<candle_res>(std::get<1>(params[0]));
-      window_size_ = std::get<int>(std::get<1>(params[1]));
-      scale_ = std::get<double>(std::get<1>(params[2]));
-      num_bands_ = std::get<int>(std::get<1>(params[3]));
+      window_size_ = std::get<int>(std::get<1>(params_[1]));
+      scale_ = std::get<double>(std::get<1>(params_[2]));
+      num_bands_ = std::get<int>(std::get<1>(params_[3]));
       buffer1_ = boost::circular_buffer<float>(window_size_);
-      buffer2_ = boost::circular_buffer<float>(window_size_);
     }
 
     // ---------------------------------------
@@ -68,21 +64,14 @@ namespace indicators {
       mean = val.close;
       // first part to be summed
       double val1 = 0.5 * std::pow(std::log(val.high / val.low), 2);
-      buffer1_.push_back(val1);
       // second part to be summed
       double val2 = (2.0 * std::log(2) - 1) * std::pow(std::log(val.close / val.open), 2);
-      buffer2_.push_back(val2);
+      buffer1_.push_back(val1 - val2);
 
       double accum1 = 0;
-      double accum2 = 0;
-      for (std::tuple<double, double> elem : ranges::views::zip(buffer1_, buffer2_))
-      {
-        accum1 += std::get<0>(elem);
-        accum2 += std::get<1>(elem);
-      }
+      for (double elem : buffer1_) { accum1 += elem; }
       accum1 *= 1.0 / buffer1_.size();
-      accum2 *= 1.0 / buffer2_.size();
-      last_sigma_ = scale_ * std::sqrt(accum1 - accum2);
+      last_sigma_ = scale_ * std::sqrt(accum1);
       //
       std::vector<float> outdata;
       // push N bands below the mean
@@ -104,15 +93,11 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    inline double getLastResult()
-    {
-      return band_above_;
-    }
+    inline double getLastResult() { return band_above_; }
 
 private:
     moving_average average_;
     boost::circular_buffer<float> buffer1_;
-    boost::circular_buffer<float> buffer2_;
     double scale_;
     int num_bands_;
     int window_size_;

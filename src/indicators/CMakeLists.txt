@@ -1,5 +1,7 @@
 set(grox_indicators_SRCS
     # basic definitions
+    indicator_ptr.hpp
+    indicator_base.hpp
     indicator_definitions.hpp
     indicator_types.hpp
     # volatility estimators
@@ -20,13 +22,14 @@ set(grox_indicators_SRCS
 add_library(
   grox_indicators
   INTERFACE
+  # ${grox_indicators_SRCS}
 )
 
 target_include_directories(
   grox_indicators
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_CURRENT_SOURCE_DIR}/..
+  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
+
 target_link_libraries(
   grox_indicators
   INTERFACE qwt

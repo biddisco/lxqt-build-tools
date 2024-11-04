@@ -7,12 +7,24 @@
 
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_utils.hpp"
+#include "data/timebased_chart_data.hpp"
+#include "debug/print.hpp"
 
+// ----------------------------------------------------------------------------
+template <int Level>
+inline constexpr grox::debug::print_threshold<Level, 5> indicator_dbg("Indicate");
+
+// ----------------------------------------------------------------------------
 namespace indicators {
 
-  using param_types = std::variant<double, int, ohlc_modes, bool, candle_res>;
+  using param_types = std::variant<double, int, ohlc_modes, bool, candle_data>;
   using param_list = std::vector<std::tuple<QString, param_types>>;
 
+  // ----------------------------------------------------------------------------
+  /// greek symbol for sigma, used in certain indicator texts
+  static constexpr QChar sigma = QChar(0xc3, 0x03);
+
+  // ----------------------------------------------------------------------------
   /// The overlay type tells the indicator plot how/where to place the chart
   enum class overlay_type : int
   {
@@ -28,32 +40,11 @@ namespace indicators {
     no_overlay = 4,
   };
 
+  // ----------------------------------------------------------------------------
   /// Used in conjunction with minmax_limit to set the y-axis range
   struct y_limits
   {
     double min;
     double max;
   };
-
-  struct indicator_base
-  {
-    using result_type = double;
-
-    virtual ~indicator_base() {}
-
-    virtual int num_inputs() const
-    {
-      return 1;
-    }
-    virtual int num_outputs() const
-    {
-      return 1;
-    }
-
-    virtual overlay_type output_overlay_type(int n) const
-    {
-      return overlay_type::price;
-    }
-  };
-
 }    // namespace indicators

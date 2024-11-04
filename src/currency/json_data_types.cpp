@@ -58,14 +58,8 @@ namespace grox {
     else
     {
       // allow balance OR value string id
-      if (j.count("balance") != 0)
-      {
-        p.value = std::stod(j.at("balance").get<std::string>());
-      }
-      else if (j.count("value") != 0)
-      {
-        p.value = std::stod(j.at("value").get<std::string>());
-      }
+      if (j.count("balance") != 0) { p.value = std::stod(j.at("balance").get<std::string>()); }
+      else if (j.count("value") != 0) { p.value = std::stod(j.at("value").get<std::string>()); }
       else
         throw std::runtime_error("No value in currency amount");
       //
@@ -73,18 +67,9 @@ namespace grox {
       //
       std::string issuer;
       // allow account/issuer/counterparty string id
-      if (j.count("account") != 0)
-      {
-        issuer = j.at("account").get<std::string>();
-      }
-      else if (j.count("counterparty") != 0)
-      {
-        issuer = j.at("counterparty").get<std::string>();
-      }
-      else if (j.count("issuer") != 0)
-      {
-        issuer = j.at("issuer").get<std::string>();
-      }
+      if (j.count("account") != 0) { issuer = j.at("account").get<std::string>(); }
+      else if (j.count("counterparty") != 0) { issuer = j.at("counterparty").get<std::string>(); }
+      else if (j.count("issuer") != 0) { issuer = j.at("issuer").get<std::string>(); }
       //
       p.currency = {issuer, currency};
     }
@@ -107,10 +92,7 @@ namespace grox {
       xrpl_offer temp = p;
       temp.TakerGets = j.at("taker_gets_funded").get<xrp_amount>();
       temp.TakerPays = j.at("taker_pays_funded").get<xrp_amount>();
-      if (temp.TakerGets.value > 0 && temp.TakerPays.value > 0)
-      {
-        p = temp;
-      }
+      if (temp.TakerGets.value > 0 && temp.TakerPays.value > 0) { p = temp; }
     }
 #endif
     // The offer might be for more than the account actually holds
@@ -119,10 +101,7 @@ namespace grox {
     {
       p.owner_funds = std::stod(j.at("owner_funds").get<std::string>());
     }
-    else
-    {
-      p.owner_funds = -1;
-    }
+    else { p.owner_funds = -1; }
   }
 
   // ----------------------------------------------------------------------------

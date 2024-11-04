@@ -19,26 +19,11 @@ struct candle_res
   // A simple name that will appear in menus
   char const* name_;
   // operators to make access easy
-  constexpr operator double() const
-  {
-    return res_;
-  }
-  constexpr operator const char*() const
-  {
-    return name_;
-  }
-  bool operator<(candle_res const& other)
-  {
-    return res_ < other.res_;
-  }
-  bool operator>(candle_res const& other)
-  {
-    return res_ > other.res_;
-  }
-  bool operator==(candle_res const& other)
-  {
-    return res_ == other.res_;
-  }
+  constexpr operator double() const { return res_; }
+  constexpr operator char const*() const { return name_; }
+  bool operator<(candle_res const& other) { return res_ < other.res_; }
+  bool operator>(candle_res const& other) { return res_ > other.res_; }
+  bool operator==(candle_res const& other) { return res_ == other.res_; }
 
   friend std::ostream& operator<<(std::ostream& os, candle_res const& res)
   {
@@ -71,7 +56,7 @@ class ohlc_data_resolutions
   static std::vector<candle_res> const& available_resolutions()
   {
     static const std::vector<candle_res> resolutions = {minute, minute3, minute5, minute10,
-      minute15, minute30, hour, hour2, hour4, hour6, hour12, day, day2, day3, day7, day15};
+        minute15, minute30, hour, hour2, hour4, hour6, hour12, day, day2, day3, day7, day15};
     return resolutions;
   }
 
@@ -79,8 +64,7 @@ class ohlc_data_resolutions
   {
     for (auto const& r : available_resolutions())
     {
-      if (r.res_ == res)
-        return r;
+      if (r.res_ == res) return r;
     }
     throw std::runtime_error("Resolution not found");
   }
@@ -91,14 +75,12 @@ class ohlc_data_resolutions
   // gcd(hour4, hour6) = hour2
   static candle_res gcd(candle_res a, candle_res b)
   {
-    if (a > b)
-      std::swap(a, b);
+    if (a > b) std::swap(a, b);
     while (a.res_ > ohlc_data_resolutions::minute)
     {
       while (b.res_ >= a.res_)
       {
-        if (b.res_ == a.res_)
-          return b;
+        if (b.res_ == a.res_) return b;
         b = get_resolution(b.base_);
       }
       a = get_resolution(a.base_);
@@ -107,5 +89,43 @@ class ohlc_data_resolutions
   }
 };
 
-using variant_param_types = std::variant<double, int, bool, candle_res>;
-using variant_param_list = std::vector<std::tuple<std::string, variant_param_types>>;
+// ----------------------------------------------------------------------------
+struct candle_data
+{
+  candle_res res_;
+  std::uint64_t numSamples_;
+
+  static std::uint64_t samples(candle_res res, std::string timestring)
+  {
+    std::uint64_t samples = 0;
+    if (timestring == "1h") { samples = (60 * 60 * 1000ll) / res; }
+    else if (timestring == "1d") { samples = (24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "1w") { samples = (7 * 24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "1m") { samples = (30 * 24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "1y") { samples = (365 * 24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "all") { samples = std::numeric_limits<std::uint64_t>::max(); }
+    return samples;
+  }
+
+  std::string as_string() const
+  {
+    if (numSamples_ == (60 * 60 * 1000ll) / res_)
+      return "1h";
+    else if (numSamples_ == (24 * 60 * 60 * 1000ll) / res_)
+      return "1d";
+    else if (numSamples_ == (7 * 24 * 60 * 60 * 1000ll) / res_)
+      return "1w";
+    else if (numSamples_ == (30 * 24 * 60 * 60 * 1000ll) / res_)
+      return "1m";
+    else if (numSamples_ == (365 * 24 * 60 * 60 * 1000ll) / res_)
+      return "1y";
+    else if (numSamples_ == std::numeric_limits<std::uint64_t>::max())
+      return "all";
+    return "all";
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, candle_data const& data)
+  {
+    return os << data.res_.name_;
+  }
+};

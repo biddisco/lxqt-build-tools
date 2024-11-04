@@ -44,18 +44,9 @@ struct trade_data
   {
     // if taker gets xrp, we must be selling xrp
     auto tradetype = get_trade_type();
-    if (tradetype == trade_type::buy)
-    {
-      return taker_pay_;
-    }
-    else if (tradetype == trade_type::sell)
-    {
-      return taker_get_;
-    }
-    else
-    {
-      throw std::runtime_error("Not an xrp transaction");
-    }
+    if (tradetype == trade_type::buy) { return taker_pay_; }
+    else if (tradetype == trade_type::sell) { return taker_get_; }
+    else { throw std::runtime_error("Not an xrp transaction"); }
     return 0;
   }
 
@@ -63,18 +54,9 @@ struct trade_data
   {
     // if taker gets xrp, we must be selling xrp
     auto tradetype = get_trade_type();
-    if (tradetype == trade_type::buy)
-    {
-      return taker_get_ / taker_pay_;
-    }
-    else if (tradetype == trade_type::sell)
-    {
-      return taker_pay_ / taker_get_;
-    }
-    else
-    {
-      throw std::runtime_error("Not an xrp transaction");
-    }
+    if (tradetype == trade_type::buy) { return taker_get_ / taker_pay_; }
+    else if (tradetype == trade_type::sell) { return taker_pay_ / taker_get_; }
+    else { throw std::runtime_error("Not an xrp transaction"); }
     return 0;
   }
 
@@ -82,10 +64,8 @@ struct trade_data
   {
     // if taker pays us xrp, we are buying xrp
     // if takets gets xrp from us, we are selling it
-    if (taker_payc_.is_xrp())
-      return trade_type::buy;
-    if (taker_getc_.is_xrp())
-      return trade_type::sell;
+    if (taker_payc_.is_xrp()) return trade_type::buy;
+    if (taker_getc_.is_xrp()) return trade_type::sell;
     return trade_type::trade;
   }
 };

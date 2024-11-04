@@ -14,7 +14,7 @@
 constexpr static int bid_index = 0;
 constexpr static int ask_index = 1;
 using account_bid_ask_data =
-  std::tuple<std::vector<grox::xrpl_offer>, std::vector<grox::xrpl_offer>>;
+    std::tuple<std::vector<grox::xrpl_offer>, std::vector<grox::xrpl_offer>>;
 using offer_map = std::unordered_map<std::string, account_bid_ask_data>;
 using offer_pair = std::pair<std::string, account_bid_ask_data>;
 //
@@ -83,7 +83,7 @@ class order_book_base : QObject
   // ---------------------------------------------
   protected:
   using trade_set =
-    std::tuple<double, double, double, double, double, double, double, double, double, double>;
+      std::tuple<double, double, double, double, double, double, double, double, double, double>;
   using arb_vector = std::vector<trade_set>;
 
   // Sorted order book entries, processed data that is derived from incoming websocket data
@@ -117,21 +117,18 @@ class order_book_base : QObject
 
   // given a max amount to spend, how much of this ask to take
   std::pair<double, double> buy_nibble(
-    double max_spend, double fee_percent, double fee_fixed, double size, double rate) const;
+      double max_spend, double fee_percent, double fee_fixed, double size, double rate) const;
 
   // given some tokens to sell, how much of this bid to take
   std::pair<double, double> sell_nibble(
-    double max_tokens, double fee_percent, double fee_fixed, double size, double rate) const;
+      double max_tokens, double fee_percent, double fee_fixed, double size, double rate) const;
 
   // given another orderbook, if we buy on this one and sell on the other
   // are there arbitrage opportunities between the two
   arb_vector compute_arbitrage(order_book_base const& other, double budget, fee_data buy_fee,
-    fee_data sell_fee, double test_offset, std::string& string_output) const;
+      fee_data sell_fee, double test_offset, std::string& string_output) const;
 
-  std::string get_orderbook_string()
-  {
-    return order_text;
-  }
+  std::string get_orderbook_string() { return order_text; }
 
   std::tuple<double, double> get_xminmax(bool primary)
   {
@@ -145,8 +142,5 @@ class order_book_base : QObject
     return {0.0, prev_ymax[index]};
   }
 
-  std::tuple<const offer_data&, const offer_data&> get_bidask_data()
-  {
-    return {bids_, asks_};
-  }
+  std::tuple<offer_data const&, offer_data const&> get_bidask_data() { return {bids_, asks_}; }
 };

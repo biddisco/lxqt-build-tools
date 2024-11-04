@@ -28,7 +28,7 @@ using namespace pika::debug::detail;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
 template <int Level>
-static print_threshold<Level, 5> app_dbg("App-Main");
+inline constexpr print_threshold<Level, 5> app_dbg("App-Main");
 
 // save these to pass to Qt init.
 static int argc;
@@ -39,11 +39,11 @@ void init_settings(app_settings* settings, QNetworkAccessManager* networkmanager
 {
   settings->networkmanager_ = networkmanager;
   settings->tempLocation =
-    QStandardPaths::standardLocations(QStandardPaths::TempLocation).first().toLatin1().data();
+      QStandardPaths::standardLocations(QStandardPaths::TempLocation).first().toLatin1().data();
   settings->configLocation =
-    QStandardPaths::standardLocations(QStandardPaths::ConfigLocation).first().toLatin1().data();
+      QStandardPaths::standardLocations(QStandardPaths::ConfigLocation).first().toLatin1().data();
   settings->appDataLocation =
-    QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).first().toLatin1().data();
+      QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).first().toLatin1().data();
   //
   settings->hdfFileName = "grox.hdf5";
   settings->logFileName = QLatin1String("grox.log").data();
@@ -51,10 +51,7 @@ void init_settings(app_settings* settings, QNetworkAccessManager* networkmanager
   app_dbg<5>.debug(str<>("Ini"), settings->iniFileName.toLatin1().data());
 }
 
-QByteArray base64_encode(QByteArray const& ba)
-{
-  return ba.toBase64();
-}
+QByteArray base64_encode(QByteArray const& ba) { return ba.toBase64(); }
 
 QByteArray base64_encode(secure_string const& s)
 {
@@ -62,10 +59,7 @@ QByteArray base64_encode(secure_string const& s)
   return ba.toBase64();
 }
 
-QByteArray base64_decode(QByteArray ba)
-{
-  return QByteArray::fromBase64(ba);
-}
+QByteArray base64_decode(QByteArray ba) { return QByteArray::fromBase64(ba); }
 
 QByteArray base64_decode(secure_string const& s)
 {
@@ -88,8 +82,8 @@ void generate_encrypted_ini_data(password_dialog& npw)
   // we write a dummy random number to ini file
   // if this is present assume that the initial encryption step is valid
   secure_string adummy_string = generate_random_alphanumeric_string(encryption::BLOCK_SIZE, 111111);
-  settings.setValue(
-    "EncodedData/randomBytes", QString::fromStdString(base64_encode(adummy_string).toStdString()));
+  settings.setValue("EncodedData/randomBytes",
+      QString::fromStdString(base64_encode(adummy_string).toStdString()));
 
   // -----------------------
   // Generate encrypted data
@@ -109,15 +103,15 @@ void generate_encrypted_ini_data(password_dialog& npw)
   secure_string API_public_ = encryptor.encrypt(bitstamp.public_);
   //
   settings.setValue(
-    "EncryptedData/API_key", QString::fromStdString(base64_encode(API_key).toStdString()));
+      "EncryptedData/API_key", QString::fromStdString(base64_encode(API_key).toStdString()));
   settings.setValue(
-    "EncryptedData/API_user", QString::fromStdString(base64_encode(API_user).toStdString()));
+      "EncryptedData/API_user", QString::fromStdString(base64_encode(API_user).toStdString()));
   settings.setValue(
-    "EncryptedData/API_secret", QString::fromStdString(base64_encode(API_secret).toStdString()));
+      "EncryptedData/API_secret", QString::fromStdString(base64_encode(API_secret).toStdString()));
   settings.setValue(
-    "EncryptedData/API_desttag", QString::fromStdString(base64_encode(API_tag_).toStdString()));
+      "EncryptedData/API_desttag", QString::fromStdString(base64_encode(API_tag_).toStdString()));
   settings.setValue("EncryptedData/API_xrpaddress",
-    QString::fromStdString(base64_encode(API_public_).toStdString()));
+      QString::fromStdString(base64_encode(API_public_).toStdString()));
   //
   xrpl_network::get_xrpl_instance(true)->clear_wallets();
   xrpl_network::get_xrpl_instance(false)->clear_wallets();
@@ -130,12 +124,12 @@ void generate_encrypted_ini_data(password_dialog& npw)
     secure_string private_ = encryptor.encrypt(w.private_);
     QString num = QString::number(index++);
     //
-    settings.setValue(
-      "EncryptedData/XRP_name_" + num, QString::fromStdString(base64_encode(name_).toStdString()));
+    settings.setValue("EncryptedData/XRP_name_" + num,
+        QString::fromStdString(base64_encode(name_).toStdString()));
     settings.setValue("EncryptedData/XRP_public_" + num,
-      QString::fromStdString(base64_encode(public_).toStdString()));
+        QString::fromStdString(base64_encode(public_).toStdString()));
     settings.setValue("EncryptedData/XRP_secret_" + num,
-      QString::fromStdString(base64_encode(private_).toStdString()));
+        QString::fromStdString(base64_encode(private_).toStdString()));
     xrpl_network* net = dynamic_cast<xrpl_network*>(w.network_.get());
     settings.setValue("EncryptedData/XRP_test_" + num, net->testnet());
   }
@@ -162,7 +156,7 @@ int qt_main(pika::program_options::variables_map& vm)
   //
   bool authenticated = false;
   // do we have a ram filesystem mounted? (ubuntu specific env var)
-  const char* tempfs_dir = std::getenv("XDG_RUNTIME_DIR");
+  char const* tempfs_dir = std::getenv("XDG_RUNTIME_DIR");
   if (!authenticated && tempfs_dir)
   {
     std::string filepath = {std::string(tempfs_dir) + "/grox.txt"};
@@ -175,10 +169,7 @@ int qt_main(pika::program_options::variables_map& vm)
       authenticated = true;
       app_dbg<5>.debug(str<>("authentication"), "tempfs", "ok");
     }
-    else
-    {
-      app_dbg<5>.error(str<>("Authentication"), "tempfs", "fail");
-    }
+    else { app_dbg<5>.error(str<>("Authentication"), "tempfs", "fail"); }
   }
   if (!authenticated)
   {
@@ -190,10 +181,7 @@ int qt_main(pika::program_options::variables_map& vm)
       authenticated = true;
       app_dbg<5>.debug(str<>("authentication"), "pass", "ok");
     }
-    else
-    {
-      app_dbg<5>.error(str<>("Authentication"), "pass", "fail");
-    }
+    else { app_dbg<5>.error(str<>("Authentication"), "pass", "fail"); }
   }
   if (!authenticated)
   {
@@ -229,10 +217,7 @@ int qt_main(pika::program_options::variables_map& vm)
   if (rand.size() != encryption::BLOCK_SIZE)
   {
     password_dialog npw(false);
-    if (npw.exec() == QDialog::Accepted)
-    {
-      generate_encrypted_ini_data(npw);
-    }
+    if (npw.exec() == QDialog::Accepted) { generate_encrypted_ini_data(npw); }
   }
   else
   {
@@ -260,7 +245,7 @@ int qt_main(pika::program_options::variables_map& vm)
     }
     //
     QByteArray API_secret =
-      base64_decode(settings.value("EncryptedData/API_secret", "").toByteArray());
+        base64_decode(settings.value("EncryptedData/API_secret", "").toByteArray());
     bitstamp.API_secret = encryptor.decrypt(secure_string(API_secret.data(), API_secret.size()));
     if (std::getenv("Rand3"))
     {
@@ -269,13 +254,13 @@ int qt_main(pika::program_options::variables_map& vm)
     }
     //
     QByteArray API_tag_ =
-      base64_decode(settings.value("EncryptedData/API_desttag", "").toByteArray());
+        base64_decode(settings.value("EncryptedData/API_desttag", "").toByteArray());
     bitstamp.tag_ =
-      std::atol(encryptor.decrypt(secure_string(API_tag_.data(), API_tag_.size())).c_str());
+        std::atol(encryptor.decrypt(secure_string(API_tag_.data(), API_tag_.size())).c_str());
 
     //
     QByteArray API_public_ =
-      base64_decode(settings.value("EncryptedData/API_xrpaddress", "").toByteArray());
+        base64_decode(settings.value("EncryptedData/API_xrpaddress", "").toByteArray());
     bitstamp.public_ = encryptor.decrypt(secure_string(API_public_.data(), API_public_.size()));
 
     // ---------------------------------------
@@ -310,15 +295,15 @@ int qt_main(pika::program_options::variables_map& vm)
         w.widget_ = nullptr;
         //
         QByteArray XRP_name =
-          base64_decode(settings.value("EncryptedData/XRP_name_" + num, "").toByteArray());
+            base64_decode(settings.value("EncryptedData/XRP_name_" + num, "").toByteArray());
         w.name_ = encryptor.decrypt(secure_string(XRP_name.data(), XRP_name.size()));
         //
         QByteArray XRP_public =
-          base64_decode(settings.value("EncryptedData/XRP_public_" + num, "").toByteArray());
+            base64_decode(settings.value("EncryptedData/XRP_public_" + num, "").toByteArray());
         w.public_ = encryptor.decrypt(secure_string(XRP_public.data(), XRP_public.size()));
         //
         QByteArray XRP_secret =
-          base64_decode(settings.value("EncryptedData/XRP_secret_" + num, "").toByteArray());
+            base64_decode(settings.value("EncryptedData/XRP_secret_" + num, "").toByteArray());
         w.private_ = encryptor.decrypt(secure_string(XRP_secret.data(), XRP_secret.size()));
 
         std::dynamic_pointer_cast<xrpl_network>(w.network_)->add_wallet(w);
@@ -340,7 +325,7 @@ int qt_main(pika::program_options::variables_map& vm)
     //
     auto const& x1 = xrpl_network::get_xrpl_instance(false)->wallets();
     auto const& x2 = xrpl_network::get_xrpl_instance(true)->wallets();
-    for (const auto lw : x1)
+    for (auto const lw : x1)
     {
       auto w = static_cast<ledger_wallet*>(lw);
       app_dbg<5>.debug("XRP_name       : ", w->name_);
@@ -348,7 +333,7 @@ int qt_main(pika::program_options::variables_map& vm)
       app_dbg<5>.debug("XRP_secret     : ", w->private_);
       app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
     }
-    for (const auto lw : x2)
+    for (auto const lw : x2)
     {
       auto w = static_cast<ledger_wallet*>(lw);
       app_dbg<5>.debug("XRP_name       : ", w->name_);
@@ -398,7 +383,7 @@ int pika_main(pika::program_options::variables_map& vm)
 
 //----------------------------------------------------------------------------
 void init_resource_partitioner_handler(
-  pika::resource::partitioner& rp, pika::program_options::variables_map const& vm)
+    pika::resource::partitioner& rp, pika::program_options::variables_map const& vm)
 {
   // Don't create the pool if the user disabled it
   if (vm["no-qt-pool"].as<bool>())
@@ -419,7 +404,7 @@ void init_resource_partitioner_handler(
   // set the schedule mode for the default pool
   //  rp.create_thread_pool("default", pika::resource::scheduling_policy::shared_priority, mode);
   rp.create_thread_pool("default", pika::resource::scheduling_policy::unspecified, mode);
-  rp.add_resource(rp.numa_domains()[0].cores()[0].pus()[0], qt_pool_name);
+  rp.add_resource(rp.sockets()[0].cores()[0].pus()[0], qt_pool_name);
 }
 
 //----------------------------------------------------------------------------

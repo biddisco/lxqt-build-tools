@@ -158,7 +158,7 @@ with section("format"):
 
   # If an argument group contains more than this many sub-groups (parg or kwarg
   # groups) then force it to a vertical layout.
-  max_subgroups_hwrap = 2
+  max_subgroups_hwrap = 1
 
   # If a positional argument group contains more than this many arguments, then
   # force it to a vertical layout.
@@ -351,3 +351,4 @@ with section("misc"):
   # A dictionary containing any per-command configuration overrides. Currently
   # only `command_case` is supported.
   per_command = {}
+

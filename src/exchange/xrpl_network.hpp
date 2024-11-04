@@ -45,24 +45,24 @@ class xrpl_network : public exchange
   // note that we use 6005 instead of 443 on local server to avoid
   // requiring sudo permissions to run rippled
   static inline const std::string ripple_websocket_address = "192.168.1.10";
-  static inline const int ripple_websocket_port = 6005;
+  static inline int const ripple_websocket_port = 6005;
 
   static inline const std::string ripple_jsonrpc_address = "192.168.1.10";
-  static inline const int ripple_jsonrpc_port = 51234;
+  static inline int const ripple_jsonrpc_port = 51234;
 
 #elif defined(GROX_USE_RIPPLE_MAINNET_SERVER)
   static inline const std::string ripple_websocket_address = "s1.ripple.com";
-  static inline const int ripple_websocket_port = 443;
+  static inline int const ripple_websocket_port = 443;
 
   static inline const std::string ripple_jsonrpc_address = "s1.ripple.com";
-  static inline const int ripple_jsonrpc_port = 51234;
+  static inline int const ripple_jsonrpc_port = 51234;
 
 #else
   static inline const std::string ripple_websocket_address = "xrplcluster.com";
-  static inline const int ripple_websocket_port = 443;
+  static inline int const ripple_websocket_port = 443;
 
   static inline const std::string ripple_jsonrpc_address = "xrplcluster.com";
-  static inline const int ripple_jsonrpc_port = 443;
+  static inline int const ripple_jsonrpc_port = 443;
 #endif
 
   // ---------------------------------------
@@ -70,11 +70,11 @@ class xrpl_network : public exchange
   // ---------------------------------------
   // TestNet websocket
   static inline const std::string testnet_websocket_address = "s.altnet.rippletest.net";
-  static inline const int testnet_websocket_port = 51233;
+  static inline int const testnet_websocket_port = 51233;
 
   // TestNet JSON RPC server
   static inline const std::string testnet_json_rpc_address = "s.altnet.rippletest.net";
-  static inline const int testnet_json_rpc_port = 51234;
+  static inline int const testnet_json_rpc_port = 51234;
 
   private:
   // ---------------------------------------
@@ -83,23 +83,20 @@ class xrpl_network : public exchange
   static std::shared_ptr<exchange> xrpl_instance()
   {
     static std::shared_ptr<exchange> xrpl_ptr = nullptr;
-    if (xrpl_ptr == nullptr)
-      xrpl_ptr = std::make_shared<xrpl_network>(false);
+    if (xrpl_ptr == nullptr) xrpl_ptr = std::make_shared<xrpl_network>(false);
     return xrpl_ptr;
   }
   static std::shared_ptr<exchange> xrpltestnet_instance()
   {
     static std::shared_ptr<exchange> testnet_ptr = nullptr;
-    if (testnet_ptr == nullptr)
-      testnet_ptr = std::make_shared<xrpl_network>(true);
+    if (testnet_ptr == nullptr) testnet_ptr = std::make_shared<xrpl_network>(true);
     return testnet_ptr;
   }
 
   public:
   static std::shared_ptr<exchange> get_instance(bool testnet)
   {
-    if (testnet)
-      return xrpltestnet_instance();
+    if (testnet) return xrpltestnet_instance();
     return xrpl_instance();
   }
   static std::shared_ptr<xrpl_network> get_xrpl_instance(bool testnet)
@@ -133,11 +130,11 @@ class xrpl_network : public exchange
     return {network::streams::order_book, network::streams::account_changes};
   }
 
-  stream_set ticker_subscribe(const currency_pair& cp) override;
+  stream_set ticker_subscribe(currency_pair const& cp) override;
 
   // connect to an individual stream
   bool stream_subscribe(currency_pair const& cp, network::streams const stream, bool enabled,
-    factory_function f) override;
+      factory_function f) override;
 
   // connect to (multiple) streams
   //  bool websocket_connect(net::contexts& io_contexts, stream_set const& streams) override;
@@ -151,20 +148,14 @@ class xrpl_network : public exchange
   bool subscribe_accounts();
   //
   void add_wallet(ledger_wallet const& w);
-  void clear_wallets()
-  {
-    subscribed_wallets_.clear();
-  }
+  void clear_wallets() { subscribed_wallets_.clear(); }
   ledger_wallet* get_wallet_by_addr(std::string_view addr);
   ledger_wallet* get_wallet_by_name(std::string_view name);
 
   std::vector<basic_account*> wallets() override
   {
     std::vector<basic_account*> accts;
-    for (auto& acct : subscribed_wallets_)
-    {
-      accts.push_back(&acct);
-    }
+    for (auto& acct : subscribed_wallets_) { accts.push_back(&acct); }
     return accts;
   }
 
@@ -202,12 +193,12 @@ class xrpl_network : public exchange
   void place_limit_order(basic_account* acct, trade_data const& t, bool update_after);
   void place_buy_sell_orders(basic_account* acct, std::vector<trade_data> const& trades) override;
 
-  double get_fee_percent(const currency_pair& cp) override;
-  double get_fee_fixed(const currency_pair& cp) override;
+  double get_fee_percent(currency_pair const& cp) override;
+  double get_fee_fixed(currency_pair const& cp) override;
   double get_transfer_fee(currency const& c1) override;
 
   void trustline(
-    basic_account* acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags);
+      basic_account* acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags);
 
   void custom_functions(basic_account* acct) override;
 

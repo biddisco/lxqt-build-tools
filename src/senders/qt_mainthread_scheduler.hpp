@@ -41,13 +41,13 @@ namespace grox::senders {
     {
       try
       {
-        if (QMainWindow* mainWin = qobject_cast<QMainWindow*>(w))
-          return mainWin;
+        if (QMainWindow* mainWin = qobject_cast<QMainWindow*>(w)) return mainWin;
       }
       catch (...)
       {
       }
     }
+    throw std::runtime_error("Mainwindow could not be obtained");
     return nullptr;
   }
 
@@ -56,22 +56,16 @@ namespace grox::senders {
     constexpr qt_mainthread_scheduler() = default;
 
     /// \cond NOINTERNAL
-    bool operator==(qt_mainthread_scheduler const& rhs) const noexcept
-    {
-      return true;
-    }
+    bool operator==(qt_mainthread_scheduler const& rhs) const noexcept { return true; }
 
-    bool operator!=(qt_mainthread_scheduler const& rhs) const noexcept
-    {
-      return !(*this == rhs);
-    }
+    bool operator!=(qt_mainthread_scheduler const& rhs) const noexcept { return !(*this == rhs); }
 
     template <typename F>
     void execute(F&& f) const
     {
       // Do not use DirectConnection as it will execute on the same thread
       QMetaObject::invokeMethod(
-        grox::senders::getMainWindow(), PIKA_FORWARD(F, f), Qt::AutoConnection);
+          grox::senders::getMainWindow(), PIKA_FORWARD(F, f), Qt::AutoConnection);
     }
 
     template <typename F>
@@ -101,14 +95,14 @@ namespace grox::senders {
       friend void tag_invoke(stdexec::start_t, operation_state& os) noexcept
       {
         pika::detail::try_catch_exception_ptr(
-          [&]() {
-            os.scheduler.execute([&os]() mutable {
-              pika::execution::experimental::set_value(PIKA_MOVE(os.receiver));
+            [&]() {
+              os.scheduler.execute([&os]() mutable {
+                pika::execution::experimental::set_value(PIKA_MOVE(os.receiver));
+              });
+            },
+            [&](std::exception_ptr ep) {
+              pika::execution::experimental::set_error(PIKA_MOVE(os.receiver), PIKA_MOVE(ep));
             });
-          },
-          [&](std::exception_ptr ep) {
-            pika::execution::experimental::set_error(PIKA_MOVE(os.receiver), PIKA_MOVE(ep));
-          });
       }
     };
 
@@ -128,8 +122,8 @@ namespace grox::senders {
       static constexpr bool sends_done = false;
 
       using completion_signatures = pika::execution::experimental::completion_signatures<
-        pika::execution::experimental::set_value_t(),
-        pika::execution::experimental::set_error_t(std::exception_ptr)>;
+          pika::execution::experimental::set_value_t(),
+          pika::execution::experimental::set_error_t(std::exception_ptr)>;
 
       template <typename Receiver>
       friend operation_state<Scheduler, Receiver>
@@ -150,9 +144,9 @@ namespace grox::senders {
         PIKA_NO_UNIQUE_ADDRESS std::decay_t<Scheduler> scheduler;
 
         friend std::decay_t<Scheduler> tag_invoke(
-          pika::execution::experimental::get_completion_scheduler_t<
-            pika::execution::experimental::set_value_t>,
-          env const& e) noexcept
+            pika::execution::experimental::get_completion_scheduler_t<
+                pika::execution::experimental::set_value_t>,
+            env const& e) noexcept
         {
           return e.scheduler;
         }
@@ -165,13 +159,13 @@ namespace grox::senders {
     };
 
     friend sender<qt_mainthread_scheduler> tag_invoke(
-      stdexec::schedule_t, qt_mainthread_scheduler&& sched)
+        stdexec::schedule_t, qt_mainthread_scheduler&& sched)
     {
       return {PIKA_MOVE(sched)};
     }
 
     friend sender<qt_mainthread_scheduler> tag_invoke(
-      stdexec::schedule_t, qt_mainthread_scheduler const& sched)
+        stdexec::schedule_t, qt_mainthread_scheduler const& sched)
     {
       return {sched};
     }

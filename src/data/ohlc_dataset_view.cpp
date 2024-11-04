@@ -18,28 +18,44 @@ using namespace grox::debug;
 constexpr int debug_level = 5;
 //
 template <int Level>
-static print_threshold<Level, debug_level> man_dbg("DataView");
+inline constexpr print_threshold<Level, debug_level> man_dbg("DataView");
 
 // ----------------------------------------------------------------------------
-ohlc_dataset_view::ohlc_dataset_view(std::string exchange, const currency_pair& cp)
+ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency_pair const& cp)
   : exchange_(exchange)
   , ticker_string_(currency_pair_string(cp))
 {
+  // insert empty highest resolution live dataset
+  ohlc_dataset* min_res_live = new ohlc_dataset(ohlc_data_resolutions::minute, ticker_string_);
+  live_samples_.insert(std::make_pair(ohlc_data_resolutions::minute, min_res_live));
+
   // insert empty highest resolution candle dataset
-  ohlc_datasets* min_res = new ohlc_datasets(ohlc_data_resolutions::minute, ticker_string_);
+  ohlc_dataset* min_res = new ohlc_dataset(ohlc_data_resolutions::minute, ticker_string_);
   candles_.insert(std::make_pair(ohlc_data_resolutions::minute, min_res));
-  // load highest res data
+
+  // load highest res data from disk
   read_from_disk();
+
   // generate lower res datasets from loaded data
   auto const& resolutions = ohlc_data_resolutions::available_resolutions();
   for (size_t i = 1; i < resolutions.size(); ++i)
   {
     auto const& res = resolutions[i];
-    auto new_data =
-      get_dataset(res.base_)->resample(res, ohlc_data_resolutions::get_resolution(res.base_));
+    auto origin_data = get_dataset(res.base_);
+    auto new_data = origin_data->downsample(res);
     if (new_data)
     {
       add_dataset(res, new_data);
+      man_dbg<5>.debug(str<>("subscribing"), new_data->ticker_str_, new_data->get_resolution(),
+          "to", origin_data->ticker_str_, origin_data->get_resolution());
+      origin_data->new_data_subscribers_.subscribe(
+          "dataset_view" + new_data->ticker_str_ + new_data->get_resolution().name_,
+          [origin_data, new_data](std::uint64_t N) {
+            man_dbg<5>.debug(str<>("dataset_view"), new_data->ticker_str_,
+                new_data->get_resolution(), "received new samples", ffmt<dec4>(N), "updating from",
+                origin_data->ticker_str_, origin_data->get_resolution());
+            new_data->downsample_update(origin_data);
+          });
     }
   }
 }
@@ -49,6 +65,7 @@ ohlc_dataset_view::~ohlc_dataset_view()
 {
   for (auto d : candles_)
   {
+    d.second->new_data_subscribers_.clear();
     delete d.second;
   }
   candles_.clear();
@@ -56,14 +73,14 @@ ohlc_dataset_view::~ohlc_dataset_view()
 
 // ----------------------------------------------------------------------------
 void ohlc_dataset_view::merge_data(
-  const double res, QVector<ohlctv_sample> const& new_ohlc_samples_)
+    double const res, QVector<ohlctv_sample> const& new_ohlc_samples_)
 {
-  ohlc_datasets* data = get_dataset(res);
+  ohlc_dataset* data = get_dataset(res);
   // returns the number of samples that are 'new'
   uint64_t update = data->merge_data(new_ohlc_samples_);
   // write new samples to the main datafile
   global_settings.data_manager_->write_file(
-    "bitstamp", ticker_string_, data->ohlc_samples_->data(), update, false);
+      "bitstamp", ticker_string_, data->data(), update, false);
 }
 
 // ----------------------------------------------------------------------------
@@ -72,7 +89,7 @@ void ohlc_dataset_view::read_from_disk()
   try
   {
     global_settings.data_manager_->read_file(
-      exchange_, ticker_string_, candles_.begin()->second->ohlc_samples_->data());
+        exchange_, ticker_string_, candles_.begin()->second->data());
   }
   catch (ohlc_data_exception& e)
   {
@@ -96,15 +113,15 @@ void ohlc_dataset_view::truncate_from_time(double t)
   for (auto k : candles_)
   {
     auto res = k.first;
-    auto samples = k.second->ohlc_samples_;
+    auto samples = k.second;
     auto index = samples->sample_index(t);
     samples->data().resize(index);
     man_dbg<0>.debug(str<>("Truncating"), ticker_string_,
-      str<3>(ohlc_data_resolutions::get_resolution(res).name_), "at index", ffmt<dec9>(index));
+        str<3>(ohlc_data_resolutions::get_resolution(res).name_), "at index", ffmt<dec9>(index));
     if (res == ohlc_data_resolutions::minute)
     {
       global_settings.data_manager_->write_impl(
-        "bitstamp", ticker_string_, samples->data(), 0, true);
+          "bitstamp", ticker_string_, samples->data(), 0, true);
     }
   }
 }
@@ -116,21 +133,15 @@ void ohlc_dataset_view::delete_live_data_up_to(double msecs)
   ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
   QVector<ohlctv_sample>& live_data = live_samples->data();
   auto pos = std::remove_if(live_data.begin(), live_data.end(),
-    [msecs](ohlctv_sample& ohlc) { return ohlc.time <= msecs; });
-  if (pos != live_data.end())
-  {
-    live_data.erase(pos);
-  }
+      [msecs](ohlctv_sample& ohlc) { return ohlc.time <= msecs; });
+  if (pos != live_data.end()) { live_data.erase(pos); }
 }
 
 // ----------------------------------------------------------------------------
 double ohlc_dataset_view::get_time_from_index(std::uint64_t i)
 {
   double t = 0;
-  if (!candles_.begin()->second->ohlc_samples_->data().empty())
-  {
-    t = candles_.begin()->second->ohlc_samples_->sample_time(i);
-  }
+  if (!candles_.begin()->second->data().empty()) { t = candles_.begin()->second->sample_time(i); }
   return t;
 }
 
@@ -138,18 +149,15 @@ double ohlc_dataset_view::get_time_from_index(std::uint64_t i)
 double ohlc_dataset_view::get_last_sample_time_msec(bool include_live)
 {
   double last = 0;
-  if (!candles_.begin()->second->ohlc_samples_->data().empty())
+  if (!candles_.begin()->second->data().empty())
   {
-    last = candles_.begin()->second->ohlc_samples_->data().back().time;
+    last = candles_.begin()->second->data().back().time;
   }
   else if (include_live)
   {
     std::lock_guard l(live_mutex_);
     ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
-    if (!live_samples->data().empty())
-    {
-      last = std::max(last, live_samples->data().back().time);
-    }
+    if (!live_samples->data().empty()) { last = std::max(last, live_samples->data().back().time); }
   }
   return last;
 }
@@ -158,25 +166,21 @@ double ohlc_dataset_view::get_last_sample_time_msec(bool include_live)
 double ohlc_dataset_view::get_first_sample_time()
 {
   double first = 0;
-  if (!candles_.begin()->second->ohlc_samples_->data().empty())
+  if (!candles_.begin()->second->data().empty())
   {
-    first = candles_.begin()->second->ohlc_samples_->data().front().time;
+    first = candles_.begin()->second->data().front().time;
   }
   std::lock_guard l(live_mutex_);
   ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
-  if (!live_samples->data().empty())
-  {
-    first = std::min(first, live_samples->data().front().time);
-  }
+  if (!live_samples->data().empty()) { first = std::min(first, live_samples->data().front().time); }
   return first;
 }
 
 // ----------------------------------------------------------------------------
 ohlcv_minmax ohlc_dataset_view::get_min_max(
-  ohlc_chart_data const* dataset, double res, double view_t1, double view_t2) const
+    ohlc_chart_data const* dataset, double res, double view_t1, double view_t2) const
 {
-  if (dataset->data().empty())
-    return ohlcv_minmax();
+  if (dataset->data().empty()) return ohlcv_minmax();
   //
   double data_t1 = dataset->data().front().time;
   double data_t2 = dataset->data().back().time;
@@ -199,10 +203,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max(
     result = dataset->minmax_limits(sample1, sample1);
     result.valid_ = false;
   }
-  else
-  {
-    result = dataset->minmax_limits(sample1, sample2);
-  }
+  else { result = dataset->minmax_limits(sample1, sample2); }
   return result;
 }
 
@@ -210,22 +211,19 @@ ohlcv_minmax ohlc_dataset_view::get_min_max(
 ohlcv_minmax ohlc_dataset_view::get_min_max(double res, double start_time, double end_time) const
 {
   // min max uses the current dataset resolution for main plot
-  auto mm1 = get_min_max(get_dataset(res)->ohlc_samples_, res, start_time, end_time);
+  auto mm1 = get_min_max(get_dataset(res), res, start_time, end_time);
 
   // live data is always at highest resolution, but if it is out of range, ignore it
   std::lock_guard l(live_mutex_);
-  const ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
+  ohlc_chart_data const* live_samples = get_live_data(ohlc_data_resolutions::minute);
   auto mm2 = get_min_max(live_samples, res, start_time, end_time);
-  if (mm2.valid_ == false)
-  {
-    return mm1;
-  }
+  if (mm2.valid_ == false) { return mm1; }
   return mm1.update(mm2);
 }
 
 // ----------------------------------------------------------------------------
 ohlcv_minmax ohlc_dataset_view::get_min_max_window(
-  double res, double start_time, double end_time, double percent) const
+    double res, double start_time, double end_time, double percent) const
 {
   ohlcv_minmax result = get_min_max(res, start_time, end_time);
   auto pdiff = (result.max_price_ - result.min_price_);
@@ -252,29 +250,24 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(
     result.max_volume_ = 1;
   }
   man_dbg<8>.debug(str<>("min_max"), ohlc_data_resolutions::get_resolution(res).name_,
-    msecs_unix_to_calendar_time(start_time), "->", msecs_unix_to_calendar_time(end_time), "(",
-    result.min_price_, ",", result.max_price_, ")");
+      msecs_unix_to_calendar_time(start_time), "->", msecs_unix_to_calendar_time(end_time), "(",
+      result.min_price_, ",", result.max_price_, ")");
   return result;
 }
 
 // ----------------------------------------------------------------------------
-ohlc_chart_data* ohlc_dataset_view::get_live_data(candle_res res)
-{
-  ohlc_datasets* temp = get_dataset(res);
-  return temp->live_samples_;
-}
+ohlc_chart_data* ohlc_dataset_view::get_live_data(candle_res res) { return get_live_dataset(res); }
 
 // ----------------------------------------------------------------------------
-const ohlc_chart_data* ohlc_dataset_view::get_live_data(candle_res res) const
+ohlc_chart_data const* ohlc_dataset_view::get_live_data(candle_res res) const
 {
-  const ohlc_datasets* temp = get_dataset(res);
-  return temp->live_samples_;
+  return get_live_dataset(res);
 }
 
 //// ----------------------------------------------------------------------------
 //ohlc_chart_curve* ohlc_dataset_view::get_live_curve()
 //{
-//  ohlc_datasets* temp = get_dataset(ohlc_data_resolutions::minute);
+//  ohlc_dataset* temp = get_dataset(ohlc_data_resolutions::minute);
 //  return temp->live_curve_;
 //}
 
@@ -283,7 +276,7 @@ void ohlc_dataset_view::add_live_data(ohlctv_sample new_sample)
 {
   // snap sample to last minute in which it occured
   new_sample.time =
-    ohlc_data_resolutions::minute * std::trunc(new_sample.time / ohlc_data_resolutions::minute);
+      ohlc_data_resolutions::minute * std::trunc(new_sample.time / ohlc_data_resolutions::minute);
 
   std::lock_guard l(live_mutex_);
   ohlc_chart_data* live_samples = get_live_data(ohlc_data_resolutions::minute);
@@ -322,10 +315,7 @@ void ohlc_dataset_view::add_live_data(ohlctv_sample new_sample)
 std::vector<double> ohlc_dataset_view::get_dataset_resolutions()
 {
   std::vector<double> result;
-  for (auto k : candles_)
-  {
-    result.push_back(k.first);
-  }
+  for (auto k : candles_) { result.push_back(k.first); }
   return result;
 }
 
@@ -334,7 +324,7 @@ ohlctv_sample ohlc_dataset_view::get_trade_data_by_volume(double volume, double 
 {
   ohlc_chart_data* samples = get_samples();
   auto index = samples->sample_index(time);
-  const auto data = samples->data();
+  auto const data = samples->data();
   // we use a factor of 10 to play safe, this can be adjusted
   ohlctv_sample ohlc{0, 0, -1, 0, 0, 0};
   while (ohlc.volume < volume * safety && index < data.size())

@@ -19,7 +19,7 @@ class timebased_chart_data : public QwtArraySeriesData<DataType>
   using QwtArraySeriesData<DataType>::cachedBoundingRect;
 
   public:
-  timebased_chart_data(double resolution)
+  timebased_chart_data(candle_res resolution)
     : QwtArraySeriesData<DataType>()
     , resolution_(resolution)
   {
@@ -31,17 +31,11 @@ class timebased_chart_data : public QwtArraySeriesData<DataType>
   {
     auto const& init = m_samples[from];
     minmax_data<DataType> result(init);
-    for (size_t i = from; i <= to; ++i)
-    {
-      result.update(m_samples[i]);
-    }
+    for (size_t i = from; i <= to; ++i) { result.update(m_samples[i]); }
     return result;
   }
 
-  inline void append(DataType const& data)
-  {
-    m_samples += data;
-  }
+  inline void append(DataType const& data) { m_samples += data; }
 
   void clear()
   {
@@ -50,10 +44,7 @@ class timebased_chart_data : public QwtArraySeriesData<DataType>
     cachedBoundingRect = QRectF(0.0, 0.0, -1.0, -1.0);
   }
 
-  inline candle_res get_resolution() const
-  {
-    return resolution_;
-  }
+  inline candle_res get_resolution() const { return resolution_; }
 
   // return the index of the sample at time t
   inline int64_t sample_index(double time) const
@@ -69,14 +60,8 @@ class timebased_chart_data : public QwtArraySeriesData<DataType>
     return t;
   }
 
-  inline QVector<DataType> const& data() const
-  {
-    return m_samples;
-  }
-  inline QVector<DataType>& data()
-  {
-    return m_samples;
-  }
+  inline QVector<DataType> const& data() const { return m_samples; }
+  inline QVector<DataType>& data() { return m_samples; }
 };
 
 // ----------------------------------------------------------------------------

@@ -13,7 +13,7 @@
 # from the .git/hooks directory, so the symlink has to be redirected)
 # ln -s -f ../../scripts/pre-commit .git/hooks/pre-commit
 
-CLANG_FORMAT_VERSION=clang-format-14
+CLANG_FORMAT_VERSION=clang-format-16
 
 red=$(tput setaf 1)
 green=$(tput setaf 2)

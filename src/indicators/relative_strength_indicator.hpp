@@ -3,28 +3,20 @@
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
+#include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  struct relative_strength_indicator : indicator_base
+  class relative_strength_indicator : public indicator_base
   {
+public:
     // ---------------------------------------
-    // fields required for auto gui generation
-    const std::string name = "RSI";
-    const std::string description = "RSI default 14 period";
-    const overlay_type overlay = overlay_type::minmax_limit;
-    const y_limits ylimits = {0.0, 1.0};
-
-    param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 14)};
-
-    // ---------------------------------------
-    // Default constructor
+    /// Default constructor
     relative_strength_indicator()
-      : pos_diff{0}
+      : indicator_base("RSI", "Relatve Strength Indicator", overlay_type::minmax_limit)
+      , pos_diff{0}
       , neg_diff{0}
       , count{0}
       , av_neg_d{0}
@@ -37,11 +29,21 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    // initialize internals from a parameter list
-    void initialize()
+    /// fields required for auto gui generation
+    void init_params() override
     {
-      auto window_size = std::get<int>(std::get<1>(params[1]));
-      //auto mode = std::get<int>(std::get<1>(params[2]));
+      params_ = {//
+          std::make_tuple<QString, param_types>(
+              "Samples", candle_data{ohlc_data_resolutions::minute15, 0}),
+          std::make_tuple<QString, param_types>("Window size", 14)};
+    }
+
+    // ---------------------------------------
+    /// initialize internals from a parameter list
+    void initialize() override
+    {
+      auto window_size = std::get<int>(std::get<1>(params_[1]));
+      //auto mode = std::get<int>(std::get<1>(params_[2]));
       //
       period_ = window_size;
       pos_diff = 0;
@@ -92,10 +94,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    inline double getLastResult()
-    {
-      return rsi_;
-    }
+    inline double getLastResult() { return rsi_; }
 
 private:
     double pos_diff;

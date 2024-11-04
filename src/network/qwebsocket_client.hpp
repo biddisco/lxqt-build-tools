@@ -1,6 +1,8 @@
 #pragma once
 
 //
+#include <atomic>
+//
 #include <QString>
 #include <QtCore/QList>
 #include <QtCore/QObject>
@@ -20,21 +22,18 @@ namespace net::ws {
     Q_OBJECT
 public:
 private:
-    QWebSocket* websocket_;             // internal websocket
-    rx_msg_handler_type rx_handler_;    // handler for message received
-    QUrl url_;                          // the address/port
-    QString subscribe_;                 // the channel subscription request
-    std::string id_;                    // a name we use for debugging
+    std::atomic<QWebSocket*> websocket_;    // internal websocket
+    rx_msg_handler_type rx_handler_;        // handler for message received
+    QUrl url_;                              // the address/port
+    QString subscribe_;                     // the channel subscription request
+    std::string id_;                        // a name we use for debugging
 
 public:
-    explicit qwebsocket_client(const std::string& id, const QUrl& url, const QString subscribe,
-      const rx_msg_handler_type handler, QObject* parent = nullptr);
+    explicit qwebsocket_client(std::string const& id, QUrl const& url, const QString subscribe,
+        const rx_msg_handler_type handler, QObject* parent = nullptr);
     ~qwebsocket_client();
 
-    const std::string& id()
-    {
-      return id_;
-    }
+    std::string const& id() { return id_; }
     void startConnection();
     void stopConnection();
 
@@ -45,17 +44,17 @@ private Q_SLOTS:
     void onStateChanged(QAbstractSocket::SocketState socketState);
     void onAboutToClose();
     //
-    void onSslErrors(const QList<QSslError>& errors);
+    void onSslErrors(QList<QSslError> const& errors);
     void onError(QAbstractSocket::SocketError error);
     //
-    void onTextFrameReceived(const QString& frame, bool isLastFrame);
+    void onTextFrameReceived(QString const& frame, bool isLastFrame);
     void onTextMessageReceived(QString message);
     //
-    void onBinaryFrameReceived(const QByteArray& frame, bool isLastFrame);
-    void onBinaryMessageReceived(const QByteArray& message);
+    void onBinaryFrameReceived(QByteArray const& frame, bool isLastFrame);
+    void onBinaryMessageReceived(QByteArray const& message);
     //
     void onReadChannelFinished();
-    void onPong(quint64 elapsedTime, const QByteArray& payload);
+    void onPong(quint64 elapsedTime, QByteArray const& payload);
     void onBytesWritten(qint64 bytes);
 
 Q_SIGNALS:

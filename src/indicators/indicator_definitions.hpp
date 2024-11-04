@@ -7,6 +7,7 @@
 //
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_dataset_view.hpp"
+#include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 #include "indicators/moving_average_exponential.hpp"
@@ -26,17 +27,17 @@ namespace indicators {
   struct typelist;
 
   // Typelist of all indicator types
-  using indicator_typelist = typelist<             // for clang-format
-    moving_average,                                //
-    moving_average_volume_weighted,                //
-    moving_average_exponential,                    //
-    moving_average_exponential_volume_weighted,    //
-    relative_strength_indicator,                   //
-    stochastic_relative_strength_indicator,        //
-    volatility_bollinger_bands,                    //
-    volatility_garman_klass,                       //
-    volatility_rogers_satchell                     //
-    >;
+  using indicator_typelist = typelist<               // for clang-format
+      moving_average,                                //
+      moving_average_volume_weighted,                //
+      moving_average_exponential,                    //
+      moving_average_exponential_volume_weighted,    //
+      relative_strength_indicator,                   //
+      stochastic_relative_strength_indicator,        //
+      volatility_bollinger_bands,                    //
+      volatility_garman_klass,                       //
+      volatility_rogers_satchell                     //
+      >;
 
   // Generate a variant containing each type from the typelist
   // and a vector with one instance of each type in the typelist
@@ -51,81 +52,18 @@ namespace indicators {
     // vector containing one of each variant type
     static std::vector<type> generate()
     {
-      return {Ts{}...};
+      std::vector<type> temp = {Ts{}...};
+      for (auto& v : temp)
+      {
+        std::visit([](auto& i) { i.init_params(); }, v);
+      }
+      return temp;
     }
   };
 
-  using variant_type = types_generator<indicator_typelist>::type;
-  inline std::vector<variant_type> available_indicators =
-    types_generator<indicator_typelist>::generate();
-
-  // ----------------------------------------------------------------------------
-  // iterate over the parameters returned from an indicator selection dialog and
-  // find the datasets of the right resolution in the datasets view
-  static std::vector<ohlc_datasets*> get_datasets(
-    param_list const& params, std::shared_ptr<ohlc_dataset_view> view)
-  {
-    std::vector<ohlc_datasets*> result;
-    for (auto const& p : params)
-    {
-      if (const candle_res* c = std::get_if<candle_res>(&std::get<1>(p)))
-      {
-        result.push_back(view->get_dataset(*c));
-      }
-    }
-    return result;
-  }
-
-  // ----------------------------------------------------------------------------
-  // create a dataset for each indicator output
-  template <typename Algorithm>
-  std::vector<point_chart_data*>
-  create_outputs(const Algorithm& alg, const candle_res res, std::size_t size)
-  {
-    std::vector<point_chart_data*> output_datasets;
-    for (int i = 0; i < alg.num_outputs(); ++i)
-    {
-      point_chart_data* indicator_data = new point_chart_data(res);
-      indicator_data->data().reserve(size);
-      output_datasets.push_back(indicator_data);
-    }
-    return output_datasets;
-  }
-
-  // ----------------------------------------------------------------------------
-  /// The algorithm might not return a single value, so we provide
-  /// overloads that can handle vectors of values
-  template <typename Algorithm, typename Datain,
-    typename std::enable_if_t<std::is_same<typename Algorithm::result_type, double>::value, bool>
-      Enable = false>
-  void call_algorithm_operator(
-    Algorithm& alg, const Datain& in_data, std::vector<point_chart_data*>& out_datasets)
-  {
-    for (auto const& ohlc : in_data->data())
-    {
-      auto vals = alg.operator()(ohlc);
-      QPointF xyval(ohlc.time, vals);
-      out_datasets[0]->data().push_back(xyval);
-    }
-  }
-
-  template <typename Algorithm, typename Datain,
-    typename std::enable_if_t<
-      std::is_same<typename Algorithm::result_type, std::vector<float>>::value, bool>
-      Enable = false>
-  void call_algorithm_operator(
-    Algorithm& alg, const Datain& in_data, std::vector<point_chart_data*>& out_datasets)
-  {
-    for (auto const& ohlc : in_data->data())
-    {
-      auto vals = alg.operator()(ohlc);
-      for (int i = 0; i < alg.num_outputs(); ++i)
-      {
-        QPointF xyval(ohlc.time, vals[i]);
-        out_datasets[i]->data().push_back(xyval);
-      }
-    }
-  }
+  using indicator_variant = types_generator<indicator_typelist>::type;
+  inline std::vector<indicator_variant> available_indicators =
+      types_generator<indicator_typelist>::generate();
 
   // ----------------------------------------------------------------------------
   template <class T>

@@ -29,7 +29,7 @@ using namespace nlohmann;
 constexpr int debug_level = 6;
 //
 template <int Level>
-static print_threshold<Level, debug_level> xbook_dbg("xrplbook");
+inline constexpr print_threshold<Level, debug_level> xbook_dbg("xrplbook");
 
 // ----------------------------------------------------------------------------
 // XRP ledger specific order book processing routines
@@ -97,14 +97,8 @@ void xrpl_order_book::ledger_map_to_order_book()
     {
       // used only in building bid/ask order books
       double amount = o.amount(curr);
-      if (amount <= funds_avail)
-      {
-        o.funded_offer = amount;
-      }
-      else
-      {
-        o.funded_offer = std::max(0.0, funds_avail);
-      }
+      if (amount <= funds_avail) { o.funded_offer = amount; }
+      else { o.funded_offer = std::max(0.0, funds_avail); }
       funds_avail -= amount;
     }
   };
@@ -115,7 +109,7 @@ void xrpl_order_book::ledger_map_to_order_book()
     std::vector<xrpl_offer>& acc_asks_ = std::get<ask_index>(bid_ask);
     //
     xbook_dbg<7>.debug(
-      str<>("bid/ask"), acct, "bids:", acc_bids_.size(), "asks:", acc_asks_.size());
+        str<>("bid/ask"), acct, "bids:", acc_bids_.size(), "asks:", acc_asks_.size());
 
     // the account may not be fully funded, so the offers may be invalid
     if (acc_bids_.size() > 0)
@@ -156,8 +150,7 @@ void xrpl_order_book::ledger_map_to_order_book()
         continue;
       }
       // skip unfunded or very small offers
-      if (o.unfunded(0.1 * 1E6))
-        continue;
+      if (o.unfunded(0.1 * 1E6)) continue;
       //
       asks_.rate.push_back(o.rate());
       asks_.orig.push_back(xrp_amount + tiny_offers);
@@ -168,11 +161,11 @@ void xrpl_order_book::ledger_map_to_order_book()
 
   // sort zipped X/Y bids_ from high to low, sort based on rate
   ranges::sort(ranges::views::zip(bids_.rate, bids_.size, bids_.orig),
-    [](auto&& a, auto&& b) { return std::get<0>(a) > std::get<0>(b); });
+      [](auto&& a, auto&& b) { return std::get<0>(a) > std::get<0>(b); });
 
   // sort zipped X/Y asks_ from low to high, sort based on X=conv
   ranges::sort(ranges::views::zip(asks_.rate, asks_.size, asks_.orig),
-    [](auto&& a, auto&& b) { return std::get<0>(a) < std::get<0>(b); });
+      [](auto&& a, auto&& b) { return std::get<0>(a) < std::get<0>(b); });
 
   // partial sum the bids_
   bids_.total.resize(bids_.size.size());
@@ -191,8 +184,7 @@ void xrpl_order_book::ledger_map_to_order_book()
 void xrpl_order_book::accept_json_ledger_transaction(nlohmann::json jdata)
 {
   std::string success = jdata.at("engine_result").get<std::string>();
-  if (success != "tesSUCCESS")
-    return;
+  if (success != "tesSUCCESS") return;
   //
   json affected = jdata["meta"]["AffectedNodes"];
   xbook_dbg<7>.debug(str<>("Affected nodes"), affected.dump(4));
@@ -225,7 +217,7 @@ void xrpl_order_book::accept_json_ledger_transaction(nlohmann::json jdata)
 
 // ----------------------------------------------------------------------------
 bool xrpl_order_book::update_offer(
-  xrpl_offer const& prev_offer, xrpl_offer& final_offer, double owner_funds)
+    xrpl_offer const& prev_offer, xrpl_offer& final_offer, double owner_funds)
 {
   std::string const& acct = prev_offer.Account;
   offer_map::iterator it = orders.find(acct);
@@ -279,7 +271,7 @@ bool xrpl_order_book::insert_offer(xrpl_offer const& offer)
   if (it == orders.end())
   {
     account_bid_ask_data bid_ask{{}, {}};
-    const auto [it2, success] = orders.insert({offer.Account, bid_ask});
+    auto const [it2, success] = orders.insert({offer.Account, bid_ask});
     if (success)
       it = it2;
     else
@@ -384,7 +376,7 @@ void xrpl_order_book::handle_offer_change(json const& trans, json const& affecte
   bool fatal = true;
   for (auto& el : affected.items())
   {
-    const json* node;
+    json const* node;
     node_edit edit_type;
 
     // 3 types that affect out order book
@@ -422,20 +414,17 @@ void xrpl_order_book::handle_offer_change(json const& trans, json const& affecte
     if (node->contains("NewFields"))
     {
       final_offer = (*node)["NewFields"].get<xrpl_offer>();
-      if (!final_offer.grox_compatible())
-        continue;
+      if (!final_offer.grox_compatible()) continue;
     }
     if (node->contains("FinalFields"))
     {
       final_offer = (*node)["FinalFields"].get<xrpl_offer>();
-      if (!final_offer.grox_compatible())
-        continue;
+      if (!final_offer.grox_compatible()) continue;
     }
     if (node->contains("PreviousFields"))
     {
       prev_offer = (*node)["FinalFields"].get<xrpl_offer>();
-      if (!prev_offer.grox_compatible())
-        continue;
+      if (!prev_offer.grox_compatible()) continue;
     }
 
     // To track unfunded offers, we add the "owner_funds" as it will
@@ -450,12 +439,8 @@ void xrpl_order_book::handle_offer_change(json const& trans, json const& affecte
 
     switch (edit_type)
     {
-    case node_edit::created:
-      ok &= insert_offer(final_offer);
-      break;
-    case node_edit::modified:
-      ok &= update_offer(prev_offer, final_offer);
-      break;
+    case node_edit::created: ok &= insert_offer(final_offer); break;
+    case node_edit::modified: ok &= update_offer(prev_offer, final_offer); break;
     case node_edit::deleted:
       ok &= delete_offer(final_offer);
       // if an offer delete fails, it's not fatal
@@ -467,7 +452,6 @@ void xrpl_order_book::handle_offer_change(json const& trans, json const& affecte
   {
     std::cerr << "Error : Transaction : " << trans.dump(4) << std::endl;
     std::cerr << "Error : Affected : " << affected.dump(4) << std::endl;
-    if (fatal)
-      throw std::runtime_error("Error in handle_offer_change");
+    if (fatal) throw std::runtime_error("Error in handle_offer_change");
   }
 }

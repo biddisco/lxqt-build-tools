@@ -7,7 +7,7 @@
 #include <QObject>
 #include <QTimer>
 // extern
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 // grox
 #include "currency/currency.hpp"
 #include "currency/json_data_types.hpp"
@@ -15,6 +15,7 @@
 #include "data/ohlc_dataset_view.hpp"
 #include "network/qwebsocket_client.hpp"
 #include "network/qwebsocket_session.hpp"
+#include "util/pubsub.hpp"
 
 class basic_account;
 class exchange;
@@ -43,8 +44,7 @@ static std::string stream_to_pretty_text(network::streams stream)
   // Transform fir char after each break
   txt[0] = std::toupper(txt[0]);
   std::for_each(txt.begin() + 1, txt.end(), [](char& c) {
-    if ((*(&c - 1)) == '_')
-      c = std::toupper(c);
+    if ((*(&c - 1)) == '_') c = std::toupper(c);
   });
   std::transform(txt.begin(), txt.end(), txt.begin(), [](char& c) { return (c == '_') ? ' ' : c; });
   return txt;
@@ -54,10 +54,7 @@ static network::streams stream_from_pretty_text(std::string txt)
 {
   std::transform(txt.begin(), txt.end(), txt.begin(), [](char c) { return std::tolower(c); });
   auto stream = magic_enum::enum_cast<network::streams>(txt);
-  if (stream.has_value())
-  {
-    return stream.value();
-  }
+  if (stream.has_value()) { return stream.value(); }
   return network::streams::invalid;
 }
 
@@ -65,8 +62,6 @@ static network::streams stream_from_pretty_text(std::string txt)
 class price_chart_widget;
 class order_book_base;
 
-using live_trade_function = std::function<void(currency_pair cp, grox::live_trade_data t)>;
-using orderbook_function = std::function<void(currency_pair cp)>;
 struct ticker_subscription
 {
   std::shared_ptr<exchange> exchange_;
@@ -76,8 +71,9 @@ struct ticker_subscription
   // each ticker may subscribe to multiple streams
   std::map<network::streams, std::shared_ptr<net::ws::qwebsocket_session>> websockets_;
   //
-  std::vector<live_trade_function> live_trade_subscribers_;
-  std::vector<orderbook_function> orderbook_subscribers_;
+  grox::PublishSubscribe<const currency_pair, const grox::live_trade_data> live_trade_subscribers_;
+  grox::PublishSubscribe<currency_pair const> orderbook_subscribers_;
+  grox::PublishSubscribe<candle_res const> new_ohlc_subscribers_;
 };
 
 using ticker_data = std::shared_ptr<ticker_subscription>;
@@ -133,10 +129,7 @@ class exchange
   // ---------------------------------------
   // timer used for http/other updates
   // ---------------------------------------
-  QTimer* get_clock_timer()
-  {
-    return timer_;
-  }
+  QTimer* get_clock_timer() { return timer_; }
 
   // ---------------------------------------
   // factory functions to be used for callbacks to stream subscribe/unsubscribe events
@@ -157,7 +150,7 @@ class exchange
   void mark_stream_subscribed(currency_pair cp, network::streams s, bool enabled);
   // un/subscribe to an individual ticker stream
   virtual bool stream_subscribe(
-    currency_pair const& cp, network::streams const stream, bool enabled, factory_function f) = 0;
+      currency_pair const& cp, network::streams const stream, bool enabled, factory_function f) = 0;
 
   //  virtual bool websocket_connect(net::contexts& io_contexts, stream_set const& streams) = 0;
   //  virtual bool websocket_disconnect(net::contexts& io_contexts, stream_set const& streams) = 0;
@@ -168,10 +161,10 @@ class exchange
   // withut subscribing to any streams for live trades/other
   // ---------------------------------------
   // query which tickers (currency pairs) are subscribed
-  virtual bool ticker_subscribed(const currency_pair& cp);
+  virtual bool ticker_subscribed(currency_pair const& cp);
   // un/subscribe to a ticker
-  virtual stream_set ticker_subscribe(const currency_pair& cp);
-  virtual void ticker_unsubscribe(const currency_pair& cp);
+  virtual stream_set ticker_subscribe(currency_pair const& cp);
+  virtual void ticker_unsubscribe(currency_pair const& cp);
   // return list of subscribed tickers
   exchange_map const& tickers_subscribed() const;
   // exchange_map& tickers_subscribed();
@@ -180,18 +173,15 @@ class exchange
   // ---------------------------------------
   // setup / query tickers
   // ---------------------------------------
-  virtual bool add_currency_pair(const currency_pair& cp);
+  virtual bool add_currency_pair(currency_pair const& cp);
   virtual currency_pairlist const& get_currency_pairs();
 
   // ---------------------------------------
   // currency management
   // ---------------------------------------
-  virtual bool can_send(const currency& c, exchange* dest) = 0;
-  virtual bool make_payment(const currency& c, basic_account* src, basic_account* dest) = 0;
-  virtual std::string get_name()
-  {
-    return exchange_name_;
-  }
+  virtual bool can_send(currency const& c, exchange* dest) = 0;
+  virtual bool make_payment(currency const& c, basic_account* src, basic_account* dest) = 0;
+  virtual std::string get_name() const { return exchange_name_; }
   virtual void cancel_order(trade_data const& t) = 0;
   virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const&) = 0;
   virtual std::vector<basic_account*> wallets() = 0;
@@ -204,8 +194,8 @@ class exchange
   // ---------------------------------------
   // fees
   // ---------------------------------------
-  virtual double get_fee_percent(const currency_pair& cp) = 0;
-  virtual double get_fee_fixed(const currency_pair& cp) = 0;
+  virtual double get_fee_percent(currency_pair const& cp) = 0;
+  virtual double get_fee_fixed(currency_pair const& cp) = 0;
   virtual double get_transfer_fee(currency const& c1) = 0;
   virtual void custom_functions(basic_account* acct) = 0;
 

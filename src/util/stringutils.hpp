@@ -12,7 +12,7 @@
 
 /*
 struct fmt::formatter<QString> : formatter<const char*> {
-  auto format(const QString& s, format_context& ctx) {
+  auto format(QString const& s, format_context& ctx) {
     return formatter<const char*>::format((const char *)value.toUtf8(), ctx);
   }
 };
@@ -23,18 +23,15 @@ inline bool startswith(std::string_view str, std::string_view sub)
 {
   // rev search - pos=0, limits search to pos or earlier
   // equivalent to if data.startswith(...)
-  if (str.rfind(sub, 0) != 0)
-  {
-    return false;
-  }
+  if (str.rfind(sub, 0) != 0) { return false; }
   return true;
 }
 
 // ----------------------------------------------------------------------------
-inline bool startswith(QString str, QString sub)
-{
-  return str.startsWith(sub);
-}
+inline bool startswith(QString str, QString sub) { return str.startsWith(sub); }
+
+// ----------------------------------------------------------------------------
+inline QString to_qstring(std::string const& str) { return QString::fromStdString(str); }
 
 // ----------------------------------------------------------------------------
 inline std::string string_join(std::string_view s1, std::string_view s2)
@@ -50,7 +47,7 @@ inline std::string string_join(std::string_view s1, std::string_view s2)
 inline std::string lowercase(std::string data)
 {
   std::transform(
-    data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::tolower(c); });
+      data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::tolower(c); });
   return data;
 }
 
@@ -59,7 +56,7 @@ inline std::string lowercase(std::string data)
 inline void lowercase_i(std::string& data)
 {
   std::transform(
-    data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::tolower(c); });
+      data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::tolower(c); });
 }
 
 // ----------------------------------------------------------------------------
@@ -67,7 +64,7 @@ inline void lowercase_i(std::string& data)
 inline std::string uppercase(std::string data)
 {
   std::transform(
-    data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::toupper(c); });
+      data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::toupper(c); });
   return data;
 }
 
@@ -76,7 +73,7 @@ inline std::string uppercase(std::string data)
 inline void uppercase_i(std::string& data)
 {
   std::transform(
-    data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::toupper(c); });
+      data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::toupper(c); });
 }
 
 // ----------------------------------------------------------------------------
@@ -89,9 +86,9 @@ inline auto make_string = [](auto&& r) -> Result {
 };
 
 inline std::pair<std::string_view, std::string_view> split_currency_pair_string(
-  std::string_view str, const char delim = '/')
+    std::string_view str, char const delim = '/')
 {
-  const auto range =
-    str | ranges::views::split(delim) | ranges::views::transform(make_string<std::string_view>);
+  auto const range =
+      str | ranges::views::split(delim) | ranges::views::transform(make_string<std::string_view>);
   return std::make_pair(ranges::front(range), *next(ranges::begin(range)));
 }

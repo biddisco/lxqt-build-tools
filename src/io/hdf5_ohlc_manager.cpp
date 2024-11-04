@@ -13,10 +13,10 @@
 using namespace grox::debug;
 // a debug level of zero disables messages with a priority>0
 // a debug level of N shows messages with priority<N
-constexpr int debug_level = 9;
+constexpr int debug_level = 2;
 //
 template <int Level>
-static print_threshold<Level, debug_level> man_dbg("DManager");
+inline constexpr print_threshold<Level, debug_level> man_dbg("DManager");
 
 // ----------------------------------------------------------------------------
 hdf5_ohlc_manager::hdf5_ohlc_manager() {}
@@ -35,17 +35,14 @@ void hdf5_ohlc_manager::create_data_dir()
 }
 
 // ----------------------------------------------------------------------------
-void hdf5_check(const char* msg, herr_t err)
+void hdf5_check(char const* msg, herr_t err)
 {
-  if (err < 0)
-  {
-    throw std::runtime_error(std::string("HDF5 Error") + msg);
-  }
+  if (err < 0) { throw std::runtime_error(std::string("HDF5 Error") + msg); }
 }
 
 // ----------------------------------------------------------------------------
 void hdf5_ohlc_manager::read_impl(
-  std::string group, std::string dataname, QVector<ohlctv_sample>& data, std::uint64_t N)
+    std::string group, std::string dataname, QVector<ohlctv_sample>& data, std::uint64_t N)
 {
   // we do not currently support multi-threaded file access.
   std::lock_guard lock(hdf5_mutex_);
@@ -54,7 +51,7 @@ void hdf5_ohlc_manager::read_impl(
   std::string path = group + "/" + dataname;
   if (std::filesystem::exists(file_name_))
   {
-    man_dbg<0>.debug(str<>("file open"), path, "read_hdf5", file_name_);
+    man_dbg<3>.debug(str<>("file open"), path, "read_hdf5", file_name_);
     File file(file_name_, File::ReadWrite | File::OpenOrCreate);
     if (file.exist(path))
     {
@@ -62,9 +59,9 @@ void hdf5_ohlc_manager::read_impl(
       const std::uint64_t ohlc_size = sizeof(ohlctv_sample) / sizeof(double);
       std::uint64_t Nelem = dataset.getElementCount() / ohlc_size;
       std::uint64_t Nread =
-        std::min(Nelem, N >= 0 ? N : std::numeric_limits<std::uint64_t>().max());
+          std::min(Nelem, N >= 0 ? N : std::numeric_limits<std::uint64_t>().max());
       data.resize(Nread);
-      man_dbg<0>.debug(str<>("dataset read"), path, "size", ffmt<dec9>(Nread), ffmt<dec9>(Nelem));
+      man_dbg<3>.debug(str<>("dataset read"), path, "size", ffmt<dec9>(Nread), ffmt<dec9>(Nelem));
       std::vector<size_t> offset{0};
       std::vector<size_t> size{Nread * ohlc_size};
       Selection slice = dataset.select(offset, size);
@@ -73,31 +70,28 @@ void hdf5_ohlc_manager::read_impl(
     else
     {
       data.clear();
-      man_dbg<0>.debug(str<>("dataset missing"), path);
+      man_dbg<3>.debug(str<>("dataset missing"), path);
     }
   }
-  else
-  {
-    data.clear();
-  }
+  else { data.clear(); }
   //
-  ohlc_datasets::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
-  man_dbg<0>.debug(str<>("file close"), path, "read_hdf5", ffmt<dec9>(data.size()));
+  ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
+  man_dbg<3>.debug(str<>("file close"), path, "read_hdf5", ffmt<dec9>(data.size()));
 }
 
 // ----------------------------------------------------------------------------
 void hdf5_ohlc_manager::read_impl(
-  std::string group, std::string dataname, QVector<ohlctv_sample>& data)
+    std::string group, std::string dataname, QVector<ohlctv_sample>& data)
 {
   read_impl(group, dataname, data, -1);
 }
 
 // ----------------------------------------------------------------------------
 void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
-  QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate)
+    QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate)
 {
   std::string path = group + "/" + dataname;
-  int valid = ohlc_datasets::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
+  int valid = ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
   if (valid != data.size())
   {
     man_dbg<0>.error(str<>("Error"), path, "Aborting write");
@@ -115,12 +109,12 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
 
   if (!std::filesystem::exists(file_name_))
   {
-    man_dbg<0>.debug(str<>("create"), path, "write_hdf5", file_name_);
+    man_dbg<3>.debug(str<>("create"), path, "write_hdf5", file_name_);
     File file(file_name_, File::ReadWrite | File::OpenOrCreate);
   }
 
   // open for read/write
-  man_dbg<0>.debug(str<>("open"), path, "write_hdf5", file_name_);
+  man_dbg<3>.debug(str<>("open"), path, "write_hdf5", file_name_);
   File file(file_name_, File::ReadWrite);
 
   // Create dataset if it does not already exist
@@ -151,7 +145,7 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
     uint64_t offset = data.size() - update;
     Selection sel = dataset.select({offset * ohlc_size}, {update * ohlc_size});
     // write data from the old endpoint into the new hyperslab
-    sel.write_raw(reinterpret_cast<const double*>(&data[offset]));
+    sel.write_raw(reinterpret_cast<double const*>(&data[offset]));
   }
   // truncating a dataset
   else if (truncate)
@@ -161,5 +155,5 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
     // resize along 1 dimension
     dataset.resize({N});
   }
-  man_dbg<0>.debug(str<>("file close"), path, "write_hdf5", ffmt<dec9>(data.size()));
+  man_dbg<3>.debug(str<>("file close"), path, "write_hdf5", ffmt<dec9>(data.size()));
 }

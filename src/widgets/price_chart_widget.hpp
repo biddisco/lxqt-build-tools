@@ -8,6 +8,8 @@
 
 //
 #include "exchange/exchange.hpp"
+#include "indicators/indicator_definitions.hpp"
+#include "indicators/indicator_ptr.hpp"
 #include "indicators/indicator_types.hpp"
 #include "plot/indicator_plot.hpp"
 #include "plot/ohlc_picker.hpp"
@@ -18,16 +20,6 @@ class ohlc_dataset_view;
 namespace Ui {
   class price_chart_widget;
 }
-
-// ----------------------------------------------------------------------------
-struct indicator_data
-{
-  QString text;
-  QString params;
-  indicator_plot* plot;
-  std::vector<timebased_data_curve*> curves;
-};
-Q_DECLARE_METATYPE(indicator_data*)
 
 // ----------------------------------------------------------------------------
 class indicators_model : public QAbstractTableModel
@@ -52,7 +44,7 @@ class indicators_model : public QAbstractTableModel
 
   //    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const = 0;
 
-  std::vector<indicator_data> indicators_;
+  std::vector<indicators::indicator_ptr> indicators_;
 };
 
 // ----------------------------------------------------------------------------
@@ -63,7 +55,7 @@ class price_chart_widget : public QWidget
   private:
   Ui::price_chart_widget* ui;
   //
-  ohlc_price_plot* crypto_price_plot_;
+  ohlc_price_plot* price_plot_;
   std::vector<indicator_plot*> filter_plots_;
   indicator_plot* assets_plot_;
   QPushButton* btn_indicator_;
@@ -77,7 +69,7 @@ class price_chart_widget : public QWidget
 
   public:
   price_chart_widget(
-    QWidget*, std::shared_ptr<ohlc_dataset_view>, std::shared_ptr<exchange> ex, currency_pair cp);
+      QWidget*, std::shared_ptr<ohlc_dataset_view>, std::shared_ptr<exchange> ex, currency_pair cp);
   ~price_chart_widget();
 
   void connect_gui();
@@ -85,17 +77,14 @@ class price_chart_widget : public QWidget
 
   void update_live_data(ohlctv_sample const& new_sample)
   {
-    crypto_price_plot_->update_live_data(new_sample);
+    price_plot_->update_live_data(new_sample);
   }
-  void replot()
-  {
-    crypto_price_plot_->replot();
-  }
+  void replot() { price_plot_->replot(); }
 
   void show_plot_axes();
 
   std::tuple<indicator_plot*, timebased_data_curve*> add_indicator_plot(QString const& title,
-    point_chart_data* data, QColor const& color, indicators::y_limits ylimits = {0.0, 0.0});
+      point_chart_data* data, QColor const& color, indicators::y_limits ylimits = {0.0, 0.0});
 
   void remove_indicator_plot(indicator_plot* filter_plot, timebased_data_curve* curve);
 

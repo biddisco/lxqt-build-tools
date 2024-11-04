@@ -23,31 +23,32 @@
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "util/execute_os_command.hpp"
+#include "util/stringutils.hpp"
 
 static std::atomic<int> reply_ready = 0;
 static std::string api_user;
 static std::string api_key;
 static std::string api_secret;
 const std::string bitstamp_https_address = "www.bitstamp.net";
-const int bitstamp_https_port = 443;
+int const bitstamp_https_port = 443;
 
 // ----------------------------------------------------------------------------
 namespace {
   using namespace grox::debug;
   constexpr int gdeb_level = 3;
   template <int Level>
-  static print_threshold<Level, gdeb_level> test1_dbg("https://");
+  inline constexpr print_threshold<Level, gdeb_level> test1_dbg("https://");
 }    // namespace
 
 // ----------------------------------------------------------------------------
-void account_request(QNetworkAccessManager& networkmanager_, const std::string& url_path,
-  const std::string& url_query, net::http::rx_req_handler_type&& handler)
+void account_request(QNetworkAccessManager& networkmanager_, std::string const& url_path,
+    std::string const& url_query, net::http::rx_req_handler_type&& handler)
 {
   secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
   encryption encryptor(api_key, randbytes);
   //
   std::chrono::milliseconds timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::system_clock::now().time_since_epoch());
+      std::chrono::system_clock::now().time_since_epoch());
 
   // setup REST request fields
   std::string url_host = bitstamp_https_address;
@@ -94,9 +95,9 @@ void account_request(QNetworkAccessManager& networkmanager_, const std::string& 
   std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
 
   std::string urlstring = fmt::format(
-    "https://{}:{}{}{}", bitstamp_https_address, bitstamp_https_port, url_path, url_query);
+      "https://{}:{}{}{}", bitstamp_https_address, bitstamp_https_port, url_path, url_query);
 
-  QNetworkRequest request(QUrl(urlstring.c_str()));
+  QNetworkRequest request(QUrl(to_qstring(urlstring)));
   request.setRawHeader("Content-Type", content_type.c_str());
   request.setRawHeader("User-Agent", "mystery");
   request.setRawHeader("Accept", "application/json");
@@ -109,7 +110,7 @@ void account_request(QNetworkAccessManager& networkmanager_, const std::string& 
   request.setRawHeader("X-Auth-Version", x_auth_version.c_str());
 
   auto* client =
-    net::http::qhttp_request_client::create_signed(networkmanager_, request, std::move(payload));
+      net::http::qhttp_request_client::create_signed(networkmanager_, request, std::move(payload));
   client->post_request(std::move(handler));
 }
 
@@ -181,7 +182,7 @@ int pika_main(int argc, char** argv)
 
 //----------------------------------------------------------------------------
 void init_resource_partitioner_handler(
-  pika::resource::partitioner& rp, pika::program_options::variables_map const& vm)
+    pika::resource::partitioner& rp, pika::program_options::variables_map const& vm)
 {
   // Don't create the pool if the user disabled it
   if (vm["no-qt-pool"].as<bool>())
@@ -202,7 +203,7 @@ void init_resource_partitioner_handler(
   // set the schedule mode for the default pool
   //  rp.create_thread_pool("default", pika::resource::scheduling_policy::shared_priority, mode);
   rp.create_thread_pool("default", pika::resource::scheduling_policy::unspecified, mode);
-  rp.add_resource(rp.numa_domains()[0].cores()[0].pus()[0], qt_pool_name);
+  rp.add_resource(rp.sockets()[0].cores()[0].pus()[0], qt_pool_name);
 }
 
 //----------------------------------------------------------------------------

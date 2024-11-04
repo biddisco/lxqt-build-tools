@@ -4,35 +4,24 @@
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
+#include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  struct volatility_rogers_satchell : indicator_base
+  class volatility_rogers_satchell : public indicator_base
   {
+public:
     using result_type = std::vector<float>;
 
     // ---------------------------------------
-    // fields required for auto gui generation
-    const std::string name = "Rogers-Satchell";
-    const std::string description = "Rogers-Satchell volatility (default 14 period)";
-    const overlay_type overlay = overlay_type::price;
-
-    const QChar sigma = QChar(0xc3, 0x03);
-
-    param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 20),
-      std::make_tuple<QString, param_types>("scale factor", 1.0),
-      std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
-
-    // ---------------------------------------
-    // Default constructor
+    /// Default constructor
     volatility_rogers_satchell(
-      int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
-      : average_{}
+        int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
+      : indicator_base("Rogers-Satchell", "Rogers-Satchell volatility", overlay_type::price)
+      , average_{}
       , buffer1_(window_size)
       , scale_{1.0}
       , num_bands_{num_bands}
@@ -41,19 +30,28 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    int num_outputs() const override
+    /// fields required for auto gui generation
+    void init_params() override
     {
-      return 1 + (2 * num_bands_);
+      params_ = {//
+          std::make_tuple<QString, param_types>(
+              "Samples", candle_data{ohlc_data_resolutions::minute15, 0}),
+          std::make_tuple<QString, param_types>("Window size", 20),
+          std::make_tuple<QString, param_types>("scale factor", 1.0),
+          std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
     }
 
     // ---------------------------------------
-    // initialize internals from a parameter list
-    void initialize()
+    /// override outputs as we produce upper/lower bands
+    int num_outputs() const override { return 1 + (2 * num_bands_); }
+
+    // ---------------------------------------
+    /// initialize internals from a parameter list
+    void initialize() override
     {
-      auto resolution_ = std::get<candle_res>(std::get<1>(params[0]));
-      window_size_ = std::get<int>(std::get<1>(params[1]));
-      scale_ = std::get<double>(std::get<1>(params[2]));
-      num_bands_ = std::get<int>(std::get<1>(params[3]));
+      window_size_ = std::get<int>(std::get<1>(params_[1]));
+      scale_ = std::get<double>(std::get<1>(params_[2]));
+      num_bands_ = std::get<int>(std::get<1>(params_[3]));
       buffer1_ = boost::circular_buffer<float>(window_size_);
     }
 
@@ -64,15 +62,14 @@ namespace indicators {
       auto mean = average_(ohlc_mode_extract(ohlc_modes::mid_high_low, val));
       mean = val.close;
       // first part to be summed
-      double val1 = std::log(val.high / val.open) * std::log(val.high / val.close) +
-        std::log(val.low / val.open) * std::log(val.low / val.close);
+      double val1 =    //
+          (std::log(val.high / val.close) * std::log(val.high / val.open)) +
+          (std::log(val.low / val.close) * std::log(val.low / val.open));
+
       buffer1_.push_back(val1);
 
       double accum1 = 0;
-      for (double elem : buffer1_)
-      {
-        accum1 += elem;
-      }
+      for (double elem : buffer1_) { accum1 += elem; }
       accum1 *= 1.0 / buffer1_.size();
       last_sigma_ = scale_ * std::sqrt(accum1);
       //
@@ -96,10 +93,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    inline double getLastResult()
-    {
-      return band_above_;
-    }
+    inline double getLastResult() { return band_above_; }
 
 private:
     moving_average average_;

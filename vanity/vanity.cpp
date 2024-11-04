@@ -43,11 +43,11 @@ std::vector<std::string> r_searches;
 //
 using namespace std::string_view_literals;
 constexpr std::string_view RippleAlphabet =
-  "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz"sv;
+    "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz"sv;
 std::string out_filename;
 
 //-----------------------------------------------------------------------------
-bool is_bad_char(const char c)
+bool is_bad_char(char const c)
 {
   return (std::find(RippleAlphabet.begin(), RippleAlphabet.end(), c) == RippleAlphabet.end());
 }
@@ -65,10 +65,10 @@ std::vector<std::string> all_copies_using_ripple_alphabet(std::vector<std::strin
     std::string word_f = word;
     // convert to lower case
     std::transform(word_l.begin(), word_l.end(), word_l.begin(),
-      [](unsigned char c) { return std::tolower(c); });
+        [](unsigned char c) { return std::tolower(c); });
     // convert to upper case
     std::transform(word_u.begin(), word_u.end(), word_u.begin(),
-      [](unsigned char c) { return std::toupper(c); });
+        [](unsigned char c) { return std::toupper(c); });
     //
     unsigned int s = word.size();
     unsigned int permutations = (1 << s);
@@ -92,11 +92,10 @@ std::vector<std::string> all_copies_using_ripple_alphabet(std::vector<std::strin
     std::stringstream tempstr;
     tempstr << "Word: " << std::setw(12) << word << " " << std::setw(5) << intermediate.size()
             << " : ";
-    std::copy(
-      intermediate.begin(), intermediate.end(), std::ostream_iterator<std::string>(tempstr, ", "));
+    std::copy(intermediate.begin(), intermediate.end(),
+        std::ostream_iterator<std::string>(tempstr, ", "));
     std::cout << tempstr.str().substr(0, 150);
-    if (tempstr.str().size() > 150)
-      std::cout << "...";
+    if (tempstr.str().size() > 150) std::cout << "...";
     std::cout << std::endl;
   }
   std::cout << std::endl;
@@ -168,11 +167,10 @@ void vg_output_timing_console(double rate, unsigned long long total, double elap
 
   size_t rem = sizeof(linebuf);
   size_t p = snprintf(
-    linebuf, rem, "     [%.2f %s] [keys %'14lld / secs %8.1f]", targ, unit, total, elapsed);
+      linebuf, rem, "     [%.2f %s] [keys %'14lld / secs %8.1f]", targ, unit, total, elapsed);
 
   rem -= p;
-  if (rem < 0)
-    rem = 0;
+  if (rem < 0) rem = 0;
 
   if (rem)
   {
@@ -191,8 +189,7 @@ void update_count(std::size_t n)
   std::unique_lock lock(output_mutex, std::try_to_lock_t{});
 
   // don't print anything out if we are exiting of didn't get the lock
-  if (abort_job || !lock.owns_lock())
-    return;
+  if (abort_job || !lock.owns_lock()) return;
 
   auto now = high_resolution_clock::now();
   double secs = std::chrono::duration_cast<duration<double>>(now - reference_time).count();
@@ -216,21 +213,21 @@ void update_count(std::size_t n)
 pika::future<std::size_t> calculate(std::size_t iterations)
 {
   return pika::async(findkey, iterations)
-    .then([&](pika::future<std::size_t>&& f) {
-      std::size_t n = f.get();
-      update_count(n);
-      return n;
-    })
-    .then([=](pika::future<std::size_t>&& f) {
-      if (!abort_job)
-      {
-        // run another set of iterations
-        return calculate(iterations);
-      }
-      scoped_lock lock(output_mutex);
-      //std::cout << "Worker thread aborting " << pika::get_worker_thread_num() << std::endl;
-      return pika::make_ready_future<std::size_t>(0);
-    });
+      .then([&](pika::future<std::size_t>&& f) {
+        std::size_t n = f.get();
+        update_count(n);
+        return n;
+      })
+      .then([=](pika::future<std::size_t>&& f) {
+        if (!abort_job)
+        {
+          // run another set of iterations
+          return calculate(iterations);
+        }
+        scoped_lock lock(output_mutex);
+        //std::cout << "Worker thread aborting " << pika::get_worker_thread_num() << std::endl;
+        return pika::make_ready_future<std::size_t>(0);
+      });
 }
 
 //-----------------------------------------------------------------------------
@@ -239,18 +236,9 @@ int pika_main(pika::program_options::variables_map& vm)
   std::size_t iterations = 1000;
   //
   std::vector<std::string> prefixes;
-  if (!vm["prefixes"].empty())
-  {
-    prefixes = vm["prefixes"].as<std::vector<std::string>>();
-  }
-  if (vm.count("frequency"))
-  {
-    iterations = vm["frequency"].as<std::size_t>();
-  }
-  if (prefixes.size() == 0)
-  {
-    return 1;
-  }
+  if (!vm["prefixes"].empty()) { prefixes = vm["prefixes"].as<std::vector<std::string>>(); }
+  if (vm.count("frequency")) { iterations = vm["frequency"].as<std::size_t>(); }
+  if (prefixes.size() == 0) { return 1; }
 
   // Get Parameters
   std::size_t nthreads = pika::get_num_worker_threads();
@@ -264,18 +252,18 @@ int pika_main(pika::program_options::variables_map& vm)
   for (auto& search : searches)
   {
     if (ranges::starts_with(begin(search), end(search), begin(r_string), end(r_string)) ||
-      ranges::starts_with(begin(search), end(search), begin(R_string), end(R_string)))
+        ranges::starts_with(begin(search), end(search), begin(R_string), end(R_string)))
     {
       r_searches.push_back(search);
     }
   }
   searches.erase(std::remove_if(begin(searches), end(searches),
-                   [&](auto& s) {
-                     return (
-                       ranges::starts_with(begin(s), end(s), begin(r_string), end(r_string)) ||
-                       ranges::starts_with(begin(s), end(s), begin(R_string), end(R_string)));
-                   }),
-    end(searches));
+                     [&](auto& s) {
+                       return (
+                           ranges::starts_with(begin(s), end(s), begin(r_string), end(r_string)) ||
+                           ranges::starts_with(begin(s), end(s), begin(R_string), end(R_string)));
+                     }),
+      end(searches));
 
   // Launch Tasks
   std::vector<pika::future<void>> workers;
@@ -297,16 +285,10 @@ int pika_main(pika::program_options::variables_map& vm)
 }
 
 //-----------------------------------------------------------------------------
-void turn_off_cursor()
-{
-  printf("\e[?25l");
-}
+void turn_off_cursor() { printf("\e[?25l"); }
 
 //-----------------------------------------------------------------------------
-void turn_on_cursor()
-{
-  printf("\e[?25h");
-}
+void turn_on_cursor() { printf("\e[?25h"); }
 
 //-----------------------------------------------------------------------------
 // signal handling function for ctrl-\ and ctrl-c
@@ -337,10 +319,10 @@ int main(int argc, char* argv[])
 
   pika::program_options::options_description cmdline("Options");
   cmdline.add_options()("frequency,f",
-    pika::program_options::value<std::size_t>()->default_value(1),
-    "number of key iterations to do before outputting info")("prefixes,p",
-    pika::program_options::value<std::vector<std::string>>()->multitoken(),
-    "list of prefixes to search for");
+      pika::program_options::value<std::size_t>()->default_value(1),
+      "number of key iterations to do before outputting info")("prefixes,p",
+      pika::program_options::value<std::vector<std::string>>()->multitoken(),
+      "list of prefixes to search for");
 
   // generate output filename for this run
   auto t = std::time(nullptr);

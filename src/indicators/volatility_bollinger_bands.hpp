@@ -3,35 +3,24 @@
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
+#include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average.hpp"
 
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  struct volatility_bollinger_bands : indicator_base
+  class volatility_bollinger_bands : public indicator_base
   {
+public:
     using result_type = std::vector<float>;
 
     // ---------------------------------------
-    // fields required for auto gui generation
-    const std::string name = "Bollinger-Bands";
-    const std::string description = "Bollinger-Bands default 14 period";
-    const overlay_type overlay = overlay_type::price;
-
-    const QChar sigma = QChar(0xc3, 0x03);
-
-    param_list params = {
-      std::make_tuple<QString, param_types>("Samples", ohlc_data_resolutions::minute15),
-      std::make_tuple<QString, param_types>("Window size", 14),
-      std::make_tuple<QString, param_types>("mode", ohlc_modes::close),
-      std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 2)};
-
-    // ---------------------------------------
-    // Default constructor
+    /// Default constructor
     volatility_bollinger_bands(
-      int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 2)
-      : average_{}
+        int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 2)
+      : indicator_base("Bollinger-Bands", "Bollinger-Bands", overlay_type::price)
+      , average_{}
       , num_bands_{num_bands}
       , window_size_(window_size)
       , mode_(mode)
@@ -40,19 +29,29 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    int num_outputs() const override
+    /// fields required for auto gui generation
+    void init_params() override
     {
-      return 1 + (2 * num_bands_);
+      params_ = {//
+          std::make_tuple<QString, param_types>(
+              "Samples", candle_data{ohlc_data_resolutions::minute15, 0}),
+          std::make_tuple<QString, param_types>("Window size", 14),
+          std::make_tuple<QString, param_types>("mode", ohlc_modes::close),
+          std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 2)};
     }
 
     // ---------------------------------------
-    // initialize internals from a parameter list
-    void initialize()
+    /// override outputs as we produce upper/lower bands
+    int num_outputs() const override { return 1 + (2 * num_bands_); }
+
+    // ---------------------------------------
+    /// initialize internals from a parameter list
+    void initialize() override
     {
-      window_size_ = std::get<int>(std::get<1>(params[1]));
-      mode_ = std::get<ohlc_modes>(std::get<1>(params[2]));
-      num_bands_ = std::get<int>(std::get<1>(params[3]));
-      average_ = moving_average(window_size_, mode_);
+      window_size_ = std::get<int>(std::get<1>(params_[1]));
+      mode_ = std::get<ohlc_modes>(std::get<1>(params_[2]));
+      num_bands_ = std::get<int>(std::get<1>(params_[3]));
+      // average_ = moving_average(window_size_, mode_);
       buffer_ = boost::circular_buffer<float>(window_size_);
     }
 
@@ -64,7 +63,7 @@ namespace indicators {
 
       double accum = 0.0;
       std::for_each(
-        std::begin(buffer_), std::end(buffer_), [&](const double val) { accum += val * val; });
+          std::begin(buffer_), std::end(buffer_), [&](double const val) { accum += val * val; });
 
       // stddev of 'true' mean (not sample mean) uses N-1
       float N = buffer_.size() > 1 ? (buffer_.size() - 1) : 1;
@@ -97,10 +96,7 @@ namespace indicators {
     }
 
     // ---------------------------------------
-    inline double getLastResult()
-    {
-      return band_above_;
-    }
+    inline double getLastResult() { return band_above_; }
 
 private:
     moving_average average_;

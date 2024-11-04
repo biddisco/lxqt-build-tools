@@ -29,9 +29,9 @@
 namespace grox::senders {
 
   using namespace grox::debug;
-  constexpr int gdeb_level = 3;
+  constexpr int gdeb_level = 2;
   template <int Level>
-  static print_threshold<Level, gdeb_level> qt_trig("QT_TRIGG");
+  inline constexpr print_threshold<Level, gdeb_level> qt_trig("QT_TRIGG");
 
   namespace pexec = pika::execution;
   namespace ex = pexec::experimental;
@@ -49,7 +49,7 @@ namespace grox::senders {
   inline auto default_pool_scheduler(pexec::thread_priority p = pexec::thread_priority::normal)
   {
     return ex::with_priority(
-      ex::thread_pool_scheduler{&pika::resource::get_thread_pool("default")}, p);
+        ex::thread_pool_scheduler{&pika::resource::get_thread_pool("default")}, p);
   }
 
   // -----------------------------------------------------------------
@@ -76,8 +76,8 @@ namespace grox::senders {
 
       // stexec requires set_value_t to match the signature of what we call set_value on
       // when we are finished.
-      using completion_signatures =
-        ex::completion_signatures<ex::set_value_t(QByteArray), ex::set_error_t(std::exception_ptr)>;
+      using completion_signatures = ex::completion_signatures<ex::set_value_t(QByteArray),
+          ex::set_error_t(std::exception_ptr)>;
 
       // -----------------------------------------------------------------
       // operation state for an internal receiver
@@ -106,52 +106,52 @@ namespace grox::senders {
 
           // receive the client and set a callback to be triggered when the request completes
           friend constexpr void tag_invoke(
-            ex::set_value_t, qhttp_post_receiver r, net::http::client_ptr client) noexcept
+              ex::set_value_t, qhttp_post_receiver r, net::http::client_ptr client) noexcept
           {
             r.op_state.client_ = client;
             assert(r.op_state.client_ != nullptr);
 
             PIKA_DETAIL_DP(qt_trig<5>,
-              debug(str<>("qhttp_post_recv"), "set_value_t", "req", fmt::ptr(r.op_state.client_)));
+                debug(
+                    str<>("qhttp_post_recv"), "set_value_t", "req", fmt::ptr(r.op_state.client_)));
 
             pika::detail::try_catch_exception_ptr(
-              [&]() mutable {
-                {
-                  // The callback will call set_value/set_error inside a new task
-                  // and execution will continue on that thread
-                  auto handler = [client = r.op_state.client_,
-                                   receiver = std::move(r.op_state.receiver_)](QByteArray data) {
-                    // pass the result onto a new pika task and invoke the continuation
-                    auto snd0 = ex::just(std::move(data)) | ex::transfer(default_pool_scheduler()) |
-                      ex::then([receiver = std::move(receiver)](QByteArray byteArray) mutable {
-                        std::string_view strv(byteArray.constData(), byteArray.length());
-                        PIKA_DETAIL_DP(qt_trig<5>,
-                          debug(str<>("set_value_error_helper"), fmt::format("{}", strv)));
-                        ex::set_value(std::move(receiver), std::move(byteArray));
-                      });
-                    ex::start_detached(std::move(snd0));
-                  };
-                  if (r.op_state.req_type_ == http_request_type::http_get)
+                [&]() mutable {
                   {
-                    client->get_request(std::move(handler));
+                    // The callback will call set_value/set_error inside a new task
+                    // and execution will continue on that thread
+                    auto handler = [client = r.op_state.client_,
+                                       receiver = std::move(r.op_state.receiver_)](
+                                       QByteArray data) {
+                      // pass the result onto a new pika task and invoke the continuation
+                      auto snd0 = ex::just(std::move(data)) |
+                          ex::transfer(default_pool_scheduler()) |
+                          ex::then([receiver = std::move(receiver)](QByteArray byteArray) mutable {
+                            std::string_view strv(byteArray.constData(), byteArray.length());
+                            PIKA_DETAIL_DP(qt_trig<5>,
+                                debug(str<>("set_value_error_helper"), fmt::format("{}", strv)));
+                            ex::set_value(std::move(receiver), std::move(byteArray));
+                          });
+                      ex::start_detached(std::move(snd0));
+                    };
+                    if (r.op_state.req_type_ == http_request_type::http_get)
+                    {
+                      client->get_request(std::move(handler));
+                    }
+                    else if (r.op_state.req_type_ == http_request_type::http_post)
+                    {
+                      client->post_request(std::move(handler));
+                    }
+                    else { throw std::logic_error("Request mode should not be unset"); }
                   }
-                  else if (r.op_state.req_type_ == http_request_type::http_post)
-                  {
-                    client->post_request(std::move(handler));
-                  }
-                  else
-                  {
-                    throw std::logic_error("Request mode should not be unset");
-                  }
-                }
-              },
-              [&](std::exception_ptr ep) {
-                ex::set_error(PIKA_MOVE(r.op_state.receiver_), PIKA_MOVE(ep));
-              });
+                },
+                [&](std::exception_ptr ep) {
+                  ex::set_error(PIKA_MOVE(r.op_state.receiver_), PIKA_MOVE(ep));
+                });
           }
 
           friend constexpr ex::empty_env tag_invoke(
-            ex::get_env_t, qhttp_post_receiver const&) noexcept
+              ex::get_env_t, qhttp_post_receiver const&) noexcept
           {
             return {};
           }
@@ -159,7 +159,7 @@ namespace grox::senders {
 
         // -----------------------------------------------------------------
         using operation_state_type =
-          ex::connect_result_t<std::decay_t<Sender>, qhttp_post_receiver>;
+            ex::connect_result_t<std::decay_t<Sender>, qhttp_post_receiver>;
         // -----------------------------------------------------------------
         std::decay_t<Receiver> receiver_;
         operation_state_type op_state;
@@ -174,13 +174,10 @@ namespace grox::senders {
           , client_(nullptr)
           , req_type_{req_type}
         {
-          PIKA_DETAIL_DP(qt_trig<2>, debug(str<>("create"), client_));
+          PIKA_DETAIL_DP(qt_trig<3>, debug(str<>("create"), client_));
         }
 
-        ~operation_state()
-        {
-          PIKA_DETAIL_DP(qt_trig<2>, debug(str<>("destroy"), client_));
-        }
+        ~operation_state() { PIKA_DETAIL_DP(qt_trig<3>, debug(str<>("destroy"), client_)); }
 
         friend constexpr auto tag_invoke(ex::start_t, operation_state& os) noexcept
         {
@@ -200,7 +197,7 @@ namespace grox::senders {
       tag_invoke(ex::connect_t, qhttp_post_sender_type&& s, Receiver&& receiver)
       {
         return operation_state<Receiver>(
-          PIKA_FORWARD(Receiver, receiver), PIKA_MOVE(s.sender), s.req_type);
+            PIKA_FORWARD(Receiver, receiver), PIKA_MOVE(s.sender), s.req_type);
       }
     };
 
@@ -221,7 +218,7 @@ private:
     // tag invoke overload for qhttp_post
     //
     friend constexpr PIKA_FORCEINLINE auto tag_fallback_invoke(
-      qhttp_post_t, http_request_type req_type = http_request_type::http_post)
+        qhttp_post_t, http_request_type req_type = http_request_type::http_post)
     {
       return ex::detail::partial_algorithm<qhttp_post_t, http_request_type>{req_type};
     }

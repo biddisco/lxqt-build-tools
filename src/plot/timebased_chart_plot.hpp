@@ -34,21 +34,12 @@ class timebased_chart_plot : public QwtPlot
   virtual void update_time_axis(double t1, double t2, bool emit_signal = false){};
 
   // clamps the x/time axis value to the valid sample point resolution
-  virtual double quantize_x_coord(double x)
-  {
-    return x;
-  }
+  virtual double quantize_x_coord(double x) { return x; }
 
   virtual void display_picker_info(const QPointF pos){};
 
-  ohlc_interactor* get_interactor()
-  {
-    return plot_interactor_;
-  }
-  ohlc_picker* get_crosshairs()
-  {
-    return crosshairs_;
-  }
+  ohlc_interactor* get_interactor() { return plot_interactor_; }
+  ohlc_picker* get_crosshairs() { return crosshairs_; }
 
   Q_SIGNALS:
   void timeAxisChanged(double, double, bool);
