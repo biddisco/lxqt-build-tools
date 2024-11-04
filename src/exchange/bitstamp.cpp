@@ -22,7 +22,7 @@
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "senders/qhttp-post-sender.hpp"
-#include "senders/qt_mainthread_scheduler.hpp"
+#include "senders/qtstdexec.hpp"
 #include "util/datetime_utils.hpp"
 #include "util/json_qstring.hpp"
 #include "util/stringutils.hpp"
@@ -91,23 +91,23 @@ bool token_valid(std::atomic<std::chrono::time_point<std::chrono::system_clock>>
 // ----------------------------------------------------------------------------
 void bitstamp_network::initialize()
 {
-  auto web = stdexec::on(qt_mainthread_scheduler(), stdexec::just())    // Qt
+  auto web = stdexec::on(QtStdExec::QThreadScheduler(), stdexec::just())    // Qt
       | stdexec::let_value(
             std::bind(&bitstamp_network::request_websocket_token, this))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                        // pika
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<6>.debug(str<>("Initialize"), "WebsocketToken", data);
           handle_websocket_token(data);
-        })                                              //
-      | stdexec::transfer(qt_mainthread_scheduler())    // pika -> Qt
+        })                                                  //
+      | stdexec::transfer(QtStdExec::QThreadScheduler())    // pika -> Qt
       | stdexec::let_value(
             std::bind(&bitstamp_network::request_tickers_available, this))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                          // pika
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<6>.debug(str<>("Initialize"), "Tickers", data);
           handle_tickers_available(data);
-        })                                              //
-      | stdexec::transfer(qt_mainthread_scheduler())    // pika -> Qt
+        })                                                  //
+      | stdexec::transfer(QtStdExec::QThreadScheduler())    // pika -> Qt
       |
       stdexec::let_value(std::bind(&bitstamp_network::request_account_info, this))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                                  // pika
@@ -115,7 +115,7 @@ void bitstamp_network::initialize()
           bitstamp_dbg<6>.debug(str<>("Initialize"), "AccountInfo", data);
           handle_account_info(data);
         })                                                                             //
-      | stdexec::transfer(qt_mainthread_scheduler())                                   // pika -> Qt
+      | stdexec::transfer(QtStdExec::QThreadScheduler())                               // pika -> Qt
       | stdexec::let_value(std::bind(&bitstamp_network::request_open_orders, this))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                                   // pika
           std::string_view data(byteArray.constData(), byteArray.length());
@@ -261,8 +261,8 @@ bool bitstamp_network::stream_subscribe(
   // always subscribe to a ticker before a stream it owns
   if (!ticker_subscribed(cp)) ticker_subscribe(cp);
 
-  auto snd = stdexec::on(qt_mainthread_scheduler(), request_websocket_token())    //
-      | stdexec::then([this](QByteArray byteArray) {                              // pika
+  auto snd = stdexec::on(QtStdExec::QThreadScheduler(), request_websocket_token())    //
+      | stdexec::then([this](QByteArray byteArray) {                                  // pika
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<6>.debug(str<>("Initialize"), "WebsocketToken", data);
           handle_websocket_token(data);
@@ -294,9 +294,9 @@ bool bitstamp_network::stream_subscribe(
         default: ok = false; throw std::runtime_error("unknown stream");
         }
         if (ok) mark_stream_subscribed(cp, stream, enabled);
-      })                                                //
-      | stdexec::transfer(qt_mainthread_scheduler())    //
-      | stdexec::then([this, cp, stream, f]() {         //
+      })                                                    //
+      | stdexec::transfer(QtStdExec::QThreadScheduler())    //
+      | stdexec::then([this, cp, stream, f]() {             //
           f(cp, get_subscribed_ticker_data(cp), stream);
         });
   stdexec::start_detached(std::move(snd));
@@ -891,10 +891,10 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data tdata)
             bitstamp_dbg<9>.debug(str<>("price history"), tdata->view_->get_ticker_string(), data);
             return handle_price_history(data);
           })    //
-        | stdexec::transfer(qt_mainthread_scheduler())};
+        | stdexec::transfer(QtStdExec::QThreadScheduler())};
   }
 
-  auto snd2 = stdexec::on(qt_mainthread_scheduler(), std::move(snd))    //
+  auto snd2 = stdexec::on(QtStdExec::QThreadScheduler(), std::move(snd))    //
       | stdexec::let_value([this, cp, tdata](std::uint64_t start_t_sec) {
           // we do not want a candle for the current minute, round to prev 60s
           std::uint64_t unixtime_secs = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
@@ -1126,7 +1126,7 @@ void bitstamp_network::handle_new_ohlc_data(ticker_data tdata, std::string_view 
     tdata->view_->delete_live_data_up_to(last_time);
     // replot on a Qt thread
     QMetaObject::invokeMethod(
-        grox::senders::getMainWindow(), [=]() { tdata->chart_widget_->replot(); });
+        QCoreApplication::instance()->thread(), [=]() { tdata->chart_widget_->replot(); });
   }
   catch (std::exception& e)
   {

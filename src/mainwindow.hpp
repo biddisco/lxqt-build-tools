@@ -16,7 +16,6 @@
 #include "exchange/bitstamp.hpp"
 #include "exchange/order_book.hpp"
 #include "exchange/xrpl_network.hpp"
-#include "senders/qt_mainthread_scheduler.hpp"
 #include "widgets/connection_widget.hpp"
 // generated
 #include "ui_tabbed_form.h"

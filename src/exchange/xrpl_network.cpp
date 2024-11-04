@@ -29,7 +29,7 @@
 #include "exchange/xrpl_network.hpp"
 #include "network/evp-encrypt.hpp"
 #include "senders/qhttp-post-sender.hpp"
-#include "senders/qt_mainthread_scheduler.hpp"
+#include "senders/qtstdexec.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/xrp_functions.hpp"
 
@@ -142,8 +142,8 @@ bool xrpl_network::stream_subscribe(
   // always subscribe to a ticker before a stream it owns
   if (!ticker_subscribed(cp)) ticker_subscribe(cp);
 
-  auto snd = stdexec::on(qt_mainthread_scheduler(), stdexec::just())    //
-      | stdexec::then([this, cp, stream, enabled]() {                   //
+  auto snd = stdexec::on(QtStdExec::QThreadScheduler(), stdexec::just())    //
+      | stdexec::then([this, cp, stream, enabled]() {                       //
           bool ok = true;
           switch (stream)
           {
@@ -532,8 +532,8 @@ void xrpl_network::get_all_account_lines(exec::async_scope& scope)
 {
   for (auto& w : subscribed_wallets_)
   {
-    auto snd = stdexec::on(qt_mainthread_scheduler(), get_account_lines(w.public_))    // Qt
-        | stdexec::then([this, &w](QByteArray byteArray) {                             // pika
+    auto snd = stdexec::on(QtStdExec::QThreadScheduler(), get_account_lines(w.public_))    // Qt
+        | stdexec::then([this, &w](QByteArray byteArray) {                                 // pika
             std::string_view data(byteArray.constData(), byteArray.length());
             // debug : print the response headers and body
             xrpnet_dbg<8>.debug(str<>("Ledger response"), data);
@@ -626,7 +626,7 @@ void xrpl_network::get_all_account_infos(exec::async_scope& scope)
 {
   for (auto& w : subscribed_wallets_)
   {
-    auto snd = stdexec::on(qt_mainthread_scheduler(), get_account_info(w.public_)) |
+    auto snd = stdexec::on(QtStdExec::QThreadScheduler(), get_account_info(w.public_)) |
         stdexec::then([this, &w](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           // debug : print the response headers and body
@@ -695,7 +695,7 @@ void xrpl_network::get_all_account_offers(exec::async_scope& scope)
 {
   for (auto& w : subscribed_wallets_)
   {
-    auto snd = stdexec::on(qt_mainthread_scheduler(), get_account_offers(w.public_)) |
+    auto snd = stdexec::on(QtStdExec::QThreadScheduler(), get_account_offers(w.public_)) |
         stdexec::then([this, &w](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           // debug : print the response headers and body
@@ -798,7 +798,7 @@ bool xrpl_network::make_payment(currency const& c, basic_account* src, basic_acc
   from->sequence_++;
 
   auto snd =
-      stdexec::on(qt_mainthread_scheduler(), submit_signed_transaction(std::move(signed_tx))) |
+      stdexec::on(QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx))) |
       stdexec::then([this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         xrpnet_dbg<8>.debug(str<>("make_payment"), data);
@@ -865,7 +865,7 @@ void xrpl_network::place_limit_order(basic_account* acct, trade_data const& t, b
   from->sequence_++;
 
   auto snd =
-      stdexec::on(qt_mainthread_scheduler(), submit_signed_transaction(std::move(signed_tx))) |
+      stdexec::on(QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx))) |
       stdexec::then([this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         xrpnet_dbg<8>.debug(str<>("place_limit_order"), data);
@@ -899,7 +899,7 @@ void xrpl_network::cancel_order(trade_data const& t)
   from->sequence_++;
 
   auto snd =
-      stdexec::on(qt_mainthread_scheduler(), submit_signed_transaction(std::move(signed_tx))) |
+      stdexec::on(QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx))) |
       stdexec::then([this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         xrpnet_dbg<8>.debug(str<>("cancel_order"), data);
@@ -917,7 +917,7 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
     return;
   }
 
-  auto snd = stdexec::on(qt_mainthread_scheduler(), get_account_info(c1.issuer_)) |
+  auto snd = stdexec::on(QtStdExec::QThreadScheduler(), get_account_info(c1.issuer_)) |
       stdexec::then([this, c1](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         // debug : print the response headers and body
@@ -957,7 +957,7 @@ void xrpl_network::trustline(
       from->sequence_, limit, code, addr, flags);
 
   auto snd =
-      stdexec::on(qt_mainthread_scheduler(), submit_signed_transaction(std::move(signed_tx))) |
+      stdexec::on(QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx))) |
       stdexec::then([this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         xrpnet_dbg<8>.debug(str<>("trustline"), data);

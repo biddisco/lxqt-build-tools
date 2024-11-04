@@ -456,7 +456,7 @@ int main(int argc, char* argv[])
   // Set the callback to init thread_pools
   init_args.rp_callback = &init_resource_partitioner_handler;
   // tell the scheduler to sleep quickly when there are no tasks to work on
-  init_args.cfg = {"pika.max_idle_loop_count=10"};
+  init_args.cfg = {"pika.max_idle_loop_count=10", "pika.os_threads=4"};
 
   auto result = pika::init(pika_main, argc, argv, init_args);
   return result;

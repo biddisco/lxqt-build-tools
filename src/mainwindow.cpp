@@ -34,6 +34,7 @@
 #include "io/hdf5_ohlc_manager.hpp"
 #include "mainwindow.hpp"
 #include "network/evp-encrypt.hpp"
+#include "senders/qtstdexec.hpp"
 #include "util/datetime_utils.hpp"
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/connection_widget.hpp"
@@ -143,7 +144,7 @@ void create_ticker_price_plot(ticker_data tdata, currency_pair cp)
     auto v = t.amount;
     ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
     tdata->view_->add_live_data(new_sample);
-    QMetaObject::invokeMethod(grox::senders::getMainWindow(),
+    QMetaObject::invokeMethod(QCoreApplication::instance()->thread(),
         [=]() { tdata->chart_widget_->update_live_data(new_sample); });
   };
   tdata->live_trade_subscribers_.subscribe("price_plot", live_trade_subscription);
@@ -158,7 +159,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
   auto* orderbook_plot = create_order_book_plot_widget(cps, exch_name, tdata->orderbook_);
 
   auto orderbook_text_sub = [tdata, orderbook_text](currency_pair cp) {
-    QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=]() {
+    QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
       main_dbg<4>.debug(str<>("Orderbook-Text"), "orderbook_plot_sub");
       QString datastring = QString::fromStdString(tdata->orderbook_->get_orderbook_string());
       orderbook_text->setPlainText(datastring);
@@ -167,7 +168,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
   tdata->orderbook_subscribers_.subscribe("orderbook_text", orderbook_text_sub);
 
   auto orderbook_plot_sub = [tdata, orderbook_plot](currency_pair cp) {
-    QMetaObject::invokeMethod(grox::senders::getMainWindow(), [=]() {
+    QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
       main_dbg<4>.debug(str<>("Orderbook-Plot"), "orderbook_plot_sub");
       orderbook_plot->update_graph_limits();
       orderbook_plot->new_data_event();
@@ -728,9 +729,9 @@ void GroxMainWindow::showEvent(QShowEvent* event)
   if (only_once)
   {
     only_once = false;
-    auto snd = stdexec::on(grox::senders::qt_mainthread_scheduler(), stdexec::just())    //
-        | stdexec::then([this]() { loadConnectionSetups(); })                            //
-        | stdexec::then([this]() { loadWindowSettings(); });                             //
+    auto snd = stdexec::on(QtStdExec::QThreadScheduler(), stdexec::just())    //
+        | stdexec::then([this]() { loadConnectionSetups(); })                 //
+        | stdexec::then([this]() { loadWindowSettings(); });                  //
     stdexec::start_detached(std::move(snd));
   }
 }
