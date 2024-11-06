@@ -123,7 +123,9 @@ QWidget* get_widget(candle_data const& param)
   layout->addWidget(combo);
 
   // combo box of time ranges to choose from
-  QStringList temp({"1h", "1d", "1w", "1m", "1y", "all"});
+  QStringList temp;
+  for (auto const& s : candle_data::durations) { temp.push_back(s); }
+  //
   QComboBox* const combo2 = new QComboBox(widget);
   combo2->setObjectName("TimeRange");
   combo2->addItems(temp);

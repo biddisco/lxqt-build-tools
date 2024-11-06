@@ -92,6 +92,8 @@ class ohlc_data_resolutions
 // ----------------------------------------------------------------------------
 struct candle_data
 {
+  static constexpr std::array<char const*, 8> durations = {
+      "1h", "1d", "1w", "2w", "1m", "6m", "1y", "all"};
   candle_res res_;
   std::uint64_t numSamples_;
 
@@ -101,7 +103,9 @@ struct candle_data
     if (timestring == "1h") { samples = (60 * 60 * 1000ll) / res; }
     else if (timestring == "1d") { samples = (24 * 60 * 60 * 1000ll) / res; }
     else if (timestring == "1w") { samples = (7 * 24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "2w") { samples = (14 * 24 * 60 * 60 * 1000ll) / res; }
     else if (timestring == "1m") { samples = (30 * 24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "6m") { samples = (182 * 24 * 60 * 60 * 1000ll) / res; }
     else if (timestring == "1y") { samples = (365 * 24 * 60 * 60 * 1000ll) / res; }
     else if (timestring == "all") { samples = std::numeric_limits<std::uint64_t>::max(); }
     return samples;
@@ -109,18 +113,20 @@ struct candle_data
 
   std::string as_string() const
   {
-    if (numSamples_ == (60 * 60 * 1000ll) / res_)
+    if (numSamples_ <= (60 * 60 * 1000ll) / res_)
       return "1h";
-    else if (numSamples_ == (24 * 60 * 60 * 1000ll) / res_)
+    else if (numSamples_ <= (24 * 60 * 60 * 1000ll) / res_)
       return "1d";
-    else if (numSamples_ == (7 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (numSamples_ <= (7 * 24 * 60 * 60 * 1000ll) / res_)
       return "1w";
-    else if (numSamples_ == (30 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (numSamples_ <= (14 * 24 * 60 * 60 * 1000ll) / res_)
+      return "2w";
+    else if (numSamples_ <= (30 * 24 * 60 * 60 * 1000ll) / res_)
       return "1m";
-    else if (numSamples_ == (365 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (numSamples_ <= (182 * 24 * 60 * 60 * 1000ll) / res_)
+      return "6m";
+    else if (numSamples_ <= (365 * 24 * 60 * 60 * 1000ll) / res_)
       return "1y";
-    else if (numSamples_ == std::numeric_limits<std::uint64_t>::max())
-      return "all";
     return "all";
   }
 

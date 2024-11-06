@@ -34,7 +34,7 @@ public:
     {
       params_ = {//
           std::make_tuple<QString, param_types>(
-              "Samples", candle_data{ohlc_data_resolutions::minute15, 0}),
+              "Samples", candle_data{ohlc_data_resolutions::minute15, 5000}),
           std::make_tuple<QString, param_types>("Window size", 14)};
     }
 
