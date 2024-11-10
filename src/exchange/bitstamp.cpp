@@ -1096,10 +1096,19 @@ stream_set bitstamp_network::ticker_subscribe(currency_pair const& cp)
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_new_ohlc_data(ticker_data tdata, std::string_view data)
 {
+  json jdata;
   try
   {
     // convert json data into vectors of actual data
-    json jdata = json::parse(data)["data"]["ohlc"];
+    jdata = json::parse(data)["data"]["ohlc"];
+  }
+  catch (std::exception& e)
+  {
+    bitstamp_dbg<0>.error(str<>("JSON error"), "parsing OHLC data:", e.what(), "\n", data, "\n\n");
+    return;
+  }
+  try
+  {
     bitstamp_dbg<0>.debug(str<>("OHLC received"), tdata->view_->get_ticker_string(),
         ffmt<dec4>(jdata.size()), "json OHLC samples");
     QVector<ohlctv_sample> new_ohlc_samples;
@@ -1125,12 +1134,14 @@ void bitstamp_network::handle_new_ohlc_data(ticker_data tdata, std::string_view 
         msecs_unix_to_calendar_time(last_time));
     tdata->view_->delete_live_data_up_to(last_time);
     // replot on a Qt thread
-    QMetaObject::invokeMethod(
-        QCoreApplication::instance()->thread(), [=]() { tdata->chart_widget_->replot(); });
+    QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
+      if (tdata->chart_widget_) tdata->chart_widget_->replot();
+    });
   }
   catch (std::exception& e)
   {
-    bitstamp_dbg<0>.error(str<>("JSON error"), "decoding OHLC data:", e.what(), "\n", data, "\n\n");
+    bitstamp_dbg<0>.error(
+        str<>("JSON error"), "processing OHLC data:", e.what(), "\n", data, "\n\n");
     std::terminate();
   }
 }
