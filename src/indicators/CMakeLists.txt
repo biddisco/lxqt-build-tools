@@ -17,6 +17,8 @@ set(grox_indicators_SRCS
     relative_strength_indicator.hpp
     stochastic_oscillator.hpp
     stochastic_relative_strength_indicator.hpp
+    # trading
+    sliding_stop.hpp
 )
 
 add_library(

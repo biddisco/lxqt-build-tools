@@ -31,15 +31,35 @@ namespace indicators {
     /// the plot uses the same axes as the price data and can be plotted as an overlay
     price = 0,
     /// the plot uses the same axes as the volume and can be overlaid on it
-    volume = 1,
+    volume,
     /// the data might be price or volume compatible, depending on the OHLCV mode
-    mode_select = 2,
+    mode_select,
     /// the data will always lie in a range (eg 0,1 for RSI etc) and is fixed Y-axis
-    minmax_limit = 3,
+    minmax_limit,
+    /// buy/sell events are plotted on the the same axes as the price data
+    buy_sell,
     /// TBD
-    no_overlay = 4,
+    no_overlay,
   };
 
+  // ----------------------------------------------------------------------------
+  enum class buy_sell_event_type : int
+  {
+    // this data point represents a buy
+    buy,
+    // this data point represents a sell
+    sell,
+    // no event takes place, but a value is returned for plotting
+    value,
+    // no event takes place and nothing is returned
+    empty
+  };
+
+  struct buy_sell_point
+  {
+    buy_sell_event_type event_type_;
+    double value_;
+  };
   // ----------------------------------------------------------------------------
   /// Used in conjunction with minmax_limit to set the y-axis range
   struct y_limits

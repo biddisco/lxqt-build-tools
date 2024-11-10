@@ -86,7 +86,7 @@ class price_chart_widget : public QWidget
   std::tuple<indicator_plot*, timebased_data_curve*> add_indicator_plot(QString const& title,
       point_chart_data* data, QColor const& color, indicators::y_limits ylimits = {0.0, 0.0});
 
-  void remove_indicator_plot(indicator_plot* filter_plot, timebased_data_curve* curve);
+  void remove_indicator_plot(indicator_plot* filter_plot, QwtPlotCurve* curve);
 
   void resizeEvent(QResizeEvent* event) override;
   void showEvent(QShowEvent* event) override;

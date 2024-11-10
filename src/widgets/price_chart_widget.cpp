@@ -251,9 +251,21 @@ void price_chart_widget::connect_gui()
             for (int i = 0; i < algp.ptr()->num_outputs(); ++i)
             {
               auto ot = algp.ptr()->get_overlay(i);
-              timebased_data_curve* curve;
+              QwtPlotCurve* curve;
               if (ot == indicators::overlay_type::price)
                 curve = price_plot_->add_overlay_curve(name, algp.ptr()->get_outputs()[i], colour);
+              else if (ot == indicators::overlay_type::buy_sell)
+              {
+                if (i == 0)
+                  curve = price_plot_->add_buy_sell_curve(
+                      "Buy", algp.ptr()->get_outputs()[i]->samples(), Qt::green);
+                else if (i == 1)
+                  curve = price_plot_->add_buy_sell_curve(
+                      "Sell", algp.ptr()->get_outputs()[i]->samples(), Qt::red);
+                else
+                  curve =
+                      price_plot_->add_overlay_curve(name, algp.ptr()->get_outputs()[i], colour);
+              }
               else if (ot == indicators::overlay_type::mode_select)
               {
                 ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(algp.ptr()->get_params()[2]));
@@ -390,8 +402,7 @@ std::tuple<indicator_plot*, timebased_data_curve*> price_chart_widget::add_indic
 }
 
 // ----------------------------------------------------------------------------
-void price_chart_widget::remove_indicator_plot(
-    indicator_plot* filter_plot, timebased_data_curve* curve)
+void price_chart_widget::remove_indicator_plot(indicator_plot* filter_plot, QwtPlotCurve* curve)
 {
   // detach curves and autodelete them
   curve->detach();

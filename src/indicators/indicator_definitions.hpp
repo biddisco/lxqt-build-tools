@@ -14,6 +14,7 @@
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
 #include "indicators/moving_average_volume_weighted.hpp"
 #include "indicators/relative_strength_indicator.hpp"
+#include "indicators/sliding_stop.hpp"
 #include "indicators/stochastic_oscillator.hpp"
 #include "indicators/stochastic_relative_strength_indicator.hpp"
 #include "indicators/volatility_bollinger_bands.hpp"
@@ -36,7 +37,8 @@ namespace indicators {
       stochastic_relative_strength_indicator,        //
       volatility_bollinger_bands,                    //
       volatility_garman_klass,                       //
-      volatility_rogers_satchell                     //
+      volatility_rogers_satchell,                    //
+      sliding_stop                                   //
       >;
 
   // Generate a variant containing each type from the typelist

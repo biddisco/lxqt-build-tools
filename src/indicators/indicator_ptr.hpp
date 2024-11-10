@@ -11,6 +11,7 @@
 
 class indicator_plot;
 class timebased_data_curve;
+class QwtPlotCurve;
 
 namespace indicators {
   /// indicator_ptr - contains a shared_ptr to a vtable which invokes the indicator API
@@ -74,8 +75,8 @@ namespace indicators {
       void call_operator(std::uint64_t N) override { call_operator_impl(N); }
 
       // ----------------------------------------------------------------------------
-      /// The algorithm might not return a single value, so we provide
-      /// overloads that can handle vectors of values
+      /// Not all algorithms return the same type,
+      /// we provide overloads that can handle whatever is returned
       template <typename T = Algorithm,
           typename std::enable_if_t<std::is_same<typename T::result_type, double>::value, bool>
               Enable = false>
@@ -113,6 +114,44 @@ namespace indicators {
           {
             QPointF xyval(ohlc.time, vals[i]);
             outputs[i]->data().push_back(xyval);
+          }
+        }
+      }
+
+      // ----------------------------------------------------------------------------
+      template <typename T = Algorithm,
+          typename std::enable_if_t<std::is_same<typename T::result_type, buy_sell_point>::value,
+              bool>
+              Enable = false>
+      void call_operator_impl(std::uint64_t N)
+      {
+        auto const input = alg_.get_inputs()[0].dataset_;
+        auto outputs = alg_.get_outputs();
+        //
+        auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
+        for (auto it = i1; it != input->data().end(); ++it)
+        {
+          auto const& ohlc = *it;
+          auto vals = alg_.operator()(ohlc);
+          QPointF xyval(ohlc.time, vals.value_);
+          if (vals.event_type_ == buy_sell_event_type::buy)    //
+          {
+            outputs[0]->data().push_back(xyval);
+            outputs[2]->data().push_back(xyval);
+          }
+          else if (vals.event_type_ == buy_sell_event_type::sell)
+          {
+            outputs[1]->data().push_back(xyval);
+            outputs[2]->data().push_back(xyval);
+          }
+          else if (vals.event_type_ == buy_sell_event_type::value)
+          {
+            outputs[2]->data().push_back(xyval);
+          }
+          else
+          {
+            outputs[2]->data().push_back(xyval);
+            //
           }
         }
       }
@@ -156,6 +195,6 @@ namespace indicators {
     // ----------------------------------------------------------------------------
     std::shared_ptr<indicator_API_vtable> binding;
     indicator_plot* plot{nullptr};
-    std::vector<timebased_data_curve*> curves;
+    std::vector<QwtPlotCurve*> curves;
   };
 }    // namespace indicators
