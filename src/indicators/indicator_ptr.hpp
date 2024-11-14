@@ -47,8 +47,14 @@ namespace indicators {
         for (auto d : alg_.get_inputs())
         {
           indicator_dbg<0>.debug(str<>("UnSubscribing"), d.dataset_->get_resolution());
-          d.dataset_->new_data_subscribers_.unsubscribe("indicator");
+          d.dataset_->new_data_subscribers_.unsubscribe(subscription_name());
         }
+      }
+
+      // ----------------------------------------------------------------------------
+      std::string subscription_name()
+      {
+        return alg_.get_name() + "-" + std::to_string((uintptr_t) (&alg_));
       }
 
       // ----------------------------------------------------------------------------
@@ -61,7 +67,7 @@ namespace indicators {
         using namespace grox::debug;
         for (auto d : alg_.get_inputs())
         {
-          std::string id = alg_.get_name() + std::to_string((uintptr_t) (&alg_));
+          std::string id = subscription_name();
           indicator_dbg<0>.debug(str<>("Subscribing"), id, d.dataset_->get_resolution());
           d.dataset_->new_data_subscribers_.subscribe(id, [this](std::uint64_t N) {
             indicator_dbg<0>.debug(str<>(alg_.get_name().c_str()), "new samples", ffmt<dec4>(N));

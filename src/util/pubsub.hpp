@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 // grox
+#include <pika/concurrency/spinlock.hpp>
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
 
@@ -18,11 +19,16 @@ namespace grox {
   template <typename... Message>
   struct PublishSubscribe
   {
+    /// Spinlock is used as it can be called by OS threads or pika tasks
+    using mutex_type = pika::detail::spinlock;
+    /// each pubsub instance is based on the callback type
     using Signature = std::function<void(Message...)>;
     std::unordered_map<std::string, Signature> subscriptions;
+    mutable mutex_type add_remove_mtx_;
 
     void publish(Message... message) const
     {
+      std::lock_guard<mutex_type> lk(add_remove_mtx_);
       if (subscriptions.size() > 0)
       {
         using namespace grox::debug;
@@ -37,6 +43,7 @@ namespace grox {
     void subscribe(std::string const& id, Signature callback)
     {
       using namespace grox::debug;
+      std::lock_guard<mutex_type> lk(add_remove_mtx_);
       if (subscriptions.contains(id))
       {
         pubsub_dbg<0>.error(str<>("duplicate subscribe"), id, print_type<Signature>());
@@ -44,9 +51,20 @@ namespace grox {
       subscriptions.insert(std::make_pair(id, callback));
     }
 
-    void unsubscribe(std::string const& id) { subscriptions.erase(id); }
+    void unsubscribe(std::string const& id)
+    {
+      std::lock_guard<mutex_type> lk(add_remove_mtx_);
+      if (subscriptions.contains(id))
+        subscriptions.erase(id);
+      else
+        throw std::runtime_error("Incorrect Id given to unsubscribe");
+    }
 
-    void clear() { subscriptions.clear(); }
+    void clear()
+    {
+      std::lock_guard<mutex_type> lk(add_remove_mtx_);
+      subscriptions.clear();
+    }
   };
 
 }    // namespace grox
