@@ -49,6 +49,7 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
 {
   ui->setupUi(this);
   ui->ticker->setText(ticker_string_.data());
+
   //
   // Create candlestick plot
   //
@@ -56,13 +57,8 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   ui->candlestick_layout->addWidget(price_plot_);
 
   //
-  // Create stream/filters plot
+  // Create indicators table
   //
-  //  assets_plot_ = new indicator_plot(this);
-  //  ui->indicators_layout->addWidget(assets_plot_);
-  //  assets_plot_->setMinimumHeight(128);
-  //  assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
-
   QStringList slist("Auto");
   for (auto const& r : ohlc_data_resolutions::available_resolutions()) { slist << r.name_; }
   ui->candle_res->addItems(slist);
@@ -79,6 +75,7 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
   horizontalHeader->setSectionResizeMode(1, QHeaderView::ResizeMode::Interactive);
   horizontalHeader->setSectionResizeMode(2, QHeaderView::ResizeMode::ResizeToContents);
   horizontalHeader->setSectionResizeMode(3, QHeaderView::ResizeMode::ResizeToContents);
+  horizontalHeader->setSectionResizeMode(4, QHeaderView::ResizeMode::ResizeToContents);
 
   QHeaderView* verticalHeader = ind_vis_->verticalHeader();
   verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
@@ -196,7 +193,7 @@ void price_chart_widget::connect_gui()
       },
       Qt::QueuedConnection);
 
-  connect(ind_vis_, &QTableView::clicked, this, [this](QModelIndex const& i) {
+  connect(ind_vis_, &QTableView::clicked, this, [this, table = ind_vis_](QModelIndex const& i) {
     int col = i.column();
     int row = i.row();
     if (col == 2)
@@ -216,7 +213,22 @@ void price_chart_widget::connect_gui()
       ind_model_.dataAdded();
       this->replot();
     }
-    else if (col == 3)
+    else if (col == 3)    // toggle indicator curve visibility
+    {
+      auto it = std::next(ind_model_.indicators_.begin(), row);
+      it->visibility_ = !it->visibility_;
+      for (auto* curve : it->curves)
+      {
+        if (it->visibility_)
+          curve->show();
+        else
+          curve->hide();
+      }
+      this->replot();
+      // clear selection
+      table->setCurrentIndex(QModelIndex());
+    }
+    else if (col == 4)    // delete indicator
     {
       auto it = std::next(ind_model_.indicators_.begin(), row);
       for (auto* curve : it->curves) { remove_indicator_plot(it->plot, curve); }
@@ -433,7 +445,7 @@ indicators_model::indicators_model(QObject* parent)
 
 int indicators_model::rowCount(QModelIndex const& /*parent*/) const { return indicators_.size(); }
 
-int indicators_model::columnCount(QModelIndex const& /*parent*/) const { return 4; }
+int indicators_model::columnCount(QModelIndex const& /*parent*/) const { return 5; }
 
 QVariant indicators_model::data(QModelIndex const& index, int role) const
 {
@@ -456,6 +468,13 @@ QVariant indicators_model::data(QModelIndex const& index, int role) const
     return col;
   }
   else if (role == Qt::DecorationRole && index.column() == 3)
+  {
+    if (it->visibility_)
+      return (QIcon(":/images/icons/pqEyeball.svg"));
+    else
+      return (QIcon(":/images/icons/pqEyeballClosed.svg"));
+  }
+  else if (role == Qt::DecorationRole && index.column() == 4)
   {
     return (QCommonStyle().standardIcon(QStyle::SP_TrashIcon));
   }

@@ -196,5 +196,6 @@ namespace indicators {
     std::shared_ptr<indicator_API_vtable> binding;
     indicator_plot* plot{nullptr};
     std::vector<QwtPlotCurve*> curves;
+    bool visibility_{true};
   };
 }    // namespace indicators
