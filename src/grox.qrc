@@ -2,5 +2,7 @@
     <qresource prefix="/">
         <file>../images/xrp.ico</file>
         <file>../images/xrp.jpg</file>
+        <file>../images/icons/pqEyeball.svg</file>
+        <file>../images/icons/pqEyeballClosed.svg</file>
     </qresource>
 </RCC>
