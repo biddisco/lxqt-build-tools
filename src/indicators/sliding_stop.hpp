@@ -8,7 +8,7 @@
 #include "data/ohlc_data_resolutions.hpp"
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
-#include "indicators/moving_average_volume_weighted.hpp"
+#include "indicators/moving_average_exponential_volume_weighted.hpp"
 
 namespace indicators {
 
@@ -49,10 +49,10 @@ public:
     {
       params_ = {//
           std::make_tuple<QString, param_types>(
-              "Samples", candle_data{ohlc_data_resolutions::minute15, 5000}),
+              "Samples", candle_data{ohlc_data_resolutions::hour4, 1000}),
           std::make_tuple<QString, param_types>("Window size", 7),
           std::make_tuple<QString, param_types>("mode", ohlc_modes::mid_open_close),
-          std::make_tuple<QString, param_types>("Sliding Gap", 3.5 / 100)};
+          std::make_tuple<QString, param_types>("Sliding Gap", 3.0 / 100)};
     }
 
     // ---------------------------------------
@@ -64,7 +64,7 @@ public:
       gap_ = std::get<double>(std::get<1>(params_[3]));
       buffer1_ = boost::circular_buffer<float>(window_size_);
       last_val_ = std::numeric_limits<double>::min();
-      average_ = moving_average_volume_weighted(window_size_, mode_);
+      average_ = moving_average_exponential_volume_weighted(window_size_, mode_);
 
       current_max_ = 0;
     }
@@ -84,8 +84,9 @@ public:
       }
 
       // update vars needed to track state
+      // current_max_ = std::max(current_max_, ohlc_mode_extract(ohlc_modes::mid_high_low, val));
       current_max_ = std::max(current_max_, current_val_);
-      current_grad_ = (last_val_ - current_val_);
+      current_grad_ = (current_val_ - last_val_);
       //
       if (active_)
       {
@@ -95,16 +96,19 @@ public:
         {    //
           last_result_ = {buy_sell_event_type::value, current_val_};
         }
-        else
+        else if (current_grad_ < 0)
         {
-          // we have fallen below the trigger, sell
+          // we have fallen below the trigger, and trending down - sell
           active_ = false;
+          last_sell_ = current_val_;
           last_result_ = {buy_sell_event_type::sell, current_val_};
         }
+        else { last_result_ = {buy_sell_event_type::value, current_val_}; }
       }
       else
       {
-        if ((current_grad_ < 0) && (last_grad_ >= 0))    // switched to rising trend,
+        if ((current_grad_ > 0) && (last_grad_ <= 0) &&
+            (current_grad_ > 0 > 0.01))    // switched to rising trend,
         {
           active_ = true;
           current_max_ = current_val_;
@@ -126,7 +130,7 @@ public:
 
 private:
     ohlc_modes mode_;
-    moving_average_volume_weighted average_;
+    moving_average_exponential_volume_weighted average_;
     boost::circular_buffer<float> buffer1_;
     double gap_;
     int window_size_;
@@ -137,6 +141,7 @@ private:
     double last_grad_;
     buy_sell_point last_result_;
     bool active_;
+    double last_sell_;
   };
 
 }    // namespace indicators
