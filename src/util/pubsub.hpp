@@ -26,6 +26,10 @@ namespace grox {
     std::unordered_map<std::string, Signature> subscriptions;
     mutable mutex_type add_remove_mtx_;
 
+    // ----------------------------------------------------------------------------
+    ~PublishSubscribe() { clear(); }
+
+    // ----------------------------------------------------------------------------
     void publish(Message... message) const
     {
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
@@ -40,6 +44,7 @@ namespace grox {
       }
     }
 
+    // ----------------------------------------------------------------------------
     void subscribe(std::string const& id, Signature callback)
     {
       using namespace grox::debug;
@@ -51,17 +56,37 @@ namespace grox {
       subscriptions.insert(std::make_pair(id, callback));
     }
 
+    // ----------------------------------------------------------------------------
     void unsubscribe(std::string const& id)
     {
+      using namespace grox::debug;
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
-      if (subscriptions.contains(id))
-        subscriptions.erase(id);
+      if (subscriptions.contains(id)) { subscriptions.erase(id); }
       else
-        throw std::runtime_error("Incorrect Id given to unsubscribe");
+      {
+        if (subscriptions.empty())
+        {
+          pubsub_dbg<0>.error(str<>("unsubscribe"), id, "empty/cleared", print_type<Signature>());
+        }
+        else
+        {
+          for (auto const& [k, v] : subscriptions)
+          {
+            pubsub_dbg<0>.error(str<>("unsubscribe"), id, k, print_type<Signature>());
+          }
+          throw std::runtime_error("Incorrect Id given to unsubscribe");
+        }
+      }
     }
 
+    // ----------------------------------------------------------------------------
     void clear()
     {
+      using namespace grox::debug;
+      for (auto const& [k, v] : subscriptions)
+      {
+        pubsub_dbg<0>.debug(str<>("unsubscribe"), "clear", k, print_type<Signature>());
+      }
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
       subscriptions.clear();
     }
