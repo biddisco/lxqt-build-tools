@@ -29,7 +29,7 @@ protected:
     /// generic vars that can be provided at construction time
     std::string name_;
     std::string description_;
-    overlay_type overlay_;
+    overlay_vector overlay_;
 
     /// list of parameters/types that need to be supplied for GUI generation and execution
     param_list params_;
@@ -38,12 +38,13 @@ protected:
     std::vector<std::uint64_t> in_ranges_;
     std::vector<input_data> in_datasets_;
     std::vector<point_chart_data*> out_datasets_;
+    std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;
 
 public:
     /// constructor factory for a type
     template <typename Algorithm>
     static std::shared_ptr<Algorithm>
-    create(Algorithm const& alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_)
+    create(Algorithm const& alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc)
     {
       // create a new instance of the algorithm
       std::shared_ptr<Algorithm> result = std::make_shared<Algorithm>();
@@ -51,14 +52,15 @@ public:
       *result = alg;
       // init internal structures
       result->initialize();
+      result->hdf5_ohlc_ = hdf5_ohlc;
       // create a dataset for each indicator output
-      result->create_outputs(hdf5_ohlc_);
+      result->create_outputs(hdf5_ohlc);
       //
       return result;
     }
 
     // ----------------------------------------------------------------------------
-    indicator_base(std::string const& name, std::string const& desc, overlay_type overlay)
+    indicator_base(std::string const& name, std::string const& desc, overlay_vector const& overlay)
       : name_(name)
       , description_(desc)
       , overlay_(overlay)
@@ -79,7 +81,7 @@ public:
     // ----------------------------------------------------------------------------
     /// in principle an indicator can return multiple graph series, which might require
     /// different display types, currently they are all the same, so 'n' is ignored
-    virtual const overlay_type get_overlay(int n) const { return overlay_; }
+    virtual const overlay_type get_overlay(int n) const { return overlay_[n]; }
 
     // ----------------------------------------------------------------------------
     virtual param_list const& get_params() const { return params_; }

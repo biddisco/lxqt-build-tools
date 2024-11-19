@@ -12,8 +12,11 @@
 
 namespace indicators {
 
+  const static overlay_vector overlays = {overlay_type::buy_sell, overlay_type::buy_sell,
+      overlay_type::buy_sell, overlay_type::relative_gain};
+
   //----------------------------------------------------------------------------
-  class sliding_stop : public indicator_base
+  class trade_sell_sliding_stop : public indicator_base
   {
     enum sliding_state
     {
@@ -28,9 +31,9 @@ public:
 
     // ---------------------------------------
     /// Default constructor
-    sliding_stop(
+    trade_sell_sliding_stop(
         int window_size = 7, ohlc_modes mode = ohlc_modes::mid_high_low, double gap = 3.5 / 100)
-      : indicator_base("Sliding Stop", "Trade: Sliding Stop", overlay_type::buy_sell)
+      : indicator_base("Trade: Sliding Stop", "Trade: Sliding Stop", overlays)
       , mode_(mode)
       , average_{}
       , buffer1_(window_size)
@@ -41,7 +44,7 @@ public:
     }
 
     // ---------------------------------------
-    int num_outputs() const override { return 3; }
+    int num_outputs() const override { return 4; }
 
     // ---------------------------------------
     /// fields required for auto gui generation
@@ -65,6 +68,8 @@ public:
       buffer1_ = boost::circular_buffer<float>(window_size_);
       last_val_ = std::numeric_limits<double>::min();
       average_ = moving_average_exponential_volume_weighted(window_size_, mode_);
+      xrp_total_ = 1;
+      cash_total_ = 0;
 
       current_max_ = 0;
     }
@@ -79,6 +84,7 @@ public:
       if (last_val_ == std::numeric_limits<double>::min())
       {
         last_val_ = current_val_;
+        last_sample_ = val;
         last_grad_ = 0;
         current_max_ = 0;
       }
@@ -86,7 +92,9 @@ public:
       // update vars needed to track state
       // current_max_ = std::max(current_max_, ohlc_mode_extract(ohlc_modes::mid_high_low, val));
       current_max_ = std::max(current_max_, current_val_);
-      current_grad_ = (current_val_ - last_val_);
+      // current gradient - currency units per day (eg 1$ per day)
+      double time_elapsed = (val.time - last_sample_.time) / ohlc_data_resolutions::day;
+      current_grad_ = (time_elapsed > 0) ? (current_val_ - last_val_) / time_elapsed : 0;
       //
       if (active_)
       {
@@ -94,34 +102,51 @@ public:
         // if we are still within our hold range
         if ((gap_ - gap) >= 0.0)
         {    //
-          last_result_ = {buy_sell_event_type::value, current_val_};
+          last_result_ = {
+              buy_sell_event_type::value, current_val_, last_result_.tokens_, last_result_.cash_};
         }
         else if (current_grad_ < 0)
         {
           // we have fallen below the trigger, and trending down - sell
           active_ = false;
           last_sell_ = current_val_;
-          last_result_ = {buy_sell_event_type::sell, current_val_};
+          // compute the selling price
+          double p = hdf5_ohlc_->get_estimated_sell_price(xrp_total_, val.time, 2.0);
+          cash_total_ = xrp_total_ * p;
+          xrp_total_ = 0;
+          //
+          last_result_ = {buy_sell_event_type::sell, current_val_, xrp_total_, cash_total_};
         }
-        else { last_result_ = {buy_sell_event_type::value, current_val_}; }
+        else
+        {
+          last_result_ = {
+              buy_sell_event_type::value, current_val_, last_result_.tokens_, last_result_.cash_};
+        }
       }
       else
       {
-        if ((current_grad_ > 0) && (last_grad_ <= 0) &&
-            (current_grad_ > 0 > 0.01))    // switched to rising trend,
+        if ((current_grad_ > 0.01))    // switched to rising trend,
         {
           active_ = true;
           current_max_ = current_val_;
-          last_result_ = {buy_sell_event_type::buy, current_val_};
+          // compute the buying price
+          auto p = hdf5_ohlc_->get_trade_data_by_value(cash_total_, val.time, 2.0);
+          xrp_total_ = cash_total_ / p.high;
+          cash_total_ = 0;
+          //
+          last_result_ = {buy_sell_event_type::buy, current_val_, xrp_total_, cash_total_};
         }
         else    // falling trend
         {
-          last_result_ = {buy_sell_event_type::empty, current_val_};
+          last_result_ = {
+              buy_sell_event_type::empty, current_val_, last_result_.tokens_, last_result_.cash_};
         }
       }
-
+      // last_result_.tokens_ = current_grad_;
       last_val_ = current_val_;
       last_grad_ = current_grad_;
+      last_sample_ = val;
+
       return last_result_;
     }
 
@@ -142,6 +167,9 @@ private:
     buy_sell_point last_result_;
     bool active_;
     double last_sell_;
+    double xrp_total_;
+    double cash_total_;
+    ohlctv_sample last_sample_;
   };
 
 }    // namespace indicators

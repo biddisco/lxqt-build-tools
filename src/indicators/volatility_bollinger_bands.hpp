@@ -19,7 +19,7 @@ public:
     /// Default constructor
     volatility_bollinger_bands(
         int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 2)
-      : indicator_base("Bollinger-Bands", "Bollinger-Bands", overlay_type::price)
+      : indicator_base("Bollinger-Bands", "Bollinger-Bands", {overlay_type::price})
       , average_{}
       , num_bands_{num_bands}
       , window_size_(window_size)

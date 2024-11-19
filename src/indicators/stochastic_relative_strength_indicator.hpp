@@ -24,7 +24,7 @@ public:
     /// Default constructor
     stochastic_relative_strength_indicator()
       : indicator_base(
-            "Stochastic RSI", "Stochastic Relatve Strength Indicator", overlay_type::minmax_limit)
+            "Stochastic RSI", "Stochastic Relatve Strength Indicator", {overlay_type::minmax_limit})
       , mov_av_k_(ba::tag::rolling_window::window_size = 3)
       , rsi_{}
       , osc_{}

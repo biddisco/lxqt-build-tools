@@ -22,7 +22,7 @@ public:
     // ---------------------------------------
     // Default constructor
     moving_average(int window_size = 14, ohlc_modes mode = ohlc_modes::low)
-      : indicator_base("Moving Average", "Simple Moving Average", overlay_type::mode_select)
+      : indicator_base("Moving Average", "Simple Moving Average", {overlay_type::mode_select})
       , window_size_(window_size)
       , mode_(mode)
       , mean_(0)

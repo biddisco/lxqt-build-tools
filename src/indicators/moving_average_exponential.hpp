@@ -15,7 +15,7 @@ public:
     moving_average_exponential(int window_size = 14, ohlc_modes mode = ohlc_modes::low,
         bool user_alpha = false, double decay_factor = 0.1)
       : indicator_base("Moving Average (Exponential)", "Exponential (Time-decay) Moving Average",
-            overlay_type::mode_select)
+            {overlay_type::mode_select})
       , window_size_(window_size)
       , mode_(mode)
       , mean_(0)

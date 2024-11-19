@@ -15,7 +15,7 @@ public:
     // ---------------------------------------
     /// Default constructor
     relative_strength_indicator()
-      : indicator_base("RSI", "Relatve Strength Indicator", overlay_type::minmax_limit)
+      : indicator_base("RSI", "Relatve Strength Indicator", {overlay_type::minmax_limit})
       , pos_diff{0}
       , neg_diff{0}
       , count{0}

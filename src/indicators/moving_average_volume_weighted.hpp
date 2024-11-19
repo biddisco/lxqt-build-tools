@@ -22,7 +22,7 @@ public:
     /// Default constructor
     moving_average_volume_weighted(int window_size = 14, ohlc_modes mode = ohlc_modes::low)
       : indicator_base("Moving Average (Volume Weighted)",
-            "Moving Average with Volume weighted values", overlay_type::mode_select)
+            "Moving Average with Volume weighted values", {overlay_type::mode_select})
       , window_size_(window_size)
       , mode_(mode)
       , mean_(0)

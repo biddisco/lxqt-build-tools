@@ -34,13 +34,17 @@ namespace indicators {
     volume,
     /// the data might be price or volume compatible, depending on the OHLCV mode
     mode_select,
-    /// the data will always lie in a range (eg 0,1 for RSI etc) and is fixed Y-axis
-    minmax_limit,
     /// buy/sell events are plotted on the the same axes as the price data
     buy_sell,
+    /// the data will always lie in a range (eg 0,1 for RSI etc) and is fixed Y-axis
+    minmax_limit,
+    /// the data range from 0 to +/ some value to be found from the data
+    relative_gain,
     /// TBD
     no_overlay,
   };
+
+  using overlay_vector = std::vector<overlay_type>;
 
   // ----------------------------------------------------------------------------
   enum class buy_sell_event_type : int
@@ -59,7 +63,10 @@ namespace indicators {
   {
     buy_sell_event_type event_type_;
     double value_;
+    double tokens_;
+    double cash_;
   };
+
   // ----------------------------------------------------------------------------
   /// Used in conjunction with minmax_limit to set the y-axis range
   struct y_limits

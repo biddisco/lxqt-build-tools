@@ -155,10 +155,10 @@ namespace indicators {
           {
             outputs[2]->data().push_back(xyval);
           }
-          else
+          else { outputs[2]->data().push_back(xyval); }
           {
-            outputs[2]->data().push_back(xyval);
-            //
+            QPointF trade(ohlc.time, vals.tokens_);
+            outputs[3]->data().push_back(trade);
           }
         }
       }

@@ -21,7 +21,7 @@ public:
     /// Default constructor
     volatility_garman_klass(
         int window_size = 14, ohlc_modes mode = ohlc_modes::low, int num_bands = 1)
-      : indicator_base("Garman-Klass", "Garman-Klass volatility", overlay_type::price)
+      : indicator_base("Garman-Klass", "Garman-Klass volatility", {overlay_type::price})
       , average_{}
       , buffer1_(window_size)
       , scale_{1.0}

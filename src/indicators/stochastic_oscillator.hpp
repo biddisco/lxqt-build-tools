@@ -17,7 +17,8 @@ public:
     // ---------------------------------------
     /// Default constructor
     stochastic_oscillator()
-      : indicator_base("Stochastic Oscillator", "Stochastic Oscillator", overlay_type::minmax_limit)
+      : indicator_base(
+            "Stochastic Oscillator", "Stochastic Oscillator", {overlay_type::minmax_limit})
       , buffer_{}
       , stoch_val_{0.5}
       , mode_{1}
