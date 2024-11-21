@@ -174,7 +174,7 @@ class exchange
   // setup / query tickers
   // ---------------------------------------
   virtual bool add_currency_pair(currency_pair const& cp);
-  virtual currency_pairlist const& get_currency_pairs();
+  virtual currency_pairlist const& get_currency_pairs() const;
 
   // ---------------------------------------
   // currency management
@@ -194,8 +194,8 @@ class exchange
   // ---------------------------------------
   // fees
   // ---------------------------------------
-  virtual double get_fee_percent(currency_pair const& cp) = 0;
-  virtual double get_fee_fixed(currency_pair const& cp) = 0;
+  virtual double get_transaction_fee_percent(currency_pair const& cp) = 0;
+  virtual double get_transaction_fee_fixed(currency_pair const& cp) = 0;
   virtual double get_transfer_fee(currency const& c1) = 0;
   virtual void custom_functions(basic_account* acct) = 0;
 

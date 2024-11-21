@@ -1,3 +1,4 @@
+#include <regex>
 #include <string>
 //
 #include <QMenu>
@@ -355,25 +356,17 @@ bool bitstamp_network::can_send(currency const& c, exchange* dest)
 }
 
 // ----------------------------------------------------------------------------
-double bitstamp_network::get_fee_percent(currency_pair const& cp)
+double bitstamp_network::get_transaction_fee_percent(currency_pair const& cp)
 {
-  std::pair<std::string, std::string> cpair;
-  if (std::get<0>(cp).is_xrp())
-  {
-    cpair = std::make_pair(
-        lowercase(std::get<0>(cp).to_string().first), lowercase(std::get<1>(cp).to_string().first));
-  }
-  else
-  {
-    cpair = std::make_pair(
-        lowercase(std::get<1>(cp).to_string().first), lowercase(std::get<0>(cp).to_string().first));
-  }
-  auto const val = fee_map_.at(cpair);
-  return val;
+  if (transaction_fee_map_.contains(cp)) return transaction_fee_map_.at(cp);
+  currency_pair cp2 = reverse_pair(cp);
+  if (transaction_fee_map_.contains(cp2)) return transaction_fee_map_.at(cp2);
+  throw std::runtime_error("transaction fee lookup failed");
+  return 0.0;
 }
 
 // ----------------------------------------------------------------------------
-double bitstamp_network::get_fee_fixed(currency_pair const& cp) { return 0.0; }
+double bitstamp_network::get_transaction_fee_fixed(currency_pair const& cp) { return 0.0; }
 
 // ----------------------------------------------------------------------------
 bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic_account* dest)
@@ -458,8 +451,31 @@ any_bytearray_sender bitstamp_network::request_tickers_available()
 }
 
 // ----------------------------------------------------------------------------
+currency add_fiat_issuer(currency const& c)
+{
+  static std::vector<std::string> fiat{"USD", "EUR", "GBP"};
+  for (auto const& f : fiat)
+  {
+    if ((c.code_ == f)) return {currency_code::bitstamp_trust, c.code_};
+  }
+  return c;
+}
+
+// ----------------------------------------------------------------------------
+currency_pair bitstamp_network::split_token_string(std::string utoken) const
+{
+  for (auto const& cp : get_currency_pairs())
+  {
+    if (currency_pair_string(cp, "", false) == utoken) { return cp; }
+  }
+  throw std::runtime_error("split_token_string: Currency pair not found");
+}
+
+// ----------------------------------------------------------------------------
 void bitstamp_network::handle_account_info(std::string_view data)
 {
+  std::vector<currency> fiat{{currency_code::bitstamp_trust, "USD"},
+      {currency_code::bitstamp_trust, "EUR"}, {currency_code::bitstamp_trust, "GBP"}};
   try
   {
     nlohmann::json jdata = nlohmann::json::parse(data);
@@ -467,55 +483,59 @@ void bitstamp_network::handle_account_info(std::string_view data)
     //
     bitstamp_account& acct = get_bitstamp_instance()->account();
 
-    currency xrp_bitstamp{{"", "XRP"},
-        std::stod(jdata["xrp_balance"].get_ptr<json::string_t*>()->c_str()),
-        std::stod(jdata["xrp_available"].get_ptr<json::string_t*>()->c_str()),
-        std::stod(jdata["xrp_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
-    acct.add_currency(xrp_bitstamp);
-
-    if (jdata.contains("usd_balance"))
+    std::regex bal_regex("_balance", std::regex_constants::icase);
+    std::regex tok_regex("([^_]+)_.*");
+    std::regex trans_fee_regex("[^_]+_fee", std::regex_constants::icase);
+    std::regex withd_fee_regex("[^_]+_withdrawal_fee", std::regex_constants::icase);
+    std::smatch mtch;
+    for (auto const& [key, val] : jdata.items())
     {
-      currency usd_bitstamp{{currency::bitstamp_trust, "USD"},
-          std::stod(jdata["usd_balance"].get_ptr<json::string_t*>()->c_str()),
-          std::stod(jdata["usd_available"].get_ptr<json::string_t*>()->c_str()),
-          std::stod(jdata["usd_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
-      acct.add_currency(usd_bitstamp);
-    }
-
-    if (jdata.contains("eur_balance"))
-    {
-      currency eur_bitstamp{{currency::bitstamp_trust, "EUR"},
-          std::stod(jdata["eur_balance"].get_ptr<json::string_t*>()->c_str()),
-          std::stod(jdata["eur_available"].get_ptr<json::string_t*>()->c_str()),
-          std::stod(jdata["eur_reserved"].get_ptr<json::string_t*>()->c_str()), nullptr};
-      acct.add_currency(eur_bitstamp);
-    }
-
-    if (jdata.contains("xrpusd_fee"))
-    {
-      double xrpusd_fee = std::stod(jdata["xrpusd_fee"].get_ptr<json::string_t*>()->c_str());
-      std::pair<std::string, std::string> cpair = std::make_pair("xrp", "usd");
-      auto const [it, success] = fee_map_.insert({cpair, xrpusd_fee});
-      if (success) { bitstamp_dbg<0>.debug(str<>("new fee xrp/usd"), xrpusd_fee); }
-      else
+      // for any currency with a non zero balance, add it to our account
+      double value = std::stod(JCHARP(val));
+      if (std::regex_search(key, bal_regex) && (value > 0))
       {
-        bitstamp_dbg<0>.debug(str<>("replace fee xrp/usd"), xrpusd_fee);
-        fee_map_[cpair] = xrpusd_fee;
+        if (std::regex_match(key, mtch, tok_regex))
+        {
+          std::string ltoken = mtch[1];
+          std::string utoken = uppercase(ltoken);
+          currency cur{{"", utoken},                              //
+              value,                                              //
+              std::stod(JCHARP(jdata[ltoken + "_available"])),    //
+              std::stod(JCHARP(jdata[ltoken + "_reserved"])),     //
+              // std::stod(JCHARP(jdata[ltoken + "__withdrawal_fee"])),    //
+              nullptr};
+          acct.add_currency(cur);
+
+          bitstamp_dbg<0>.debug(str<>("account info"), cur);
+        }
+      }
+
+      // add fees (withdrawal/transaction)
+      if (std::regex_search(key, withd_fee_regex))
+      {
+        if (std::regex_match(key, mtch, tok_regex))
+        {
+          // @todo - this needs to be checked to correctly handle non 3 letter codes
+          std::string utoken = uppercase(mtch[1]);
+          withdrawal_fee_map_[{"", utoken}] = value;
+          bitstamp_dbg<0>.debug(str<>("account info"), "withdrawal fee", utoken, value);
+        }
+      }
+      else if (std::regex_search(key, trans_fee_regex))
+      {
+        if (std::regex_match(key, mtch, tok_regex))
+        {
+          // bitstamp (so far) always quotes fees as token_fiat not fiat_token
+          std::string utoken = uppercase(mtch[1]);
+          currency_pair cp = split_token_string(utoken);
+          currency tmp1 = std::get<0>(cp);
+          currency tmp2 = std::get<1>(cp);
+          transaction_fee_map_[currency_pair{tmp1, tmp2}] = value;
+          bitstamp_dbg<0>.debug(str<>("account info"), "transaction fee", tmp1, tmp2, value);
+        }
       }
     }
 
-    if (jdata.contains("xrpeur_fee"))
-    {
-      double xrpeur_fee = std::stod(jdata["xrpeur_fee"].get_ptr<json::string_t*>()->c_str());
-      std::pair<std::string, std::string> cpair = std::make_pair("xrp", "eur");
-      auto const [it, success] = fee_map_.insert({cpair, xrpeur_fee});
-      if (success) { bitstamp_dbg<0>.debug(str<>("new fee xrp/eur"), xrpeur_fee); }
-      else
-      {
-        bitstamp_dbg<0>.debug(str<>("replace fee xrp/eur"), xrpeur_fee);
-        fee_map_[cpair] = xrpeur_fee;
-      }
-    }
     emit update_wallet_widget(&acct);
   }
   catch (std::exception_ptr const& e)
@@ -559,6 +579,7 @@ void bitstamp_network::handle_open_orders(std::string_view data)
   trades.clear();
   //
   nlohmann::json jdata = nlohmann::json::parse(data);
+  bitstamp_dbg<6>.debug(str<>("open_orders"), jdata.dump());
   for (auto const& [key, val] : jdata.items())
   {
     const std::string jstring = val[std::string_view("currency_pair")];

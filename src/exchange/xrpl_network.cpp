@@ -943,10 +943,10 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
 double xrpl_network::get_transfer_fee(currency const& c1) { return currency_fees_[c1.issuer_]; }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_fee_percent(currency_pair const& cp) { return 0.0; }
+double xrpl_network::get_transaction_fee_percent(currency_pair const& cp) { return 0.0; }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_fee_fixed(currency_pair const& cp) { return 0.0; }
+double xrpl_network::get_transaction_fee_fixed(currency_pair const& cp) { return 0.0; }
 
 // ----------------------------------------------------------------------------
 void xrpl_network::trustline(

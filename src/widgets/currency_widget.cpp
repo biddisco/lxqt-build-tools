@@ -127,12 +127,12 @@ void currency_widget::show_hide()
       if (c1 == currency_)
       {
         auto cstr = c2.to_string();
-        ui->buy_sell_combo->addItem(QString(cstr.first.c_str()), QString(cstr.second.c_str()));
+        ui->buy_sell_combo->addItem(QString(cstr.second.c_str()), QString(cstr.first.c_str()));
       }
-      else
+      else if (c2 == currency_)
       {
-        // we don't show trade pairs the other way around (yet?)
-        //ui->buy_sell_combo->addItem(QString(to_string(c1).begin()));
+        auto cstr = c1.to_string();
+        ui->buy_sell_combo->addItem(QString(cstr.second.c_str()), QString(cstr.first.c_str()));
       }
     }
     //
@@ -218,7 +218,7 @@ void currency_widget::execute_trade()
       taker_pay = taker_get * price;
     }
     //
-    double fee_percent = network_->get_fee_percent({taker_payc, this->currency_});
+    double fee_percent = network_->get_transaction_fee_percent({taker_payc, this->currency_});
     if (feesincluded)
     {
       taker_get = (1.0 - 0.01 * fee_percent) * taker_get;
@@ -233,8 +233,8 @@ void currency_widget::execute_trade()
         taker_pay,          // taker pays this amount (total)
         taker_get,          // taker gets this amount (total)
         price,              // exchange rate : TODO - check fee settings
-        network_->get_fee_percent({taker_payc, this->currency_}),
-        network_->get_fee_percent({taker_payc, this->currency_}),
+        network_->get_transaction_fee_percent({taker_payc, this->currency_}),
+        network_->get_transaction_fee_percent({taker_payc, this->currency_}),
         0,    // Id
         now.toStdString(),
         false,

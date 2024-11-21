@@ -88,9 +88,9 @@ struct currency : public currency_code
 
   std::pair<std::string, std::string> to_string() const { return currency_code::to_string(); }
 
-  std::string to_stringrep() const
+  std::string to_stringrep(bool add_issuer = true) const
   {
-    if (issuer_ != "") return code_ + "." + issuer_;
+    if (add_issuer && (issuer_ != "")) return code_ + "." + issuer_;
     return code_;
   }
 
@@ -112,9 +112,11 @@ using currency_pairlist = std::vector<currency_pair>;
 // ----------------------------------------------------------------------------
 currency_pair get_currency_pair(std::string_view c1, std::string_view c2);
 currency_pair string_to_pair(std::string_view s, std::string_view delim);
+currency_pair reverse_pair(currency_pair const& cp);
 
 // ----------------------------------------------------------------------------
-std::string currency_pair_string(currency_pair const& p, std::string_view sep = "-");
+std::string currency_pair_string(
+    currency_pair const& p, std::string_view sep = "-", bool add_issuer = true);
 QString currency_pair_qstring(currency_pair const& p, std::string_view sep = "-");
 std::string currency_pair_lowercase_string(currency_pair const& p);
 

@@ -25,10 +25,10 @@ currency string_to_code(std::string_view s)
 }
 
 // ----------------------------------------------------------------------------
-std::string currency_pair_string(currency_pair const& p, std::string_view sep)
+std::string currency_pair_string(currency_pair const& p, std::string_view sep, bool add_issuer)
 {
-  std::string s0 = std::get<0>(p).to_stringrep();
-  std::string s1 = std::get<1>(p).to_stringrep();
+  std::string s0 = std::get<0>(p).to_stringrep(add_issuer);
+  std::string s1 = std::get<1>(p).to_stringrep(add_issuer);
   return s0 + std::string(sep) + s1;
 }
 
@@ -60,6 +60,9 @@ currency_pair string_to_pair(std::string_view s, std::string_view delim)
   std::string_view p1 = s.substr(e1, s.back());
   return {string_to_code(p0), string_to_code(p1)};
 }
+
+// ----------------------------------------------------------------------------
+currency_pair reverse_pair(currency_pair const& cp) { return {std::get<1>(cp), std::get<0>(cp)}; }
 
 // ----------------------------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, currency_code const& c)

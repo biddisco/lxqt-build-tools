@@ -40,7 +40,8 @@ class bitstamp_network : public exchange
   std::vector<bitstamp_account> accounts_;
 
   // map of fees for trading of currency pairs
-  std::map<std::pair<std::string, std::string>, double> fee_map_;
+  std::map<currency_pair, double> transaction_fee_map_;
+  std::map<currency, double> withdrawal_fee_map_;
 
   std::mutex candlestick_mutex_;
   std::set<currency_pair> candlestick_updates_active_;
@@ -184,13 +185,15 @@ class bitstamp_network : public exchange
   // function called from websocket subscription to live orderbook data
   static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, const QString);
 
-  double get_fee_percent(currency_pair const& cp) override;
-  double get_fee_fixed(currency_pair const& cp) override;
+  double get_transaction_fee_percent(currency_pair const& cp) override;
+  double get_transaction_fee_fixed(currency_pair const& cp) override;
   double get_transfer_fee(currency const& /*c1*/) override { return 0; }
 
   void custom_functions(basic_account* /*acct*/) override{};
 
   stream_set ticker_subscribe(currency_pair const& cp) override;
+
+  currency_pair split_token_string(std::string utoken) const;
 
   signals:
 
