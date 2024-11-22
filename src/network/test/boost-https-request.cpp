@@ -1,3 +1,4 @@
+
 //------------------------------------------------------------------------------
 //
 // Example: HTTP SSL client, asynchronous
@@ -8,6 +9,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <regex>
 #include <string>
 #include <thread>
 //
@@ -28,8 +30,17 @@ std::atomic<int> counter{0};
 //------------------------------------------------------------------------------
 void new_data(std::string&& data)
 {
-  if (data.find("{\"data\": {\"ohlc\":") != data.npos) { counter++; }
   std::cout << "\n\nReceived\n\n" << data << std::endl;
+  //
+  std::regex response_regex(
+      ".*\"data\".*\"pair\".*\"(.*)\".*\"ohlc\".*", std::regex_constants::extended);
+  std::smatch mtch;
+  if (std::regex_match(data, mtch, response_regex))
+  {
+    std::string token = mtch[1];
+    std::cout << "json regex check ok " << token << std::endl;
+    counter++;
+  }
 }
 
 //------------------------------------------------------------------------------

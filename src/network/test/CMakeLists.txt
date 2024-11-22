@@ -66,25 +66,33 @@ set(boost-bitstamp-authentication_PARAMETERS
     "?&limit=2"
 )
 
-foreach(test ${TEST_SRCS})
+foreach(
+  test
+  ${TEST_SRCS}
+)
   cmake_path(
     GET
     test
     STEM
     testname
   )
-  add_executable(${testname} ${test})
+  add_executable(
+    ${testname}
+    ${test}
+  )
   target_link_libraries(
     ${testname}
     PUBLIC grox_util
            grox_network
+           GTest::gtest
            ${UUID_LIBRARIES}
            OpenSSL::SSL
            Threads::Threads
   )
   target_compile_definitions(
-    ${testname} PRIVATE # needed for UUID generation in web requests
-                        GROX_HAVE_UUID_ENCODING
+    ${testname}
+    PRIVATE # needed for UUID generation in web requests
+            GROX_HAVE_UUID_ENCODING
   )
   if(GROX_WITH_TESTING_SANITIZER)
     target_add_sanitizer_flags(${testname})
@@ -105,14 +113,20 @@ foreach(test ${TEST_SRCS})
         THREADS
         4
     )
-    target_link_libraries(${testname} PUBLIC pika::pika)
+    target_link_libraries(
+      ${testname}
+      PUBLIC pika::pika
+    )
   endif()
 
   if(testname
      MATCHES
      "curl-bitstamp-authentication"
   )
-    target_link_libraries(${testname} PUBLIC curl)
+    target_link_libraries(
+      ${testname}
+      PUBLIC curl
+    )
   endif()
 
   grox_add_test_and_deps(
@@ -129,4 +143,7 @@ foreach(test ${TEST_SRCS})
   )
 endforeach()
 
-target_link_libraries(ripple-sign PUBLIC xrpl.libxrpl)
+target_link_libraries(
+  ripple-sign
+  PUBLIC xrpl.libxrpl
+)
