@@ -25,27 +25,25 @@ namespace net::http {
 
 public:
     // constructor for url type get
-    qhttp_request_client(QNetworkAccessManager& networkmanager,
-        std::string const& url /*, rx_req_handler_type&& handler*/);
+    qhttp_request_client(QNetworkAccessManager& networkmanager, std::string const& url);
 
     // constructor for json type post
-    qhttp_request_client(QNetworkAccessManager& networkmanager, std::string const& url,
-        std::string&& content /*, rx_req_handler_type&& handler*/);
+    qhttp_request_client(
+        QNetworkAccessManager& networkmanager, std::string const& url, std::string&& content);
 
     // constructor for signed/custom request
-    qhttp_request_client(QNetworkAccessManager& networkmanager, QNetworkRequest request,
-        std::string&& content /*, rx_req_handler_type&& handler*/);
+    qhttp_request_client(
+        QNetworkAccessManager& networkmanager, QNetworkRequest request, std::string&& content);
 
     ~qhttp_request_client();
 
-    static client_ptr create(QNetworkAccessManager& networkmanager,
-        std::string const& url /*, rx_req_handler_type&& handler*/);
+    static client_ptr create(QNetworkAccessManager& networkmanager, std::string const& url);
 
-    static client_ptr create(QNetworkAccessManager& networkmanager, std::string const& url,
-        std::string&& content /*, rx_req_handler_type&& handler*/);
+    static client_ptr create(
+        QNetworkAccessManager& networkmanager, std::string const& url, std::string&& content);
 
-    static client_ptr create_signed(QNetworkAccessManager& networkmanager, QNetworkRequest request,
-        std::string&& content /*, rx_req_handler_type&& handler*/);
+    static client_ptr create_signed(
+        QNetworkAccessManager& networkmanager, QNetworkRequest request, std::string&& content);
 
     void get_request(rx_req_handler_type&& handler);
     void post_request(rx_req_handler_type&& handler);

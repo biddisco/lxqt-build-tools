@@ -12,7 +12,7 @@
 using namespace grox::debug;
 //
 template <int Level>
-inline constexpr print_threshold<Level, 1> http_dbg("https://");
+inline constexpr print_threshold<Level, 9> http_dbg("https://");
 
 // ----------------------------------------------------------------------------
 namespace net::http {
@@ -20,16 +20,16 @@ namespace net::http {
   std::atomic<int> qhttp_request_client::debug_count_ = 0;
 
   // ----------------------------------------------------------------------------
-  client_ptr qhttp_request_client::create(QNetworkAccessManager& networkmanager,
-      std::string const& url /*, rx_req_handler_type&& handler*/)
+  client_ptr qhttp_request_client::create(
+      QNetworkAccessManager& networkmanager, std::string const& url)
   {
     //return std::make_shared<qhttp_request_client>(networkmanager, url, move(handler));
     return new qhttp_request_client(networkmanager, url /*, move(handler)*/);
   }
 
   // ----------------------------------------------------------------------------
-  client_ptr qhttp_request_client::create(QNetworkAccessManager& networkmanager,
-      std::string const& url, std::string&& content /*, rx_req_handler_type&& handler*/)
+  client_ptr qhttp_request_client::create(
+      QNetworkAccessManager& networkmanager, std::string const& url, std::string&& content)
   {
     // return std::make_shared<qhttp_request_client>(
     //   networkmanager, url, std::forward<std::string>(content), std::move(handler));
@@ -38,8 +38,8 @@ namespace net::http {
   }
 
   // ----------------------------------------------------------------------------
-  client_ptr qhttp_request_client::create_signed(QNetworkAccessManager& networkmanager,
-      QNetworkRequest request, std::string&& content /*, rx_req_handler_type&& handler*/)
+  client_ptr qhttp_request_client::create_signed(
+      QNetworkAccessManager& networkmanager, QNetworkRequest request, std::string&& content)
   {
     return new qhttp_request_client(
         networkmanager, request, std::move(content) /*, std::move(handler)*/);
@@ -48,8 +48,8 @@ namespace net::http {
   }
 
   // ----------------------------------------------------------------------------
-  qhttp_request_client::qhttp_request_client(QNetworkAccessManager& networkmanager,
-      std::string const& url /*, rx_req_handler_type&& handler*/)
+  qhttp_request_client::qhttp_request_client(
+      QNetworkAccessManager& networkmanager, std::string const& url)
     : networkmanager_(networkmanager)
     , url_(url)
   {
@@ -62,8 +62,8 @@ namespace net::http {
   }
 
   // ----------------------------------------------------------------------------
-  qhttp_request_client::qhttp_request_client(QNetworkAccessManager& networkmanager,
-      std::string const& url, std::string&& content /*, rx_req_handler_type&& handler*/)
+  qhttp_request_client::qhttp_request_client(
+      QNetworkAccessManager& networkmanager, std::string const& url, std::string&& content)
     : networkmanager_(networkmanager)
     , url_(url)
     , content_(std::move(content))
@@ -77,8 +77,8 @@ namespace net::http {
   }
 
   // ----------------------------------------------------------------------------
-  qhttp_request_client::qhttp_request_client(QNetworkAccessManager& networkmanager,
-      QNetworkRequest request, std::string&& content /*, rx_req_handler_type&& handler*/)
+  qhttp_request_client::qhttp_request_client(
+      QNetworkAccessManager& networkmanager, QNetworkRequest request, std::string&& content)
     : networkmanager_(networkmanager)
     , request_(request)
     , content_(std::move(content))

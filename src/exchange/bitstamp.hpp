@@ -11,7 +11,6 @@
 #include <QString>
 //
 #include <exec/any_sender_of.hpp>
-#include <exec/async_scope.hpp>
 #include <stdexec/execution.hpp>
 //
 #include "currency/trade_data.hpp"
@@ -157,7 +156,7 @@ class bitstamp_network : public exchange
   // place a buy/sell order
   void place_limit_order(trade_data const& t, bool update_after);
   void place_buy_sell_orders(basic_account* acct, std::vector<trade_data> const& trades) override;
-  void cancel_order(trade_data const& t) override;
+  any_bytearray_sender cancel_order(trade_data const& t) override;
 
   // ----------------------------------------------------------------------------
   net::http::client_ptr signed_request(std::string const& url_path, std::string const& url_query);

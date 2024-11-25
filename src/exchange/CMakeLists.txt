@@ -35,6 +35,7 @@ target_link_libraries(
   grox_exchange
   PUBLIC grox_debug
          grox_util
+         grox_currency
          grox_data
          grox_network
          nlohmann_json::nlohmann_json
@@ -51,4 +52,13 @@ if(GROX_WITH_IWYU)
     PROPERTY CXX_INCLUDE_WHAT_YOU_USE
              ${iwyu_path}
   )
+endif()
+
+if(BUILD_TESTING)
+  pika_add_pseudo_target(tests.exchange)
+  pika_add_pseudo_dependencies(
+    tests
+    tests.exchange
+  )
+  add_subdirectory(test)
 endif()

@@ -126,13 +126,11 @@ void currency_widget::show_hide()
       auto c2 = std::get<1>(p);
       if (c1 == currency_)
       {
-        auto cstr = c2.to_string();
-        ui->buy_sell_combo->addItem(QString(cstr.second.c_str()), QString(cstr.first.c_str()));
+        ui->buy_sell_combo->addItem(QString(c2.code_.c_str()), QString(c2.issuer_.c_str()));
       }
       else if (c2 == currency_)
       {
-        auto cstr = c1.to_string();
-        ui->buy_sell_combo->addItem(QString(cstr.second.c_str()), QString(cstr.first.c_str()));
+        ui->buy_sell_combo->addItem(QString(c1.code_.c_str()), QString(c1.issuer_.c_str()));
       }
     }
     //

@@ -1,13 +1,12 @@
 #include <regex>
 #include <string>
 //
-#include <QMenu>
-#include <QPlainTextEdit>
 #include <QString>
 //
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
+#include <nlohmann/json.hpp>
 //
 #include <exec/inline_scheduler.hpp>
 #include <exec/variant_sender.hpp>
@@ -444,7 +443,8 @@ any_bytearray_sender bitstamp_network::request_open_orders()
 // ----------------------------------------------------------------------------
 any_bytearray_sender bitstamp_network::request_tickers_available()
 {
-  std::string url = fmt::format("https://{}:{}{}", bitstamp_https_address, 443, "/api/v2/ticker/");
+  std::string url = fmt::format(
+      "https://{}:{}{}", bitstamp_https_address, bitstamp_https_port, "/api/v2/ticker/");
   auto* client = net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
   return any_bytearray_sender{
       std::move(stdexec::just(client) | qhttp_post(http_request_type::http_get))};
@@ -468,7 +468,8 @@ currency_pair bitstamp_network::split_token_string(std::string utoken) const
   {
     if (currency_pair_string(cp, "", false) == utoken) { return cp; }
   }
-  throw std::runtime_error("split_token_string: Currency pair not found");
+  bitstamp_dbg<0>.error(str<>("split_token_string"), "Currency pair not found", utoken);
+  return currency_pair();
 }
 
 // ----------------------------------------------------------------------------
@@ -720,13 +721,13 @@ void bitstamp_network::process_order(json& jdata, std::string_view event)
 net::http::client_ptr bitstamp_network::signed_request(
     std::string const& url_path, std::string const& url_query)
 {
-  std::string api_key = get_bitstamp_instance()->account().API_key;
-  std::string api_secret = get_bitstamp_instance()->account().API_secret;
+  std::string api_key = this->account().API_key;
+  std::string api_secret = this->account().API_secret;
   secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
   encryption encryptor(api_key, randbytes);
   //
-  std::chrono::milliseconds timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::system_clock::now().time_since_epoch());
+  using namespace std::chrono;
+  milliseconds timestamp = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
 
   // setup REST request fields
   std::string url_host = bitstamp_https_address;
@@ -774,7 +775,7 @@ net::http::client_ptr bitstamp_network::signed_request(
 
   std::string urlstring = fmt::format(
       "https://{}:{}{}{}", bitstamp_https_address, bitstamp_https_port, url_path, url_query);
-  bitstamp_dbg<7>.debug(str<>("account_request"), urlstring, string_to_sign);
+  bitstamp_dbg<0>.debug(str<>("account_request"), urlstring, string_to_sign);
 
   QNetworkRequest request(QUrl(to_qstring(urlstring)));
   request.setRawHeader("Content-Type", content_type.c_str());
@@ -984,7 +985,8 @@ any_bytearray_sender bitstamp_network::request_new_ohlc_data(
   }
 
   // @todo : add error hander
-  std::string url = fmt::format("https://{}:{}{}", bitstamp_https_address, 443, req);
+  std::string url =
+      fmt::format("https://{}:{}{}", bitstamp_https_address, bitstamp_https_port, req);
   net::http::client_ptr client =
       net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
   return {stdexec::just(client) | qhttp_post(http_request_type::http_get)};
@@ -994,32 +996,21 @@ any_bytearray_sender bitstamp_network::request_new_ohlc_data(
 any_bytearray_sender bitstamp_network::request_price_history(currency_pair cp)
 {
   std::string ticker_lowercase = currency_pair_lowercase_string(cp);
-  std::string url = fmt::format(
-      "https://{}:{}/api-internal/price-history/{}/", "www.bitstamp.net", 443, ticker_lowercase);
+  std::string url = fmt::format("https://{}:{}/api-internal/price-history/{}/", "www.bitstamp.net",
+      bitstamp_https_port, ticker_lowercase);
   bitstamp_dbg<0>.debug(str<>("request"), ticker_lowercase, url);
   auto* client = net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
   return any_bytearray_sender{stdexec::just(client) | qhttp_post(http_request_type::http_get)};
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::cancel_order(trade_data const& t)
+any_bytearray_sender bitstamp_network::cancel_order(trade_data const& t)
 {
-  std::string data = "&id=" + std::to_string(t.id_);
+  std::string query = fmt::format("?&id={}",t.id_);
+  std::string req = fmt::format("/api/v2/cancel_order/");
 
-  auto* client = signed_request("/api/v2/cancel_order/", data);
-  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just(client))    // Qt
-      | qhttp_post()                                                         // Qt -> pika
-      | stdexec::then([this](QByteArray byteArray) {
-          std::string_view data(byteArray.constData(), byteArray.length());
-          json jdata = json::parse(data);
-          bitstamp_dbg<0>.debug(str<>("Cancel Order response"), jdata.dump(4));
-          // refresh order status
-          throw std::runtime_error("Fix this websocket changed");
-          //    if (ws_myorders == nullptr)
-          {
-            request_open_orders();
-          }
-        });
+  auto* client = signed_request(req, query);
+  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
 // ----------------------------------------------------------------------------
@@ -1030,22 +1021,27 @@ void bitstamp_network::place_limit_order(trade_data const& t, bool update_after)
   // bitstamp trade pair is always xrpusd, so swap symbols accordingly
   bitstamp_dbg<0>.error(str<>("limit-order"), "@TODO USD assumption false");
   std::string req, data;
+
   if (t.get_trade_type() == trade_type::buy)
   {
-    req = std::string("/api/v2/buy/") + std::string(t.taker_payc_.to_string().first) +
-        std::string(t.taker_getc_.to_string().first) + "/";
-    data = "&amount=" + to_string(amount, t.taker_payc_) +
-        "&price=" + to_string_with_precision(t.exchange_rate_, 5);
+    std::string ticker = lowercase(t.taker_payc_.code_ + t.taker_getc_.code_);
+    req = fmt::format("/api/v2/buy/{}/", ticker);
+    data = fmt::format("&amount={}&price={}", to_string(amount, t.taker_payc_),
+        to_string_with_precision(t.exchange_rate_, 5));
   }
   else
   {
-    req = std::string("/api/v2/sell/") + std::string(t.taker_getc_.to_string().first) +
-        std::string(t.taker_payc_.to_string().first) + "/";
-    data = "&amount=" + to_string(amount, t.taker_getc_) +
-        "&price=" + to_string_with_precision(t.exchange_rate_, 5);
+    std::string ticker = lowercase(t.taker_getc_.code_ + t.taker_payc_.code_);
+    // req = fmt::format("/api/v2/sell/{}/?amount={}&price={}", ticker,
+    //     to_string(amount, t.taker_payc_), to_string_with_precision(t.exchange_rate_, 5));
+    req = fmt::format("/api/v2/sell/{}/", ticker);
+    data = fmt::format("amount={}&price={}", to_string(amount, t.taker_payc_),
+        to_string_with_precision(t.exchange_rate_, 5));
+
+    // req = fmt::format("/api/v2/sell/{}/", ticker);
+    // data = fmt::format("&amount={}&price={}", to_string(amount, t.taker_payc_),
+    //     to_string_with_precision(t.exchange_rate_, 5));
   }
-  // make lowercase "XRPUSD"->"xrpusd" for bitstamp API
-  lowercase_i(req);
   //
   bitstamp_dbg<0>.debug(
       str<>("limit-order"), (t.get_trade_type() == trade_type::buy ? "Buy" : "Sell"), req, data);
@@ -1058,7 +1054,6 @@ void bitstamp_network::place_limit_order(trade_data const& t, bool update_after)
           json jdata = json::parse(data);
           bitstamp_dbg<0>.debug(str<>("limit-order response"), jdata.dump(4));
           // refresh order status if we don't have orders websocket
-          throw std::runtime_error("Fix this websocket changed");
           if (update_after /*&& ws_myorders == nullptr*/) { request_open_orders(); }
           if (jdata.contains("id"))
           {
@@ -1077,6 +1072,8 @@ void bitstamp_network::place_limit_order(trade_data const& t, bool update_after)
             emit update_wallet_widget(&account());
           }
         });
+
+  stdexec::start_detached(std::move(web));
 }
 
 // ----------------------------------------------------------------------------
@@ -1088,7 +1085,7 @@ void bitstamp_network::place_buy_sell_orders(
     if (&t != &trades.back())
       place_limit_order(t, false);
     else
-      place_limit_order(t, true);
+      place_limit_order(t, true);    // do an update on the last order placed
   }
 }
 

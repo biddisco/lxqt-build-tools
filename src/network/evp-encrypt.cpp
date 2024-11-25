@@ -126,9 +126,9 @@ std::string b2a_hex(std::string_view byte_arr, int n)
   return hex_string;
 }
 
-#ifdef GROX_HAVE_UUID_ENCODING
 std::string encryption::generate_uuid_string()
 {
+#ifdef GROX_HAVE_UUID_ENCODING
   using uuid_string_t = char[256];
   // from https://www.bitstamp.net/api/ on using api with token authorization
   uuid_t uuid;
@@ -136,8 +136,10 @@ std::string encryption::generate_uuid_string()
   uuid_generate(uuid);
   uuid_unparse_lower(uuid, nonce);
   return nonce;
-}
+#else
+  throw std::runtime_error("GROX_HAVE_UUID_ENCODING not set in call to generate_uuid_string")
 #endif
+}
 
 std::string generate_random_alphanumeric_string(std::size_t len, std::uint64_t seed)
 {

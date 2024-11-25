@@ -85,14 +85,8 @@ foreach(
     PUBLIC grox_util
            grox_network
            GTest::gtest
-           ${UUID_LIBRARIES}
            OpenSSL::SSL
            Threads::Threads
-  )
-  target_compile_definitions(
-    ${testname}
-    PRIVATE # needed for UUID generation in web requests
-            GROX_HAVE_UUID_ENCODING
   )
   if(GROX_WITH_TESTING_SANITIZER)
     target_add_sanitizer_flags(${testname})

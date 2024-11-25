@@ -187,7 +187,7 @@ class xrpl_network : public exchange
   void handle_account_offers(ledger_wallet& w, std::string_view data);
 
   bool make_payment(currency const& c, basic_account* src, basic_account* dest) override;
-  void cancel_order(trade_data const& t) override;
+  any_bytearray_sender cancel_order(trade_data const& t) override;
 
   // place a buy/sell order
   void place_limit_order(basic_account* acct, trade_data const& t, bool update_after);

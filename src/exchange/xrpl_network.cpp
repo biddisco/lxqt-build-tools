@@ -813,24 +813,21 @@ bool xrpl_network::make_payment(currency const& c, basic_account* src, basic_acc
 void xrpl_network::place_limit_order(basic_account* acct, trade_data const& t, bool update_after)
 {
   using namespace ripple;
-  //
   ledger_wallet* from = static_cast<ledger_wallet*>(acct);
 
-  auto pay_pair = t.taker_payc_.to_string();
-  auto get_pair = t.taker_getc_.to_string();
   ripple::STAmount taker_pays, taker_gets;
 
   // fiat currencies are multipled by 100 and shifted left by 2
-  Currency curr_p = to_currency(pay_pair.first);
+  ripple::Currency curr_p = ripple::to_currency(t.taker_payc_.code_);
   if (t.taker_payc_.is_fiat())
   {
-    auto const issuer = parseBase58<AccountID>(pay_pair.second);
+    auto const issuer = parseBase58<AccountID>(t.taker_payc_.issuer_);
     taker_pays = STAmount(Issue(curr_p, *issuer), static_cast<uint64_t>(1E2 * t.taker_pay_), -2);
   }
   // non fiat IOUs are multiplied by 1E6 and shifted right by 6 places
   else if (!t.taker_payc_.is_xrp())
   {
-    auto const issuer = parseBase58<AccountID>(pay_pair.second);
+    auto const issuer = parseBase58<AccountID>(t.taker_payc_.issuer_);
     taker_pays = STAmount(Issue(curr_p, *issuer), static_cast<uint64_t>(1E6 * t.taker_pay_), -6);
   }
   // xrp is converted to drops by mutiplying by 1E6
@@ -841,16 +838,16 @@ void xrpl_network::place_limit_order(basic_account* acct, trade_data const& t, b
   else { throw std::runtime_error("Unknown currency type taker_pays"); }
 
   // fiat currencies are multipled by 100 and shifted left by 2
-  Currency curr_g = to_currency(get_pair.first);
+  Currency curr_g = to_currency(t.taker_getc_.code_);
   if (t.taker_getc_.is_fiat())
   {
-    auto const issuer = parseBase58<AccountID>(get_pair.second);
+    auto const issuer = parseBase58<AccountID>(t.taker_getc_.issuer_);
     taker_gets = STAmount(Issue(curr_g, *issuer), static_cast<uint64_t>(1E2 * t.taker_get_), -2);
   }
   // non fiat IOUs are multiplied by 1E6 and shifted right by 6 places
   if (!t.taker_getc_.is_xrp())
   {
-    auto const issuer = parseBase58<AccountID>(get_pair.second);
+    auto const issuer = parseBase58<AccountID>(t.taker_getc_.issuer_);
     taker_gets = STAmount(Issue(curr_g, *issuer), static_cast<uint64_t>(1E6 * t.taker_get_), -6);
   }
   else if (t.taker_getc_.is_xrp())
@@ -888,7 +885,7 @@ void xrpl_network::place_buy_sell_orders(basic_account* acct, std::vector<trade_
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_network::cancel_order(trade_data const& t)
+any_bytearray_sender xrpl_network::cancel_order(trade_data const& t)
 {
   ledger_wallet* from = get_wallet_by_name(t.wallet_);
   if (!from) { throw std::runtime_error("Cannot cancel order from " + t.wallet_); }
@@ -899,13 +896,15 @@ void xrpl_network::cancel_order(trade_data const& t)
   from->sequence_++;
 
   auto snd =
-      stdexec::on(QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx))) |
-      stdexec::then([this](QByteArray byteArray) {
-        std::string_view data(byteArray.constData(), byteArray.length());
-        xrpnet_dbg<8>.debug(str<>("cancel_order"), data);
-        emit transaction_event();
-      });
-  stdexec::start_detached(std::move(snd));
+      stdexec::on(QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx)));
+  // '
+  //       stdexec::then([this](QByteArray byteArray) {
+  //         std::string_view data(byteArray.constData(), byteArray.length());
+  //         xrpnet_dbg<8>.debug(str<>("cancel_order"), data);
+  //         emit transaction_event();
+  //       });
+  //   stdexec::start_detached(std::move(snd));
+  return std::move(snd);
 }
 
 // ----------------------------------------------------------------------------
@@ -969,6 +968,7 @@ void xrpl_network::trustline(
 // ----------------------------------------------------------------------------
 void xrpl_network::custom_functions(basic_account* acct)
 {
+#if 0
   std::cout << "Network function " << std::endl;
   QDialog dlg;
   xrp_functions* f = new xrp_functions(this, acct, &dlg);
@@ -977,6 +977,9 @@ void xrpl_network::custom_functions(basic_account* acct)
   HLayout->addWidget(f);
   dlg.setLayout(HLayout);
   dlg.exec();
+#else
+  throw std::runtime_error("Fix dependency problem on widgets");
+#endif
 }
 
 // ----------------------------------------------------------------------------

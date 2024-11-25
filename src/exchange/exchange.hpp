@@ -15,6 +15,7 @@
 #include "data/ohlc_dataset_view.hpp"
 #include "network/qwebsocket_client.hpp"
 #include "network/qwebsocket_session.hpp"
+#include "senders/sender_defs.hpp"
 #include "util/pubsub.hpp"
 
 class basic_account;
@@ -182,7 +183,7 @@ class exchange
   virtual bool can_send(currency const& c, exchange* dest) = 0;
   virtual bool make_payment(currency const& c, basic_account* src, basic_account* dest) = 0;
   virtual std::string get_name() const { return exchange_name_; }
-  virtual void cancel_order(trade_data const& t) = 0;
+  virtual any_bytearray_sender cancel_order(trade_data const& t) = 0;
   virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const&) = 0;
   virtual std::vector<basic_account*> wallets() = 0;
 

@@ -35,8 +35,6 @@ struct currency_code
     return (code_ == c.code_) && (issuer_ == c.issuer_);
   }
 
-  std::pair<std::string, std::string> to_string() const { return std::make_pair(issuer_, code_); }
-
   // return true if the currency is a fiat currency such as USD, EUR etc etc
   bool is_fiat() const { return (issuer_ == ""); }
   bool is_xrp() const { return (issuer_ == "") && (code_ == "XRP"); }
@@ -85,8 +83,6 @@ struct currency : public currency_code
 
   // stream operators
   friend std::ostream& operator<<(std::ostream&, currency const&);
-
-  std::pair<std::string, std::string> to_string() const { return currency_code::to_string(); }
 
   std::string to_stringrep(bool add_issuer = true) const
   {

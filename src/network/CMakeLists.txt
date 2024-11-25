@@ -49,6 +49,7 @@ target_link_libraries(
   PUBLIC grox_debug
          Qt::Core
          Qt::WebSockets
+         ${UUID_LIBRARY}
 )
 
 if(BUILD_TESTING)
