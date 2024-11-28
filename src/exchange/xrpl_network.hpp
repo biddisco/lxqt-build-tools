@@ -44,24 +44,24 @@ class xrpl_network : public exchange
 #if defined(GROX_USE_LOCAL_SERVER)
   // note that we use 6005 instead of 443 on local server to avoid
   // requiring sudo permissions to run rippled
-  static inline const std::string ripple_websocket_address = "192.168.1.10";
+  static inline std::string const ripple_websocket_address = "192.168.1.10";
   static inline int const ripple_websocket_port = 6005;
 
-  static inline const std::string ripple_jsonrpc_address = "192.168.1.10";
+  static inline std::string const ripple_jsonrpc_address = "192.168.1.10";
   static inline int const ripple_jsonrpc_port = 51234;
 
 #elif defined(GROX_USE_RIPPLE_MAINNET_SERVER)
-  static inline const std::string ripple_websocket_address = "s1.ripple.com";
+  static inline std::string const ripple_websocket_address = "s1.ripple.com";
   static inline int const ripple_websocket_port = 443;
 
-  static inline const std::string ripple_jsonrpc_address = "s1.ripple.com";
+  static inline std::string const ripple_jsonrpc_address = "s1.ripple.com";
   static inline int const ripple_jsonrpc_port = 51234;
 
 #else
-  static inline const std::string ripple_websocket_address = "xrplcluster.com";
+  static inline std::string const ripple_websocket_address = "xrplcluster.com";
   static inline int const ripple_websocket_port = 443;
 
-  static inline const std::string ripple_jsonrpc_address = "xrplcluster.com";
+  static inline std::string const ripple_jsonrpc_address = "xrplcluster.com";
   static inline int const ripple_jsonrpc_port = 443;
 #endif
 
@@ -69,11 +69,11 @@ class xrpl_network : public exchange
   // TestNet rippled server
   // ---------------------------------------
   // TestNet websocket
-  static inline const std::string testnet_websocket_address = "s.altnet.rippletest.net";
+  static inline std::string const testnet_websocket_address = "s.altnet.rippletest.net";
   static inline int const testnet_websocket_port = 51233;
 
   // TestNet JSON RPC server
-  static inline const std::string testnet_json_rpc_address = "s.altnet.rippletest.net";
+  static inline std::string const testnet_json_rpc_address = "s.altnet.rippletest.net";
   static inline int const testnet_json_rpc_port = 51234;
 
   private:
@@ -187,10 +187,11 @@ class xrpl_network : public exchange
   void handle_account_offers(ledger_wallet& w, std::string_view data);
 
   bool make_payment(currency const& c, basic_account* src, basic_account* dest) override;
-  any_bytearray_sender cancel_order(trade_data const& t) override;
+  any_bytearray_sender request_cancel_order(trade_data const& t) override;
 
   // place a buy/sell order
-  void place_limit_order(basic_account* acct, trade_data const& t, bool update_after);
+  any_bytearray_sender request_limit_order(
+      basic_account* acct, trade_data const& t, bool update_after);
   void place_buy_sell_orders(basic_account* acct, std::vector<trade_data> const& trades) override;
 
   double get_transaction_fee_percent(currency_pair const& cp) override;

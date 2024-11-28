@@ -72,7 +72,7 @@ struct ticker_subscription
   // each ticker may subscribe to multiple streams
   std::map<network::streams, std::shared_ptr<net::ws::qwebsocket_session>> websockets_;
   //
-  grox::PublishSubscribe<const currency_pair, const grox::live_trade_data> live_trade_subscribers_;
+  grox::PublishSubscribe<currency_pair const, grox::live_trade_data const> live_trade_subscribers_;
   grox::PublishSubscribe<currency_pair const> orderbook_subscribers_;
   grox::PublishSubscribe<candle_res const> new_ohlc_subscribers_;
 };
@@ -183,7 +183,7 @@ class exchange
   virtual bool can_send(currency const& c, exchange* dest) = 0;
   virtual bool make_payment(currency const& c, basic_account* src, basic_account* dest) = 0;
   virtual std::string get_name() const { return exchange_name_; }
-  virtual any_bytearray_sender cancel_order(trade_data const& t) = 0;
+  virtual any_bytearray_sender request_cancel_order(trade_data const& t) = 0;
   virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const&) = 0;
   virtual std::vector<basic_account*> wallets() = 0;
 

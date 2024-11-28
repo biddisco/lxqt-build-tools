@@ -47,10 +47,10 @@ class bitstamp_network : public exchange
 
   public:
   //
-  static inline const std::string bitstamp_https_address = "www.bitstamp.net";
+  static inline std::string const bitstamp_https_address = "www.bitstamp.net";
   static inline int const bitstamp_https_port = 443;
   //
-  static inline const std::string bitstamp_websocket_address = "ws.bitstamp.net";
+  static inline std::string const bitstamp_websocket_address = "ws.bitstamp.net";
   static inline int const bitstamp_websocket_port = 443;
 
   public:
@@ -129,14 +129,18 @@ class bitstamp_network : public exchange
   void shut_down() override;
 
   // ---------------------------------------
-  // http: get account info/data
+  // https: get account info/data
   any_bytearray_sender request_account_info();
-  // http: get new websocket token to subscribe to streams
+  // https: get new websocket token to subscribe to streams
   any_bytearray_sender request_websocket_token();
-  // http: get open order data
+  // https: get open order data
   any_bytearray_sender request_open_orders();
-  // http: get currency tickers available
+  // https: get currency tickers available
   any_bytearray_sender request_tickers_available();
+  // https: place a limit order
+  any_bytearray_sender request_limit_order(trade_data const& t);
+  // https: place an order cancel
+  any_bytearray_sender request_cancel_order(trade_data const& t) override;
 
   // process account info response
   void handle_account_info(std::string_view);
@@ -154,9 +158,8 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // place a buy/sell order
-  void place_limit_order(trade_data const& t, bool update_after);
   void place_buy_sell_orders(basic_account* acct, std::vector<trade_data> const& trades) override;
-  any_bytearray_sender cancel_order(trade_data const& t) override;
+  void handle_buy_sell_order(std::string_view data);
 
   // ----------------------------------------------------------------------------
   net::http::client_ptr signed_request(std::string const& url_path, std::string const& url_query);
@@ -179,16 +182,16 @@ class bitstamp_network : public exchange
   std::uint64_t handle_price_history(std::string_view data);
 
   // function called from websocket subscription to live trade data
-  static void new_live_trade_data_q(bitstamp_network*, currency_pair cp, const QString);
+  static void new_live_trade_data_q(bitstamp_network*, currency_pair cp, QString const);
 
   // function called from websocket subscription to live orderbook data
-  static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, const QString);
+  static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, QString const);
 
   double get_transaction_fee_percent(currency_pair const& cp) override;
   double get_transaction_fee_fixed(currency_pair const& cp) override;
   double get_transfer_fee(currency const& /*c1*/) override { return 0; }
 
-  void custom_functions(basic_account* /*acct*/) override{};
+  void custom_functions(basic_account* /*acct*/) override {};
 
   stream_set ticker_subscribe(currency_pair const& cp) override;
 

@@ -14,6 +14,7 @@
 //
 #include <pika/execution/algorithms/just.hpp>
 #include <pika/execution/algorithms/transfer_just.hpp>
+#include <pika/execution_base/any_sender.hpp>
 //
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
@@ -91,23 +92,23 @@ bool token_valid(std::atomic<std::chrono::time_point<std::chrono::system_clock>>
 // ----------------------------------------------------------------------------
 void bitstamp_network::initialize()
 {
-  auto web = stdexec::on(QtStdExec::QThreadScheduler(), stdexec::just())    // Qt
+  auto web = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())    // Qt
       | stdexec::let_value(
             std::bind(&bitstamp_network::request_websocket_token, this))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                        // pika
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<6>.debug(str<>("Initialize"), "WebsocketToken", data);
           handle_websocket_token(data);
-        })                                                  //
-      | stdexec::transfer(QtStdExec::QThreadScheduler())    // pika -> Qt
+        })                                                      //
+      | stdexec::continues_on(QtStdExec::QThreadScheduler())    // pika -> Qt
       | stdexec::let_value(
             std::bind(&bitstamp_network::request_tickers_available, this))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                          // pika
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<6>.debug(str<>("Initialize"), "Tickers", data);
           handle_tickers_available(data);
-        })                                                  //
-      | stdexec::transfer(QtStdExec::QThreadScheduler())    // pika -> Qt
+        })                                                      //
+      | stdexec::continues_on(QtStdExec::QThreadScheduler())    // pika -> Qt
       |
       stdexec::let_value(std::bind(&bitstamp_network::request_account_info, this))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                                  // pika
@@ -115,7 +116,7 @@ void bitstamp_network::initialize()
           bitstamp_dbg<6>.debug(str<>("Initialize"), "AccountInfo", data);
           handle_account_info(data);
         })                                                                             //
-      | stdexec::transfer(QtStdExec::QThreadScheduler())                               // pika -> Qt
+      | stdexec::continues_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
       | stdexec::let_value(std::bind(&bitstamp_network::request_open_orders, this))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                                   // pika
           std::string_view data(byteArray.constData(), byteArray.length());
@@ -203,7 +204,7 @@ bool bitstamp_network::subscribe_my_trades(currency_pair const& cp, bool enable)
   {
     tdata->websockets_[network::streams::my_trades] =
         net::ws::qwebsocket_session::create("bs::MyTrades " + ticker, bitstamp_websocket_address,
-            bitstamp_websocket_port, command.dump(4), [](const QString data) {
+            bitstamp_websocket_port, command.dump(4), [](QString const data) {
               //
               bitstamp_dbg<7>.debug(str<>("(private) Trade data handler"), data.toStdString());
             });
@@ -233,7 +234,7 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
   {
     tdata->websockets_[network::streams::my_orders] =
         net::ws::qwebsocket_session::create("bs::MyOrders " + ticker, bitstamp_websocket_address,
-            bitstamp_websocket_port, command.dump(4), [this](const QString data) {
+            bitstamp_websocket_port, command.dump(4), [this](QString const data) {
               std::string stdstring = data.toStdString();
               bitstamp_dbg<7>.debug(str<>("Orders data"), stdstring);
               nlohmann::json jdata = nlohmann::json::parse(stdstring);
@@ -261,8 +262,8 @@ bool bitstamp_network::stream_subscribe(
   // always subscribe to a ticker before a stream it owns
   if (!ticker_subscribed(cp)) ticker_subscribe(cp);
 
-  auto snd = stdexec::on(QtStdExec::QThreadScheduler(), request_websocket_token())    //
-      | stdexec::then([this](QByteArray byteArray) {                                  // pika
+  auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), request_websocket_token())    //
+      | stdexec::then([this](QByteArray byteArray) {                                         // pika
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<6>.debug(str<>("Initialize"), "WebsocketToken", data);
           handle_websocket_token(data);
@@ -294,9 +295,9 @@ bool bitstamp_network::stream_subscribe(
         default: ok = false; throw std::runtime_error("unknown stream");
         }
         if (ok) mark_stream_subscribed(cp, stream, enabled);
-      })                                                    //
-      | stdexec::transfer(QtStdExec::QThreadScheduler())    //
-      | stdexec::then([this, cp, stream, f]() {             //
+      })                                                        //
+      | stdexec::continues_on(QtStdExec::QThreadScheduler())    //
+      | stdexec::then([this, cp, stream, f]() {                 //
           f(cp, get_subscribed_ticker_data(cp), stream);
         });
   stdexec::start_detached(std::move(snd));
@@ -337,7 +338,7 @@ void bitstamp_network::shut_down()
 // ----------------------------------------------------------------------------
 bitstamp_order_book const& bitstamp_network::get_orderbook(currency_pair const& cp) const
 {
-  const ticker_data tdata = get_subscribed_ticker_data(cp);
+  ticker_data const tdata = get_subscribed_ticker_data(cp);
   return *dynamic_pointer_cast<bitstamp_order_book const>(tdata->orderbook_);
 }
 
@@ -386,8 +387,8 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
                << "PUT SOMETHING IN HERE";
     //
     auto* client = signed_request("/api/v2/xrp_withdrawal/", req_string.str());
-    auto web = stdexec::on(exec::inline_scheduler(), stdexec::just(client))    // Qt
-        | qhttp_post()                                                         // Qt -> pika
+    auto web = stdexec::starts_on(exec::inline_scheduler(), stdexec::just(client))    // Qt
+        | qhttp_post()                                                                // Qt -> pika
         | stdexec::then([this](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
             bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/xrp_withdrawal/", data);
@@ -400,8 +401,8 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
     req_string << "&currency= this is wrong" << c.issuer_;
     //
     auto* client = signed_request("/api/v2/ripple_withdrawal/", req_string.str());
-    auto web = stdexec::on(exec::inline_scheduler(), stdexec::just(client))    // Qt
-        | qhttp_post()                                                         // Qt -> pika
+    auto web = stdexec::starts_on(exec::inline_scheduler(), stdexec::just(client))    // Qt
+        | qhttp_post()                                                                // Qt -> pika
         | stdexec::then([this](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
             bitstamp_dbg<0>.debug(str<>("request CB"), "/api/v2/ripple_withdrawal/", data);
@@ -416,7 +417,7 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
 any_bytearray_sender bitstamp_network::request_account_info()
 {
   auto* client = signed_request("/api/v2/balance/", "");
-  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
+  return stdexec::just(client) | qhttp_post();
 }
 
 // ----------------------------------------------------------------------------
@@ -430,14 +431,14 @@ any_bytearray_sender bitstamp_network::request_websocket_token()
   //
   bitstamp_dbg<2>.debug(str<>("websocket_token"), "Fetching new");
   auto* client = signed_request("/api/v2/websockets_token/", "");
-  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
+  return stdexec::just(client) | qhttp_post();
 }
 
 // ----------------------------------------------------------------------------
 any_bytearray_sender bitstamp_network::request_open_orders()
 {
   auto* client = signed_request("/api/v2/open_orders/all/", "");
-  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
+  return stdexec::just(client) | qhttp_post();
 }
 
 // ----------------------------------------------------------------------------
@@ -446,8 +447,48 @@ any_bytearray_sender bitstamp_network::request_tickers_available()
   std::string url = fmt::format(
       "https://{}:{}{}", bitstamp_https_address, bitstamp_https_port, "/api/v2/ticker/");
   auto* client = net::http::qhttp_request_client::create(*global_settings.networkmanager_, url);
-  return any_bytearray_sender{
-      std::move(stdexec::just(client) | qhttp_post(http_request_type::http_get))};
+  return stdexec::just(client) | qhttp_post(http_request_type::http_get);
+}
+
+// ----------------------------------------------------------------------------
+any_bytearray_sender bitstamp_network::request_cancel_order(trade_data const& t)
+{
+  std::string query = fmt::format("?&id={}", t.id_);
+  std::string req = fmt::format("/api/v2/cancel_order/");
+
+  auto* client = signed_request(req, query);
+  return stdexec::just(client) | qhttp_post();
+}
+
+// ----------------------------------------------------------------------------
+any_bytearray_sender bitstamp_network::request_limit_order(trade_data const& t)
+{
+  double amount = t.get_xrp_amount();
+
+  // bitstamp trade pair is always xrpusd, so swap symbols accordingly
+  bitstamp_dbg<0>.error(str<>("limit-order"), "@TODO USD assumption false");
+  std::string req, query;
+
+  if (t.get_trade_type() == trade_type::buy)
+  {
+    std::string ticker = lowercase(t.taker_payc_.code_ + t.taker_getc_.code_);
+    req = fmt::format("/api/v2/buy/{}/", ticker);
+    query = fmt::format("?&amount={}&price={}", to_string(amount, t.taker_payc_),
+        to_string_with_precision(t.exchange_rate_, 5));
+  }
+  else
+  {
+    std::string ticker = lowercase(t.taker_getc_.code_ + t.taker_payc_.code_);
+    req = fmt::format("/api/v2/sell/{}/", ticker);
+    query = fmt::format("?&amount={}&price={}", to_string(amount, t.taker_payc_),
+        to_string_with_precision(t.exchange_rate_, 5));
+  }
+  //
+  bitstamp_dbg<0>.debug(
+      str<>("limit-order"), (t.get_trade_type() == trade_type::buy ? "Buy" : "Sell"), req, query);
+
+  auto* client = signed_request(req, query);
+  return stdexec::just(client) | qhttp_post();
 }
 
 // ----------------------------------------------------------------------------
@@ -576,14 +617,12 @@ void bitstamp_network::handle_websocket_token(std::string_view data)
 void bitstamp_network::handle_open_orders(std::string_view data)
 {
   bitstamp_account& acct = get_bitstamp_instance()->account();
-  auto& trades = acct.offers_;
-  trades.clear();
   //
   nlohmann::json jdata = nlohmann::json::parse(data);
   bitstamp_dbg<6>.debug(str<>("open_orders"), jdata.dump());
   for (auto const& [key, val] : jdata.items())
   {
-    const std::string jstring = val[std::string_view("currency_pair")];
+    std::string const jstring = val[std::string_view("currency_pair")];
     auto const& [c1, c2] = split_currency_pair_string(jstring, '/');
 
     double amount = std::stod(JCHARP(val["amount"]));
@@ -598,14 +637,14 @@ void bitstamp_network::handle_open_orders(std::string_view data)
       trade_data t{this->get_instance(), account().name_, {"", c2.cbegin()}, {"", c1.cbegin()},
           amount * price, amount, price, fee_percent, fee_fixed,
           std::stoull(val["id"].get<std::string>()), val["datetime"], true};
-      trades.push_back(t);
+      acct.add_trade(std::move(t), true);
     }
     else
     {
       trade_data t{this->get_instance(), account().name_, {"", c1.cbegin()}, {"", c2.cbegin()},
           amount, amount * price, price, fee_percent, fee_fixed,
           std::stoull(val["id"].get<std::string>()), val["datetime"], true};
-      trades.push_back(t);
+      acct.add_trade(std::move(t), true);
     }
   }
   emit update_wallet_widget(&acct);
@@ -796,7 +835,7 @@ net::http::client_ptr bitstamp_network::signed_request(
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::new_orderbook_data_q(
-    bitstamp_network* exchange, currency_pair const cp, const QString data)
+    bitstamp_network* exchange, currency_pair const cp, QString const data)
 {
   bitstamp_dbg<5>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<7>.debug(str<>("Orderbook data"), data.toStdString());
@@ -811,7 +850,7 @@ void bitstamp_network::new_orderbook_data_q(
   }
 
   auto process = [exchange, cp, data]() {
-    const ticker_data tdata = exchange->get_subscribed_ticker_data(cp);
+    ticker_data const tdata = exchange->get_subscribed_ticker_data(cp);
     try
     {
       dynamic_pointer_cast<bitstamp_order_book>(tdata->orderbook_)->accept_json_bitstamp(data);
@@ -826,13 +865,13 @@ void bitstamp_network::new_orderbook_data_q(
   };
 
   stdexec::sender auto snd =
-      stdexec::on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
+      stdexec::starts_on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
   stdexec::start_detached(std::move(snd));
 }
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::new_live_trade_data_q(
-    bitstamp_network* exchange, currency_pair cp, const QString data)
+    bitstamp_network* exchange, currency_pair cp, QString const data)
 {
   bitstamp_dbg<4>.debug(str<>("Live Trade"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<5>.debug(str<>("Trade data"), data.toStdString());
@@ -857,7 +896,7 @@ void bitstamp_network::new_live_trade_data_q(
   };
 
   stdexec::sender auto snd =
-      stdexec::on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
+      stdexec::starts_on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
   stdexec::start_detached(std::move(snd));
 }
 
@@ -913,10 +952,10 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data tdata)
             bitstamp_dbg<9>.debug(str<>("price history"), tdata->view_->get_ticker_string(), data);
             return handle_price_history(data);
           })    //
-        | stdexec::transfer(QtStdExec::QThreadScheduler())};
+        | stdexec::continues_on(QtStdExec::QThreadScheduler())};
   }
 
-  auto snd2 = stdexec::on(QtStdExec::QThreadScheduler(), std::move(snd))    //
+  auto snd2 = stdexec::starts_on(QtStdExec::QThreadScheduler(), std::move(snd))    //
       | stdexec::let_value([this, cp, tdata](std::uint64_t start_t_sec) {
           // we do not want a candle for the current minute, round to prev 60s
           std::uint64_t unixtime_secs = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();
@@ -1004,89 +1043,89 @@ any_bytearray_sender bitstamp_network::request_price_history(currency_pair cp)
 }
 
 // ----------------------------------------------------------------------------
-any_bytearray_sender bitstamp_network::cancel_order(trade_data const& t)
+void bitstamp_network::handle_buy_sell_order(std::string_view data)
 {
-  std::string query = fmt::format("?&id={}",t.id_);
-  std::string req = fmt::format("/api/v2/cancel_order/");
-
-  auto* client = signed_request(req, query);
-  return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
+  // json jdata = json::parse(data);
+  // bitstamp_dbg<0>.debug(str<>("buy_sell response"), jdata.dump(4));
+  // if (jdata.contains("error")) { return false; }
+  // return true;
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::place_limit_order(trade_data const& t, bool update_after)
-{
-  double amount = t.get_xrp_amount();
+// void bitstamp_network::handle_buy_sell_order(std::string_view data)
+// {
 
-  // bitstamp trade pair is always xrpusd, so swap symbols accordingly
-  bitstamp_dbg<0>.error(str<>("limit-order"), "@TODO USD assumption false");
-  std::string req, data;
-
-  if (t.get_trade_type() == trade_type::buy)
-  {
-    std::string ticker = lowercase(t.taker_payc_.code_ + t.taker_getc_.code_);
-    req = fmt::format("/api/v2/buy/{}/", ticker);
-    data = fmt::format("&amount={}&price={}", to_string(amount, t.taker_payc_),
-        to_string_with_precision(t.exchange_rate_, 5));
-  }
-  else
-  {
-    std::string ticker = lowercase(t.taker_getc_.code_ + t.taker_payc_.code_);
-    // req = fmt::format("/api/v2/sell/{}/?amount={}&price={}", ticker,
-    //     to_string(amount, t.taker_payc_), to_string_with_precision(t.exchange_rate_, 5));
-    req = fmt::format("/api/v2/sell/{}/", ticker);
-    data = fmt::format("amount={}&price={}", to_string(amount, t.taker_payc_),
-        to_string_with_precision(t.exchange_rate_, 5));
-
-    // req = fmt::format("/api/v2/sell/{}/", ticker);
-    // data = fmt::format("&amount={}&price={}", to_string(amount, t.taker_payc_),
-    //     to_string_with_precision(t.exchange_rate_, 5));
-  }
-  //
-  bitstamp_dbg<0>.debug(
-      str<>("limit-order"), (t.get_trade_type() == trade_type::buy ? "Buy" : "Sell"), req, data);
-
-  auto* client = signed_request(req, data);
-  auto web = stdexec::on(exec::inline_scheduler(), stdexec::just(client))    // Qt
-      | qhttp_post()                                                         // Qt -> pika
-      | stdexec::then([=, this](QByteArray byteArray) {
-          std::string_view data(byteArray.constData(), byteArray.length());
-          json jdata = json::parse(data);
-          bitstamp_dbg<0>.debug(str<>("limit-order response"), jdata.dump(4));
-          // refresh order status if we don't have orders websocket
-          if (update_after /*&& ws_myorders == nullptr*/) { request_open_orders(); }
-          if (jdata.contains("id"))
-          {
-            trade_data new_t = t;
-            new_t.id_ = std::stoll(jdata["id"].get_ptr<json::string_t*>()->c_str());
-            new_t.confirmed_ = true;
-            new_t.datetime_ = jdata["datetime"].get_ptr<json::string_t*>()->c_str();
-            double price = std::stod(jdata["price"].get_ptr<json::string_t*>()->c_str());
-            double amount = std::stod(jdata["amount"].get_ptr<json::string_t*>()->c_str());
-            if (price != new_t.get_price())
-            {
-              bitstamp_dbg<0>.error(str<>("limit-order price"), price, new_t.get_price());
-            }
-            auto& trades = account().offers_;
-            trades.push_back(new_t);
-            emit update_wallet_widget(&account());
-          }
-        });
-
-  stdexec::start_detached(std::move(web));
-}
+// json jdata = json::parse(data);
+// bitstamp_dbg<0>.debug(str<>("buy_sell response"), jdata.dump(4));
+// // refresh order status if we don't have orders websocket
+// if (update_after /*&& ws_myorders == nullptr*/) { request_open_orders(); }
+// if (jdata.contains("id"))
+// {
+//   trade_data new_t = t;
+//   new_t.id_ = std::stoll(jdata["id"].get_ptr<json::string_t*>()->c_str());
+//   new_t.confirmed_ = true;
+//   new_t.datetime_ = jdata["datetime"].get_ptr<json::string_t*>()->c_str();
+//   double price = std::stod(jdata["price"].get_ptr<json::string_t*>()->c_str());
+//   double amount = std::stod(jdata["amount"].get_ptr<json::string_t*>()->c_str());
+//   if (price != new_t.get_price())
+//   {
+//     bitstamp_dbg<0>.error(str<>("buy_sell price"), price, new_t.get_price());
+//   }
+//   auto& trades = account().offers_;
+//   trades.push_back(new_t);
+//   emit update_wallet_widget(&account());
+// }
+// }
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::place_buy_sell_orders(
     basic_account* acct, std::vector<trade_data> const& trades)
 {
-  for (auto& t : trades)
+  // std::atomic<int> counter{0};
+  std::vector<ex::unique_any_sender<>> trade_orders;
+  for (auto const& trade : trades)
   {
-    if (&t != &trades.back())
-      place_limit_order(t, false);
-    else
-      place_limit_order(t, true);    // do an update on the last order placed
+    auto snd = request_limit_order(trade)    //
+        | stdexec::then([&, trade = trade, this](QByteArray byteArray) mutable {
+            std::string_view data(byteArray.constData(), byteArray.length());
+            json jdata = json::parse(data);
+            bitstamp_dbg<1>.debug(str<>("buy_sell response"), jdata.dump(4));
+            if (jdata.contains("error"))
+              bitstamp_dbg<0>.error(str<>("buy_sell error"), jdata.dump(4));
+            else
+            {
+              // counter++;
+              trade.id_ = std::stoll(JCHARP(jdata["id"]));
+              trade.confirmed_ = true;
+              trade.datetime_ = JCHARP(jdata["datetime"]);
+              double amount = std::stod(JCHARP(jdata["amount"]));
+              if (trade.get_price() != std::stod(JCHARP(jdata["price"])))
+              {
+                bitstamp_dbg<0>.error(
+                    str<>("buy_sell price"), trade.get_price(), std::stod(JCHARP(jdata["price"])));
+              }
+              account().add_trade(std::move(trade), true);
+              emit update_wallet_widget(&account());
+            }
+          });
+    trade_orders.push_back(std::move(snd));
   }
+
+  auto all_done = ex::when_all_vector(std::move(trade_orders)) | ex::let_value([this]() {
+    auto snd = request_open_orders()                      //
+        | stdexec::then([this](QByteArray byteArray) {    // pika
+            std::string_view data(byteArray.constData(), byteArray.length());
+            bitstamp_dbg<5>.debug(str<>("Initialize"), "OpenOrders", data);
+            handle_open_orders(data);
+          });
+    return snd;
+  });
+
+  ex::start_detached(std::move(all_done));
+  // namespace tt = pika::this_thread::experimental;
+  // tt::sync_wait(scope.on_empty());
+  // if (counter != trades.size()) { throw std::runtime_error("Some trades orders failed"); }
+  // else { stdexec::start_detached(std::move(snd)); }
 }
 
 // ----------------------------------------------------------------------------

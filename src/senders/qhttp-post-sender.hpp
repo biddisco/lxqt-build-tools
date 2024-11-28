@@ -125,7 +125,7 @@ namespace grox::senders {
                                        QByteArray data) {
                       // pass the result onto a new pika task and invoke the continuation
                       auto snd0 = ex::just(std::move(data)) |
-                          ex::transfer(default_pool_scheduler()) |
+                          ex::continues_on(default_pool_scheduler()) |
                           ex::then([receiver = std::move(receiver)](QByteArray byteArray) mutable {
                             std::string_view strv(byteArray.constData(), byteArray.length());
                             PIKA_DETAIL_DP(qt_trig<5>,

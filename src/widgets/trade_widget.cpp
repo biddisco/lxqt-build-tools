@@ -82,6 +82,6 @@ trade_widget::~trade_widget() { delete ui; }
 
 void trade_widget::connect_events()
 {
-  connect(
-      ui->cancel, &QToolButton::clicked, this, [this]() { trade_.network_->cancel_order(trade_); });
+  connect(ui->cancel, &QToolButton::clicked, this,
+      [this]() { trade_.network_->request_cancel_order(trade_); });
 }

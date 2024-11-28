@@ -130,7 +130,7 @@ bool xrpl_network::can_send(currency const& c, exchange* dest)
 // ----------------------------------------------------------------------------
 xrpl_order_book const& xrpl_network::get_orderbook(currency_pair const& cp) const
 {
-  const ticker_data tdata = get_subscribed_ticker_data(cp);
+  ticker_data const tdata = get_subscribed_ticker_data(cp);
   return *dynamic_pointer_cast<xrpl_order_book const>(tdata->orderbook_);
 }
 
@@ -295,7 +295,7 @@ void xrpl_network::new_orderbook_data_q(
   }
 
   auto process = [exchange, cp, data]() {
-    const ticker_data tdata = exchange->get_subscribed_ticker_data(cp);
+    ticker_data const tdata = exchange->get_subscribed_ticker_data(cp);
     try
     {
       std::string sdata = data.toStdString();
@@ -569,7 +569,7 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
   {
     if (!b.currency.is_xrp())
     {
-      const currency_code ic = b.currency;
+      currency_code const ic = b.currency;
       if (ic.is_xrp())
       {
         currency c{ic, b.value, b.value, 0, nullptr};
@@ -810,7 +810,8 @@ bool xrpl_network::make_payment(currency const& c, basic_account* src, basic_acc
 
 // ----------------------------------------------------------------------------
 // place a buy/sell order
-void xrpl_network::place_limit_order(basic_account* acct, trade_data const& t, bool update_after)
+any_bytearray_sender xrpl_network::request_limit_order(
+    basic_account* acct, trade_data const& t, bool update_after)
 {
   using namespace ripple;
   ledger_wallet* from = static_cast<ledger_wallet*>(acct);
@@ -861,14 +862,16 @@ void xrpl_network::place_limit_order(basic_account* acct, trade_data const& t, b
       from->sequence_, taker_pays, taker_gets, 0);
   from->sequence_++;
 
-  auto snd =
-      stdexec::on(QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx))) |
-      stdexec::then([this](QByteArray byteArray) {
-        std::string_view data(byteArray.constData(), byteArray.length());
-        xrpnet_dbg<8>.debug(str<>("place_limit_order"), data);
-        emit transaction_event();
-      });
-  stdexec::start_detached(std::move(snd));
+  return stdexec::on(
+      QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx)));
+
+  // |
+  //     stdexec::then([this](QByteArray byteArray) {
+  //       std::string_view data(byteArray.constData(), byteArray.length());
+  //       xrpnet_dbg<8>.debug(str<>("request_limit_order"), data);
+  //       emit transaction_event();
+  //     });
+  // stdexec::start_detached(std::move(snd));
 }
 
 // ----------------------------------------------------------------------------
@@ -878,14 +881,14 @@ void xrpl_network::place_buy_sell_orders(basic_account* acct, std::vector<trade_
   {
     //last order in list triggers update
     if (&t == &trades.back())
-      place_limit_order(acct, t, true);
+      request_limit_order(acct, t, true);
     else
-      place_limit_order(acct, t, false);
+      request_limit_order(acct, t, false);
   }
 }
 
 // ----------------------------------------------------------------------------
-any_bytearray_sender xrpl_network::cancel_order(trade_data const& t)
+any_bytearray_sender xrpl_network::request_cancel_order(trade_data const& t)
 {
   ledger_wallet* from = get_wallet_by_name(t.wallet_);
   if (!from) { throw std::runtime_error("Cannot cancel order from " + t.wallet_); }

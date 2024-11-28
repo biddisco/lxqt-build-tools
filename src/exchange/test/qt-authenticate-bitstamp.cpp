@@ -9,7 +9,6 @@
 #include <sstream>
 #include <string>
 //
-#include <exec/async_scope.hpp>
 #include <fmt/format.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
@@ -80,8 +79,8 @@ TEST(exchange, cancel_order)
   using namespace grox::debug;
   test1_dbg<2>.debug(str<>("TEST(exchange, request_account_info)"));
   std::atomic<bool> finished{false};
-  auto snd = ex::on(QtStdExec::QThreadScheduler(), ex::just())                 //
-      | ex::let_value([t]() { return bitstamp_exchange->cancel_order(t); })    // Qt -> pika
+  auto snd = ex::on(QtStdExec::QThreadScheduler(), ex::just())                         //
+      | ex::let_value([t]() { return bitstamp_exchange->request_cancel_order(t); })    // Qt -> pika
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);

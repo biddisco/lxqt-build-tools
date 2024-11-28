@@ -35,6 +35,7 @@ struct basic_account
   std::vector<currency> currencies_;
   std::vector<trade_data> offers_;
   static inline std::mutex currency_mtx_;
+  static inline std::mutex protection_;
   //
   void delete_trade(std::uint64_t id)
   {
@@ -66,6 +67,22 @@ struct basic_account
   }
   //
   void unlock_currencies(lock_type&& l) { l.unlock(); }
+
+  //
+  void add_trade(trade_data&& t, bool confirmed)
+  {
+    std::scoped_lock l(protection_);
+    // if the trade is already in our list, then just update confirmation status
+    for (auto& o : offers_)
+    {
+      if (o.id_ == t.id_)
+      {
+        o.confirmed_ = confirmed;
+        return;
+      }
+    }
+    offers_.push_back(std::move(t));
+  }
 };
 
 // For compatibility with Qt Variant and Signals/Slots
