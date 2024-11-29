@@ -36,7 +36,7 @@ inline constexpr print_threshold<Level, debug_level> bobook_dbg("bit-book");
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 // accept json reply from bitstamp order book query and turn into numeric arrays
-void bitstamp_order_book::accept_json_bitstamp(const QString data)
+void bitstamp_order_book::accept_json_bitstamp(QString const data)
 {
   if (!startswith(data, QStringLiteral("{\"data\":"))) return;
   //

@@ -34,7 +34,7 @@ else
   FILES_CHANGED=`git diff --name-only origin/master`
 fi
 
-CLANG_FORMAT_VERSION=clang-format-15
+CLANG_FORMAT_VERSION=clang-format-18
 TAB_FOUND=0
 
 for FILE in $FILES_CHANGED
@@ -101,7 +101,7 @@ if [ "$GIT_HOOK" = true ] ; then
   returncode=0
   full_list=
   if [ -n "${cxxfiles}" ]; then
-    printf "# ${blue}clang-format ${red}error pre-commit${normal} : To fix run the following (use git commit ${yellow}--no-verify${normal} to bypass)\n"
+    printf "# ${blue}$CLANG_FORMAT_VERSION ${red}error pre-commit${normal} : To fix run the following (use git commit ${yellow}--no-verify${normal} to bypass)\n"
     for f in "${cxxfiles[@]}" ; do
       rel=$(realpath --relative-to "./$GIT_PREFIX" $f)
       printf "$CLANG_FORMAT_VERSION -i %s\n" "$rel"

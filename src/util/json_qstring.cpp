@@ -10,7 +10,7 @@ namespace util {
 
   void to_json(nljson& j, QString const& qstr) { j = nljson{qstr.toStdString()}; }
 
-  void from_json(const nljson j, QString& qstr)
+  void from_json(nljson const j, QString& qstr)
   {
     if (j.type() == nljson::value_t::string)
       qstr = QString::fromStdString(j.get<std::string>());

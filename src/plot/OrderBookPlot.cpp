@@ -76,7 +76,7 @@ OrderBookPlot::OrderBookPlot(QWidget* parent, std::shared_ptr<order_book_base> o
   legend->attach(this);
 
   // main canvas color - dark, but not black
-  static const QColor c(0x28, 0x28, 0x28);
+  static QColor const c(0x28, 0x28, 0x28);
 
   // QWidget : fill background before painting (color = QPalette::Window)
   setAutoFillBackground(true);

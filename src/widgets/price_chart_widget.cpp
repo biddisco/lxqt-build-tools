@@ -160,7 +160,7 @@ void price_chart_widget::connect_gui()
       [this](QPointF p) {
         auto crosshairs = price_plot_->get_crosshairs();
         double msecs = crosshairs->quantize_x_coord(p.x());
-        const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msecs);
+        QDateTime const dt = QDateTime::fromMSecsSinceEpoch(msecs);
         QString s = QLocale::system().toString(dt, "dd-MM-yy hh:mm");
 
         QMessageBox::StandardButton reply;

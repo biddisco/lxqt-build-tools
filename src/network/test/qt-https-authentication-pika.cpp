@@ -29,7 +29,7 @@ static std::atomic<int> reply_ready = 0;
 static std::string api_user;
 static std::string api_key;
 static std::string api_secret;
-const std::string bitstamp_https_address = "www.bitstamp.net";
+std::string const bitstamp_https_address = "www.bitstamp.net";
 int const bitstamp_https_port = 443;
 
 // ----------------------------------------------------------------------------

@@ -12,7 +12,7 @@
 //
 #include "network/qhttp-request-client.hpp"
 
-const std::string server_addr = "https://s1.ripple.com:51234";
+std::string const server_addr = "https://s1.ripple.com:51234";
 //const std::string server_addr = "https://192.168.1.10:51234";
 static std::atomic<int> pass_count{0};
 

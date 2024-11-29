@@ -22,7 +22,7 @@ ohlc_date_scaledraw::ohlc_date_scaledraw(Qt::TimeSpec timeSpec)
 // ----------------------------------------------------------------------------
 QwtText ohlc_date_scaledraw::label(double value) const
 {
-  const QDateTime dt = toDateTime(value);
+  QDateTime const dt = toDateTime(value);
   auto interval = intervalType(scaleDiv());
   if (interval == QwtDate::Hour && dt.time().hour() == 0)
   {
@@ -33,6 +33,6 @@ QwtText ohlc_date_scaledraw::label(double value) const
   {
     return QLocale().toString(dt, "yyyy");
   }
-  const QString fmt = dateFormatOfDate(dt, interval);
+  QString const fmt = dateFormatOfDate(dt, interval);
   return QLocale().toString(dt, fmt);
 }

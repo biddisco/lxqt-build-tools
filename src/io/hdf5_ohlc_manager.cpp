@@ -56,7 +56,7 @@ void hdf5_ohlc_manager::read_impl(
     if (file.exist(path))
     {
       auto dataset = file.getDataSet(path);
-      const std::uint64_t ohlc_size = sizeof(ohlctv_sample) / sizeof(double);
+      std::uint64_t const ohlc_size = sizeof(ohlctv_sample) / sizeof(double);
       std::uint64_t Nelem = dataset.getElementCount() / ohlc_size;
       std::uint64_t Nread =
           std::min(Nelem, N >= 0 ? N : std::numeric_limits<std::uint64_t>().max());
@@ -88,7 +88,7 @@ void hdf5_ohlc_manager::read_impl(
 
 // ----------------------------------------------------------------------------
 void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
-    QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate)
+    QVector<ohlctv_sample> const& data, uint64_t const update, bool truncate)
 {
   std::string path = group + "/" + dataname;
   int valid = ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
@@ -104,8 +104,8 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
 
   using namespace HighFive;
   // size of data as an array of doubles
-  const uint64_t ohlc_size = sizeof(ohlctv_sample) / sizeof(double);
-  const uint64_t N = data.size() * ohlc_size;
+  uint64_t const ohlc_size = sizeof(ohlctv_sample) / sizeof(double);
+  uint64_t const N = data.size() * ohlc_size;
 
   if (!std::filesystem::exists(file_name_))
   {

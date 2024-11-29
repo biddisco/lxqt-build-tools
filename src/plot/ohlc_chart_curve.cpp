@@ -135,7 +135,7 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter, QwtScaleMap const& xMap,
 
     if (symbolStyleCopy == ohlc_chart_curve::HeikinAshi)
     {
-      const ohlctv_sample ha = heikin_ashi(s).value();
+      ohlctv_sample const ha = heikin_ashi(s).value();
 
       brushIndex =
           (ha.open < ha.close) ? QwtPlotTradingCurve::Increasing : QwtPlotTradingCurve::Decreasing;
@@ -213,7 +213,7 @@ void ohlc_chart_curve::drawVolume(QPainter* painter, QwtScaleMap const& xMap,
     painter->setPen(pen);
     painter->setBrush(VolumeBrush[brushIndex]);
 
-    const ohlctv_sample translatedSample(translatedTime, 0.0, translatedV1, translatedV0, 0.0, 0.0);
+    ohlctv_sample const translatedSample(translatedTime, 0.0, translatedV1, translatedV0, 0.0, 0.0);
 
     drawVolumeBar(painter, translatedSample, symbolWidth);
   }

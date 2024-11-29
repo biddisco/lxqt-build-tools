@@ -152,8 +152,8 @@ void CollapsibleGroupBox::resizeCollapseButton()
 
   if (QString::compare(QApplication::style()->objectName(), "fusion") == 0) baseSize = 15.0;
 
-  const qreal dpi = scr->logicalDotsPerInchX();
-  const qreal btnSize = floor((baseSize * dpi / 96.0) + 0.5);
+  qreal const dpi = scr->logicalDotsPerInchX();
+  qreal const btnSize = floor((baseSize * dpi / 96.0) + 0.5);
 
   m_clExpButton->setGeometry(size.width() - btnSize, yOffset, btnSize, btnSize);
 }

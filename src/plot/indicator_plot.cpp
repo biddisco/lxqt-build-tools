@@ -72,7 +72,7 @@ indicator_plot::indicator_plot(QWidget* parent)
   setAutoFillBackground(true);
 
   // main canvas color - dark, but not black
-  static const QColor c("#18191b");
+  static QColor const c("#18191b");
 
   // palette for widget colours
   QPalette palette0 = palette();

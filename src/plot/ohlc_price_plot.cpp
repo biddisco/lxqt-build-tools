@@ -198,7 +198,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   setAutoFillBackground(true);
 
   // main canvas color - dark, but not black
-  static const QColor c("#18191b");
+  static QColor const c("#18191b");
 
   // palette for widget colours
   QPalette palette0 = palette();
@@ -291,7 +291,7 @@ bool ohlc_price_plot::adjust_candle_size(double res)
     // if we don't find a usable coarser resolution, use 1m
     res = ohlc_data_resolutions::minute;
     // get the pixel/plot coordinate transform
-    const QwtScaleMap map = canvasMap(QwtAxis::XBottom);
+    QwtScaleMap const map = canvasMap(QwtAxis::XBottom);
     // try for candle around ~10 pixels - How big in world coords?
     double xm = map.invTransform(10) - map.invTransform(0);
     for (auto const& r : ranges::views::reverse(ohlc_data_resolutions::available_resolutions()))
@@ -431,7 +431,7 @@ void ohlc_price_plot::adjust_data_scaling()
 }
 
 // ----------------------------------------------------------------------------
-void ohlc_price_plot::display_picker_info(const QPointF pos)
+void ohlc_price_plot::display_picker_info(QPointF const pos)
 {
   double const time = pos.x();
   int64_t index = -1;

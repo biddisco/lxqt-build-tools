@@ -135,7 +135,7 @@ void ohlc_interactor::panCanvas(int dx, int dy)
   if (plot == NULL) return;
 
   // get the X axis pixel/plot coordinate transform
-  const QwtScaleMap map = plot->canvasMap(QwtAxis::XBottom);
+  QwtScaleMap const map = plot->canvasMap(QwtAxis::XBottom);
 
   // get the X axis extent, transform it into pixels
   double const p1 = map.transform(plot->axisScaleDiv(QwtAxis::XBottom).lowerBound());
@@ -155,7 +155,7 @@ void ohlc_interactor::zoomCanvas(int dx, int dy)
   if (plot == NULL) return;
 
   // get the X axis pixel/plot coordinate transform
-  const QwtScaleMap map = plot->canvasMap(QwtAxis::XBottom);
+  QwtScaleMap const map = plot->canvasMap(QwtAxis::XBottom);
 
   // we zoom keeping the point under the mouse at the same position in X
   // so we do not simply add an amount to both ends, but compute a more complex
@@ -379,8 +379,8 @@ void ohlc_interactor::widgetKeyPressEvent(QKeyEvent* keyEvent)
     if (plot == NULL) return;
 
     // get the X axis pixel/plot coordinate transform
-    const QwtScaleMap mapx = plot->canvasMap(QwtAxis::XBottom);
-    const QwtScaleMap mapy = plot->canvasMap(QwtAxis::YRight);
+    QwtScaleMap const mapx = plot->canvasMap(QwtAxis::XBottom);
+    QwtScaleMap const mapy = plot->canvasMap(QwtAxis::YRight);
 
     // mouse pos in world coords
     double xm = mapx.invTransform(m_data->pos.x());

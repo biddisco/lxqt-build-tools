@@ -67,7 +67,7 @@ secure_string encryption::CalcHmacSHA256(secure_string const& key, secure_string
   return {reinterpret_cast<char const*>(hash.data()), hashLen};
 }
 
-void aes_encrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption::BLOCK_SIZE],
+void aes_encrypt(byte const key[encryption::KEY_SIZE], byte const iv[encryption::BLOCK_SIZE],
     secure_string const& ptext, secure_string& ctext)
 {
   EVP_CIPHER_CTX_free_ptr ctx(EVP_CIPHER_CTX_new(), ::EVP_CIPHER_CTX_free);
@@ -90,7 +90,7 @@ void aes_encrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption:
   ctext.resize(out_len1 + out_len2);
 }
 
-void aes_decrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption::BLOCK_SIZE],
+void aes_decrypt(byte const key[encryption::KEY_SIZE], byte const iv[encryption::BLOCK_SIZE],
     secure_string const& ctext, secure_string& rtext)
 {
   EVP_CIPHER_CTX_free_ptr ctx(EVP_CIPHER_CTX_new(), ::EVP_CIPHER_CTX_free);
@@ -115,7 +115,7 @@ void aes_decrypt(const byte key[encryption::KEY_SIZE], const byte iv[encryption:
 
 std::string b2a_hex(std::string_view byte_arr, int n)
 {
-  const static std::string hex_codes = "0123456789abcdef";
+  static std::string const hex_codes = "0123456789abcdef";
   std::string hex_string;
   for (int i = 0; i < n; ++i)
   {

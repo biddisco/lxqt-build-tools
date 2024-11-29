@@ -16,12 +16,12 @@ void timebased_chart_plot::onCrossHairsMoved(QPointF const& pos)
 
   QPointF new_pos(pos.x(), ymid);
 
-  const QwtPlotItemList curves = itemList(QwtPlotItem::Rtti_PlotCurve);
+  QwtPlotItemList const curves = itemList(QwtPlotItem::Rtti_PlotCurve);
   if (curves.size() > 0)
   {
     // QPointF pos = crosshairs_->invTransform(crosshairs_->trackerPosition());
 
-    const QLineF line =
+    QLineF const line =
         crosshairs_->curveLineAt(static_cast<QwtPlotCurve const*>(curves[0]), pos.x());
     if (!line.isNull())
     {

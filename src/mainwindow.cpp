@@ -91,7 +91,7 @@ std::shared_ptr<price_chart_widget> create_price_chart_widget(
 QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
 {
   // create a new orderbook text display
-  const size_t font_size = 8;
+  size_t const font_size = 8;
   auto* orderbook_text = new QPlainTextEdit(nullptr);
   QString txt = "X";
   int char_size = QFontMetrics(orderbook_text->font()).horizontalAdvance(txt);
