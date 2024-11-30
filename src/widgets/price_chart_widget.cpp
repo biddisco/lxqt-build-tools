@@ -280,7 +280,7 @@ void price_chart_widget::connect_gui()
               }
               else if (ot == indicators::overlay_type::mode_select)
               {
-                ohlc_modes mode = std::get<ohlc_modes>(std::get<1>(algp.ptr()->get_params()[2]));
+                ohlc_modes mode = std::get<ohlc_modes>(algp.ptr()->get_params()[2].value);
                 if (mode == ohlc_modes::volume)
                   curve = price_plot_->add_overlay_volume_curve(
                       name, algp.ptr()->get_outputs()[i], colour);

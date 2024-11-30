@@ -12,7 +12,7 @@
 
 namespace indicators {
 
-  const static overlay_vector overlays = {overlay_type::buy_sell, overlay_type::buy_sell,
+  static overlay_vector const overlays = {overlay_type::buy_sell, overlay_type::buy_sell,
       overlay_type::buy_sell, overlay_type::relative_gain};
 
   //----------------------------------------------------------------------------
@@ -50,21 +50,20 @@ public:
     /// fields required for auto gui generation
     void init_params() override
     {
-      params_ = {//
-          std::make_tuple<QString, param_types>(
-              "Samples", candle_data{ohlc_data_resolutions::hour4, 1000}),
-          std::make_tuple<QString, param_types>("Window size", 7),
-          std::make_tuple<QString, param_types>("mode", ohlc_modes::mid_open_close),
-          std::make_tuple<QString, param_types>("Sliding Gap", 3.0 / 100)};
+      params_ = {                                                          //
+          {"Samples", candle_data{ohlc_data_resolutions::hour4, 1000}},    //
+          {"Window size", 7},                                              //
+          {"mode", ohlc_modes::mid_open_close},                            //
+          {"Sliding Gap", 3.0 / 100}};
     }
 
     // ---------------------------------------
     /// initialize internals from a parameter list
     void initialize() override
     {
-      window_size_ = std::get<int>(std::get<1>(params_[1]));
-      mode_ = std::get<ohlc_modes>(std::get<1>(params_[2]));
-      gap_ = std::get<double>(std::get<1>(params_[3]));
+      window_size_ = std::get<int>(params_[1].value);
+      mode_ = std::get<ohlc_modes>(params_[2].value);
+      gap_ = std::get<double>(params_[3].value);
       buffer1_ = boost::circular_buffer<float>(window_size_);
       last_val_ = std::numeric_limits<double>::min();
       average_ = moving_average_exponential_volume_weighted(window_size_, mode_);

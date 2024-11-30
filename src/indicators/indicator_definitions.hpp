@@ -96,7 +96,7 @@ namespace indicators {
     std::stringstream stream;
     for (auto const& p : params)
     {
-      stream << /*std::get<0>(p) << "," << */ streamer{std::get<1>(p)} << ",";
+      stream << /*std::get<0>(p) << "," << */ streamer{p.value} << ",";
     }
     return stream.str();
   }

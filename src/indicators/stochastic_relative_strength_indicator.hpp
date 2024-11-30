@@ -39,11 +39,9 @@ public:
     void init_params() override
     {
       params_ = {
-          //
-          std::make_tuple<QString, param_types>(
-              "Samples", candle_data{ohlc_data_resolutions::minute15, 5000}),
-          std::make_tuple<QString, param_types>("Window size", 14),
-          std::make_tuple<QString, param_types>("K smooth", 3),
+          {"Samples", candle_data{ohlc_data_resolutions::minute15, 5000}},    //
+          {"Window size", 14},                                                //
+          {"K smooth", 3},
       };
     }
 
@@ -51,7 +49,7 @@ public:
     /// initialize internals from a parameter list
     void initialize() override
     {
-      int k_smooth = std::get<int>(std::get<1>(params_[2]));
+      int k_smooth = std::get<int>(params_[2].value);
       mov_av_k_ = ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>>(
           ba::tag::rolling_window::window_size = k_smooth);
       //
@@ -60,7 +58,7 @@ public:
       //
       osc_.set_params(params_);
       osc_.initialize();
-      // mode_ = std::get<int>(std::get<1>(params_[2]));
+      // mode_ = std::get<int>(params_[2].value);
     }
 
     // ---------------------------------------

@@ -205,14 +205,14 @@ void indicator_dialog::refresh_gui(int index)
     // get the i-th param from the variant algorithm list
     auto p = std::visit([=](auto const& obj) { return obj.get_params()[i]; }, alg);
     // draw datasets in left column, params in right
-    int column = std::visit([&](auto const& v) { return get_column(v); }, std::get<1>(p));
+    int column = std::visit([&](auto const& v) { return get_column(v); }, p.value);
 
     // get label for parameter
-    QLabel* const label = new QLabel(std::get<0>(p));
+    QLabel* const label = new QLabel(p.name);
     layout->addWidget(label, counts[column], column * 2);
 
     // get a widget to represent the parameter (based on param type)
-    QWidget* widget = std::visit([&](auto const& v) { return get_widget(v); }, std::get<1>(p));
+    QWidget* widget = std::visit([&](auto const& v) { return get_widget(v); }, p.value);
     layout->addWidget(widget, counts[column], column * 2 + 1);
     params << widget;
     //
@@ -244,7 +244,7 @@ void indicator_dialog::update_parameters()
     QWidget* widget = params[i];
 
     // update the param value from the widget
-    std::visit([i, widget](auto& value) { set_param(widget, value); }, std::get<1>(new_params[i]));
+    std::visit([i, widget](auto& value) { set_param(widget, value); }, new_params[i].value);
   }
 
   // overwrite the original params with the new default / updated values

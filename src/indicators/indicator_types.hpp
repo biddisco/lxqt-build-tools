@@ -18,7 +18,14 @@ inline constexpr grox::debug::print_threshold<Level, 5> indicator_dbg("Indicate"
 namespace indicators {
 
   using param_types = std::variant<double, int, ohlc_modes, bool, candle_data>;
-  using param_list = std::vector<std::tuple<QString, param_types>>;
+
+  struct param_pair
+  {
+    QString name;
+    param_types value;
+  };
+
+  using param_list = std::vector<param_pair>;
 
   // ----------------------------------------------------------------------------
   /// greek symbol for sigma, used in certain indicator texts

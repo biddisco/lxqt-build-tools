@@ -34,12 +34,11 @@ public:
     /// fields required for auto gui generation
     void init_params() override
     {
-      params_ = {//
-          std::make_tuple<QString, param_types>(
-              "Samples", candle_data{ohlc_data_resolutions::minute15, 5000}),
-          std::make_tuple<QString, param_types>("Window size", 20),
-          std::make_tuple<QString, param_types>("scale factor", 1.0),
-          std::make_tuple<QString, param_types>(QString("Num Bands (each 1") + sigma + ")", 1)};
+      params_ = {                                                             //
+          {"Samples", candle_data{ohlc_data_resolutions::minute15, 5000}},    //
+          {"Window size", 20},                                                //
+          {"scale factor", 1.0},                                              //
+          {QString("Num Bands (each 1") + sigma + ")", 1}};
     }
 
     // ---------------------------------------
@@ -50,9 +49,9 @@ public:
     /// initialize internals from a parameter list
     void initialize() override
     {
-      window_size_ = std::get<int>(std::get<1>(params_[1]));
-      scale_ = std::get<double>(std::get<1>(params_[2]));
-      num_bands_ = std::get<int>(std::get<1>(params_[3]));
+      window_size_ = std::get<int>(params_[1].value);
+      scale_ = std::get<double>(params_[2].value);
+      num_bands_ = std::get<int>(params_[3].value);
       buffer1_ = boost::circular_buffer<float>(window_size_);
     }
 

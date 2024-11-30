@@ -75,20 +75,20 @@ public:
     virtual void init_params() = 0;
 
     // ----------------------------------------------------------------------------
-    virtual const std::string get_name() const { return name_; }
-    virtual const std::string get_description() const { return description_; }
+    virtual std::string const get_name() const { return name_; }
+    virtual std::string const get_description() const { return description_; }
 
     // ----------------------------------------------------------------------------
     /// in principle an indicator can return multiple graph series, which might require
     /// different display types, currently they are all the same, so 'n' is ignored
-    virtual const overlay_type get_overlay(int n) const { return overlay_[n]; }
+    virtual overlay_type const get_overlay(int n) const { return overlay_[n]; }
 
     // ----------------------------------------------------------------------------
     virtual param_list const& get_params() const { return params_; }
     virtual void set_params(param_list const& p) { params_ = p; }
 
     // ----------------------------------------------------------------------------
-    virtual const y_limits get_ylimits() const { return {0.0, 1.0}; }
+    virtual y_limits const get_ylimits() const { return {0.0, 1.0}; }
 
     // ----------------------------------------------------------------------------
     virtual int num_inputs() const { return 1; }
@@ -105,8 +105,8 @@ public:
     {
       in_datasets_ = connect_input_datasets(view);
       //
-      const candle_res res = in_datasets_[0].dataset_->get_resolution();
-      const std::size_t size = in_datasets_[0].dataset_->data().size();
+      candle_res const res = in_datasets_[0].dataset_->get_resolution();
+      std::size_t const size = in_datasets_[0].dataset_->data().size();
       for (int i = 0; i < num_outputs(); ++i)
       {
         point_chart_data* indicator_data = new point_chart_data(res);
@@ -124,7 +124,7 @@ public:
       std::vector<input_data> result;
       for (auto const& p : get_params())
       {
-        if (candle_data const* d = std::get_if<candle_data>(&std::get<1>(p)))
+        if (candle_data const* d = std::get_if<candle_data>(&p.value))
         {
           auto dataset = view->get_dataset(d->res_);
           result.push_back({dataset, d->numSamples_});
