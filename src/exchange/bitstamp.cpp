@@ -1043,41 +1043,6 @@ any_bytearray_sender bitstamp_network::request_price_history(currency_pair cp)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::handle_buy_sell_order(std::string_view data)
-{
-  // json jdata = json::parse(data);
-  // bitstamp_dbg<0>.debug(str<>("buy_sell response"), jdata.dump(4));
-  // if (jdata.contains("error")) { return false; }
-  // return true;
-}
-
-// ----------------------------------------------------------------------------
-// void bitstamp_network::handle_buy_sell_order(std::string_view data)
-// {
-
-// json jdata = json::parse(data);
-// bitstamp_dbg<0>.debug(str<>("buy_sell response"), jdata.dump(4));
-// // refresh order status if we don't have orders websocket
-// if (update_after /*&& ws_myorders == nullptr*/) { request_open_orders(); }
-// if (jdata.contains("id"))
-// {
-//   trade_data new_t = t;
-//   new_t.id_ = std::stoll(jdata["id"].get_ptr<json::string_t*>()->c_str());
-//   new_t.confirmed_ = true;
-//   new_t.datetime_ = jdata["datetime"].get_ptr<json::string_t*>()->c_str();
-//   double price = std::stod(jdata["price"].get_ptr<json::string_t*>()->c_str());
-//   double amount = std::stod(jdata["amount"].get_ptr<json::string_t*>()->c_str());
-//   if (price != new_t.get_price())
-//   {
-//     bitstamp_dbg<0>.error(str<>("buy_sell price"), price, new_t.get_price());
-//   }
-//   auto& trades = account().offers_;
-//   trades.push_back(new_t);
-//   emit update_wallet_widget(&account());
-// }
-// }
-
-// ----------------------------------------------------------------------------
 void bitstamp_network::place_buy_sell_orders(
     basic_account* acct, std::vector<trade_data> const& trades)
 {
@@ -1122,10 +1087,6 @@ void bitstamp_network::place_buy_sell_orders(
   });
 
   ex::start_detached(std::move(all_done));
-  // namespace tt = pika::this_thread::experimental;
-  // tt::sync_wait(scope.on_empty());
-  // if (counter != trades.size()) { throw std::runtime_error("Some trades orders failed"); }
-  // else { stdexec::start_detached(std::move(snd)); }
 }
 
 // ----------------------------------------------------------------------------
