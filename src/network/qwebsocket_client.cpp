@@ -114,9 +114,8 @@ namespace net::ws {
     if (websocket_ != nullptr)
     {
       qwebsocket_dbg<2>.debug(fmt::format("{:20s} stopConnection : invoking WebSocket close", id_));
-      QMetaObject::invokeMethod(websocket_, "close", Qt::QueuedConnection);
-      (*websocket_).deleteLater();
-      websocket_ = nullptr;
+      bool result = QMetaObject::invokeMethod(
+          websocket_, "close", Qt::QueuedConnection, QWebSocketProtocol::CloseCodeNormal);
     }
   }
 
@@ -151,12 +150,18 @@ namespace net::ws {
   {
     if (websocket_)
     {
-      auto reason = (*websocket_).closeReason();
-      qwebsocket_dbg<0>.error(fmt::format(
-          "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
-          QVariant::fromValue((*websocket_).closeCode()).toString(), (*websocket_).errorString()));
+      auto code = (*websocket_).closeCode();
+      if (code != QWebSocketProtocol::CloseCodeNormal)
+      {
+        auto reason = (*websocket_).closeReason();
+        qwebsocket_dbg<0>.error(fmt::format(
+            "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
+            QVariant::fromValue(code).toString(), (*websocket_).errorString()));
+      }
+      else { qwebsocket_dbg<0>.debug(fmt::format("{:20s} AboutToClose : CloseCode Normal", id_)); }
+      (*websocket_).deleteLater();
+      websocket_ = nullptr;
     }
-    /*setTimeout(setupWebSocket, 1000);*/
   }
 
   // ------------------------------------------------------------------

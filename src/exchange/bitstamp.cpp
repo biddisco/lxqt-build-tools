@@ -321,7 +321,7 @@ void bitstamp_network::shut_down()
       try
       {
         bitstamp_dbg<2>.debug(
-            str<>("websocket close"), currency_pair_string(ticker), fmt::ptr(websocket.get()));
+            str<>("websocket reset"), currency_pair_string(ticker), fmt::ptr(websocket.get()));
         websocket.reset();
       }
       catch (std::exception const& e)
