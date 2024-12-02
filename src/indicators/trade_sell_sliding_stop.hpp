@@ -53,8 +53,8 @@ public:
       params_ = {                                                          //
           {"Samples", candle_data{ohlc_data_resolutions::hour4, 1000}},    //
           {"Window size", 7},                                              //
-          {"mode", ohlc_modes::mid_open_close},                            //
-          {"Sliding Gap", 3.0 / 100}};
+          {"mode", ohlc_modes::high},                                      //
+          {"Sliding Gap", 0.5 / 100}};
     }
 
     // ---------------------------------------
