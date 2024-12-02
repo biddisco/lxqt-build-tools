@@ -56,7 +56,7 @@ TEST(exchange, request_account_info)
   using namespace grox::debug;
   test1_dbg<2>.debug(str<>("TEST(exchange, request_account_info)"));
   std::atomic<bool> finished{false};
-  auto snd = ex::on(QtStdExec::QThreadScheduler(), ex::just())                       //
+  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                //
       | ex::let_value([]() { return bitstamp_exchange->request_account_info(); })    // Qt -> pika
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
@@ -79,7 +79,7 @@ TEST(exchange, cancel_order)
   using namespace grox::debug;
   test1_dbg<2>.debug(str<>("TEST(exchange, request_account_info)"));
   std::atomic<bool> finished{false};
-  auto snd = ex::on(QtStdExec::QThreadScheduler(), ex::just())                         //
+  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                  //
       | ex::let_value([t]() { return bitstamp_exchange->request_cancel_order(t); })    // Qt -> pika
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
@@ -118,7 +118,7 @@ int qt_main(int argc, char* argv[])
   }
 
   int test_result;
-  auto snd = ex::on(grox::senders::default_pool_scheduler(), ex::just())    //
+  auto snd = ex::starts_on(grox::senders::default_pool_scheduler(), ex::just())    //
       | ex::then([&test_result]() {
           test_result = RUN_ALL_TESTS();
           QCoreApplication::instance()->quit();

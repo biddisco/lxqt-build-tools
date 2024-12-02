@@ -77,8 +77,8 @@ void xrpl_network::initialize()
     emit network_initialized(this);
   };
 
-  stdexec::sender auto snd =
-      stdexec::on(default_pool_scheduler(), stdexec::just()) | stdexec::then(wait_for_init);
+  stdexec::sender auto snd = stdexec::starts_on(default_pool_scheduler(), stdexec::just())    //
+      | stdexec::then(wait_for_init);
   stdexec::start_detached(std::move(snd));
 }
 
@@ -142,8 +142,8 @@ bool xrpl_network::stream_subscribe(
   // always subscribe to a ticker before a stream it owns
   if (!ticker_subscribed(cp)) ticker_subscribe(cp);
 
-  auto snd = stdexec::on(QtStdExec::QThreadScheduler(), stdexec::just())    //
-      | stdexec::then([this, cp, stream, enabled]() {                       //
+  auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
+      | stdexec::then([this, cp, stream, enabled]() {                              //
           bool ok = true;
           switch (stream)
           {
@@ -328,8 +328,8 @@ void xrpl_network::new_orderbook_data_q(
     }
   };
 
-  stdexec::sender auto snd =
-      stdexec::on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
+  stdexec::sender auto snd = stdexec::starts_on(default_pool_scheduler(), stdexec::just())    //
+      | stdexec::then(process);
   stdexec::start_detached(std::move(snd));
 }
 
@@ -532,7 +532,8 @@ void xrpl_network::get_all_account_lines(exec::async_scope& scope)
 {
   for (auto& w : subscribed_wallets_)
   {
-    auto snd = stdexec::on(QtStdExec::QThreadScheduler(), get_account_lines(w.public_))    // Qt
+    auto snd =
+        stdexec::starts_on(QtStdExec::QThreadScheduler(), get_account_lines(w.public_))    // Qt
         | stdexec::then([this, &w](QByteArray byteArray) {                                 // pika
             std::string_view data(byteArray.constData(), byteArray.length());
             // debug : print the response headers and body
@@ -626,13 +627,13 @@ void xrpl_network::get_all_account_infos(exec::async_scope& scope)
 {
   for (auto& w : subscribed_wallets_)
   {
-    auto snd = stdexec::on(QtStdExec::QThreadScheduler(), get_account_info(w.public_)) |
-        stdexec::then([this, &w](QByteArray byteArray) {
-          std::string_view data(byteArray.constData(), byteArray.length());
-          // debug : print the response headers and body
-          xrpnet_dbg<8>.debug(str<>("account_info"), w.public_, data);
-          this->handle_account_info(w, data);
-        });
+    auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), get_account_info(w.public_))    //
+        | stdexec::then([this, &w](QByteArray byteArray) {
+            std::string_view data(byteArray.constData(), byteArray.length());
+            // debug : print the response headers and body
+            xrpnet_dbg<8>.debug(str<>("account_info"), w.public_, data);
+            this->handle_account_info(w, data);
+          });
     scope.spawn(std::move(snd));
   }
 }
@@ -695,13 +696,14 @@ void xrpl_network::get_all_account_offers(exec::async_scope& scope)
 {
   for (auto& w : subscribed_wallets_)
   {
-    auto snd = stdexec::on(QtStdExec::QThreadScheduler(), get_account_offers(w.public_)) |
-        stdexec::then([this, &w](QByteArray byteArray) {
-          std::string_view data(byteArray.constData(), byteArray.length());
-          // debug : print the response headers and body
-          xrpnet_dbg<8>.debug(str<>("account_offers"), w.public_, data);
-          this->handle_account_offers(w, data);
-        });
+    auto snd =
+        stdexec::starts_on(QtStdExec::QThreadScheduler(), get_account_offers(w.public_))    //
+        | stdexec::then([this, &w](QByteArray byteArray) {
+            std::string_view data(byteArray.constData(), byteArray.length());
+            // debug : print the response headers and body
+            xrpnet_dbg<8>.debug(str<>("account_offers"), w.public_, data);
+            this->handle_account_offers(w, data);
+          });
     scope.spawn(std::move(snd));
   };
 }
@@ -797,13 +799,13 @@ bool xrpl_network::make_payment(currency const& c, basic_account* src, basic_acc
   }
   from->sequence_++;
 
-  auto snd =
-      stdexec::on(QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx))) |
-      stdexec::then([this](QByteArray byteArray) {
-        std::string_view data(byteArray.constData(), byteArray.length());
-        xrpnet_dbg<8>.debug(str<>("make_payment"), data);
-        emit transaction_event();
-      });
+  auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(),
+                 submit_signed_transaction(std::move(signed_tx)))    //
+      | stdexec::then([this](QByteArray byteArray) {
+          std::string_view data(byteArray.constData(), byteArray.length());
+          xrpnet_dbg<8>.debug(str<>("make_payment"), data);
+          emit transaction_event();
+        });
   stdexec::start_detached(std::move(snd));
   return true;
 }
@@ -862,7 +864,7 @@ any_bytearray_sender xrpl_network::request_limit_order(
       from->sequence_, taker_pays, taker_gets, 0);
   from->sequence_++;
 
-  return stdexec::on(
+  return stdexec::starts_on(
       QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx)));
 
   // |
@@ -898,8 +900,8 @@ any_bytearray_sender xrpl_network::request_cancel_order(trade_data const& t)
       ripple::KeyType::secp256k1, from->private_, from->public_, from->sequence_, t.id_, 0);
   from->sequence_++;
 
-  auto snd =
-      stdexec::on(QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx)));
+  auto snd = stdexec::starts_on(
+      QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx)));
   // '
   //       stdexec::then([this](QByteArray byteArray) {
   //         std::string_view data(byteArray.constData(), byteArray.length());
@@ -919,24 +921,24 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
     return;
   }
 
-  auto snd = stdexec::on(QtStdExec::QThreadScheduler(), get_account_info(c1.issuer_)) |
-      stdexec::then([this, c1](QByteArray byteArray) {
-        std::string_view data(byteArray.constData(), byteArray.length());
-        // debug : print the response headers and body
-        xrpnet_dbg<8>.debug(str<>("query_iou_fee"), c1.issuer_, data);
-        json jdata = json::parse(data)["result"]["account_data"];
-        if (jdata.contains("TransferRate"))
-        {
-          int sfee = jdata["TransferRate"].get<int>();
-          // In the XRP Ledger protocol, the transfer fee is specified in the TransferRate
-          // field, as an integer which represents the amount you must send for the
-          // recipient to get 1 billion units of the same currency.
-          // A TransferRate of 1005000000 is equivalent to a transfer fee of 0.5%
-          double feepercent = 100.0 * (1E-9 * sfee - 1.0);
-          xrpnet_dbg<0>.debug(str<>("fee %"), c1.issuer_, feepercent);
-          currency_fees_[c1.issuer_] = feepercent;
-        }
-      });
+  auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), get_account_info(c1.issuer_))    //
+      | stdexec::then([this, c1](QByteArray byteArray) {
+          std::string_view data(byteArray.constData(), byteArray.length());
+          // debug : print the response headers and body
+          xrpnet_dbg<8>.debug(str<>("query_iou_fee"), c1.issuer_, data);
+          json jdata = json::parse(data)["result"]["account_data"];
+          if (jdata.contains("TransferRate"))
+          {
+            int sfee = jdata["TransferRate"].get<int>();
+            // In the XRP Ledger protocol, the transfer fee is specified in the TransferRate
+            // field, as an integer which represents the amount you must send for the
+            // recipient to get 1 billion units of the same currency.
+            // A TransferRate of 1005000000 is equivalent to a transfer fee of 0.5%
+            double feepercent = 100.0 * (1E-9 * sfee - 1.0);
+            xrpnet_dbg<0>.debug(str<>("fee %"), c1.issuer_, feepercent);
+            currency_fees_[c1.issuer_] = feepercent;
+          }
+        });
 
   stdexec::start_detached(std::move(snd));
 }
@@ -958,13 +960,13 @@ void xrpl_network::trustline(
   std::string signed_tx = set_trustline(ripple::KeyType::secp256k1, from->private_, from->public_,
       from->sequence_, limit, code, addr, flags);
 
-  auto snd =
-      stdexec::on(QtStdExec::QThreadScheduler(), submit_signed_transaction(std::move(signed_tx))) |
-      stdexec::then([this](QByteArray byteArray) {
-        std::string_view data(byteArray.constData(), byteArray.length());
-        xrpnet_dbg<8>.debug(str<>("trustline"), data);
-        emit transaction_event();
-      });
+  auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(),
+                 submit_signed_transaction(std::move(signed_tx)))    //
+      | stdexec::then([this](QByteArray byteArray) {
+          std::string_view data(byteArray.constData(), byteArray.length());
+          xrpnet_dbg<8>.debug(str<>("trustline"), data);
+          emit transaction_event();
+        });
   stdexec::start_detached(std::move(snd));
 }
 
