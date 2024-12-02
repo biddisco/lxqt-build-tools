@@ -1,8 +1,18 @@
 #include "trade_widget.hpp"
+#include "debug/print.hpp"
 #include "ui_trade_widget.h"
+#include "util/stringutils.hpp"
 
+#include "exchange/bitstamp.hpp"
 #include "nlohmann/json.hpp"
+#include "senders/qtstdexec.hpp"
 
+// ----------------------------------------------------------------------------
+using namespace grox::debug;
+template <int Level>
+inline constexpr print_threshold<Level, 3> trade_dbg("TradeWgt");
+
+// ----------------------------------------------------------------------------
 trade_widget::trade_widget(QWidget* parent)
   : QWidget(parent)
   , ui(new Ui::trade_widget)
@@ -11,6 +21,7 @@ trade_widget::trade_widget(QWidget* parent)
   connect_events();
 }
 
+// ----------------------------------------------------------------------------
 trade_widget::trade_widget(std::string_view data, QWidget* parent)
   : QWidget(parent)
   , ui(new Ui::trade_widget)
@@ -30,6 +41,7 @@ trade_widget::trade_widget(std::string_view data, QWidget* parent)
   ui->date_time->setText(jdata["datetime"].get_ptr<json::string_t*>()->c_str());
 }
 
+// ----------------------------------------------------------------------------
 void trade_widget::set_data(trade_data const& t)
 {
   trade_ = t;
@@ -78,10 +90,30 @@ void trade_widget::set_data(trade_data const& t)
   ui->date_time->setText(t.datetime_.c_str());
 }
 
+// ----------------------------------------------------------------------------
 trade_widget::~trade_widget() { delete ui; }
 
+// ----------------------------------------------------------------------------
 void trade_widget::connect_events()
 {
-  connect(ui->cancel, &QToolButton::clicked, this,
-      [this]() { trade_.network_->request_cancel_order(trade_); });
+  connect(ui->cancel, &QToolButton::clicked, this, [this]() {
+    auto web = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())    // Qt
+        | stdexec::let_value(                                                        //
+              [this]() { return trade_.network_->request_cancel_order(trade_); })    // Qt -> pika
+        | stdexec::then([this](QByteArray byteArray) {                               // pika
+            std::string_view data(byteArray.constData(), byteArray.length());
+            nlohmann::json jdata = nlohmann::json::parse(data);
+            trade_dbg<2>.debug(str<>("cancel_order"), trade_.id_, jdata.dump());
+            if (!jdata.contains("error"))
+            {
+              if (jdata["id"] == trade_.id_)
+              {
+                auto acct = std::dynamic_pointer_cast<bitstamp_network>(trade_.network_)->account();
+                acct.remove_trade(trade_);
+              }
+              else { trade_dbg<0>.error(str<>("cancel_order"), trade_.id_, jdata.dump()); }
+            }
+          });
+    stdexec::start_detached(std::move(web));
+  });
 }

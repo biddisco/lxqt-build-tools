@@ -83,6 +83,14 @@ struct basic_account
     }
     offers_.push_back(std::move(t));
   }
+
+  //
+  void remove_trade(trade_data const& t)
+  {
+    std::scoped_lock l(protection_);
+    // remove if trade id matches passed in value
+    std::remove_if(offers_.begin(), offers_.end(), [&t](auto const& o) { return o.id_ == t.id_; });
+  }
 };
 
 // For compatibility with Qt Variant and Signals/Slots

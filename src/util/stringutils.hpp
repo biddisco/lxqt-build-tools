@@ -7,8 +7,9 @@
 //
 #include <range/v3/algorithm.hpp>
 #include <range/v3/all.hpp>
+#include <nlohmann/json.hpp>
 
-#define JCHARP(val) val.get_ptr<json::string_t*>()->c_str()
+#define JCHARP(val) val.get_ptr<nlohmann::json::string_t*>()->c_str()
 
 /*
 struct fmt::formatter<QString> : formatter<const char*> {
@@ -80,8 +81,8 @@ inline void uppercase_i(std::string& data)
 // Function to transform a range into a std::string or std::string_view
 template <typename Result>
 inline auto make_string = [](auto&& r) -> Result {
-  const auto data = &*r.begin();
-  const auto size = static_cast<std::size_t>(ranges::distance(r));
+  auto const data = &*r.begin();
+  auto const size = static_cast<std::size_t>(ranges::distance(r));
   return Result{data, size};
 };
 
