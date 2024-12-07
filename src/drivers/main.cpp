@@ -155,22 +155,6 @@ int qt_main(pika::program_options::variables_map& vm)
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   //
   bool authenticated = false;
-  // do we have a ram filesystem mounted? (ubuntu specific env var)
-  char const* tempfs_dir = std::getenv("XDG_RUNTIME_DIR");
-  if (!authenticated && tempfs_dir)
-  {
-    std::string filepath = {std::string(tempfs_dir) + "/grox.txt"};
-    if (std::filesystem::exists(filepath))
-    {
-      std::ifstream file(filepath);
-      std::stringstream buffer;
-      buffer << file.rdbuf();
-      global_settings.grox_password = base64_decode(buffer.str()).toStdString();
-      authenticated = true;
-      app_dbg<5>.debug(str<>("authentication"), "tempfs", "ok");
-    }
-    else { app_dbg<5>.error(str<>("Authentication"), "tempfs", "fail"); }
-  }
   if (!authenticated)
   {
     std::string commandLine = "pass grox/grox";
@@ -191,13 +175,6 @@ int qt_main(pika::program_options::variables_map& vm)
       global_settings.grox_password = npw.getPassword().toStdString();
       authenticated = true;
       app_dbg<5>.debug(str<>("authentication"), "password", "ok");
-      if (tempfs_dir)
-      {
-        std::string filepath = {std::string(tempfs_dir) + "/grox.txt"};
-        std::ofstream file(filepath);
-        file << base64_encode(global_settings.grox_password).toStdString();
-        app_dbg<5>.debug(str<>("authentication"), "tempfs", "write");
-      }
     }
   }
   if (!authenticated)
