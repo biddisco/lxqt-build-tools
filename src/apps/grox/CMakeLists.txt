@@ -7,7 +7,7 @@ qt_wrap_ui(GROX_SRC tabbed_form.ui)
 # -----------------------------------------------------------------------------
 # Qt resource files
 # -----------------------------------------------------------------------------
-set(GROX_QRC_SRC grox.qrc ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
+set(GROX_QRC_SRC ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
                  ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc
 )
 

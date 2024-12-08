@@ -38,27 +38,13 @@ set(grox_widgets_SRCS
     xrp_functions.ui
 )
 
-add_library(
-  grox_widgets
-  ${grox_widgets_SRCS}
-  ${grox_widgets_ui_SRC}
-)
+set(grox_widgets_QRCS images.qrc)
 
-set_property(
-  TARGET grox_widgets
-  PROPERTY AUTOMOC
-           ON
-)
-set_property(
-  TARGET grox_widgets
-  PROPERTY AUTOUIC
-           ON
-)
-set_property(
-  TARGET grox_widgets
-  PROPERTY AUTORCC
-           ON
-)
+add_library(grox_widgets ${grox_widgets_SRCS} ${grox_widgets_ui_SRC} ${grox_widgets_QRCS})
+
+set_property(TARGET grox_widgets PROPERTY AUTOMOC ON)
+set_property(TARGET grox_widgets PROPERTY AUTOUIC ON)
+set_property(TARGET grox_widgets PROPERTY AUTORCC ON)
 
 target_include_directories(grox_widgets PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 

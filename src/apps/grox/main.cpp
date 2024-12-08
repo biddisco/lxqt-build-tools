@@ -142,6 +142,7 @@ int qt_main(pika::program_options::variables_map& vm)
   QApplication app(argc, argv);
   QNetworkAccessManager networkmanager;
   //
+  Q_INIT_RESOURCE(images);
   QIcon icon(":images/icons/xrp-logo-white-black.svg");
   app.setWindowIcon(icon);
   app.setApplicationName("grox");
