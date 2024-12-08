@@ -1,9 +1,4 @@
-find_package(
-  Qt6
-  REQUIRED
-  COMPONENTS Core
-             Network
-)
+find_package(Qt6 REQUIRED COMPONENTS Core Network)
 
 set(grox_exchange_SRCS
     account.hpp
@@ -24,11 +19,7 @@ set(grox_exchange_SRCS
 )
 
 add_library(grox_exchange ${grox_exchange_SRCS})
-set_property(
-  TARGET grox_exchange
-  PROPERTY AUTOMOC
-           ON
-)
+set_property(TARGET grox_exchange PROPERTY AUTOMOC ON)
 target_include_directories(grox_exchange PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 target_link_libraries(
@@ -38,6 +29,7 @@ target_link_libraries(
          grox_currency
          grox_data
          grox_network
+         grox_util
          nlohmann_json::nlohmann_json
          xrpl.libxrpl
          range-v3
@@ -47,18 +39,11 @@ target_link_libraries(
 )
 
 if(GROX_WITH_IWYU)
-  set_property(
-    TARGET grox_exchange
-    PROPERTY CXX_INCLUDE_WHAT_YOU_USE
-             ${iwyu_path}
-  )
+  set_property(TARGET grox_exchange PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path})
 endif()
 
 if(BUILD_TESTING)
   pika_add_pseudo_target(tests.exchange)
-  pika_add_pseudo_dependencies(
-    tests
-    tests.exchange
-  )
+  pika_add_pseudo_dependencies(tests tests.exchange)
   add_subdirectory(test)
 endif()

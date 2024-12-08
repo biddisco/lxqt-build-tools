@@ -25,6 +25,7 @@
 #include "senders/qhttp-post-sender.hpp"
 #include "senders/qtstdexec.hpp"
 #include "util/datetime_utils.hpp"
+#include "util/execute_os_command.hpp"
 #include "util/json_qstring.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/price_chart_widget.hpp"
@@ -81,6 +82,19 @@ bitstamp_network::bitstamp_network()
 // ----------------------------------------------------------------------------
 bitstamp_network::~bitstamp_network() { bitstamp_dbg<0>.debug(str<>("destructor")); }
 
+// ----------------------------------------------------------------------------
+bool bitstamp_network::get_pass_authentication(bitstamp_account& account)
+{
+  account.API_user = execute_os_command("pass bitstamp/user");
+  account.API_key = execute_os_command("pass bitstamp/api_key");
+  account.API_secret = execute_os_command("pass bitstamp/secret");
+  //
+  if (account.API_user.empty() || account.API_key.empty() || account.API_secret.empty())
+  {
+    return false;
+  }
+  return true;
+}
 // ----------------------------------------------------------------------------
 // token is valid if it has more than (say) 5s of time left before it expires
 bool token_valid(std::atomic<std::chrono::time_point<std::chrono::system_clock>>& expiry)

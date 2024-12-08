@@ -7,7 +7,6 @@
 #include <utility>
 //
 #include <fmt/format.h>
-#include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 //
 #include <pika/debugging/print.hpp>
@@ -47,7 +46,7 @@ namespace {
 }    // namespace
 
 // ------------------------------------------------------------------
-TEST(exchange, request_account_info)
+int request_account_info()
 {
   using namespace grox::debug;
   test1_dbg<2>.debug(str<>("TEST(exchange, request_account_info)"));
@@ -57,36 +56,14 @@ TEST(exchange, request_account_info)
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
-          test1_dbg<2>.debug(str<>("request_account_info"), jdata.dump(4));
-          EXPECT_TRUE(jdata.size() > 0);
-          EXPECT_TRUE(jdata["eur_available"] != "");
+          test1_dbg<0>.debug(str<>("request_account_info"), jdata.dump(4));
+          assert(jdata.size() > 0);
+          assert(jdata["eur_available"] != "");
           finished = true;
         });
   ex::start_detached(std::move(snd));
   pika::util::yield_while([&]() { return !finished; });
-}
-
-// ----------------------------------------------------------------------------
-TEST(exchange, cancel_order)
-{
-  trade_data t;
-  t.id_ = 1816315536502784;
-
-  using namespace grox::debug;
-  test1_dbg<2>.debug(str<>("TEST(exchange, request_account_info)"));
-  std::atomic<bool> finished{false};
-  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                  //
-      | ex::let_value([t]() { return bitstamp_exchange->request_cancel_order(t); })    // Qt -> pika
-      | ex::then([&](QByteArray byteArray) {
-          std::string_view data(byteArray.constData(), byteArray.length());
-          nlohmann::json jdata = nlohmann::json::parse(data);
-          test1_dbg<2>.debug(str<>("cancel_order"), jdata.dump(4));
-          EXPECT_EQ(jdata["error"], "Order not found");
-          EXPECT_TRUE(jdata.size() == 2);
-          finished = true;
-        });
-  ex::start_detached(std::move(snd));
-  pika::util::yield_while([&]() { return !finished; });
+  return 1;
 }
 
 // ----------------------------------------------------------------------------
@@ -112,7 +89,7 @@ int qt_main(int argc, char* argv[])
   int test_result;
   auto snd = ex::starts_on(grox::senders::default_pool_scheduler(), ex::just())    //
       | ex::then([&test_result]() {
-          test_result = RUN_ALL_TESTS();
+          test_result = request_account_info();
           QCoreApplication::instance()->quit();
         });
   ex::start_detached(std::move(snd));
@@ -174,11 +151,8 @@ void init_qt_pool(pika::resource::partitioner& rp, pika::program_options::variab
 // the normal int main function that is called at startup and runs on an OS
 // thread the user must call pika::init to start the pika runtime which
 // will execute pika_main on an pika thread
-GTEST_API_ int main(int argc, char** argv)
+int main(int argc, char** argv)
 {
-  // required for gtest
-  testing::InitGoogleTest(&argc, argv);
-
   // setup pika initialization including thread pool for Qt main thread
   // tell the scheduler to sleep quickly when there are no tasks to work on
   // if not specified on the command line, ask for 2 threads

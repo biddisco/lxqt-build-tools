@@ -326,4 +326,4 @@ add_subdirectory(src/plot)
 add_subdirectory(src/widgets)
 
 #
-add_subdirectory(src/drivers)
+add_subdirectory(src/apps)

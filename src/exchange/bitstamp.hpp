@@ -77,6 +77,9 @@ class bitstamp_network : public exchange
 
   void initialize() override;
 
+  // ---------------------------------------
+  static bool get_pass_authentication(bitstamp_account& account);
+
   // returns a temp vector of account pointers (references)
   // to be used with caution because adding a wallet will
   // invalidate the pointer references
