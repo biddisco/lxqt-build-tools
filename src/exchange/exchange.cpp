@@ -34,7 +34,6 @@ void exchange::shut_down()
   // do not allow shutdown / async operations concurrently
   closing_down_ = true;
   std::lock_guard l(async_mutex_);
-  //
   exchange_dbg<0>.debug(str<>(get_name().c_str()), "shutdown start");
   //
   for (auto& [ticker, tdata] : tickers_subscribed_)
@@ -58,7 +57,6 @@ void exchange::shut_down()
   tickers_subscribed_.clear();
   //
   exchange_dbg<0>.debug(str<>(get_name().c_str()), "shutdown complete");
-  //
 }
 
 // ----------------------------------------------------------------------------

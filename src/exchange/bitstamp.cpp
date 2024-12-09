@@ -83,6 +83,20 @@ bitstamp_network::bitstamp_network()
 bitstamp_network::~bitstamp_network() { bitstamp_dbg<0>.debug(str<>("destructor")); }
 
 // ----------------------------------------------------------------------------
+void bitstamp_network::shut_down()
+{
+  bitstamp_dbg<0>.debug(str<>("shutdown start"));
+  exchange::shut_down();
+}
+
+// ----------------------------------------------------------------------------
+bitstamp_order_book const& bitstamp_network::get_orderbook(currency_pair const& cp) const
+{
+  ticker_data const tdata = get_subscribed_ticker_data(cp);
+  return *dynamic_pointer_cast<bitstamp_order_book const>(tdata->orderbook_);
+}
+
+// ----------------------------------------------------------------------------
 bool bitstamp_network::get_pass_authentication(bitstamp_account& account)
 {
   account.API_user = execute_os_command("pass bitstamp/user");
@@ -317,20 +331,6 @@ bool bitstamp_network::stream_subscribe(
   stdexec::start_detached(std::move(snd));
   // @todo : must return a sender here
   return true;
-}
-
-// ----------------------------------------------------------------------------
-void bitstamp_network::shut_down()
-{
-  bitstamp_dbg<0>.debug(str<>("shutdown start"));
-  exchange::shut_down();
-}
-
-// ----------------------------------------------------------------------------
-bitstamp_order_book const& bitstamp_network::get_orderbook(currency_pair const& cp) const
-{
-  ticker_data const tdata = get_subscribed_ticker_data(cp);
-  return *dynamic_pointer_cast<bitstamp_order_book const>(tdata->orderbook_);
 }
 
 // ----------------------------------------------------------------------------

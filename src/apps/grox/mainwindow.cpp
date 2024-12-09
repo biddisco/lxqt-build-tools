@@ -144,8 +144,10 @@ void create_ticker_price_plot(ticker_data tdata, currency_pair cp)
     auto v = t.amount;
     ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
     tdata->view_->add_live_data(new_sample);
-    QMetaObject::invokeMethod(QCoreApplication::instance()->thread(),
-        [=]() { tdata->chart_widget_->update_live_data(new_sample); });
+    QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
+      // check pointers in case messages arrive after cleanup has started
+      if (tdata && tdata->chart_widget_) tdata->chart_widget_->update_live_data(new_sample);
+    });
   };
   tdata->live_trade_subscribers_.subscribe("price_plot", live_trade_subscription);
 }
@@ -161,8 +163,12 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
   auto orderbook_text_sub = [tdata, orderbook_text](currency_pair cp) {
     QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
       main_dbg<4>.debug(str<>("Orderbook-Text"), "orderbook_plot_sub");
-      QString datastring = QString::fromStdString(tdata->orderbook_->get_orderbook_string());
-      orderbook_text->setPlainText(datastring);
+      // check pointers in case messages arrive after cleanup has started
+      if (tdata && tdata->orderbook_)
+      {
+        QString datastring = QString::fromStdString(tdata->orderbook_->get_orderbook_string());
+        orderbook_text->setPlainText(datastring);
+      }
     });
   };
   tdata->orderbook_subscribers_.subscribe("orderbook_text", orderbook_text_sub);
@@ -170,9 +176,13 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
   auto orderbook_plot_sub = [tdata, orderbook_plot](currency_pair cp) {
     QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
       main_dbg<4>.debug(str<>("Orderbook-Plot"), "orderbook_plot_sub");
-      orderbook_plot->update_graph_limits();
-      orderbook_plot->new_data_event();
-      orderbook_plot->update_time_and_replot();
+      // check pointers in case messages arrive after cleanup has started
+      if (tdata && tdata->orderbook_)
+      {
+        orderbook_plot->update_graph_limits();
+        orderbook_plot->new_data_event();
+        orderbook_plot->update_time_and_replot();
+      }
     });
   };
   tdata->orderbook_subscribers_.subscribe("orderbook_plot", orderbook_plot_sub);
@@ -486,23 +496,7 @@ void GroxMainWindow::progress_events(int ms)
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::appExitCleanupHandler()
-{
-  main_dbg<0>.debug(str<>("appExitCleanupHandler"));
-  // call clean up handlers of any components/widgets
-  // block here to prevent access of temp buffers that are deleted
-  // by the program/qt/etc
-  //
-  for (auto& e : exchange_list_)
-  {
-    auto name = e->get_name();
-    main_dbg<0>.debug(str<>("shut down"), name);
-    e->shut_down();
-    e.reset();
-    main_dbg<0>.debug(str<>("shut down"), name, "complete");
-  }
-  main_dbg<0>.debug(str<>("exchanges"), "shutdown complete");
-}
+void GroxMainWindow::appExitCleanupHandler() { main_dbg<0>.debug(str<>("appExitCleanupHandler")); }
 
 // ----------------------------------------------------------------------------
 bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
@@ -729,6 +723,18 @@ void GroxMainWindow::closeEvent(QCloseEvent* event)
   }
   main_dbg<0>.debug(str<>("exchanges"), "shutdown complete");
 
+  // auto map = global_settings.dock_manager_->dockWidgetsMap();
+  // for (auto [key, val] : map.asKeyValueRange())
+  // {
+  //   std::cout << key.toLatin1().toStdString().c_str() << std::endl;
+  //   delete val;
+  // }
+  auto list = global_settings.dock_manager_->floatingWidgets();
+  for (int i = 0; i < list.count(); ++i)
+  {
+    // process items in numerical order by index
+    delete list[i];
+  }
   QMainWindow::closeEvent(event);
 }
 
