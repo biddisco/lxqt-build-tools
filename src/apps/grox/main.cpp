@@ -324,7 +324,7 @@ int qt_main(pika::program_options::variables_map& vm)
 #endif
   GroxMainWindow mainWindow;
 
-  QObject::connect(&app, SIGNAL(aboutToQuit()), &mainWindow, SLOT(appExitCleanupHandler()));
+  // QObject::connect(&app, SIGNAL(aboutToQuit()), &mainWindow, SLOT(appExitCleanupHandler()));
   QObject::connect(&mainWindow, SIGNAL(quitApplication()), &app, SLOT(quit()));
 
   mainWindow.resize(1024, 768);

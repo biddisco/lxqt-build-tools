@@ -714,9 +714,21 @@ void GroxMainWindow::display_offers()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::closeEvent(QCloseEvent* event)
 {
+  main_dbg<0>.debug(str<>("closeEvent"));
   saveWindowSettings();
   saveTrustlines();
   saveConnectionSetups();
+
+  for (auto& e : exchange_list_)
+  {
+    auto name = e->get_name();
+    main_dbg<0>.debug(str<>("shut down"), name, "start");
+    e->shut_down();
+    e.reset();
+    main_dbg<0>.debug(str<>("shut down"), name, "complete");
+  }
+  main_dbg<0>.debug(str<>("exchanges"), "shutdown complete");
+
   QMainWindow::closeEvent(event);
 }
 

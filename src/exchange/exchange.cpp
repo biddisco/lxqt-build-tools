@@ -29,6 +29,39 @@ exchange::~exchange()
 }
 
 // ----------------------------------------------------------------------------
+void exchange::shut_down()
+{
+  // do not allow shutdown / async operations concurrently
+  closing_down_ = true;
+  std::lock_guard l(async_mutex_);
+  //
+  exchange_dbg<0>.debug(str<>(get_name().c_str()), "shutdown start");
+  //
+  for (auto& [ticker, tdata] : tickers_subscribed_)
+  {
+    for (auto& [stream, websocket] : tdata->websockets_)
+    {
+      try
+      {
+        exchange_dbg<0>.debug(
+            str<>("websocket reset"), currency_pair_string(ticker), fmt::ptr(websocket.get()));
+        websocket.reset();
+      }
+      catch (std::exception const& e)
+      {
+        std::cerr << e.what() << std::endl;
+      }
+    }
+    // delete orderbook _after_ closing websocket to avoid some late async data arrivals
+    tdata->orderbook_ = nullptr;
+  }
+  tickers_subscribed_.clear();
+  //
+  exchange_dbg<0>.debug(str<>(get_name().c_str()), "shutdown complete");
+  //
+}
+
+// ----------------------------------------------------------------------------
 void exchange::register_factory(std::string name, exchange::factory_function f)
 {
   if (factories_.contains(name)) throw std::runtime_error("Duplicate factory registration");

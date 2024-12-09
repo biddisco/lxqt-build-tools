@@ -212,9 +212,8 @@ stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
 // ----------------------------------------------------------------------------
 void xrpl_network::shut_down()
 {
-  // do not allow shutdown / async operations concurrently
-  closing_down_ = true;
-  std::lock_guard l(async_mutex_);
+  xrpnet_dbg<0>.debug(str<>("shutdown start"));
+  exchange::shut_down();
   //
   if (ws_orderbook) { ws_orderbook.reset(); }
   if (ws_accounts) { ws_accounts.reset(); }

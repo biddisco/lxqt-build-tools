@@ -322,31 +322,8 @@ bool bitstamp_network::stream_subscribe(
 // ----------------------------------------------------------------------------
 void bitstamp_network::shut_down()
 {
-  // do not allow shutdown / async operations concurrently
-  closing_down_ = true;
-  std::lock_guard l(async_mutex_);
-  //
-  bitstamp_dbg<0>.debug(str<>("websockets"), "shutdown start");
-  //
-  for (auto& [ticker, tdata] : tickers_subscribed_)
-  {
-    for (auto& [stream, websocket] : tdata->websockets_)
-    {
-      try
-      {
-        bitstamp_dbg<2>.debug(
-            str<>("websocket reset"), currency_pair_string(ticker), fmt::ptr(websocket.get()));
-        websocket.reset();
-      }
-      catch (std::exception const& e)
-      {
-        std::cerr << e.what() << std::endl;
-      }
-    }
-    // delete orderbook _after_ closing websocket to avoid some late async data arrivals
-    tdata->orderbook_ = nullptr;
-  }
-  tickers_subscribed_.clear();
+  bitstamp_dbg<0>.debug(str<>("shutdown start"));
+  exchange::shut_down();
 }
 
 // ----------------------------------------------------------------------------
