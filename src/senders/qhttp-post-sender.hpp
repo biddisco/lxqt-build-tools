@@ -28,10 +28,9 @@
 // -----------------------------------------------------------------
 namespace grox::senders {
 
-  using namespace grox::debug;
-  constexpr int gdeb_level = 2;
+  using namespace grox::debug::detail;
   template <int Level>
-  inline constexpr print_threshold<Level, gdeb_level> qt_trig("QT_TRIGG");
+  inline constexpr print_threshold<Level, 2> qt_trig("QT_TRIGG");
 
   namespace pexec = pika::execution;
   namespace ex = pexec::experimental;

@@ -32,7 +32,7 @@ struct fmt::formatter<QUrl> : formatter<char const*>
 namespace net::ws {
 
   // ----------------------------------------------------------------------------
-  using namespace grox::debug;
+  using namespace grox::debug::detail;
   template <int Level>
   inline constexpr print_threshold<Level, 5> qwebsocket_dbg("QWebsock");
 

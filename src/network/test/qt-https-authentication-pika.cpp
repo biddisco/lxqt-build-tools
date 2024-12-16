@@ -9,7 +9,6 @@
 #include <QNetworkAccessManager>
 #include <QTimer>
 //
-#include <pika/debugging/print.hpp>
 #include <pika/init.hpp>
 #include <pika/modules/execution.hpp>
 #include <pika/modules/executors.hpp>
@@ -17,8 +16,9 @@
 #include <pika/modules/schedulers.hpp>
 #include <pika/modules/thread_manager.hpp>
 #include <pika/program_options.hpp>
+//
 #include "fmt/format.h"
-// //
+//
 #include "debug/print.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
@@ -34,10 +34,9 @@ int const bitstamp_https_port = 443;
 
 // ----------------------------------------------------------------------------
 namespace {
-  using namespace grox::debug;
-  constexpr int gdeb_level = 3;
+  using namespace grox::debug::detail;
   template <int Level>
-  inline constexpr print_threshold<Level, gdeb_level> test1_dbg("https://");
+  inline constexpr print_threshold<Level, 3> test1_dbg("https://");
 }    // namespace
 
 // ----------------------------------------------------------------------------

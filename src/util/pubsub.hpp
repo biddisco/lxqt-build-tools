@@ -10,8 +10,9 @@
 #include "debug/print.hpp"
 
 // ----------------------------------------------------------------------------
+using namespace grox::debug::detail;
 template <int Level>
-inline constexpr grox::debug::print_threshold<Level, 5> pubsub_dbg("PubSub  ");
+inline constexpr print_threshold<Level, 5> pubsub_dbg("PubSub  ");
 
 // ----------------------------------------------------------------------------
 namespace grox {

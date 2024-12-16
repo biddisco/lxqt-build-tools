@@ -9,8 +9,7 @@
 #include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-//
+using namespace grox::debug::detail;
 template <int Level>
 inline constexpr print_threshold<Level, 9> http_dbg("https://");
 

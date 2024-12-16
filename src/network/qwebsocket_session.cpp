@@ -11,7 +11,7 @@
 #include "util/json_qstring.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
+using namespace grox::debug::detail;
 template <int Level>
 inline constexpr print_threshold<Level, 5> qsession_dbg("QSession");
 // ----------------------------------------------------------------------------

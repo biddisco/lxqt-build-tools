@@ -1,63 +1,44 @@
 #pragma once
 
-#include <pika/debugging/print.hpp>
+#if __has_include(<pika/debugging/print.hpp>)
+# include <pika/debugging/print.hpp>
 namespace grox::debug {
   using namespace pika::debug;
-  using namespace pika::debug::detail;
 }    // namespace grox::debug
 namespace grox::debug::detail {
   using namespace pika::debug::detail;
 }
 
-#if 0
+#elif __has_include(<fmt/format.h>)
 # include <array>
-# include <bitset>
+# include <atomic>
 # include <chrono>
-# include <cmath>
 # include <cstddef>
 # include <cstdint>
-# include <cstring>
-# include <functional>
 # include <iomanip>
 # include <iostream>
-# include <iterator>
 # include <sstream>
 # include <string>
-# include <thread>
+# include <tuple>
 # include <type_traits>
 # include <utility>
 # include <vector>
 //
-# if defined(__linux) || defined(linux) || defined(__linux__)
-#  include <sys/mman.h>
-#  include <unistd.h>
-# elif defined(__APPLE__)
-#  include <crt_externs.h>
-#  include <unistd.h>
-#  define environ (*_NSGetEnviron())
-# elif defined(HPX_WINDOWS)
-#  include <winsock2.h>
-#  define environ _environ
-# else
-extern char** environ;
-# endif
-
-# define PRINT_HAVE_CXX17_FOLD_EXPRESSIONS
-
-# include <boost/crc.hpp>
+# include <fmt/format.h>
+# include "config/export_definitions.hpp"
 
 // ------------------------------------------------------------
 // This file provides a simple to use printf style debugging
 // tool that can be used on a per file basis to enable output.
 // It is not intended to be exposed to users, but rather as
-// an aid for hpx development.
+// an aid for internal development.
 // ------------------------------------------------------------
 // Usage: Instantiate a debug print object at the top of a file
 // using a template param of true/false to enable/disable output.
 // When the template parameter is false, the optimizer will
 // not produce code and so the impact is nil.
 //
-// static enable_print<true> spq_deb("SUBJECT");
+// static grox::debug::detail::enable_print<true> spq_deb("SUBJECT");
 //
 // Later in code you may print information using
 //
@@ -81,177 +62,72 @@ extern char** environ;
 
 // Used to wrap function call parameters to prevent evaluation
 // when debugging is disabled
-# define GROX_DP_LAZY(printer, Expr) printer.eval([&] { return Expr; })
-# if (__cplusplus >= 201703L)
-#  define GROX_DP_ONLY(printer, Expr)                                                              \
-    if constexpr (printer.is_enabled()) { printer.Expr; };
-# else
-#  define GROX_DP_ONLY(printer, Expr)                                                              \
-    if (printer.is_enabled()) { printer.Expr; };
-# endif
+# define GROX_DETAIL_DP_LAZY(printer, Expr) printer.eval([&] { return Expr; })
+# define GROX_DETAIL_DP(printer, Expr)                                                             \
+   /*if constexpr (printer.is_enabled())*/ {                                                       \
+     using namespace grox::debug::detail;                                                          \
+     printer.Expr;                                                                                 \
+   };
+
+# define GROX_DETAIL_NS_DEBUG grox::debug::detail
 
 // ------------------------------------------------------------
 /// \cond NODETAIL
-namespace grox::debug {
-  namespace detail {
-    // ------------------------------------------------------------------
-    // helper for N>M true/false
-    // ------------------------------------------------------------------
-    template <int Level, int Threshold>
-    struct check_level : std::integral_constant<bool, Level <= Threshold>
-    {
-    };
+// NOLINTNEXTLINE(modernize-concat-nested-namespaces)
+namespace GROX_DETAIL_NS_DEBUG {
 
-    // ------------------------------------------------------------------
-    // format as zero padded int
-    // ------------------------------------------------------------------
-    template <int N, typename T>
-    struct dec
-    {
-      dec(T const& v)
-        : data_(v)
-      {
-      }
+  // common formats that are used with acceptable alignment
+  constexpr char bin8[] = "{:08b}";
+  constexpr char bin16[] = "{:016b}";
+  constexpr char dec3[] = "{:03d}";
+  constexpr char dec4[] = "{:04d}";
+  constexpr char dec6[] = "{:06d}";
+  constexpr char dec8[] = "{:08d}";
+  constexpr char dec9[] = "{:09d}";
+  constexpr char dec10[] = "{:010d}";
+  constexpr char dec12[] = "{:012d}";
+  constexpr char dec18[] = "{:018d}";
+  constexpr char hex6[] = "{:#08x}";       // add 2 for 0x prefix
+  constexpr char hex8[] = "{:#010x}";      // ...
+  constexpr char hex12[] = "{:#014x}";     // ...
+  constexpr char hex16[] = "{:#018x}";     // ...
+  constexpr char fp12_8[] = "{:12.8f}";    // a commmon layout
+  constexpr char strl[] = "{:<{}}";
+  constexpr char strr[] = "{:>{}}";
 
-      T const& data_;
-
-      friend std::ostream& operator<<(std::ostream& os, dec<N, T> const& d)
-      {
-        os << std::right << std::setfill('0') << std::setw(N) << std::noshowbase << std::dec
-           << d.data_;
-        return os;
-      }
-    };
-  }    // namespace detail
-
-  template <int N = 2, typename T>
-  detail::dec<N, T> dec(T const& v)
+  // ------------------------------------------------------------------
+  // helper for N>M true/false
+  // ------------------------------------------------------------------
+  template <int Level, int Threshold>
+  struct check_level : std::integral_constant<bool, Level <= Threshold>
   {
-    return detail::dec<N, T>(v);
-  }
-
-  // ------------------------------------------------------------------
-  // format as floating point with precision, width
-  // ------------------------------------------------------------------
-  namespace detail {
-
-    template <int P, int W, typename T>
-    struct fp
-    {
-      fp(T const& v)
-        : data_(v)
-      {
-      }
-
-      T const& data_;
-
-      friend std::ostream& operator<<(std::ostream& os, fp<P, W, T> const& d)
-      {
-        os << std::right << std::setfill(' ') << std::fixed << std::setw(W) << std::setprecision(P)
-           << d.data_;
-        return os;
-      }
-    };
-  }    // namespace detail
-
-  template <int P = 2, int W = P + 2, typename T>
-  detail::fp<P, W, T> fp(T const& v)
-  {
-    return detail::fp<P, W, T>(v);
-  }
-  // ------------------------------------------------------------------
-  // format as pointer
-  // ------------------------------------------------------------------
-  struct ptr
-  {
-    ptr(void const* v)
-      : data_(v)
-    {
-    }
-    ptr(std::uintptr_t const v)
-      : data_(reinterpret_cast<void const*>(v))
-    {
-    }
-    void const* data_;
-    friend std::ostream& operator<<(std::ostream& os, ptr const& d)
-    {
-      os << d.data_;
-      return os;
-    }
   };
 
   // ------------------------------------------------------------------
-  // format as zero padded hex
+  // format using fmt::format
   // ------------------------------------------------------------------
-  namespace detail {
-
-    template <int N = 4, typename T = int, typename Enable = void>
-    struct hex;
-
-    template <int N, typename T>
-    struct hex<N, T, typename std::enable_if<!std::is_pointer<T>::value>::type>
-    {
-      hex(T const& v)
-        : data_(v)
-      {
-      }
-      T const& data_;
-      friend std::ostream& operator<<(std::ostream& os, const hex<N, T>& d)
-      {
-        os << std::right << "0x" << std::setfill('0') << std::setw(N) << std::noshowbase << std::hex
-           << d.data_;
-        return os;
-      }
-    };
-
-    template <int N, typename T>
-    struct hex<N, T, typename std::enable_if<std::is_pointer<T>::value>::type>
-    {
-      hex(T const& v)
-        : data_(v)
-      {
-      }
-      T const& data_;
-      friend std::ostream& operator<<(std::ostream& os, const hex<N, T>& d)
-      {
-        os << std::right << std::setw(N) << std::noshowbase << std::hex << d.data_;
-        return os;
-      }
-    };
-  }    // namespace detail
-
-  template <int N = 4, typename T>
-  detail::hex<N, T> hex(T const& v)
+  template <char const* fmt_str>
+  struct ffmt
   {
-    return detail::hex<N, T>(v);
-  }
-
-  // ------------------------------------------------------------------
-  // format as binary bits
-  // ------------------------------------------------------------------
-  namespace detail {
-
-    template <int N = 8, typename T = int>
-    struct bin
+    template <typename T>
+    ffmt(T const& val)
+      : fmt_(fmt::format(fmt_str, val))
     {
-      bin(T const& v)
-        : data_(v)
-      {
-      }
-      T const& data_;
-      friend std::ostream& operator<<(std::ostream& os, const bin<N, T>& d)
-      {
-        os << std::bitset<N>(d.data_);
-        return os;
-      }
-    };
-  }    // namespace detail
+    }
 
-  template <int N = 8, typename T>
-  detail::bin<N, T> bin(T const& v)
-  {
-    return detail::bin<N, T>(v);
-  }
+    template <typename T>
+    ffmt(std::atomic<T> const& val)
+      : fmt_(fmt::format(fmt_str, val.load()))
+    {
+    }
+
+    std::string const fmt_;
+
+    constexpr friend std::ostream& operator<<(std::ostream& os, ffmt const& d)
+    {
+      return os << d.fmt_;
+    }
+  };
 
   // ------------------------------------------------------------------
   // format as padded string
@@ -259,20 +135,14 @@ namespace grox::debug {
   template <int N = 20>
   struct str
   {
-    str(const char* v)
-      : data_(v)
+    str(char const* val)
+      : fmt_(fmt::format(strl, val, N))
     {
     }
-    str(std::string const& v)
-      : data_(v.c_str())
-    {
-    }
-    const char* data_;
-    friend std::ostream& operator<<(std::ostream& os, str<N> const& d)
-    {
-      os << std::left << std::setfill(' ') << std::setw(N) << d.data_;
-      return os;
-    }
+
+    std::string const fmt_;
+
+    friend std::ostream& operator<<(std::ostream& os, str<N> const& d) { return os << d.fmt_; }
   };
 
   // ------------------------------------------------------------------
@@ -280,338 +150,196 @@ namespace grox::debug {
   // ------------------------------------------------------------------
   struct ipaddr
   {
-    ipaddr(const void* a)
-      : data_(reinterpret_cast<const uint8_t*>(a))
-      , ipdata_(0)
-    {
-    }
-    ipaddr(const uint32_t a)
-      : data_(reinterpret_cast<const uint8_t*>(&ipdata_))
-      , ipdata_(a)
-    {
-    }
-    const uint8_t* data_;
-    const uint32_t ipdata_;
+    GROX_EXPORT ipaddr(void const* a);
+    GROX_EXPORT ipaddr(std::uint32_t a);
 
-    friend std::ostream& operator<<(std::ostream& os, ipaddr const& p)
-    {
-      os << std::dec << int(p.data_[0]) << "." << int(p.data_[1]) << "." << int(p.data_[2]) << "."
-         << int(p.data_[3]);
-      return os;
-    }
+    std::uint8_t const* data_;
+    std::uint32_t const ipdata_;
+
+    GROX_EXPORT friend std::ostream& operator<<(std::ostream& os, ipaddr const& p);
   };
 
   // ------------------------------------------------------------------
-  // helper fuction for printing CRC32
+  // helper class for printing time since start
   // ------------------------------------------------------------------
-  inline uint32_t crc32(const void* address, size_t length)
+  struct current_time_print_helper
   {
-    boost::crc_32_type result;
-    result.process_bytes(address, length);
-    return result.checksum();
-  }
+    GROX_EXPORT friend std::ostream& operator<<(std::ostream& os, current_time_print_helper const&);
+  };
 
   // ------------------------------------------------------------------
-  // helper fuction for printing short memory dump and crc32
+  // helper function for printing CRC32
+  // ------------------------------------------------------------------
+  std::uint32_t crc32(void const* ptr, std::size_t size);
+
+  // ------------------------------------------------------------------
+  // helper function for printing short memory dump and crc32
   // useful for debugging corruptions in buffers during
   // rma or other transfers
   // ------------------------------------------------------------------
   struct mem_crc32
   {
-    mem_crc32(const void* a, std::size_t len, const char* txt)
-      : addr_(reinterpret_cast<const std::uint8_t*>(a))
-      , len_(len)
-      , txt_(txt)
-    {
-    }
-    const std::uint8_t* addr_;
-    const std::size_t len_;
-    const char* txt_;
-    friend std::ostream& operator<<(std::ostream& os, mem_crc32 const& p)
-    {
-      const std::uint8_t* byte = static_cast<const std::uint8_t*>(p.addr_);
-      os << "Memory:";
-      os << " address " << fmt::ptr(p.addr_) << " length " << ffmt<hex6>(p.len_)
-         << " CRC32:" << ffmt<hex8>(crc32(p.addr_, p.len_)) << "\n";
-      size_t i = 0;
-      while (i < std::min(size_t(128), p.len_))
-      {
-        os << "0x";
-        for (int j = 7; j >= 0; j--)
-        {
-          os << std::hex << std::setfill('0') << std::setw(2)
-             << (((i + j) > p.len_) ? (int) 0 : (int) byte[i + j]);
-        }
-        i += 8;
-        if (i % 32 == 0)
-          os << std::endl;
-        else
-          os << " ";
-      }
-      os << ": " << p.txt_;
-      return os;
-    }
+    GROX_EXPORT mem_crc32(void const* a, std::size_t len, std::size_t wrap = 8);
+
+    std::uint64_t const* addr_;
+    std::size_t const len_;
+    std::size_t const wrap_;
+
+    GROX_EXPORT friend std::ostream& operator<<(std::ostream& os, mem_crc32 const& p);
   };
 
-  // ------------------------------------------------------------------
-  // helper fuction for printing the return of a lambda function
-  // this can be added to any print, or timed print to dump out some
-  // useful info : the lambda is only executed if the debug is enabled
-  // so expensive debug info may be wrapped in a lambda
-  // ------------------------------------------------------------------
-  struct lambda
+  template <typename TupleType, std::size_t... I>
+  void tuple_print(std::ostream& os, TupleType const& t, std::index_sequence<I...>)
   {
-    std::function<std::string()> fun_;
+    (..., (os << (I == 0 ? "" : " ") << std::get<I>(t)));
+  }
 
-    lambda(std::function<std::string()> f)
-      : fun_(f)
-    {
-    }
+  template <typename... Args>
+  void tuple_print(std::ostream& os, std::tuple<Args...> const& t)
+  {
+    tuple_print(os, t, std::make_index_sequence<sizeof...(Args)>());
+  }
 
-    friend std::ostream& operator<<(std::ostream& os, lambda const& p)
-    {
-      std::string temp = p.fun_();
-      os << temp << "\n";
-      return os;
-    }
+  // ------------------------------------------------------------------
+  // helper class for printing time since start
+  // ------------------------------------------------------------------
+  struct hostname_print_helper
+  {
+    GROX_EXPORT char const* get_hostname_and_rank() const;
+    GROX_EXPORT char const* get_hostname() const;
+    GROX_EXPORT int guess_rank() const;
+
+    GROX_EXPORT friend std::ostream& operator<<(std::ostream& os, hostname_print_helper const& h);
   };
 
-  namespace detail {
+  ///////////////////////////////////////////////////////////////////////
+  GROX_EXPORT void register_print_info(void (*)(std::ostream&));
+  GROX_EXPORT void generate_prefix(std::ostream& os);
 
-# ifdef PRINT_HAVE_CXX17_FOLD_EXPRESSIONS
-    template <typename TupleType, std::size_t... I>
-    void tuple_print(std::ostream& os, TupleType const& t, std::index_sequence<I...>)
-    {
-      (..., (os << (I == 0 ? "" : " ") << std::get<I>(t)));
-    }
+  ///////////////////////////////////////////////////////////////////////
+  template <typename... Args>
+  void display(char const* prefix, Args const&... args)
+  {
+    // using a temp stream object with a single copy to cout at the end
+    // prevents multiple threads from injecting overlapping text
+    std::stringstream tempstream;
+    tempstream << prefix;
+    generate_prefix(tempstream);
+    ((tempstream << args << " "), ...);
+    tempstream << "\n";
+    std::cout << tempstream.str() << std::flush;
+  }
 
-    template <typename... Args>
-    void tuple_print(std::ostream& os, const std::tuple<Args...>& t)
-    {
-      tuple_print(os, t, std::make_index_sequence<sizeof...(Args)>());
-    }
-# else
-    // C++14 version
-    // helper function to print a tuple of any size
-    template <typename TupleType, std::size_t... I>
-    void tuple_print(std::ostream& os, TupleType const& t, std::index_sequence<I...>)
-    {
-      using expander = int[];
-      (void) expander{0, (void(os << (I == 0 ? "" : " ") << std::get<I>(t)), 0)...};
-    }
+  template <typename... Args>
+  void debug_impl(Args const&... args)
+  {
+    display("<DEB> ", args...);
+  }
 
-    // print a tuple of any size - forwards to helper with index
-    template <typename... Args>
-    void tuple_print(std::ostream& os, std::tuple<Args...> const& t)
-    {
-      detail::tuple_print(os, t, std::make_index_sequence<sizeof...(Args)>{});
-    }
-# endif
+  template <typename... Args>
+  void warning_impl(Args const&... args)
+  {
+    display("<WAR> ", args...);
+  }
 
-    // print variadic list of args
-    template <typename Arg, typename... Args>
-    void variadic_print(std::ostream& os, Arg const& arg, Args const&... args)
-    {
-      os << arg;
-      using expander = int[];
-      (void) expander{0, (void(os << ' ' << args), 0)...};
-    }
+  template <typename... Args>
+  void error_impl(Args const&... args)
+  {
+    display("<ERR> ", args...);
+  }
 
-  }    // namespace detail
+  template <typename... Args>
+  void scope(Args const&... args)
+  {
+    display("<SCO> ", args...);
+  }
 
-  namespace detail {
+  template <typename... Args>
+  void trace_impl(Args const&... args)
+  {
+    display("<TRC> ", args...);
+  }
 
-    // ------------------------------------------------------------------
-    // helper class for printing thread ID, either std:: or hpx::
-    // ------------------------------------------------------------------
-    struct current_thread_print_helper
-    {
-    };
-
-    inline std::ostream& operator<<(std::ostream& os, current_thread_print_helper const&)
-    {
-      os << hex<12, std::thread::id>(std::this_thread::get_id())
-# ifdef DEBUGGING_PRINT_LINUX
-         << " cpu " << debug::dec<3, int>(sched_getcpu()) << " ";
-# else
-         << " cpu "
-         << "--- ";
-# endif
-      return os;
-    }
-
-    // ------------------------------------------------------------------
-    // helper class for printing time since start
-    // ------------------------------------------------------------------
-    struct hostname_print_helper
-    {
-      const char* get_hostname() const
-      {
-        static bool initialized = false;
-        static char hostname_[20];
-        if (!initialized)
-        {
-          initialized = true;
-          gethostname(hostname_, std::size_t(12));
-          std::string temp = "(" + std::to_string(guess_rank()) + ")";
-          std::strcat(hostname_, temp.c_str());
-        }
-        return hostname_;
-      }
-
-      int guess_rank() const
-      {
-        std::vector<std::string> env_strings{"_RANK=", "_NODEID="};
-        for (char** current = environ; *current; current++)
-        {
-          auto e = std::string(*current);
-          for (auto s : env_strings)
-          {
-            auto pos = e.find(s);
-            if (pos != std::string::npos)
-            {
-              //std::cout << "Got a rank string : " << e << std::endl;
-              return std::stoi(e.substr(pos + s.size(), 5));
-            }
-          }
-        }
-        return -1;
-      }
-    };
-
-    inline std::ostream& operator<<(std::ostream& os, hostname_print_helper const& h)
-    {
-      os << debug::str<13>(h.get_hostname()) << " ";
-      return os;
-    }
-
-    // ------------------------------------------------------------------
-    // helper class for printing time since start
-    // ------------------------------------------------------------------
-    struct current_time_print_helper
-    {
-    };
-
-    inline std::ostream& operator<<(std::ostream& os, current_time_print_helper const&)
-    {
-      using namespace std::chrono;
-      static steady_clock::time_point log_t_start = steady_clock::now();
-      //
-      auto now = steady_clock::now();
-      auto nowt = duration_cast<microseconds>(now - log_t_start).count();
-      //
-      os << debug::dec<10>(nowt) << " ";
-      return os;
-    }
-
-    template <typename... Args>
-    void display(const char* prefix, Args const&... args)
-    {
-      // using a temp stream object with a single copy to cout at the end
-      // prevents multiple threads from injecting overlapping text
-      std::stringstream tempstream;
-      tempstream << prefix << detail::current_time_print_helper()
-                 << detail::current_thread_print_helper() << detail::hostname_print_helper();
-      variadic_print(tempstream, args...);
-      tempstream << std::endl;
-      std::cout << tempstream.str();
-    }
-
-    template <typename... Args>
-    void debug(Args const&... args)
-    {
-      display("<DEB> ", args...);
-    }
-
-    template <typename... Args>
-    void warning(Args const&... args)
-    {
-      display("<WAR> ", args...);
-    }
-
-    template <typename... Args>
-    void error(Args const&... args)
-    {
-      display("<ERR> ", args...);
-    }
-
-    template <typename... Args>
-    void scope(Args const&... args)
-    {
-      display("<SCO> ", args...);
-    }
-
-    template <typename... Args>
-    void trace(Args const&... args)
-    {
-      display("<TRC> ", args...);
-    }
-
-    template <typename... Args>
-    void timed(Args const&... args)
-    {
-      display("<TIM> ", args...);
-    }
-  }    // namespace detail
+  template <typename... Args>
+  void timed_impl(Args const&... args)
+  {
+    display("<TIM> ", args...);
+  }
 
   template <typename... Args>
   struct scoped_var
   {
     // capture tuple elements by reference - no temp vars in constructor please
-    const char* prefix_;
-    const std::tuple<Args const&...> message_;
+    char const* prefix_;
+    std::tuple<Args const&...> const message_;
     std::string buffered_msg;
+
     //
-    scoped_var(const char* p, Args const&... args)
+    scoped_var(char const* p, Args const&... args)
       : prefix_(p)
       , message_(args...)
     {
       std::stringstream tempstream;
-      detail::tuple_print(tempstream, message_);
+      tuple_print(tempstream, message_);
       buffered_msg = tempstream.str();
-      detail::display("<SCO> ", prefix_, debug::str<>(">> enter <<"), tempstream.str());
+      display("<SCO> ", prefix_, str<>(">> enter <<"), tempstream.str());
     }
 
-    ~scoped_var()
-    {
-      detail::display("<SCO> ", prefix_, debug::str<>("<< leave >>"), buffered_msg);
-    }
+    ~scoped_var() { display("<SCO> ", prefix_, str<>("<< leave >>"), buffered_msg); }
+  };
+
+  struct empty_timed_var
+  {
+    constexpr bool trigger() const { return false; }
+
+    constexpr double elapsed() const { return 0; }
   };
 
   template <typename... Args>
   struct timed_var
   {
     mutable std::chrono::steady_clock::time_point time_start_;
-    const double delay_;
-    const std::tuple<Args...> message_;
+    mutable std::chrono::steady_clock::time_point time_check_;
+    double const delay_;
+    std::tuple<Args...> const message_;
     //
     timed_var(double const& delay, Args const&... args)
       : time_start_(std::chrono::steady_clock::now())
+      , time_check_(time_start_)
       , delay_(delay)
       , message_(args...)
     {
     }
 
-    bool elapsed(std::chrono::steady_clock::time_point const& now) const
+    bool trigger() const
     {
+      auto now = std::chrono::steady_clock::now();
       double elapsed_ =
-        std::chrono::duration_cast<std::chrono::duration<double>>(now - time_start_).count();
+          std::chrono::duration_cast<std::chrono::duration<double>>(now - time_check_).count();
 
       if (elapsed_ > delay_)
       {
-        time_start_ = now;
+        time_check_ = now;
         return true;
       }
       return false;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const timed_var<Args...>& ti)
+    double elapsed() const
     {
-      detail::tuple_print(os, ti.message_);
+      return std::chrono::duration_cast<std::chrono::duration<double>>(
+          std::chrono::steady_clock::now() - time_start_)
+          .count();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, timed_var<Args...> const& ti)
+    {
+      tuple_print(os, ti.message_);
       return os;
     }
   };
 
+  ///////////////////////////////////////////////////////////////////////////
   template <bool enable>
   struct enable_print;
 
@@ -619,12 +347,9 @@ namespace grox::debug {
   template <>
   struct enable_print<false>
   {
-    constexpr enable_print(const char*) {}
+    constexpr enable_print(char const*) {}
 
-    constexpr bool is_enabled() const
-    {
-      return false;
-    }
+    constexpr bool is_enabled() const { return false; }
 
     template <typename... Args>
     constexpr void debug(Args const&...) const
@@ -657,12 +382,12 @@ namespace grox::debug {
     }
 
     template <typename T, std::size_t N>
-    constexpr void array(std::string const&, const std::array<T, N>&) const
+    constexpr void array(std::string const&, std::array<T, N> const&) const
     {
     }
 
-    template <typename Iter>
-    constexpr void array(std::string const&, Iter, Iter) const
+    template <typename T>
+    constexpr void array(std::string const&, T const*, std::size_t) const
     {
     }
 
@@ -679,15 +404,15 @@ namespace grox::debug {
     }
 
     template <typename T, typename V>
-    void set(T&, V const&)
+    static constexpr void set(T&, V const&)
     {
     }
 
     // @todo, return void so that timers have zero footprint when disabled
     template <typename... Args>
-    constexpr int make_timer(const double, Args const&...) const
+    constexpr empty_timed_var make_timer(double const, Args const&...) const
     {
-      return 0;
+      return empty_timed_var{};
     }
 
     template <typename Expr>
@@ -697,12 +422,15 @@ namespace grox::debug {
     }
   };
 
+  template <typename T>
+  GROX_EXPORT void print_array(std::string const& name, T const* data, std::size_t size);
+
   // when true, debug statements produce valid output
   template <>
   struct enable_print<true>
   {
 private:
-    const char* prefix_;
+    char const* prefix_;
 
 public:
     constexpr enable_print()
@@ -710,38 +438,35 @@ public:
     {
     }
 
-    constexpr enable_print(const char* p)
+    constexpr enable_print(char const* p)
       : prefix_(p)
     {
     }
 
-    constexpr bool is_enabled() const
-    {
-      return true;
-    }
+    constexpr bool is_enabled() const { return true; }
 
     template <typename... Args>
     constexpr void debug(Args const&... args) const
     {
-      detail::debug(prefix_, args...);
+      debug_impl(prefix_, args...);
     }
 
     template <typename... Args>
     constexpr void warning(Args const&... args) const
     {
-      detail::warning(prefix_, args...);
+      warning_impl(prefix_, args...);
     }
 
     template <typename... Args>
     constexpr void trace(Args const&... args) const
     {
-      detail::trace(prefix_, args...);
+      trace_impl(prefix_, args...);
     }
 
     template <typename... Args>
     constexpr void error(Args const&... args) const
     {
-      detail::error(prefix_, args...);
+      error_impl(prefix_, args...);
     }
 
     template <typename... Args>
@@ -751,39 +476,27 @@ public:
     }
 
     template <typename... T, typename... Args>
-    void timed(const timed_var<T...>& init, Args const&... args) const
+    void timed(timed_var<T...> const& init, Args const&... args) const
     {
-      auto now = std::chrono::steady_clock::now();
-      if (init.elapsed(now))
-      {
-        detail::timed(prefix_, init, args...);
-      }
+      if (init.trigger()) { timed_impl(prefix_, init, args...); }
     }
 
     template <typename T>
     void array(std::string const& name, std::vector<T> const& v) const
     {
-      std::cout << str<20>(name.c_str()) << ": {" << debug::ffmt<dec4>(v.size()) << "} : ";
-      std::copy(std::begin(v), std::end(v), std::ostream_iterator<T>(std::cout, ", "));
-      std::cout << "\n";
+      print_array(name, v.data(), v.size());
     }
 
     template <typename T, std::size_t N>
-    void array(std::string const& name, const std::array<T, N>& v) const
+    void array(std::string const& name, std::array<T, N> const& v) const
     {
-      std::cout << str<20>(name.c_str()) << ": {" << debug::ffmt<dec4>(v.size()) << "} : ";
-      std::copy(std::begin(v), std::end(v), std::ostream_iterator<T>(std::cout, ", "));
-      std::cout << "\n";
+      print_array(name, v.data(), N);
     }
 
-    template <typename Iter>
-    void array(std::string const& name, Iter begin, Iter end) const
+    template <typename T>
+    void array(std::string const& name, T const* data, std::size_t size) const
     {
-      std::cout << str<20>(name.c_str()) << ": {" << debug::ffmt<dec4>(std::distance(begin, end))
-                << "} : ";
-      std::copy(begin, end,
-        std::ostream_iterator<typename std::iterator_traits<Iter>::value_type>(std::cout, ", "));
-      std::cout << std::endl;
+      print_array(name, data, size);
     }
 
     template <typename T, typename... Args>
@@ -793,13 +506,13 @@ public:
     }
 
     template <typename T, typename V>
-    void set(T& var, V const& val)
+    static void set(T& var, V const& val)
     {
       var = val;
     }
 
     template <typename... Args>
-    timed_var<Args...> make_timer(const double delay, const Args... args) const
+    constexpr timed_var<Args...> make_timer(double const delay, Args const... args) const
     {
       return timed_var<Args...>(delay, args...);
     }
@@ -812,12 +525,12 @@ public:
   };
 
   template <int Level, int Threshold>
-  struct print_threshold : enable_print<detail::check_level<Level, Threshold>::value>
+  struct print_threshold : enable_print<check_level<Level, Threshold>::value>
   {
-    using base_type = enable_print<detail::check_level<Level, Threshold>::value>;
+    using base_type = enable_print<check_level<Level, Threshold>::value>;
     // inherit constructor
     using base_type::base_type;
   };
-}    // namespace grox::debug
+}    // namespace GROX_DETAIL_NS_DEBUG
 /// \endcond
 #endif

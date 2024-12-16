@@ -13,7 +13,8 @@
 int main(int argc, char** argv);
 
 using namespace grox;
-using namespace pika::debug::detail;
+using namespace grox::debug;
+using namespace grox::debug::detail;
 
 // ------------------------------------------------------------------
 std::string diff(std::string const& s1, std::string const& s2)
@@ -68,7 +69,7 @@ template <typename... T>
 bool test_print_type(std::string expected, T&&... t)
 {
   std::stringstream tmp;
-  tmp << debug::print_type<T...>(", ");
+  tmp << print_type<T...>(", ");
   return compare(expected, tmp.str());
 }
 
@@ -92,7 +93,7 @@ TEST(debug_print, print_format)
 {
   {    // zero pad a decimal
     std::stringstream tmp;
-    tmp << debug::ffmt<dec8>(12345);
+    tmp << ffmt<dec8>(12345);
     EXPECT_TRUE(compare("00012345", tmp.str()));
   }
   {    // default fmt:: pointer is not zero padded
@@ -103,54 +104,54 @@ TEST(debug_print, print_format)
   {    // pointer using hex to add padding
     std::stringstream tmp;
     void* ptr = (void*) (0x0000'face);
-    tmp << debug::ffmt<hex12>((uintptr_t) (ptr));
+    tmp << ffmt<hex12>((uintptr_t) (ptr));
     EXPECT_TRUE(compare("0x00000000face", tmp.str()));
   }
   {    // integer using hex to add padding
     std::stringstream tmp;
-    tmp << debug::ffmt<hex12>(0xdead'beef);
+    tmp << ffmt<hex12>(0xdead'beef);
     EXPECT_TRUE(compare("0x0000deadbeef", tmp.str()));
   }
   {    // floating point with given precision, right aligned
     std::stringstream tmp;
-    tmp << debug::ffmt<fp12_8>(3.141592653589793238);
+    tmp << ffmt<fp12_8>(3.141592653589793238);
     EXPECT_TRUE(compare("  3.14159265", tmp.str()));
   }
   {    // floating point with given precision
     std::stringstream tmp;
-    tmp << debug::ffmt<fp17_15>(3.141592653589793238);
+    tmp << ffmt<fp17_15>(3.141592653589793238);
     EXPECT_TRUE(compare("3.141592653589793", tmp.str()));
   }
   {    // binary with padding
     std::stringstream tmp;
-    tmp << debug::ffmt<bin8>(0x01);
+    tmp << ffmt<bin8>(0x01);
     EXPECT_TRUE(compare("00000001", tmp.str()));
   }
   {    // large binary
     std::stringstream tmp;
-    tmp << debug::ffmt<bin16>(0xfca7);
+    tmp << ffmt<bin16>(0xfca7);
     EXPECT_TRUE(compare("1111110010100111", tmp.str()));
   }
   {    // two binaries
     std::stringstream tmp;
-    tmp << debug::ffmt<bin8>(0x01) << " " << debug::ffmt<bin16>(0xfca7);
+    tmp << ffmt<bin8>(0x01) << " " << ffmt<bin16>(0xfca7);
     EXPECT_TRUE(compare("00000001 1111110010100111", tmp.str()));
   }
   {    // simple string, left padded
     std::stringstream tmp;
-    tmp << debug::str<24>("a string of 20 chars");
+    tmp << str<24>("a string of 20 chars");
     EXPECT_TRUE(compare("a string of 20 chars    ", tmp.str()));
   }
   {    // ip adddress format
     std::stringstream tmp;
-    tmp << debug::ipaddr(16885952);
+    tmp << ipaddr(16885952);
     EXPECT_TRUE(compare("192.168.1.1", tmp.str()));
   }
   {
     std::vector<std::uint8_t> buffer(123);
     std::iota(buffer.begin(), buffer.end(), 0);
     std::stringstream tmp1, tmp2;
-    tmp1 << debug::mem_crc32(buffer.data(), buffer.size(), 4);    // newline wrap every 4 values
+    tmp1 << mem_crc32(buffer.data(), buffer.size(), 4);    // newline wrap every 4 values
     tmp2 << fmt::ptr(buffer.data());
     std::string received = tmp1.str();
     std::string expected = "Memory: address " + tmp2.str() + " length 0x00007b CRC32:0x8b4999ab\n" +

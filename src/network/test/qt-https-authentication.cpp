@@ -26,8 +26,7 @@ int const bitstamp_https_port = 443;
 QNetworkAccessManager networkmanager;
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-//
+using namespace grox::debug::detail;
 template <int Level>
 inline constexpr print_threshold<Level, 2> test1_dbg("https://");
 

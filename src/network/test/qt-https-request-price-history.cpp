@@ -16,7 +16,7 @@
 static std::atomic<int> counter{0};
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
+using namespace grox::debug::detail;
 //
 template <int Level>
 inline constexpr print_threshold<Level, 6> test_dbg("Test");
