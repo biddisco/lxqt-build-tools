@@ -10,7 +10,7 @@
 #include "nlohmann/json.hpp"
 //
 #include "currency/json_data_types.hpp"
-#include "exchange/order_book.hpp"
+#include "data/order_book.hpp"
 
 // ----------------------------------------------------------------------------
 // Bitstamp specific order book processing routines
@@ -22,7 +22,7 @@ class bitstamp_order_book : public order_book_base
 
   // ----------------------------------------------------------------------------
   // accept json reply from bitstamp order book query and turn into numeric arrays
-  void accept_json_bitstamp(const QString data);
+  void accept_json_bitstamp(QString const data);
 
   private:
   // ----------------------------------------------------------------------------

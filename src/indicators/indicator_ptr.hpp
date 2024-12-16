@@ -163,6 +163,15 @@ namespace indicators {
         }
       }
 
+      // ----------------------------------------------------------------------------
+      template <typename T = Algorithm,
+          typename std::enable_if_t<
+              std::is_same<typename T::result_type, arbitrage_decision>::value, bool>
+              Enable = false>
+      void call_operator_impl(std::uint64_t N)
+      {
+      }
+
       Algorithm alg_;
     };
 

@@ -23,8 +23,8 @@ std::string hex_to_currency(std::string_view name);
 // ----------------------------------------------------------------------------
 struct currency_code
 {
-  static inline const std::string bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
-  static inline const std::string gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
+  static inline std::string const bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+  static inline std::string const gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
   static inline std::vector<currency_code> trustlines = {};
   //
   std::string issuer_;
@@ -122,7 +122,7 @@ std::string currency_pair_lowercase_string(currency_pair const& p);
 std::string to_string(double amount, currency const& c);
 
 template <typename T>
-std::string to_string_with_precision(const T a_value, int const n = 6)
+std::string to_string_with_precision(T const a_value, int const n = 6)
 {
   std::ostringstream out;
   out.precision(n);

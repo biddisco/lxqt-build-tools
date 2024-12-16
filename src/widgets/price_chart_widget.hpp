@@ -57,7 +57,6 @@ class price_chart_widget : public QWidget
   //
   ohlc_price_plot* price_plot_;
   std::vector<indicator_plot*> filter_plots_;
-  indicator_plot* assets_plot_;
   QPushButton* btn_indicator_;
   //
   std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;

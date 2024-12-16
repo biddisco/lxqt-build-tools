@@ -314,6 +314,8 @@ if(BUILD_TESTING)
   pika_add_pseudo_target(tests)
 endif()
 
+set(GROX_INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 add_subdirectory(src/util)
 add_subdirectory(src/data)
 add_subdirectory(src/currency)

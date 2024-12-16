@@ -9,7 +9,7 @@
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/currency_widget.hpp"
 #include "widgets/trade_widget.hpp"
-//
+// generated
 #include "ui_currency_widget.h"
 
 // ----------------------------------------------------------------------------

@@ -21,7 +21,7 @@
 #include "plot/timebased_data_curve.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/digital_clock.hpp"
-#include "widgets/indicator_dialog.hpp"
+#include "widgets/indicator_widget.hpp"
 #include "widgets/price_chart_widget.hpp"
 
 // ----------------------------------------------------------------------------
@@ -104,7 +104,6 @@ price_chart_widget::~price_chart_widget()
   delete ui;
   delete price_plot_;
   for (auto p : filter_plots_) { delete p; }
-  //  delete assets_plot_;
 }
 
 // ----------------------------------------------------------------------------
@@ -241,13 +240,16 @@ void price_chart_widget::connect_gui()
   connect(btn_indicator_, &QPushButton::clicked, this, [this](bool b) {
     pplot_dbg<0>.debug(str<>("Indicators"), ticker_string_);
 
-    indicator_dialog in_dialog = indicator_dialog();
-    auto result = in_dialog.exec();
+    QDialog ind_dialog;
+    indicator_widget* widget = new indicator_widget(indicators::available_indicators);
+    widget->add_to_dialog(&ind_dialog);
+
+    auto result = ind_dialog.exec();
     if (result == QDialog::Accepted)
     {
       static int colour_count = 0;
       // copy the algorithm out of the dialog
-      auto indicator = in_dialog.get_algorithm();
+      auto indicator = widget->get_algorithm();
       // now execute the algorithm
       std::visit(
           [this](auto& alg) {

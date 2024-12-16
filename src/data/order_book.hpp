@@ -1,11 +1,10 @@
 #pragma once
 //
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-//
-#include <QtCore>
 //
 #include "nlohmann/json.hpp"
 //
@@ -45,36 +44,12 @@ struct fee_data
   double fixed;
 };
 
-// if we want to give our lock to another object, we must wrap our mutex
-// in a reference that will be unlocked when complete
-struct orderbook_lock
-{
-  std::unique_lock<std::mutex> lock_;
-
-  // we are constructed with a lock that is moved in and we take over the lock
-  orderbook_lock(std::unique_lock<std::mutex>&& lock)
-    : lock_(std::move(lock))
-  {
-  }
-
-  // to hand a lock to another one, we provide a move constructor
-  orderbook_lock(orderbook_lock&& other) = default;
-
-  ~orderbook_lock()
-  {
-    // it will be unlocked on destruction anyway, but lets be explicit
-    lock_.unlock();
-  }
-};
-
 // ----------------------------------------------------------------------------
 // Base order book class provides access to top bids/asks
 // plotting and other representations of the orders
 // ----------------------------------------------------------------------------
-class order_book_base : QObject
+class order_book_base
 {
-  Q_OBJECT
-
   // ---------------------------------------------
   private:
   // a websocket thread might deliver bid/ask data as we are reading it, keep a lock
@@ -113,7 +88,7 @@ class order_book_base : QObject
 
   // ---------------------------------------------
   public:
-  orderbook_lock take_bid_ask_lock() const;
+  std::unique_lock<std::mutex> take_bid_ask_lock() const;
 
   // given a max amount to spend, how much of this ask to take
   std::pair<double, double> buy_nibble(

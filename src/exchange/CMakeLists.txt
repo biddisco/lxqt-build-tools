@@ -6,8 +6,6 @@ set(grox_exchange_SRCS
     bitstamp.cpp
     exchange.hpp
     exchange.cpp
-    order_book.hpp
-    order_book.cpp
     order_book_bitstamp.hpp
     order_book_bitstamp.cpp
     order_book_xrpl.hpp
@@ -20,7 +18,7 @@ set(grox_exchange_SRCS
 
 add_library(grox_exchange ${grox_exchange_SRCS})
 set_property(TARGET grox_exchange PROPERTY AUTOMOC ON)
-target_include_directories(grox_exchange PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_include_directories(grox_exchange PUBLIC ${GROX_INCLUDE_ROOT})
 
 target_link_libraries(
   grox_exchange

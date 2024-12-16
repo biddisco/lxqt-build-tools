@@ -14,19 +14,18 @@
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
 // Grox
+#include "data/order_book.hpp"
 #include "debug/print.hpp"
-#include "exchange/order_book.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
+#include "util/datetime_utils.hpp"
 #include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox;
-using namespace grox::debug;
+using namespace grox::debug::detail;
 using namespace nlohmann;
 // a debug level of N shows messages with priority<N
 constexpr int debug_level = 0;
-//
 template <int Level>
 inline constexpr print_threshold<Level, debug_level> obook_dbg("ord-book");
 
@@ -42,7 +41,6 @@ inline constexpr print_threshold<Level, debug_level> obook_dbg("ord-book");
 // plotting and other representations of the orders
 // ----------------------------------------------------------------------------
 order_book_base::order_book_base()
-  : QObject(nullptr)
 {
 #ifdef GROX_ARBITRAGE_TEST_MODE
   std::cerr << "**********************************************\n"
@@ -61,10 +59,10 @@ order_book_base::order_book_base()
 order_book_base::~order_book_base() { obook_dbg<0>.debug(str<>("order_book_base"), "destructing"); }
 
 // ----------------------------------------------------------------------------
-orderbook_lock order_book_base::take_bid_ask_lock() const
+std::unique_lock<std::mutex> order_book_base::take_bid_ask_lock() const
 {
   std::unique_lock<std::mutex> lock(bidask_mtx_);
-  return orderbook_lock{std::move(lock)};
+  return lock;
 }
 
 // ----------------------------------------------------------------------------
@@ -216,10 +214,11 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
   std::tie(sell_size, sell_rate) = *sell_point;
   //
   QString now = QDateTime::currentDateTimeUtc().toString("yyyy-MM-dd hh:mm:ss");
+  //  std::string now2 = getCurrentUtcTime();
   //
   // title format string
   std::stringstream temp;
-  temp << now.toStdString() << "\n";
+  temp << now.toStdString() /*<< " " << now2 */ << "\n";
   if (test_offset > 0)
   {
     temp << "*****************************************\n"

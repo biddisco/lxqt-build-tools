@@ -6,17 +6,16 @@
 // Qt
 #include <QAction>
 #include <QApplication>
-#include <QDateTime>
-#include <QFrame>
-#include <QKeySequence>
-#ifdef QT6
-# include <QKeyCombination>
-#endif
 #include <QCheckBox>
+#include <QDateTime>
 #include <QDockWidget>
+#include <QFrame>
 #include <QInputDialog>
+#include <QKeyCombination>
+#include <QKeySequence>
 #include <QListView>
 #include <QMessageBox>
+#include <QPlainTextEdit>
 #include <QScrollBar>
 #include <QShortcut>
 // Qwt
@@ -36,6 +35,7 @@
 #include "network/evp-encrypt.hpp"
 #include "senders/qtstdexec.hpp"
 #include "util/datetime_utils.hpp"
+#include "widgets/arbitrage_widget.hpp"
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/connection_widget.hpp"
 #include "widgets/currency_widget.hpp"
@@ -278,22 +278,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   global_settings.dockwindows_menu_->addAction(NetworkDockWidget->toggleViewAction());
 
   // ----------------------------------
-  // Create dockwidget for algorithmic trading
-  QWidget* algowidget_ = new QWidget(this);
-  algo_form_ = new Ui::TabbedForm();
-  algo_form_->setupUi(algowidget_);
-  algowidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-
-  CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
-  AlgorithmsDockWidget->setWidget(algowidget_);
-  AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  AlgorithmsDockWidget->setMinimumSize(128, 196);
-  auto const AlgorithmsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
-      SideBarLocation::SideBarRight, AlgorithmsDockWidget);
-  AlgorithmsautoHideContainer->setSize(256);
-  global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
-
-  // ----------------------------------
   // create a dock widget to hold accounts/wallets
   accounts_frame_ = new QFrame();
   accounts_frame_->setLayout(new QVBoxLayout());
@@ -423,8 +407,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         w->widget_->set_data(*static_cast<bitstamp_account*>(w));
       if (network->get_name() == "XRPL") w->widget_->set_data(*static_cast<ledger_wallet*>(w));
       accounts_frame_->layout()->addWidget(w->widget_);
-      // update wallet combo with name
-      algo_form_->all_acct_combo->addItem(to_qstring(w->name_));
     }
   }
   accounts_frame_->layout()->addItem(
@@ -450,22 +432,22 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   // ----------------------------------
   // Resize order book to fit monospace text (add 1 chars - scrollbars/etc)
   //
-  QString txt = "X";
-  int char_size = QFontMetrics(algo_form_->order_book_xrpl->font()).horizontalAdvance(txt);
-  int calcWidth = char_size * 85 + 8;
-  //std::cout << "width", algo_form_->order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
-  algo_form_->order_book_xrpl->setMinimumWidth(calcWidth);
-  //algo_form_->order_book_xrpl->setMaximumWidth(calcWidth);
-  //algo_form_->order_book_bitstamp->setMaximumWidth(calcWidth);
-  //
-  calcWidth = char_size * 140 + 8;
-  algo_form_->arbitrage_orders->setMinimumWidth(calcWidth);
-  //algo_form_->arbitrage_orders->setMaximumWidth(calcWidth);
+  // QString txt = "X";
+  // int char_size = QFontMetrics(algo_form_->order_book_xrpl->font()).horizontalAdvance(txt);
+  // int calcWidth = char_size * 85 + 8;
+  // //std::cout << "width", algo_form_->order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
+  // algo_form_->order_book_xrpl->setMinimumWidth(calcWidth);
+  // algo_form_->order_book_xrpl->setMaximumWidth(calcWidth);
+  // //algo_form_->order_book_bitstamp->setMaximumWidth(calcWidth);
+  // //
+  // calcWidth = char_size * 140 + 8;
+  // algo_form_->arbitrage_orders->setMinimumWidth(calcWidth);
+  // algo_form_->arbitrage_orders->setMaximumWidth(calcWidth);
 
   // ----------------------------------
   // just an experiment to display an image
   // scale pixmap to fit in label's size and keep ratio of pixmap
-  QPixmap pix(":/images/xrp.jpg");
+  QPixmap pix(":/images/icons/xrp.jpg");
   // pix = pix.scaled(algo_form_->image_label->size(), Qt::KeepAspectRatio);
   // algo_form_->image_label->setPixmap(pix);
 }
@@ -501,74 +483,53 @@ void GroxMainWindow::appExitCleanupHandler() { main_dbg<0>.debug(str<>("appExitC
 // ----------------------------------------------------------------------------
 bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
 {
-  if (obj == algo_form_->connect_button && event->type() == QEvent::MouseButtonPress)
-  {
-    QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-    if (mouseEvent->modifiers() == Qt::ShiftModifier)
-    {
-      //do what you need
-      main_dbg<6>.debug("Shift click pressed");
-      std::array<std::string, 5> strings{bitstamp_network_->account().API_user,
-          bitstamp_network_->account().API_key, bitstamp_network_->account().API_secret,
-          std::to_string(bitstamp_network_->account().tag_), bitstamp_network_->account().public_};
-
-      // iterate over wallets to convert type from basic pointers
-      // @TODO - improve this
-      std::vector<ledger_wallet> wallets;
-      auto x1 = xrpl_network::get_xrpl_instance(false)->wallets();
-      auto x2 = xrpl_network::get_xrpl_instance(true)->wallets();
-      ranges::for_each(x1, [&](basic_account* b) {
-        ledger_wallet w = *static_cast<ledger_wallet*>(b);
-        wallets.push_back(w);
-      });
-      ranges::for_each(x2, [&](basic_account* b) {
-        ledger_wallet w = *static_cast<ledger_wallet*>(b);
-        wallets.push_back(w);
-      });
-      password_dialog npw = password_dialog(strings, wallets);
-      if (npw.exec() == QDialog::Accepted) { generate_encrypted_ini_data(npw); }
-      return true;
-    }
-  }
   return QWidget::eventFilter(obj, event);
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::connect_gui_controls()
 {
-  // to capture ctrl-click on connect button
-  algo_form_->connect_button->installEventFilter(this);
-
   // action for quit (@TODO)
   // connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
 
   // button-click : fetch latest account balance data
   // connect(algo_form_->account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
-  // ---------------------------------------------------------------------
-  // signals emitted from networking thread completion handlers should use
-  // Qt::QueuedConnection to ensure they transfer to Qt main thread
-  // ---------------------------------------------------------------------
-
-  connect(
-      algo_form_->exec_algo, &QAbstractButton::clicked, this,
-      [this]() {
-        // execute_filter();
-      },
-      Qt::QueuedConnection);
-
-  connect(
-      algo_form_->run_filter, &QPushButton::clicked, this,
-      [this]() {
-        // pplot_dbg<0>.error(str<>("emit execute_filter"));
-        // execute_filter();
-      },
-      Qt::QueuedConnection);
-
   qs_shutdown_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
   qs_darkmode_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_D)), this, [this]() {
     dark_mode_ = (dark_mode_ + 1) % 3;
     LoadStyleSheet(dark_mode_);
+  });
+
+  qs_password_ =
+      new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_P)), this, [this]() {
+        //do what you need
+        main_dbg<6>.debug("Shift click pressed");
+        std::array<std::string, 5> strings{bitstamp_network_->account().API_user,
+            bitstamp_network_->account().API_key, bitstamp_network_->account().API_secret,
+            std::to_string(bitstamp_network_->account().tag_),
+            bitstamp_network_->account().public_};
+
+        // iterate over wallets to convert type from basic pointers
+        // @TODO - improve this
+        std::vector<ledger_wallet> wallets;
+        auto x1 = xrpl_network::get_xrpl_instance(false)->wallets();
+        auto x2 = xrpl_network::get_xrpl_instance(true)->wallets();
+        ranges::for_each(x1, [&](basic_account* b) {
+          ledger_wallet w = *static_cast<ledger_wallet*>(b);
+          wallets.push_back(w);
+        });
+        ranges::for_each(x2, [&](basic_account* b) {
+          ledger_wallet w = *static_cast<ledger_wallet*>(b);
+          wallets.push_back(w);
+        });
+        password_dialog npw = password_dialog(strings, wallets);
+        if (npw.exec() == QDialog::Accepted) { generate_encrypted_ini_data(npw); }
+      });
+
+  qs_arbitrage_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_A)), this, [this]() {
+    std::shared_ptr<arbitrage_widget> widget = create_arbitrage_widget(exchange_list_);
+    arbs_ = widget;
   });
 }
 
@@ -630,43 +591,6 @@ void GroxMainWindow::capture_image()
   //    auto image = algo_form_->tabWidget->grab();
   //    algo_form_->imagelabel->setPixmap(image);
   //    algo_form_->imagelabel->setScaledContents(true);
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::perform_arbitrage()
-{
-  double budget = 100000;
-  std::string arbitrage_string;
-  double test_offset = 0.00;
-  if (algo_form_->arbitrage_test_mode->isChecked())
-  {
-    try
-    {
-      test_offset = std::stod(algo_form_->arbitrage_test_offset->text().toStdString());
-    }
-    catch (...)
-    {
-      test_offset = 0.00;
-    }
-  }
-
-  //
-  fee_data sell_fee{0.12, 0.0};
-  fee_data buy_fee{0.0, 0.01};
-  //
-  if (algo_form_->enable_arbitrage->isChecked())
-  {
-    // @TODO fix arbitrage for CP
-    //    xrpl_network_->get_orderbook().compute_arbitrage(
-    //      bitstamp_network_->get_orderbook(), budget, buy_fee, sell_fee, test_offset, arbitrage_string);
-
-    if (arbitrage_string.size() > 0)
-    {
-      QString arb_string = QString::fromStdString(arbitrage_string);
-      algo_form_->arbitrage_orders->setPlainText(arb_string);
-    }
-    else { algo_form_->arbitrage_orders->setPlainText(""); }
-  }
 }
 
 // ----------------------------------------------------------------------------

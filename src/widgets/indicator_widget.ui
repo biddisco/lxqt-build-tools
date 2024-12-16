@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>indicator_dialog</class>
- <widget class="QWidget" name="indicator_dialog">
+ <class>indicator_widget</class>
+ <widget class="QWidget" name="indicator_widget">
   <property name="enabled">
    <bool>true</bool>
   </property>
@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>342</width>
-    <height>138</height>
+    <width>366</width>
+    <height>144</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -38,10 +38,10 @@
    <item row="3" column="1">
     <widget class="QFrame" name="controls_trade">
      <property name="frameShape">
-      <enum>QFrame::Box</enum>
+      <enum>QFrame::Shape::Box</enum>
      </property>
      <property name="frameShadow">
-      <enum>QFrame::Sunken</enum>
+      <enum>QFrame::Shadow::Sunken</enum>
      </property>
      <property name="lineWidth">
       <number>3</number>
@@ -53,7 +53,7 @@
          <string>x</string>
         </property>
         <property name="toolButtonStyle">
-         <enum>Qt::ToolButtonTextOnly</enum>
+         <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
         </property>
        </widget>
       </item>

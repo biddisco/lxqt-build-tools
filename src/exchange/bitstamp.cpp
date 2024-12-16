@@ -900,7 +900,11 @@ void bitstamp_network::update_ohlc_datasets()
   for (auto& [cp, data] : tickers_subscribed_)
   {
     if (!candlestick_updates_active_.contains(cp)) { update_ohlc_data(cp, data); }
-    else { bitstamp_dbg<0>.warning(str<>("ohlc active"), currency_pair_lowercase_string(cp)); }
+    else
+    {
+      bitstamp_dbg<0>.warning(str<>("ohlc active"), currency_pair_lowercase_string(cp));
+      throw std::runtime_error("candlestick_updates_active_ is it really needed?");
+    }
   }
 }
 

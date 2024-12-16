@@ -14,9 +14,9 @@
 #include <stdexec/execution.hpp>
 //
 #include "currency/trade_data.hpp"
+#include "data/order_book.hpp"
 #include "exchange/account.hpp"
 #include "exchange/exchange.hpp"
-#include "exchange/order_book.hpp"
 #include "exchange/order_book_bitstamp.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"

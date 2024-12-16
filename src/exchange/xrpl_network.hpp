@@ -9,9 +9,9 @@
 #include <exec/async_scope.hpp>
 #include <stdexec/execution.hpp>
 //
+#include "data/order_book.hpp"
 #include "exchange/account.hpp"
 #include "exchange/exchange.hpp"
-#include "exchange/order_book.hpp"
 #include "exchange/order_book_xrpl.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"

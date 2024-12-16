@@ -18,12 +18,9 @@
 #include "plot/OrderBookPlot.h"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 9;
-//
+using namespace grox::debug::detail;
 template <int Level>
-inline constexpr print_threshold<Level, debug_level> book_dbg("ord-plot");
+inline constexpr print_threshold<Level, 9> book_dbg("ord-plot");
 
 // ----------------------------------------------------------------------------
 OrderBookPlot::OrderBookPlot(QWidget* parent, std::shared_ptr<order_book_base> order_book)
@@ -204,7 +201,7 @@ void OrderBookPlot::update_graph_limits()
 void OrderBookPlot::new_data_event()
 {
   // push this data into the graph object
-  orderbook_lock lock = order_book_->take_bid_ask_lock();
+  std::unique_lock lock = order_book_->take_bid_ask_lock();
   auto const& [bids, asks] = order_book_->get_bidask_data();
   bid_curve_->setRawSamples_locked(bids.rate, bids.total);
   ask_curve_->setRawSamples_locked(asks.rate, asks.total);

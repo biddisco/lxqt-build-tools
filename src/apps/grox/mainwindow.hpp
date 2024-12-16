@@ -13,12 +13,11 @@
 //
 #include "ui_mainwindow.h"
 //
+#include "data/order_book.hpp"
 #include "exchange/bitstamp.hpp"
-#include "exchange/order_book.hpp"
 #include "exchange/xrpl_network.hpp"
+#include "widgets/arbitrage_widget.hpp"
 #include "widgets/connection_widget.hpp"
-// generated
-#include "ui_tabbed_form.h"
 
 class AdjustingScrollArea : public QScrollArea
 {
@@ -53,9 +52,6 @@ class GroxMainWindow : public QMainWindow
   // main form ui
   Ui::GroxMainWindow ui;
 
-  // tabbed form with old controls on
-  Ui::TabbedForm* algo_form_;
-
   // widgets
   QAction* actionQuit;
   QFrame* orders_frame_;
@@ -76,7 +72,11 @@ class GroxMainWindow : public QMainWindow
   //
   QShortcut* qs_shutdown_;
   QShortcut* qs_darkmode_;
+  QShortcut* qs_password_;
+  QShortcut* qs_arbitrage_;
   int dark_mode_;
+
+  std::shared_ptr<arbitrage_widget> arbs_;
 
   public:
   explicit GroxMainWindow(QWidget* parent = nullptr);
@@ -118,7 +118,6 @@ class GroxMainWindow : public QMainWindow
   void appExitCleanupHandler();
   void execute_xrp();
   void execute_usd();
-  void perform_arbitrage();
   void transaction_event();
 
   // to connect to xrpl ledger signals

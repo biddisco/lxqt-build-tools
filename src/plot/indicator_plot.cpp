@@ -32,8 +32,6 @@
 #include "plot/ohlc_date_scaledraw.hpp"
 #include "plot/ohlc_interactor.hpp"
 #include "plot/ohlc_picker.hpp"
-//
-#include <range/v3/view.hpp>
 
 // ----------------------------------------------------------------------------
 indicator_plot::indicator_plot(QWidget* parent)

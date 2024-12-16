@@ -1,6 +1,3 @@
-#include <QDialog>
-#include <QMessageBox>
-//
 #include <xrpl/protocol/TxFlags.h>
 //
 #include "check_trades_dialog.hpp"

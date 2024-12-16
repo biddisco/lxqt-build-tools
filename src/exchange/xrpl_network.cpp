@@ -22,9 +22,9 @@
 #include <pika/execution/algorithms/just.hpp>
 #include <pika/execution/algorithms/transfer_just.hpp>
 //
+#include "data/order_book.hpp"
 #include "debug/print.hpp"
 #include "exchange/bitstamp.hpp"
-#include "exchange/order_book.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
 #include "network/evp-encrypt.hpp"
@@ -35,7 +35,7 @@
 
 // ----------------------------------------------------------------------------
 using namespace grox;
-using namespace grox::debug;
+using namespace grox::debug::detail;
 using namespace grox::senders;
 using namespace nlohmann;
 //

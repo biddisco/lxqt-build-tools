@@ -1,4 +1,6 @@
 set(grox_widgets_SRCS
+    arbitrage_widget.cpp
+    arbitrage_widget.hpp
     check_trades_dialog.cpp
     check_trades_dialog.hpp
     collapsible_groupbox.cpp
@@ -9,8 +11,8 @@ set(grox_widgets_SRCS
     currency_widget.hpp
     digital_clock.cpp
     digital_clock.hpp
-    indicator_dialog.cpp
-    indicator_dialog.hpp
+    indicator_widget.cpp
+    indicator_widget.hpp
     password_dialog.cpp
     password_dialog.hpp
     price_chart_widget.cpp
@@ -23,14 +25,12 @@ set(grox_widgets_SRCS
     xrp_functions.hpp
 )
 
-# qt_wrap_ui(grox_widgets_ui_SRC connection_widget.ui currency_widget.ui indicator_dialog.ui
-# password_dialog.ui price_chart_widget.ui trade_widget.ui wallet_widget.ui xrp_functions.ui)
-
 set(grox_widgets_SRCS
     ${grox_widgets_SRCS}
+    arbitrage_widget.ui
     connection_widget.ui
     currency_widget.ui
-    indicator_dialog.ui
+    indicator_widget.ui
     password_dialog.ui
     price_chart_widget.ui
     trade_widget.ui
@@ -40,13 +40,15 @@ set(grox_widgets_SRCS
 
 set(grox_widgets_QRCS images.qrc)
 
-add_library(grox_widgets ${grox_widgets_SRCS} ${grox_widgets_ui_SRC} ${grox_widgets_QRCS})
+add_library(
+  grox_widgets ${grox_widgets_SRCS} ${grox_widgets_ui_SRC} ${grox_widgets_QRCS} ${grox_widgets_UI}
+)
 
 set_property(TARGET grox_widgets PROPERTY AUTOMOC ON)
 set_property(TARGET grox_widgets PROPERTY AUTOUIC ON)
 set_property(TARGET grox_widgets PROPERTY AUTORCC ON)
 
-target_include_directories(grox_widgets PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_include_directories(grox_widgets PUBLIC ${GROX_INCLUDE_ROOT})
 
 target_link_libraries(
   grox_widgets
@@ -56,6 +58,7 @@ target_link_libraries(
          grox_exchange
          grox_plot
          grox_util
+         qt6advanceddocking
          fmt::fmt
          nlohmann_json::nlohmann_json
          range-v3

@@ -5,7 +5,7 @@
 // Qwt
 #include <QwtPlot>
 // Grox
-#include "exchange/order_book.hpp"
+#include "data/order_book.hpp"
 #include "plot/OrderBookCurve.h"
 
 // ----------------------------------------------------------------------------

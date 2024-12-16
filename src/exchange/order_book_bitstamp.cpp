@@ -14,22 +14,18 @@
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
 // Grox
+#include "data/order_book.hpp"
 #include "debug/print.hpp"
-#include "exchange/order_book.hpp"
 #include "exchange/order_book_bitstamp.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
 #include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox;
-using namespace grox::debug;
+using namespace grox::debug::detail;
 using namespace nlohmann;
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 2;
-//
 template <int Level>
-inline constexpr print_threshold<Level, debug_level> bobook_dbg("bit-book");
+inline constexpr print_threshold<Level, 2> bobook_dbg("bit-book");
 
 // ----------------------------------------------------------------------------
 // Bitstamp specific order book processing routines

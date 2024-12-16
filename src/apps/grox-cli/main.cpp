@@ -9,7 +9,6 @@
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
 //
-#include <pika/debugging/print.hpp>
 #include <pika/init.hpp>
 #include <pika/modules/execution.hpp>
 #include <pika/modules/executors.hpp>
@@ -19,6 +18,7 @@
 #include <pika/program_options.hpp>
 //
 #include "config/config.hpp"
+#include "debug/print.hpp"
 #include "exchange/bitstamp.hpp"
 #include "senders/qhttp-post-sender.hpp"
 #include "senders/qtstdexec.hpp"
@@ -42,7 +42,7 @@ std::shared_ptr<bitstamp_network> bitstamp_exchange;
 // ----------------------------------------------------------------------------
 namespace {
   template <int Level>
-  inline constexpr grox::debug::print_threshold<Level, 0> test1_dbg("test-exB");
+  inline constexpr grox::debug::detail::print_threshold<Level, 0> test1_dbg("test-exB");
 }    // namespace
 
 // ------------------------------------------------------------------

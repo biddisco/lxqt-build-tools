@@ -16,6 +16,7 @@
 #include "indicators/relative_strength_indicator.hpp"
 #include "indicators/stochastic_oscillator.hpp"
 #include "indicators/stochastic_relative_strength_indicator.hpp"
+#include "indicators/trade_arbitrage_2_way.hpp"
 #include "indicators/trade_sell_sliding_stop.hpp"
 #include "indicators/volatility_bollinger_bands.hpp"
 #include "indicators/volatility_garman_klass.hpp"
@@ -38,7 +39,8 @@ namespace indicators {
       volatility_bollinger_bands,                    //
       volatility_garman_klass,                       //
       volatility_rogers_satchell,                    //
-      trade_sell_sliding_stop                        //
+      trade_sell_sliding_stop,                       //
+      trade_arbitrage_2_way                          //
       >;
 
   // Generate a variant containing each type from the typelist
@@ -64,8 +66,8 @@ namespace indicators {
   };
 
   using indicator_variant = types_generator<indicator_typelist>::type;
-  inline std::vector<indicator_variant> available_indicators =
-      types_generator<indicator_typelist>::generate();
+  using indicator_vector = std::vector<indicator_variant>;
+  inline indicator_vector available_indicators = types_generator<indicator_typelist>::generate();
 
   // ----------------------------------------------------------------------------
   template <class T>

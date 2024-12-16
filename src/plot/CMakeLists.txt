@@ -22,13 +22,9 @@ set(grox_plot_SRCS
 
 add_library(grox_plot ${grox_plot_SRCS})
 
-set_property(
-  TARGET grox_plot
-  PROPERTY AUTOMOC
-           ON
-)
+set_property(TARGET grox_plot PROPERTY AUTOMOC ON)
 
-target_include_directories(grox_plot PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_include_directories(grox_plot PUBLIC ${GROX_INCLUDE_ROOT})
 
 target_link_libraries(
   grox_plot

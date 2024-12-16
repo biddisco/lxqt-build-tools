@@ -2,7 +2,6 @@
 
 #include <limits>
 //
-#include <range/v3/view.hpp>
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"

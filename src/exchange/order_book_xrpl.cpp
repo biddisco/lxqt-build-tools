@@ -14,8 +14,8 @@
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
 // Grox
+#include "data/order_book.hpp"
 #include "debug/print.hpp"
-#include "exchange/order_book.hpp"
 #include "exchange/order_book_xrpl.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
@@ -23,13 +23,10 @@
 
 // ----------------------------------------------------------------------------
 using namespace grox;
-using namespace grox::debug;
+using namespace grox::debug::detail;
 using namespace nlohmann;
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 6;
-//
 template <int Level>
-inline constexpr print_threshold<Level, debug_level> xbook_dbg("xrplbook");
+inline constexpr print_threshold<Level, 6> xbook_dbg("xrplbook");
 
 // ----------------------------------------------------------------------------
 // XRP ledger specific order book processing routines

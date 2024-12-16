@@ -2,8 +2,6 @@ set(GROX_SRC # main application
     main.cpp mainwindow.cpp
 )
 
-qt_wrap_ui(GROX_SRC tabbed_form.ui)
-
 # -----------------------------------------------------------------------------
 # Qt resource files
 # -----------------------------------------------------------------------------

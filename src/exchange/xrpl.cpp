@@ -24,12 +24,9 @@
 #include <xrpl/protocol/tokens.h>
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
-//
+using namespace grox::debug::detail;
 template <int Level>
-inline constexpr print_threshold<Level, debug_level> xrpl_dbg("XRPLFunc");
+inline constexpr print_threshold<Level, 0> xrpl_dbg("XRPLFunc");
 
 // ----------------------------------------------------------------------------
 std::string currency_to_hex(std::string_view currency)

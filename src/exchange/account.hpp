@@ -17,8 +17,8 @@
 //
 #include "config/config.hpp"
 #include "currency/currency.hpp"
+#include "data/order_book.hpp"
 #include "exchange/exchange.hpp"
-#include "exchange/order_book.hpp"
 #include "network/evp-encrypt.hpp"
 //
 class wallet_widget;
