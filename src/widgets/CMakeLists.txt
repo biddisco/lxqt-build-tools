@@ -58,7 +58,7 @@ target_link_libraries(
          grox_exchange
          grox_plot
          grox_util
-         qt6advanceddocking
+         qtadvanceddocking-qt${QT_VERSION_MAJOR}
          fmt::fmt
          nlohmann_json::nlohmann_json
          range-v3

@@ -95,12 +95,12 @@ namespace grox::senders {
           friend constexpr void
           tag_invoke(ex::set_error_t, qhttp_post_receiver r, Error&& error) noexcept
           {
-            ex::set_error(PIKA_MOVE(r.op_state.receiver_), PIKA_FORWARD(Error, error));
+            ex::set_error(std::move(r.op_state.receiver_), std::forward<Error>(error));
           }
 
           friend constexpr void tag_invoke(ex::set_stopped_t, qhttp_post_receiver r) noexcept
           {
-            ex::set_stopped(PIKA_MOVE(r.op_state.receiver_));
+            ex::set_stopped(std::move(r.op_state.receiver_));
           }
 
           // receive the client and set a callback to be triggered when the request completes
@@ -145,7 +145,7 @@ namespace grox::senders {
                   }
                 },
                 [&](std::exception_ptr ep) {
-                  ex::set_error(PIKA_MOVE(r.op_state.receiver_), PIKA_MOVE(ep));
+                  ex::set_error(std::move(r.op_state.receiver_), std::move(ep));
                 });
           }
 
@@ -168,8 +168,8 @@ namespace grox::senders {
         // -----------------------------------------------------------------
         template <typename Receiver_, typename Sender_>
         operation_state(Receiver_&& receiver, Sender_&& sender, http_request_type req_type)
-          : receiver_(PIKA_FORWARD(Receiver_, receiver))
-          , op_state(ex::connect(PIKA_FORWARD(Sender_, sender), qhttp_post_receiver{*this}))
+          : receiver_(std::forward<Receiver_>(receiver))
+          , op_state(ex::connect(std::forward<Sender_>(sender), qhttp_post_receiver{*this}))
           , client_(nullptr)
           , req_type_{req_type}
         {
@@ -188,7 +188,7 @@ namespace grox::senders {
       friend constexpr auto
       tag_invoke(ex::connect_t, qhttp_post_sender_type const& s, Receiver&& receiver)
       {
-        return operation_state<Receiver>(PIKA_FORWARD(Receiver, receiver), s.sender);
+        return operation_state<Receiver>(std::forward<Receiver>(receiver), s.sender);
       }
 
       template <typename Receiver>
@@ -196,7 +196,7 @@ namespace grox::senders {
       tag_invoke(ex::connect_t, qhttp_post_sender_type&& s, Receiver&& receiver)
       {
         return operation_state<Receiver>(
-            PIKA_FORWARD(Receiver, receiver), PIKA_MOVE(s.sender), s.req_type);
+            std::forward<Receiver>(receiver), std::move(s.sender), s.req_type);
       }
     };
 
@@ -210,7 +210,7 @@ private:
     friend constexpr PIKA_FORCEINLINE auto
     tag_fallback_invoke(qhttp_post_t, Sender&& sender, http_request_type req_type)
     {
-      return detail::qhttp_post_sender<Sender>{PIKA_FORWARD(Sender, sender), req_type};
+      return detail::qhttp_post_sender<Sender>{std::forward<Sender>(sender), req_type};
     }
 
     //

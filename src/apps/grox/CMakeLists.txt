@@ -76,7 +76,7 @@ target_link_libraries(
          Qt::Svg
          Qt::Widgets
          Qt::OpenGLWidgets
-         qt6advanceddocking
+         qtadvanceddocking-qt${QT_VERSION_MAJOR}
          ${Boost_LIBRARIES}
          nlohmann_json::nlohmann_json
          STDEXEC::stdexec
