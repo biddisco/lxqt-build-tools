@@ -8,7 +8,8 @@
 #include <vector>
 //
 #include "data/ohlc_data_resolutions.hpp"
-#include "indicators/indicator_definitions.hpp"
+#include "indicators/algorithm_base.hpp"
+#include "indicators/indicator_params.hpp"
 #include "ui_indicator_widget.h"
 
 class indicator_widget : public QWidget
@@ -21,7 +22,7 @@ class indicator_widget : public QWidget
 
   // return a variant containing a copy of the selected algorithm
   // including all parameters set by the user in the dialog
-  indicators::indicator_variant get_algorithm();
+  indicators::algorithm_ptr get_algorithm();
 
   void add_to_dialog(QDialog* dlg);
 

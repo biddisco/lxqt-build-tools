@@ -11,7 +11,7 @@
 #include <QWidget>
 // Grox
 #include "data/ohlc_dataset.hpp"
-#include "indicators/indicator_definitions.hpp"
+#include "indicators/indicator_params.hpp"
 #include "widgets/indicator_controls.hpp"
 #include "widgets/indicator_widget.hpp"
 
@@ -28,7 +28,8 @@ indicator_widget::indicator_widget(indicators::indicator_vector const& i)
   // setup algorithms combobox
   for (auto const& a : indicators_)
   {
-    QString s = std::visit([](auto const& obj) { return obj.get_name(); }, a).c_str();
+    QString s = a->get_name().c_str();
+    // std::visit([](auto const& obj) { return obj.get_name(); }, a).c_str();
     ui.algorithm->addItem(s);
   }
   // when algorithm is changed, rebuild gui
@@ -51,7 +52,7 @@ indicator_widget::~indicator_widget() {}
 // ----------------------------------------------------------------------------
 // return a variant containing a copy of the selected algorithm
 // including all parameters set by the user in the dialog
-indicators::indicator_variant indicator_widget::get_algorithm()
+indicators::algorithm_ptr indicator_widget::get_algorithm()
 {
   int index = ui.algorithm->currentIndex();
   return indicators_[index];
@@ -125,15 +126,18 @@ void indicator_widget::refresh_gui(int index)
   std::array<int, 2> counts = {0, 0};
 
   auto alg = indicators_[index];
-  std::string desc = std::visit([](auto const& obj) { return obj.get_description(); }, alg);
+  std::string desc = alg->get_description();
+  // std::visit([](auto const& obj) { return obj.get_description(); }, alg);
   ui.description->setText(QString(desc.c_str()));
 
   QGridLayout* layout = new QGridLayout;
-  int nparams = std::visit([](auto const& obj) { return obj.get_params().size(); }, alg);
+  int nparams = alg->get_params().size();
+  // std::visit([](auto const& obj) { return obj.get_params().size(); }, alg);
   for (int i = 0; i < nparams; ++i)
   {
     // get the i-th param from the variant algorithm list
-    auto p = std::visit([=](auto const& obj) { return obj.get_params()[i]; }, alg);
+    auto p = alg->get_params()[i];
+    // std::visit([=](auto const& obj) { return obj.get_params()[i]; }, alg);
     // draw datasets in left column, params_ in right
     int column = std::visit([&](auto const& v) { return get_column(v); }, p.value);
 
@@ -166,7 +170,8 @@ void indicator_widget::update_parameters()
 
   // create a new param list from the gui widget
   indicators::param_list new_params;
-  new_params = std::visit([](auto const& obj) { return obj.get_params(); }, alg);
+  new_params = alg->get_params();
+  // std::visit([](auto const& obj) { return obj.get_params(); }, alg);
 
   for (int i = 0; i < new_params.size(); ++i)
   {
@@ -178,5 +183,6 @@ void indicator_widget::update_parameters()
   }
 
   // overwrite the original params_ with the new default / updated values
-  std::visit([&](auto& obj) { obj.set_params(new_params); }, alg);
+  alg->set_params(new_params);
+  // std::visit([&](auto& obj) { obj.set_params(new_params); }, alg);
 }

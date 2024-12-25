@@ -25,6 +25,7 @@ struct currency_code
 {
   static inline std::string const bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
   static inline std::string const gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
+  static inline std::string const ripple_trust = "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De";
   static inline std::vector<currency_code> trustlines = {};
   //
   std::string issuer_;

@@ -21,6 +21,9 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
+    FACTORY_INDICATOR_CREATE(stochastic_relative_strength_indicator, operator_type);
+
+    // ---------------------------------------
     /// Default constructor
     stochastic_relative_strength_indicator()
       : indicator_base(

@@ -26,7 +26,10 @@ namespace indicators {
     };
 
 public:
-    using result_type = buy_sell_point;
+    using operator_type = buy_sell_point;
+
+    // ---------------------------------------
+    FACTORY_INDICATOR_CREATE(trade_sell_sliding_stop, operator_type);
 
     // ---------------------------------------
     /// Default constructor
@@ -73,7 +76,7 @@ public:
     }
 
     // ---------------------------------------
-    result_type operator()(ohlctv_sample const& val)
+    operator_type operator()(ohlctv_sample const& val)
     {
       // push this value into the moving average filter
       current_val_ = average_(val);
@@ -149,7 +152,7 @@ public:
     }
 
     // ---------------------------------------
-    inline result_type getLastResult() { return last_result_; }
+    inline operator_type getLastResult() { return last_result_; }
 
 private:
     ohlc_modes mode_;

@@ -15,6 +15,9 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
+    FACTORY_INDICATOR_CREATE(moving_average_exponential_volume_weighted, operator_type);
+
+    // ---------------------------------------
     /// Default constructor
     moving_average_exponential_volume_weighted(int window_size = 14,
         ohlc_modes mode = ohlc_modes::low, bool user_alpha = false, double decay_factor = 0.1)

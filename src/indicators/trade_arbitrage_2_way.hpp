@@ -13,15 +13,18 @@ namespace indicators {
   };
 
   //----------------------------------------------------------------------------
-  class trade_arbitrage_2_way : public indicator_base
+  class trade_arbitrage_2_way : public algorithm_base
   {
 public:
-    using result_type = arbitrage_decision;
+    using operator_type = arbitrage_decision;
+
+    // ---------------------------------------
+    FACTORY_ALGORITHM_CREATE(trade_arbitrage_2_way);
 
     // ---------------------------------------
     /// Default constructor
     trade_arbitrage_2_way(std::string exchange = "Bistamp", currency_pair ticker = {})
-      : indicator_base("Arbitrage 2-way", "Arbitrage 2-way", {})
+      : algorithm_base("Arbitrage 2-way", "Arbitrage 2-way")
       , exchange_(exchange)
       , ticker_(ticker)
     {

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include <boost/accumulators/accumulators.hpp>
 #include <fmt/format.h>
 #include <gtest/gtest.h>
 #include <highfive/H5DataSet.hpp>
@@ -12,7 +13,9 @@
 #include "currency/currency.hpp"
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
-#include "indicators/indicator_definitions.hpp"
+#include "indicators/volatility_bollinger_bands.hpp"
+#include "indicators/volatility_garman_klass.hpp"
+#include "indicators/volatility_rogers_satchell.hpp"
 #include "io/hdf5_ohlc_manager.hpp"
 
 std::string data_dir = "/home/biddisco/.local/share/grox";

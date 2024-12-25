@@ -21,6 +21,7 @@ target_link_libraries(
   grox_data
   PUBLIC qwt
          Qt::Core
+         grox_currency
          grox_debug
          nlohmann_json::nlohmann_json
          magic_enum::magic_enum

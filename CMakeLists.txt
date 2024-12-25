@@ -47,7 +47,9 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${PROJECT_SOURCE_DIR}/cmake")
 # ------------------------------------------------------------------------------
 # CXX standard 20
 # ------------------------------------------------------------------------------
-set(CMAKE_CXX_STANDARD 20)
+set(GROX_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD ${GROX_CXX_STANDARD})
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ------------------------------------------------------------------------------
 # PIC needed by ripple libs
@@ -271,7 +273,7 @@ get_external_project(
 # -------------------------------------------------------------
 # Find/Build/Download pika
 # -------------------------------------------------------------
-set(PIKA_WITH_CXX_STANDARD 20)
+set(PIKA_WITH_CXX_STANDARD ${GROX_CXX_STANDARD})
 set(PIKA_WITH_STDEXEC ON)
 get_external_project(
   PROJECT_NAME

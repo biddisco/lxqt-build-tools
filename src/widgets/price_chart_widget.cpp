@@ -15,7 +15,7 @@
 #include "config/config.hpp"
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
-#include "indicators/indicator_definitions.hpp"
+#include "indicators/indicator_params.hpp"
 #include "indicators/indicator_types.hpp"
 #include "plot/ohlc_chart_curve.hpp"
 #include "plot/timebased_data_curve.hpp"
@@ -249,61 +249,52 @@ void price_chart_widget::connect_gui()
     {
       static int colour_count = 0;
       // copy the algorithm out of the dialog
-      auto indicator = widget->get_algorithm();
-      // now execute the algorithm
-      std::visit(
-          [this](auto& alg) {
-            using algorithm_type = std::decay<decltype(alg)>::type;
-            // create algorithm vtable callable
-            indicators::indicator_ptr algp(alg, hdf5_ohlc_);
+      // create algorithm vtable callable interface object
+      indicators::indicator_ptr algp(widget->get_algorithm(), hdf5_ohlc_);
 
-            auto colour = chart_colours[colour_count++ % 10];
+      auto colour = chart_colours[colour_count++ % 10];
+      QString name = QString(algp.indicator()->get_name().c_str());
 
-            QString name = QString(algp.ptr()->get_name().c_str());
-            // create an indicator_data object with empty curves data
+      for (int i = 0; i < algp.indicator()->num_outputs(); ++i)
+      {
+        auto ot = algp.indicator()->get_overlay(i);
+        QwtPlotCurve* curve;
+        if (ot == indicators::overlay_type::price)
+          curve = price_plot_->add_overlay_curve(name, algp.indicator()->get_outputs()[i], colour);
+        else if (ot == indicators::overlay_type::buy_sell)
+        {
+          if (i == 0)
+            curve = price_plot_->add_buy_sell_curve(
+                "Buy", algp.indicator()->get_outputs()[i]->samples(), Qt::green);
+          else if (i == 1)
+            curve = price_plot_->add_buy_sell_curve(
+                "Sell", algp.indicator()->get_outputs()[i]->samples(), Qt::red);
+          else
+            curve =
+                price_plot_->add_overlay_curve(name, algp.indicator()->get_outputs()[i], colour);
+        }
+        else if (ot == indicators::overlay_type::mode_select)
+        {
+          ohlc_modes mode = std::get<ohlc_modes>(algp.indicator()->get_params()[2].value);
+          if (mode == ohlc_modes::volume)
+            curve = price_plot_->add_overlay_volume_curve(
+                name, algp.indicator()->get_outputs()[i], colour);
+          else if (mode == ohlc_modes::value)
+            std::tie(algp.plot, curve) =
+                add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);
+          else
+            curve =
+                price_plot_->add_overlay_curve(name, algp.indicator()->get_outputs()[i], colour);
+        }
+        else
+          std::tie(algp.plot, curve) =
+              add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);
+        algp.curves.push_back(curve);
+      }
 
-            for (int i = 0; i < algp.ptr()->num_outputs(); ++i)
-            {
-              auto ot = algp.ptr()->get_overlay(i);
-              QwtPlotCurve* curve;
-              if (ot == indicators::overlay_type::price)
-                curve = price_plot_->add_overlay_curve(name, algp.ptr()->get_outputs()[i], colour);
-              else if (ot == indicators::overlay_type::buy_sell)
-              {
-                if (i == 0)
-                  curve = price_plot_->add_buy_sell_curve(
-                      "Buy", algp.ptr()->get_outputs()[i]->samples(), Qt::green);
-                else if (i == 1)
-                  curve = price_plot_->add_buy_sell_curve(
-                      "Sell", algp.ptr()->get_outputs()[i]->samples(), Qt::red);
-                else
-                  curve =
-                      price_plot_->add_overlay_curve(name, algp.ptr()->get_outputs()[i], colour);
-              }
-              else if (ot == indicators::overlay_type::mode_select)
-              {
-                ohlc_modes mode = std::get<ohlc_modes>(algp.ptr()->get_params()[2].value);
-                if (mode == ohlc_modes::volume)
-                  curve = price_plot_->add_overlay_volume_curve(
-                      name, algp.ptr()->get_outputs()[i], colour);
-                else if (mode == ohlc_modes::value)
-                  std::tie(algp.plot, curve) =
-                      add_indicator_plot(name, algp.ptr()->get_outputs()[i], colour);
-                else
-                  curve =
-                      price_plot_->add_overlay_curve(name, algp.ptr()->get_outputs()[i], colour);
-              }
-              else
-                std::tie(algp.plot, curve) =
-                    add_indicator_plot(name, algp.ptr()->get_outputs()[i], colour);
-              algp.curves.push_back(curve);
-            }
-
-            ind_model_.indicators_.push_back(algp);
-            ind_model_.dataAdded();
-            this->replot();
-          },
-          indicator);
+      ind_model_.indicators_.push_back(algp);
+      ind_model_.dataAdded();
+      this->replot();
     }
   });
 }

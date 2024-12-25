@@ -3,7 +3,7 @@ set(GROXCLI_SRC main.cpp)
 add_executable(grox-cli ${GROXCLI_SRC} ${GROXCLI_QRC_SRC})
 
 # c++ properties
-set_property(TARGET grox-cli PROPERTY CXX_STANDARD 20)
+set_property(TARGET grox-cli PROPERTY CXX_STANDARD ${GROX_CXX_STANDARD})
 
 target_include_directories(
   grox-cli PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}

@@ -5,64 +5,73 @@
 
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_dataset.hpp"
+#include "data/ohlc_dataset_view.hpp"
 #include "data/ohlc_utils.hpp"
 #include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
+#include "indicators/algorithm_base.hpp"
 #include "indicators/indicator_types.hpp"
+
+// ----------------------------------------------------------------------------
+#define FACTORY_INDICATOR_CREATE(type, operator_type)                                              \
+  std::shared_ptr<indicator_base> create(                                                          \
+      algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc) const override            \
+  {                                                                                                \
+    auto result = std::make_shared<type>();                                                        \
+    *result = *dynamic_cast<type*>(alg);                                                           \
+    result->initialize();                                                                          \
+    result->hdf5_ohlc_ = hdf5_ohlc;                                                                \
+    result->create_outputs(hdf5_ohlc);                                                             \
+    return result;                                                                                 \
+  }                                                                                                \
+  void execute(std::uint64_t N) override                                                           \
+  {                                                                                                \
+    if ((N == std::numeric_limits<std::uint64_t>::max()) ||                                        \
+        (N > get_inputs()[0].dataset_->size()))                                                    \
+      N = 0;                                                                                       \
+    call_helper<operator_type> helper;                                                             \
+    helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });      \
+  }                                                                                                \
+  static inline IndicatorTypeInserter<type> inserter;
 
 // ----------------------------------------------------------------------------
 namespace indicators {
 
-  class indicator_base
+  struct candle_input_data
+  {
+    ohlc_dataset* dataset_;
+    std::uint64_t samples_;
+  };
+
+  struct orderbook_input_data
+  {
+    ohlc_dataset* exchange_;
+    std::uint64_t samples_;
+  };
+
+  // ----------------------------------------------------------------------------
+  //
+  // ----------------------------------------------------------------------------
+  class indicator_base : public algorithm_base
   {
 public:
     /// by default indicators produce double precision output
-    using result_type = double;
-
-    struct input_data
-    {
-      ohlc_dataset* dataset_;
-      std::uint64_t samples_;
-    };
+    using input_type = candle_input_data;
+    using output_type = point_chart_data;
+    using operator_type = double;
 
 protected:
-    /// generic vars that can be provided at construction time
-    std::string name_;
-    std::string description_;
     overlay_vector overlay_;
 
-    /// list of parameters/types that need to be supplied for GUI generation and execution
-    param_list params_;
-
     /// list of input datasets
-    std::vector<std::uint64_t> in_ranges_;
-    std::vector<input_data> in_datasets_;
-    std::vector<point_chart_data*> out_datasets_;
+    std::vector<input_type> in_datasets_;
+    std::vector<output_type*> out_datasets_;
     std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;
 
 public:
-    /// constructor factory for a type
-    template <typename Algorithm>
-    static std::shared_ptr<Algorithm>
-    create(Algorithm const& alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc)
-    {
-      // create a new instance of the algorithm
-      std::shared_ptr<Algorithm> result = std::make_shared<Algorithm>();
-      // copy from dialog into new instance
-      *result = alg;
-      // init internal structures
-      result->initialize();
-      result->hdf5_ohlc_ = hdf5_ohlc;
-      // create a dataset for each indicator output
-      result->create_outputs(hdf5_ohlc);
-      //
-      return result;
-    }
-
     // ----------------------------------------------------------------------------
     indicator_base(std::string const& name, std::string const& desc, overlay_vector const& overlay)
-      : name_(name)
-      , description_(desc)
+      : algorithm_base(name, desc)
       , overlay_(overlay)
     {
     }
@@ -71,12 +80,9 @@ public:
     virtual ~indicator_base() {}
 
     // ----------------------------------------------------------------------------
-    virtual void initialize() = 0;
-    virtual void init_params() = 0;
-
-    // ----------------------------------------------------------------------------
-    virtual std::string const get_name() const { return name_; }
-    virtual std::string const get_description() const { return description_; }
+    // factor create function
+    virtual std::shared_ptr<indicator_base> create(
+        algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc) const = 0;
 
     // ----------------------------------------------------------------------------
     /// in principle an indicator can return multiple graph series, which might require
@@ -84,32 +90,21 @@ public:
     virtual overlay_type const get_overlay(int n) const { return overlay_[n]; }
 
     // ----------------------------------------------------------------------------
-    virtual param_list const& get_params() const { return params_; }
-    virtual void set_params(param_list const& p) { params_ = p; }
-
-    // ----------------------------------------------------------------------------
-    virtual y_limits const get_ylimits() const { return {0.0, 1.0}; }
-
-    // ----------------------------------------------------------------------------
-    virtual int num_inputs() const { return 1; }
-    virtual int num_outputs() const { return 1; }
-
-    // ----------------------------------------------------------------------------
-    virtual std::vector<input_data> const& get_inputs() const { return in_datasets_; }
-    virtual std::vector<point_chart_data*>& get_outputs() { return out_datasets_; }
+    virtual std::vector<candle_input_data> const& get_inputs() const { return in_datasets_; }
+    virtual std::vector<output_type*>& get_outputs() { return out_datasets_; }
 
     // ----------------------------------------------------------------------------
     // create a dataset for each indicator output
     // default implementation uses first input resolution and size
     void create_outputs(std::shared_ptr<ohlc_dataset_view> view)
     {
-      in_datasets_ = connect_input_datasets(view);
+      in_datasets_ = connect_candle_input_datasets(view);
       //
       candle_res const res = in_datasets_[0].dataset_->get_resolution();
       std::size_t const size = in_datasets_[0].dataset_->data().size();
       for (int i = 0; i < num_outputs(); ++i)
       {
-        point_chart_data* indicator_data = new point_chart_data(res);
+        output_type* indicator_data = new output_type(res);
         indicator_data->data().reserve(size);
         out_datasets_.push_back(indicator_data);
       }
@@ -118,10 +113,11 @@ public:
     // ----------------------------------------------------------------------------
     // iterate over the parameters returned from an indicator selection dialog and
     // find the datasets of the right resolution in the datasets view
-    std::vector<input_data> connect_input_datasets(std::shared_ptr<ohlc_dataset_view> view)
+    std::vector<candle_input_data> connect_candle_input_datasets(
+        std::shared_ptr<ohlc_dataset_view> view)
     {
       using namespace grox::debug;
-      std::vector<input_data> result;
+      std::vector<candle_input_data> result;
       for (auto const& p : get_params())
       {
         if (candle_data const* d = std::get_if<candle_data>(&p.value))
@@ -131,6 +127,110 @@ public:
         }
       }
       return result;
+    }
+
+    // ----------------------------------------------------------------------------
+    virtual void execute(std::uint64_t N) = 0;
+
+    // ----------------------------------------------------------------------------
+    void call_operator_ohlc_1(std::uint64_t N, std::function<double(ohlctv_sample const&)> fn)
+    {
+      auto const input = get_inputs()[0].dataset_;
+      auto output = get_outputs()[0];
+      //
+      auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
+      for (auto it = i1; it != input->data().end(); ++it)
+      {
+        auto const& ohlc = *it;
+        auto vals = fn(ohlc);
+        QPointF xyval(ohlc.time, vals);
+        output->data().push_back(xyval);
+      }
+    }
+
+    // ----------------------------------------------------------------------------
+    void call_operator_ohlc_v(
+        std::uint64_t N, std::function<std::vector<float>(ohlctv_sample const&)> fn)
+    {
+      auto const input = get_inputs()[0].dataset_;
+      auto outputs = get_outputs();
+      //
+      auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
+      for (auto it = i1; it != input->data().end(); ++it)
+      {
+        auto const& ohlc = *it;
+        auto vals = fn(ohlc);
+        for (int i = 0; i < num_outputs(); ++i)
+        {
+          QPointF xyval(ohlc.time, vals[i]);
+          outputs[i]->data().push_back(xyval);
+        }
+      }
+    }
+
+    // ----------------------------------------------------------------------------
+    void call_operator_buy_sell(
+        std::uint64_t N, std::function<buy_sell_point(ohlctv_sample const&)> fn)
+    {
+      auto const input = get_inputs()[0].dataset_;
+      auto outputs = get_outputs();
+      //
+      auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
+      for (auto it = i1; it != input->data().end(); ++it)
+      {
+        auto const& ohlc = *it;
+        auto vals = fn(ohlc);
+        QPointF xyval(ohlc.time, vals.value_);
+        if (vals.event_type_ == buy_sell_event_type::buy)    //
+        {
+          outputs[0]->data().push_back(xyval);
+          outputs[2]->data().push_back(xyval);
+        }
+        else if (vals.event_type_ == buy_sell_event_type::sell)
+        {
+          outputs[1]->data().push_back(xyval);
+          outputs[2]->data().push_back(xyval);
+        }
+        else if (vals.event_type_ == buy_sell_event_type::value)
+        {
+          outputs[2]->data().push_back(xyval);
+        }
+        else { outputs[2]->data().push_back(xyval); }
+        {
+          QPointF trade(ohlc.time, vals.tokens_);
+          outputs[3]->data().push_back(trade);
+        }
+      }
+    }
+  };
+
+  template <typename operator_result>
+  struct call_helper
+  {
+    void execute(
+        std::uint64_t N, indicator_base* a, std::function<operator_result(ohlctv_sample const&)> fn)
+    {
+      a->call_operator_ohlc_1(N, fn);
+    }
+  };
+
+  template <>
+  struct call_helper<std::vector<float>>
+  {
+    void execute(std::uint64_t N, indicator_base* a,
+        std::function<std::vector<float>(ohlctv_sample const&)> fn)
+    {
+      a->call_operator_ohlc_v(N, fn);
+    }
+  };
+
+  template <>
+  struct call_helper<buy_sell_point>
+  {
+    void execute(
+        std::uint64_t N, indicator_base* a, std::function<buy_sell_point(ohlctv_sample const&)> fn)
+    {
+      a->call_operator_buy_sell(N, fn);
     }
   };
 

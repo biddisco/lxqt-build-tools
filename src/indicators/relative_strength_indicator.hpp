@@ -13,6 +13,9 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
+    FACTORY_INDICATOR_CREATE(relative_strength_indicator, operator_type);
+
+    // ---------------------------------------
     /// Default constructor
     relative_strength_indicator()
       : indicator_base("RSI", "Relatve Strength Indicator", {overlay_type::minmax_limit})

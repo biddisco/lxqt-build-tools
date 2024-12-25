@@ -8,7 +8,7 @@
 
 //
 #include "exchange/exchange.hpp"
-#include "indicators/indicator_definitions.hpp"
+#include "indicators/indicator_params.hpp"
 #include "indicators/indicator_ptr.hpp"
 #include "indicators/indicator_types.hpp"
 #include "plot/indicator_plot.hpp"

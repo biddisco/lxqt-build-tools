@@ -12,7 +12,7 @@
 #include <QValidator>
 // Grox
 #include "data/ohlc_dataset.hpp"
-#include "indicators/indicator_definitions.hpp"
+#include "indicators/indicator_params.hpp"
 
 // ----------------------------------------------------------------------------
 // we must provide one overload for each type in indicators::param_types

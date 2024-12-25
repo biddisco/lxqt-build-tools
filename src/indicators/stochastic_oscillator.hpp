@@ -11,14 +11,16 @@
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  class stochastic_oscillator : public indicator_base
+  class stochastic_oscillator : public algorithm_base
   {
 public:
     // ---------------------------------------
+    FACTORY_ALGORITHM_CREATE(stochastic_oscillator);
+
+    // ---------------------------------------
     /// Default constructor
     stochastic_oscillator()
-      : indicator_base(
-            "Stochastic Oscillator", "Stochastic Oscillator", {overlay_type::minmax_limit})
+      : algorithm_base("Stochastic Oscillator", "Stochastic Oscillator")
       , buffer_{}
       , stoch_val_{0.5}
       , mode_{1}

@@ -13,7 +13,10 @@ namespace indicators {
   class volatility_rogers_satchell : public indicator_base
   {
 public:
-    using result_type = std::vector<float>;
+    using operator_type = std::vector<float>;
+
+    // ---------------------------------------
+    FACTORY_INDICATOR_CREATE(volatility_rogers_satchell, operator_type);
 
     // ---------------------------------------
     /// Default constructor
@@ -55,7 +58,7 @@ public:
     }
 
     // ---------------------------------------
-    std::vector<float> operator()(ohlctv_sample const& val)
+    operator_type operator()(ohlctv_sample const& val)
     {
       // scale according to time resolution of data???
       auto mean = average_(ohlc_mode_extract(ohlc_modes::mid_high_low, val));
@@ -72,7 +75,7 @@ public:
       accum1 *= 1.0 / buffer1_.size();
       last_sigma_ = scale_ * std::sqrt(accum1);
       //
-      std::vector<float> outdata;
+      operator_type outdata;
       // push N bands below the mean
       for (int i = 0; i < num_bands_; ++i)
       {

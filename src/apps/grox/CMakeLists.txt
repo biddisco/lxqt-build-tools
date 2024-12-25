@@ -12,7 +12,7 @@ set(GROX_QRC_SRC ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
 add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC})
 
 # c++ properties
-set_property(TARGET grox PROPERTY CXX_STANDARD 20)
+set_property(TARGET grox PROPERTY CXX_STANDARD ${GROX_CXX_STANDARD})
 
 # Qt properties
 set_property(TARGET grox PROPERTY AUTOMOC ON)

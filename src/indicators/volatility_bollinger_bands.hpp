@@ -13,7 +13,10 @@ namespace indicators {
   class volatility_bollinger_bands : public indicator_base
   {
 public:
-    using result_type = std::vector<float>;
+    using operator_type = std::vector<float>;
+
+    // ---------------------------------------
+    FACTORY_INDICATOR_CREATE(volatility_bollinger_bands, operator_type);
 
     // ---------------------------------------
     /// Default constructor
@@ -56,7 +59,7 @@ public:
     }
 
     // ---------------------------------------
-    std::vector<float> operator()(double price)
+    operator_type operator()(double price)
     {
       auto mean = average_(price);
       buffer_.push_back(price - mean);
@@ -69,7 +72,7 @@ public:
       float N = buffer_.size() > 1 ? (buffer_.size() - 1) : 1;
       last_stdev_ = sqrt(accum / N);
       //
-      std::vector<float> outdata;
+      operator_type outdata;
       // push N bands below the mean
       for (int i = 0; i < num_bands_; ++i)
       {
@@ -89,7 +92,7 @@ public:
     }
 
     // ---------------------------------------
-    std::vector<float> operator()(ohlctv_sample const& val)
+    operator_type operator()(ohlctv_sample const& val)
     {
       double price = ohlc_mode_extract(mode_, val);
       return operator()(price);

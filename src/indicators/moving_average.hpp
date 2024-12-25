@@ -20,6 +20,9 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
+    FACTORY_INDICATOR_CREATE(moving_average, operator_type);
+
+    // ---------------------------------------
     // Default constructor
     moving_average(int window_size = 14, ohlc_modes mode = ohlc_modes::low)
       : indicator_base("Moving Average", "Simple Moving Average", {overlay_type::mode_select})
