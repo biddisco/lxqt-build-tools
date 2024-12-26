@@ -14,6 +14,7 @@
 
 // ----------------------------------------------------------------------------
 #define FACTORY_INDICATOR_CREATE(type, operator_type)                                              \
+  public:                                                                                          \
   std::shared_ptr<indicator_base> create(                                                          \
       algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc) const override            \
   {                                                                                                \
@@ -22,6 +23,7 @@
     result->initialize();                                                                          \
     result->hdf5_ohlc_ = hdf5_ohlc;                                                                \
     result->create_outputs(hdf5_ohlc);                                                             \
+    result->register_callbacks();                                                                  \
     return result;                                                                                 \
   }                                                                                                \
   void execute(std::uint64_t N) override                                                           \
@@ -32,7 +34,7 @@
     call_helper<operator_type> helper;                                                             \
     helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });      \
   }                                                                                                \
-  static inline IndicatorTypeInserter<type> inserter;
+  static inline IndicatorTypeInserter<type> inserter{};
 
 // ----------------------------------------------------------------------------
 namespace indicators {
@@ -77,7 +79,16 @@ public:
     }
 
     // ----------------------------------------------------------------------------
-    virtual ~indicator_base() {}
+    virtual ~indicator_base()
+    {
+      using namespace grox::debug;
+      for (auto d : get_inputs())
+      {
+        std::string id = subscription_name();
+        indicator_dbg<0>.debug(str<>("UnSubscribing"), id, d.dataset_->get_resolution());
+        d.dataset_->new_data_subscribers_.unsubscribe(id);
+      }
+    }
 
     // ----------------------------------------------------------------------------
     // factor create function
@@ -127,6 +138,23 @@ public:
         }
       }
       return result;
+    }
+
+    // ----------------------------------------------------------------------------
+    void register_callbacks()
+    {
+      // register a handler to make sure we pickup updates to datasets
+      using namespace grox::debug;
+      for (auto d : get_inputs())
+      {
+        std::string id = subscription_name();
+        indicator_dbg<0>.debug(str<>("Subscribing"), id, d.dataset_->get_resolution());
+        d.dataset_->new_data_subscribers_.subscribe(id, [this](std::uint64_t N) {
+          indicator_dbg<0>.debug(str<>(get_name().c_str()), "new samples", ffmt<dec4>(N));
+          // todo - only call if all inputs are updated
+          execute(N);
+        });
+      }
     }
 
     // ----------------------------------------------------------------------------

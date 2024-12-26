@@ -56,6 +56,7 @@ target_link_libraries(
          grox_data
          grox_debug
          grox_exchange
+         grox_indicators
          grox_plot
          grox_util
          qtadvanceddocking-qt${QT_VERSION_MAJOR}

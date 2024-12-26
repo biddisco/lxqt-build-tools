@@ -17,8 +17,9 @@ set(grox_exchange_SRCS
 )
 
 add_library(grox_exchange ${grox_exchange_SRCS})
-set_property(TARGET grox_exchange PROPERTY AUTOMOC ON)
 target_include_directories(grox_exchange PUBLIC ${GROX_INCLUDE_ROOT})
+
+set_property(TARGET grox_exchange PROPERTY AUTOMOC ON)
 
 target_link_libraries(
   grox_exchange

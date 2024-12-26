@@ -2,7 +2,9 @@
 
 #include <memory>
 #include <vector>
-
+//
+#include "debug/demangle_helper.hpp"
+#include "debug/print.hpp"
 #include "indicators/indicator_types.hpp"
 
 // ----------------------------------------------------------------------------
@@ -23,18 +25,6 @@ namespace indicators {
   using algorithm_ptr = std::shared_ptr<algorithm_base>;
   using indicator_vector = std::vector<algorithm_ptr>;
   inline indicator_vector available_indicators;
-
-  // Helper class to insert values into the vector
-  template <typename type>
-  struct IndicatorTypeInserter
-  {
-    IndicatorTypeInserter()
-    {
-      auto i = std::make_shared<type>();
-      i->init_params();
-      available_indicators.push_back(i);
-    }
-  };
 
   // ----------------------------------------------------------------------------
   class algorithm_base
@@ -74,6 +64,27 @@ public:
     // ----------------------------------------------------------------------------
     virtual int num_inputs() const { return 1; }
     virtual int num_outputs() const { return 1; }
+
+    // ----------------------------------------------------------------------------
+    std::string subscription_name()
+    {
+      return get_name() + "-" + std::to_string((uintptr_t) (this));
+    }
+  };
+
+  // Helper class to insert values into the vector
+  template <typename type>
+  struct IndicatorTypeInserter
+  {
+    IndicatorTypeInserter()
+    {
+      using namespace grox::debug::detail;
+      using namespace grox::debug;
+      indicator_dbg<0>.debug(str<>("IndicatorTypeInserter"), print_type<type>());
+      auto p = std::make_shared<type>();
+      p->init_params();
+      available_indicators.push_back(p);
+    }
   };
 
 }    // namespace indicators
