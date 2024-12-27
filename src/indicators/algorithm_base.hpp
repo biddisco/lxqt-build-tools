@@ -21,12 +21,6 @@
 namespace indicators {
 
   // ----------------------------------------------------------------------------
-  class algorithm_base;
-  using algorithm_ptr = std::shared_ptr<algorithm_base>;
-  using indicator_vector = std::vector<algorithm_ptr>;
-  inline indicator_vector available_indicators;
-
-  // ----------------------------------------------------------------------------
   class algorithm_base
   {
 protected:
@@ -69,21 +63,6 @@ public:
     std::string subscription_name()
     {
       return get_name() + "-" + std::to_string((uintptr_t) (this));
-    }
-  };
-
-  // Helper class to insert values into the vector
-  template <typename type>
-  struct IndicatorTypeInserter
-  {
-    IndicatorTypeInserter()
-    {
-      using namespace grox::debug::detail;
-      using namespace grox::debug;
-      indicator_dbg<0>.debug(str<>("IndicatorTypeInserter"), print_type<type>());
-      auto p = std::make_shared<type>();
-      p->init_params();
-      available_indicators.push_back(p);
     }
   };
 

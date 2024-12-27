@@ -10,6 +10,7 @@
 #include "data/ohlc_data_resolutions.hpp"
 #include "indicators/algorithm_base.hpp"
 #include "indicators/indicator_params.hpp"
+#include "indicators/indicator_registry.hpp"
 #include "ui_indicator_widget.h"
 
 class indicator_widget : public QWidget

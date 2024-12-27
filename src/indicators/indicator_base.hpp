@@ -10,6 +10,7 @@
 #include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
 #include "indicators/algorithm_base.hpp"
+#include "indicators/indicator_registry.hpp"
 #include "indicators/indicator_types.hpp"
 
 // ----------------------------------------------------------------------------
@@ -34,7 +35,7 @@
     call_helper<operator_type> helper;                                                             \
     helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });      \
   }                                                                                                \
-  static inline IndicatorTypeInserter<type> inserter{};
+  static inline indicator_type_inserter<type> inserter{};
 
 // ----------------------------------------------------------------------------
 namespace indicators {

@@ -6,6 +6,8 @@ set(grox_indicators_SRCS
     indicator_base.hpp
     indicator_params.hpp
     indicator_ptr.hpp
+    indicator_registry.hpp
+    indicator_registry.cpp
     indicator_types.hpp
     # moving averages
     moving_average_exponential.hpp
@@ -23,8 +25,6 @@ set(grox_indicators_SRCS
     # trading
     trade_sell_sliding_stop.hpp
     trade_arbitrage_2_way.hpp
-    #
-    indicator_instances.cpp
 )
 
 add_library(grox_indicators ${grox_indicators_SRCS})

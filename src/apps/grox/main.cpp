@@ -22,8 +22,6 @@
 #include "widgets/password_dialog.hpp"
 //
 #include "mainwindow.hpp"
-//
-#include "indicators/indicator_instances.cpp"
 
 // ----------------------------------------------------------------------------
 using namespace pika::debug::detail;
