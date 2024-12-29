@@ -9,6 +9,7 @@
 #include <fmt/format.h>
 //
 #include "currency/currency.hpp"
+#include "currency/currency_pair.hpp"
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
 //

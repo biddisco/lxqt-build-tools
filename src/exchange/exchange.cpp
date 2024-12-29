@@ -93,7 +93,13 @@ ticker_data exchange::get_subscribed_ticker_data(currency_pair cp) const
 {
   if (tickers_subscribed_.contains(cp)) { return tickers_subscribed_.at(cp); }
   else
+  {
+    for (auto const& [key, value] : tickers_subscribed_)
+    {
+      exchange_dbg<0>.error(str<>("tickers_subscribed"), "want", cp, "Found", key);
+    }
     throw std::runtime_error("Attempt to access unsubscribed ticker");
+  }
 }
 
 // ----------------------------------------------------------------------------

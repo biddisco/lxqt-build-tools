@@ -3,6 +3,7 @@
 #include <string>
 //
 #include "currency/currency.hpp"
+#include "currency/currency_pair.hpp"
 #include "network/test/websocket-ssl.hpp"
 
 net::contexts io_contexts_;

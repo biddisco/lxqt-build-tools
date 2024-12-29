@@ -1,6 +1,8 @@
 set(grox_data_SRCS
     currency.cpp
     currency.hpp
+    currency_pair.cpp
+    currency_pair.hpp
     json_data_types.cpp
     json_data_types.hpp
     ohlctv_sample.hpp

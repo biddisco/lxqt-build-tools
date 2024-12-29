@@ -6,6 +6,8 @@
 //
 #include <QString>
 
+#include "currency/currency.hpp"
+#include "currency/currency_pair.hpp"
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_utils.hpp"
 #include "data/order_book.hpp"

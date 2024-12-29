@@ -228,21 +228,21 @@ bool xrpl_network::subscribe_order_book(currency_pair const& cp, bool enable)
   using namespace std::placeholders;
   // flip currency pair around if xrp is second
   currency_pair cp2 = cp;
-  if (!std::get<0>(cp).is_xrp()) { cp2 = {std::get<1>(cp), std::get<0>(cp)}; }
+  if (!cp.c1_.is_xrp()) { cp2 = {cp.c2_, cp.c1_}; }
   //startswith
   json command;
   command["command"] = "subscribe";
   // buying xrp
   json buy_xrp;
-  buy_xrp["taker_gets"]["currency"] = std::get<0>(cp2).code_;
-  buy_xrp["taker_pays"]["currency"] = std::get<1>(cp2).code_;
-  buy_xrp["taker_pays"]["issuer"] = std::get<1>(cp2).issuer_;
+  buy_xrp["taker_gets"]["currency"] = cp2.c1_.code_;
+  buy_xrp["taker_pays"]["currency"] = cp2.c2_.code_;
+  buy_xrp["taker_pays"]["issuer"] = cp2.c2_.issuer_;
   buy_xrp["snapshot"] = true;
   // selling xrp
   json sell_xrp;
-  sell_xrp["taker_pays"]["currency"] = std::get<0>(cp2).code_;
-  sell_xrp["taker_gets"]["currency"] = std::get<1>(cp2).code_;
-  sell_xrp["taker_gets"]["issuer"] = std::get<1>(cp2).issuer_;
+  sell_xrp["taker_pays"]["currency"] = cp2.c1_.code_;
+  sell_xrp["taker_gets"]["currency"] = cp2.c2_.code_;
+  sell_xrp["taker_gets"]["issuer"] = cp2.c2_.issuer_;
   sell_xrp["snapshot"] = true;
   // subscribe to 2 books
   command["books"] = json::array({buy_xrp, sell_xrp});

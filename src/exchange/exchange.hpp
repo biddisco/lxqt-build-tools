@@ -10,6 +10,7 @@
 #include <magic_enum/magic_enum.hpp>
 // grox
 #include "currency/currency.hpp"
+#include "currency/currency_pair.hpp"
 #include "currency/json_data_types.hpp"
 #include "currency/trade_data.hpp"
 #include "data/ohlc_dataset_view.hpp"

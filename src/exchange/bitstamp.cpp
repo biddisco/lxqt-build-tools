@@ -562,8 +562,8 @@ void bitstamp_network::handle_account_info(std::string_view data)
           // bitstamp (so far) always quotes fees as token_fiat not fiat_token
           std::string utoken = uppercase(mtch[1]);
           currency_pair cp = split_token_string(utoken);
-          currency tmp1 = std::get<0>(cp);
-          currency tmp2 = std::get<1>(cp);
+          currency tmp1 = cp.c1_;
+          currency tmp2 = cp.c2_;
           transaction_fee_map_[currency_pair{tmp1, tmp2}] = value;
           bitstamp_dbg<0>.debug(str<>("account info"), "transaction fee", tmp1, tmp2, value);
         }

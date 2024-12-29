@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -35,6 +36,14 @@ struct currency_code
   {
     return (code_ == c.code_) && (issuer_ == c.issuer_);
   }
+  bool operator<(currency_code const& c) const
+  {
+    return (code_ < c.code_) || ((code_ == c.code_) && (issuer_ < c.issuer_));
+  }
+  bool operator>(currency_code const& c) const
+  {
+    return (code_ > c.code_) || ((code_ == c.code_) && (issuer_ > c.issuer_));
+  }
 
   // return true if the currency is a fiat currency such as USD, EUR etc etc
   bool is_fiat() const { return (issuer_ == ""); }
@@ -42,6 +51,12 @@ struct currency_code
 
   // stream operators
   friend std::ostream& operator<<(std::ostream&, currency_code const&);
+
+  std::string to_stringrep(bool add_issuer = true) const
+  {
+    if (add_issuer && (issuer_ != "")) return code_ + "." + issuer_;
+    return code_;
+  }
 };
 
 // ----------------------------------------------------------------------------
@@ -80,16 +95,11 @@ struct currency : public currency_code
   // comparison operators
   bool operator==(currency const& c) const { return (code_ == c.code_) && (issuer_ == c.issuer_); }
 
-  bool operator<(currency const& c) const { return code_ < c.code_; }
+  // bool operator<(currency const& c) const { return code_ < c.code_; }
+  // bool operator>(currency const& c) const { return code_ > c.code_; }
 
   // stream operators
   friend std::ostream& operator<<(std::ostream&, currency const&);
-
-  std::string to_stringrep(bool add_issuer = true) const
-  {
-    if (add_issuer && (issuer_ != "")) return code_ + "." + issuer_;
-    return code_;
-  }
 
   double balance_;
   double avail_;
@@ -98,18 +108,7 @@ struct currency : public currency_code
 };
 
 // ----------------------------------------------------------------------------
-using currency_pair = std::tuple<currency, currency>;
-using currency_pairlist = std::vector<currency_pair>;
-
-// ----------------------------------------------------------------------------
-currency_pair string_to_pair(std::string_view s, std::string_view delim);
-currency_pair reverse_pair(currency_pair const& cp);
-
-// ----------------------------------------------------------------------------
-std::string currency_pair_string(
-    currency_pair const& p, std::string_view sep = "-", bool add_issuer = true);
-QString currency_pair_qstring(currency_pair const& p, std::string_view sep = "-");
-std::string currency_pair_lowercase_string(currency_pair const& p);
+currency string_to_code(std::string_view s);
 
 // ----------------------------------------------------------------------------
 // displays an amount such as 1.34 as a string, but uses different numbers

@@ -7,6 +7,7 @@
 #include <QVector>
 // Grox
 #include "currency/currency.hpp"
+#include "currency/currency_pair.hpp"
 #include "currency/ohlctv_sample.hpp"
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"

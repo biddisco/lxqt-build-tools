@@ -122,8 +122,8 @@ void currency_widget::show_hide()
     auto pairs = network_->get_currency_pairs();
     for (auto& p : pairs)
     {
-      auto c1 = std::get<0>(p);
-      auto c2 = std::get<1>(p);
+      auto c1 = p.c1_;
+      auto c2 = p.c2_;
       if (c1 == currency_)
       {
         ui->buy_sell_combo->addItem(QString(c2.code_.c_str()), QString(c2.issuer_.c_str()));
