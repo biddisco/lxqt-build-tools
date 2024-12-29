@@ -11,8 +11,11 @@
 #include <QVBoxLayout>
 #include <QValidator>
 // Grox
+#include "config/config.hpp"
 #include "data/ohlc_dataset.hpp"
+#include "exchange/exchange.hpp"
 #include "indicators/indicator_params.hpp"
+#include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
 // we must provide one overload for each type in indicators::param_types
@@ -73,12 +76,11 @@ QWidget* get_widget(candle_data const& param)
   QStringList temp;
   for (auto const& s : candle_data::durations) { temp.push_back(s); }
   //
-  QComboBox* const combo2 = new QComboBox(widget);
-  combo2->setObjectName("TimeRange");
-  combo2->addItems(temp);
-  combo2->setCurrentText(QString(param.as_string().c_str()));
-  layout->addWidget(combo2);
-
+  QComboBox* const ticker = new QComboBox(widget);
+  ticker->setObjectName("TimeRange");
+  ticker->addItems(temp);
+  ticker->setCurrentText(QString(param.as_string().c_str()));
+  layout->addWidget(ticker);
   return widget;
 }
 
@@ -89,25 +91,36 @@ QWidget* get_widget(order_book_param const& param)
   QVBoxLayout* layout = new QVBoxLayout(widget);
   widget->setLayout(layout);
 
-  // combo box of resolutions to choose from
-  QStringList res_list;
-  for (auto const& r : ohlc_data_resolutions::available_resolutions()) { res_list << r.name_; }
-  QComboBox* const combo = new QComboBox(widget);
-  combo->setObjectName("Exchange");
-  combo->addItems(res_list);
-  // combo->setCurrentText(param.res_.name_);
-  layout->addWidget(combo);
+  // put all the exchanges we know about into the combox box
+  QComboBox* const exchange = new QComboBox(widget);
+  exchange->setObjectName("Exchange");
+  layout->addWidget(exchange);
+  QStringList qsl;
 
-  // combo box of time ranges to choose from
-  QStringList temp;
-  for (auto const& s : candle_data::durations) { temp.push_back(s); }
+  QComboBox* const ticker = new QComboBox(widget);
+  ticker->setObjectName("Ticker");
+  layout->addWidget(ticker);
+
+  // this lambda will set the ticker combo using the tickers available from the exchange
+  auto set_ticker_strings = [exchange, ticker, param](int index) {
+    auto exchange = global_settings.networks_[index];
+    currency_pairlist const& cplist = exchange->get_currency_pairs();
+    auto tickers = exchange->tickers_subscribed();
+    QStringList temp;
+    for (auto const [cp, td] : tickers) { temp << currency_pair_qstring(cp); }
+    ticker->clear();
+    ticker->addItems(temp);
+    ticker->setCurrentText(currency_pair_qstring(param.ticker_));
+  };
+
+  QWidget::connect(exchange, &QComboBox::currentIndexChanged, widget,
+      [=](int index) { set_ticker_strings(index); });
+
+  // trigger the exchange combo to update and fill the tickers combo
+  for (auto const& n : global_settings.networks_) { qsl << to_qstring(n->get_name()); }
+  exchange->addItems(qsl);
+  exchange->setCurrentText(to_qstring(param.exchange_));
   //
-  QComboBox* const combo2 = new QComboBox(widget);
-  combo2->setObjectName("Ticker");
-  combo2->addItems(temp);
-  // combo2->setCurrentText(QString(param.as_string().c_str()));
-  layout->addWidget(combo2);
-
   return widget;
 }
 
@@ -157,7 +170,13 @@ void set_param(QWidget* widget, ohlc_modes& param)
 // ----------------------------------------------------------------------------
 void set_param(QWidget* widget, order_book_param& param)
 {
-  // QComboBox* w = dynamic_cast<QComboBox*>(widget);
-  // int index = w->currentIndex();
-  // param = magic_enum::enum_value<ohlc_modes>(index);
+  QFrame* f = dynamic_cast<QFrame*>(widget);
+  QComboBox* e = f->findChild<QComboBox*>("Exchange");
+  std::string exch = e->currentText().toLatin1().data();
+  //
+  QComboBox* t = f->findChild<QComboBox*>("Ticker");
+  std::string s = t->currentText().toLatin1().data();
+  currency_pair cp = string_to_pair(s, "-");
+  //
+  param = {exch, cp};
 }

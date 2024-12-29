@@ -37,8 +37,6 @@ namespace indicators {
         algorithm_ = ip->create(ip, hdf5_ohlc_);
         std::uint64_t N = indicator()->get_inputs()[0].samples_;
         indicator()->execute(N);
-        // hook updates
-        //      binding->register_callbacks();
       }
       else { algorithm_ = ap->create(ap.get()); }
     }

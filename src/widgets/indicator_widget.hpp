@@ -18,7 +18,7 @@ class indicator_widget : public QWidget
   Q_OBJECT
 
   public:
-  indicator_widget(indicators::indicator_vector const& i);
+  indicator_widget(indicators::indicator_vector const& i, std::size_t& index);
   ~indicator_widget();
 
   // return a variant containing a copy of the selected algorithm
@@ -37,5 +37,6 @@ class indicator_widget : public QWidget
   Ui::indicator_widget ui;
   //
   indicators::indicator_vector const& indicators_;
+  std::size_t& index_;
   QVector<QWidget*> params_;
 };

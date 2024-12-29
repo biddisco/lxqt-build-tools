@@ -4,7 +4,9 @@
 #include "currency/currency.hpp"
 #include "data/ohlc_dataset_view.hpp"
 #include "exchange/exchange.hpp"
+#include "indicators/trade_arbitrage_2_way.hpp"
 #include "widgets/arbitrage_widget.hpp"
+#include "widgets/indicator_widget.hpp"
 //
 // Qt Advanced Docking System
 #include "AutoHideDockContainer.h"
@@ -25,37 +27,45 @@ std::shared_ptr<arbitrage_widget> create_arbitrage_widget(exchange::exchange_vec
   std::shared_ptr<arbitrage_widget> algowidget_ =
       std::make_shared<arbitrage_widget>(nullptr);    // , view, tdata->exchange_, cp);
 
-  // put the price plot into a dock widget
-  // using namespace ads;
-  // std::string title = currency_pair_string(cp) + " price " + tdata->exchange_->get_name();
-  // CDockWidget* PlotDockWidget = new CDockWidget(to_qstring(title));
-  // PlotDockWidget->setWidget(chart_widget.get());
-  // PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  // global_settings.dock_manager_->addDockWidgetFloating(PlotDockWidget);
-  // global_settings.dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
-
-  // ----------------------------------
   // gui object for/with arbitrage controls
   Ui::arbitrage_widget* ui_ = new Ui::arbitrage_widget();
   ui_->setupUi(algowidget_.get());
-  // algowidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
-  // indicators::indicator_vector algo;
-  // indicator_widget* iw = new indicator_widget(algo);
+  QDialog dlg;
+  indicator_widget* widget = new indicator_widget(
+      indicators::available_arbitragers, indicators::available_arbitragers_index);
+  widget->add_to_dialog(&dlg);
+  auto result = dlg.exec();
+  if (result == QDialog::Accepted)
+  {
+    auto ap = widget->get_algorithm();
+    auto arb = ap->create(ap.get());
 
-  // ----------------------------------
-  // Create dockwidget to hold our controls
-  CDockWidget* AlgorithmsDockWidget = new CDockWidget("Algorithms");
-  AlgorithmsDockWidget->setWidget(algowidget_.get());
-  AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
-  AlgorithmsDockWidget->setMinimumSize(128, 196);
-  auto const AlgorithmsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
-      SideBarLocation::SideBarRight, AlgorithmsDockWidget);
-  AlgorithmsautoHideContainer->setSize(256);
-  // global_settings.dock_manager_->addDockWidgetFloating(PlotDockWidget);
-  global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
+    // ----------------------------------
+    // Create dockwidget to hold our controls
+    CDockWidget* AlgorithmsDockWidget =
+        new CDockWidget(global_settings.dock_manager_.get(), "Arbitrage");
+    AlgorithmsDockWidget->setWidget(algowidget_.get());
+    AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    AlgorithmsDockWidget->setMinimumSize(128, 196);
+    auto const AlgorithmsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+        SideBarLocation::SideBarRight, AlgorithmsDockWidget);
+    AlgorithmsautoHideContainer->setSize(256);
+    // global_settings.dock_manager_->addDockWidgetFloating(PlotDockWidget);
+    global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
-  return algowidget_;
+    ui_->exchange1->setText(
+        std::get<order_book_param>(arb->get_params()[0].value).exchange_.c_str());
+    ui_->ticker1->setText(
+        currency_pair_qstring(std::get<order_book_param>(arb->get_params()[0].value).ticker_));
+    ui_->exchange2->setText(
+        std::get<order_book_param>(arb->get_params()[1].value).exchange_.c_str());
+    ui_->ticker2->setText(
+        currency_pair_qstring(std::get<order_book_param>(arb->get_params()[1].value).ticker_));
+
+    return algowidget_;
+  }
+  return nullptr;
 }
 
 // ----------------------------------------------------------------------------

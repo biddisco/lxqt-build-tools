@@ -18,6 +18,9 @@ namespace indicators {
   // declaring the indicator vector as extern helps prevent the optimizer removing
   // our initialization routine that insert each indicator type into the vector
   extern indicator_vector available_indicators;
+  extern std::size_t available_indicators_index;
+  extern indicator_vector available_arbitragers;
+  extern std::size_t available_arbitragers_index;
 
   // Singleton registry
   class indicator_registry
@@ -29,11 +32,15 @@ public:
       return instance;
     }
 
-    void register_algorithm(algorithm_ptr p) { available_indicators.push_back(p); }
+    void register_indicator(algorithm_ptr p) { available_indicators.push_back(p); }
+    void register_arbitrage(algorithm_ptr p) { available_arbitragers.push_back(p); }
 
 private:
     indicator_registry() = default;
   };
+
+  using namespace grox::debug::detail;
+  using namespace grox::debug;
 
   // ----------------------------------------------------------------------------
   // Helper class to insert values into the vector, we use the redundat registry as a way of
@@ -43,12 +50,22 @@ private:
   {
     indicator_type_inserter()
     {
-      using namespace grox::debug::detail;
-      using namespace grox::debug;
-      indicator_dbg<0>.debug(str<>("indicator_type_inserter"), print_type<type>());
+      indicator_dbg<0>.debug(str<>("indicator inserter"), print_type<type>());
       auto p = std::make_shared<type>();
       p->init_params();
-      indicator_registry::getInstance().register_algorithm(p);
+      indicator_registry::getInstance().register_indicator(p);
+    }
+  };
+
+  template <typename type>
+  struct arbitrage_type_inserter
+  {
+    arbitrage_type_inserter()
+    {
+      indicator_dbg<0>.debug(str<>("arbitrage inserter"), print_type<type>());
+      auto p = std::make_shared<type>();
+      p->init_params();
+      indicator_registry::getInstance().register_arbitrage(p);
     }
   };
 

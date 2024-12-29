@@ -241,7 +241,8 @@ void price_chart_widget::connect_gui()
     pplot_dbg<0>.debug(str<>("Indicators"), ticker_string_);
 
     QDialog ind_dialog;
-    indicator_widget* widget = new indicator_widget(indicators::available_indicators);
+    indicator_widget* widget = new indicator_widget(
+        indicators::available_indicators, indicators::available_indicators_index);
     widget->add_to_dialog(&ind_dialog);
 
     auto result = ind_dialog.exec();
@@ -249,7 +250,6 @@ void price_chart_widget::connect_gui()
     {
       static int colour_count = 0;
       // copy the algorithm out of the dialog
-      // create algorithm vtable callable interface object
       indicators::indicator_ptr algp(widget->get_algorithm(), hdf5_ohlc_);
 
       auto colour = chart_colours[colour_count++ % 10];

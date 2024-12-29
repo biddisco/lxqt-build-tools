@@ -16,12 +16,11 @@
 #include "widgets/indicator_widget.hpp"
 
 // ----------------------------------------------------------------------------
-indicator_widget::indicator_widget(indicators::indicator_vector const& i)
+indicator_widget::indicator_widget(indicators::indicator_vector const& i, std::size_t& index)
   : QWidget()
   , indicators_(i)
+  , index_(index)
 {
-  static int last_selected_index = 0;
-
   ui.setupUi(this);
   this->setWindowTitle("Indicator");
 
@@ -36,14 +35,14 @@ indicator_widget::indicator_widget(indicators::indicator_vector const& i)
   connect(
       ui.algorithm, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
       [this](int index) {
-        last_selected_index = index;
+        index_ = index;
         refresh_gui(index);
       },
       Qt::QueuedConnection);
 
   // build gui for first/last used algorithm
-  ui.algorithm->setCurrentIndex(last_selected_index);
-  refresh_gui(last_selected_index);
+  ui.algorithm->setCurrentIndex(index_);
+  refresh_gui(index_);
 }
 
 // ----------------------------------------------------------------------------
@@ -137,7 +136,7 @@ void indicator_widget::refresh_gui(int index)
   {
     // get the i-th param from the variant algorithm list
     auto p = alg->get_params()[i];
-    // std::visit([=](auto const& obj) { return obj.get_params()[i]; }, alg);
+
     // draw datasets in left column, params_ in right
     int column = std::visit([&](auto const& v) { return get_column(v); }, p.value);
 
@@ -166,7 +165,7 @@ void indicator_widget::update_parameters()
 {
   int index = ui.algorithm->currentIndex();
   // get a reference to indicator in the global indicators list
-  auto& alg = indicators::available_indicators[index];
+  auto& alg = indicators_[index];
 
   // create a new param list from the gui widget
   indicators::param_list new_params;

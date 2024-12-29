@@ -27,22 +27,9 @@
 namespace indicators {
 
   indicator_vector available_indicators;
-
-  // // ----------------------------------------------------------------------------
-  // // Helper class to insert values into the vector
-  // template <typename type>
-  // struct indicator_type_inserter
-  // {
-  //   indicator_type_inserter()
-  //   {
-  //     using namespace grox::debug::detail;
-  //     using namespace grox::debug;
-  //     indicator_dbg<0>.debug(str<>("indicator_type_inserter"), print_type<type>());
-  //     auto p = std::make_shared<type>();
-  //     p->init_params();
-  //     indicator_registry::getInstance().register_algorithm(p);
-  //   }
-  // };
+  std::size_t available_indicators_index{0};
+  indicator_vector available_arbitragers;
+  std::size_t available_arbitragers_index{0};
 
 }    // namespace indicators
 

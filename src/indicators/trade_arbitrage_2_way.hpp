@@ -6,6 +6,12 @@
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 
+// ----------------------------------------------------------------------------
+#define FACTORY_ARBITRAGE_CREATE(type)                                                             \
+  FACTORY_ALGORITHM_CREATE(type)                                                                   \
+  static inline arbitrage_type_inserter<type> inserter{};
+
+// ----------------------------------------------------------------------------
 namespace indicators {
 
   struct arbitrage_decision
@@ -19,7 +25,7 @@ public:
     using operator_type = arbitrage_decision;
 
     // ---------------------------------------
-    FACTORY_ALGORITHM_CREATE(trade_arbitrage_2_way);
+    FACTORY_ARBITRAGE_CREATE(trade_arbitrage_2_way);
 
     // ---------------------------------------
     /// Default constructor
@@ -34,10 +40,12 @@ public:
     /// fields required for auto gui generation
     void init_params() override
     {
-      params_ = {                                                             //
-          {"Samples", candle_data{ohlc_data_resolutions::minute15, 5000}},    //
-          {"Window size", 14},                                                //
-          {"mode", ohlc_modes::mid_open_close}};
+      params_ = {//
+          {"Order-Book-1", order_book_param{"Bitstamp", {{"", "XRP"}, {"", "USD"}}}},
+          {"Order-Book-2",
+              order_book_param{
+                  "XRPL Mainnet", {{"", "XRP"}, currency_code{currency::bitstamp_trust, "USD"}}}},
+          {"Window size", 14}, {"mode", ohlc_modes::mid_open_close}};
     }
 
     // ---------------------------------------

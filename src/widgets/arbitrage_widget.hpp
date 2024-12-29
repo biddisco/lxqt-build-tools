@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QWidget>
+#include <QDialog>
 //
 #include "exchange/exchange.hpp"
 
@@ -8,7 +8,7 @@ namespace Ui {
   class arbitrage_widget;
 }
 
-class arbitrage_widget : public QWidget
+class arbitrage_widget : public QDialog
 {
   Q_OBJECT
 
@@ -17,7 +17,7 @@ class arbitrage_widget : public QWidget
 
   public:
   explicit arbitrage_widget(QWidget* parent)
-    : QWidget(parent) {};
+    : QDialog(parent) {};
 
   ~arbitrage_widget() {};
 };
