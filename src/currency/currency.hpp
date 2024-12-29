@@ -91,11 +91,6 @@ struct currency : public currency_code
     return code_;
   }
 
-  // currency_code const& code() const
-  // {
-  //   return *this;
-  // }
-  //
   double balance_;
   double avail_;
   double reserved_;
@@ -107,7 +102,6 @@ using currency_pair = std::tuple<currency, currency>;
 using currency_pairlist = std::vector<currency_pair>;
 
 // ----------------------------------------------------------------------------
-currency_pair get_currency_pair(std::string_view c1, std::string_view c2);
 currency_pair string_to_pair(std::string_view s, std::string_view delim);
 currency_pair reverse_pair(currency_pair const& cp);
 

@@ -17,3 +17,9 @@ target_link_libraries(
 if(GROX_WITH_IWYU)
   set_property(TARGET grox_currency PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path})
 endif()
+
+if(BUILD_TESTING)
+  pika_add_pseudo_target(tests.currency)
+  pika_add_pseudo_dependencies(tests tests.currency)
+  add_subdirectory(test)
+endif()

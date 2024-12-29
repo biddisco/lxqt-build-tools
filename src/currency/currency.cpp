@@ -11,6 +11,41 @@
 #include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
+std::ostream& operator<<(std::ostream& os, currency_code const& c)
+{
+  if (c.is_fiat()) { os << c.code_; }
+  else
+  {
+    if (c.issuer_ == currency::bitstamp_trust)
+      os << c.code_ << ".bitstamp";
+    else if (c.issuer_ == currency::gatehub_trust)
+      os << c.code_ << ".gatehub";
+    else if (c.issuer_ == currency::ripple_trust)
+      os << c.code_ << ".ripple";
+    else
+      os << c.code_ << "." << c.issuer_;
+  }
+  return os;
+}
+
+// ----------------------------------------------------------------------------
+std::ostream& operator<<(std::ostream& os, currency const& c)
+{
+  os << c.code_ << "(" << c.balance_ << ")";
+  return os;
+}
+
+// ----------------------------------------------------------------------------
+std::string to_string(double amount, currency const& c)
+{
+  int dec = 6;
+  if (c.is_fiat()) { dec = 2; }
+  std::stringstream stream;
+  stream << std::fixed << std::setprecision(dec) << amount;
+  return stream.str();
+}
+
+// ----------------------------------------------------------------------------
 currency string_to_code(std::string_view s)
 {
   auto e0 = s.find('.');
@@ -63,36 +98,3 @@ currency_pair string_to_pair(std::string_view s, std::string_view delim)
 
 // ----------------------------------------------------------------------------
 currency_pair reverse_pair(currency_pair const& cp) { return {std::get<1>(cp), std::get<0>(cp)}; }
-
-// ----------------------------------------------------------------------------
-std::ostream& operator<<(std::ostream& os, currency_code const& c)
-{
-  if (c.is_fiat()) { os << c.code_; }
-  else
-  {
-    if (c.issuer_ == currency::bitstamp_trust)
-      os << c.code_ << ".bitstamp";
-    else if (c.issuer_ == currency::gatehub_trust)
-      os << c.code_ << ".gatehub";
-    else
-      os << c.code_ << "." << c.issuer_;
-  }
-  return os;
-}
-
-// ----------------------------------------------------------------------------
-std::ostream& operator<<(std::ostream& os, currency const& c)
-{
-  os << c.code_ << "(" << c.balance_ << ")";
-  return os;
-}
-
-// ----------------------------------------------------------------------------
-std::string to_string(double amount, currency const& c)
-{
-  int dec = 6;
-  if (c.is_fiat()) { dec = 2; }
-  std::stringstream stream;
-  stream << std::fixed << std::setprecision(dec) << amount;
-  return stream.str();
-}
