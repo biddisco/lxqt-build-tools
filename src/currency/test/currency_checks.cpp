@@ -244,16 +244,47 @@ TEST(currency, formatting)
 }
 
 // ------------------------------------------------------------------
+// check comparison operators used in map checks
 TEST(currency, map)
 {
-  std::vector<currency_pair> pairs{{{"", "USD"}, {"", "XRP"}}, {{"", "USD"}, {"", "BTC"}},
-      {{"", "USD"}, {"", "EUR"}}, {{"", "USD"}, {"", "GBP"}}};
+  std::vector<currency_pair> pairs{
+      {{"", "USD"}, {"", "XRP"}},                                              //
+      {{"", "USD"}, {"", "BTC"}},                                              //
+      {{"", "USD"}, {"", "EUR"}},                                              //
+      {{"", "USD"}, {"", "GBP"}},                                              //
+      {{"", "EUR"}, {currency::ripple_trust, "USD"}},                          //
+      {{"", "GBP"}, {currency::ripple_trust, "USD"}},                          //
+      {{"", "BTC"}, {currency::ripple_trust, "USD"}},                          //
+      {{currency::bitstamp_trust, "GBP"}, {currency::ripple_trust, "USD"}},    //
+      {{currency::bitstamp_trust, "EUR"}, {currency::ripple_trust, "USD"}},    //
+      {{currency::ripple_trust, "USD"}, {currency::gatehub_trust, "EUR"}}      //
+  };
   {
-    // insert all ppairs into map
+    // insert all pairs into map, also add reversed pairs for extra testing
     std::map<currency_pair, std::string> test_map;
-    for (auto key : pairs) test_map.insert({key, currency_pair_string(key, "/")});
-    // check they are present
-    for (auto [key, value] : test_map) EXPECT_TRUE(test_map.contains(key));
+    std::vector<currency_pair> pairs2;
+    for (auto key : pairs)
+    {
+      auto rev = reverse_pair(key);
+      test_map.insert({key, currency_pair_string(key, "/")});
+      test_map.insert({rev, currency_pair_string(rev, "/")});
+      pairs2.push_back(key);
+      pairs2.push_back(rev);
+      for (auto key : pairs)
+      {
+        currency_pair k2{key}, k3{key}, k4{key}, k5{key};
+        k2.c1_.issuer_ += "r";
+        EXPECT_FALSE(test_map.contains(k2));
+        k3.c2_.issuer_ += "r";
+        EXPECT_FALSE(test_map.contains(k3));
+        k4.c1_.code_ += "r";
+        EXPECT_FALSE(test_map.contains(k4));
+        k5.c2_.code_ += "r";
+        EXPECT_FALSE(test_map.contains(k5));
+      }
+    }
+    // check they are all detected as present
+    for (auto key : pairs2) EXPECT_TRUE(test_map.contains(key));
   }
 }
 
