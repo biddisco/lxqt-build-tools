@@ -47,13 +47,13 @@ void websocket_subscribe_offers()
   nlohmann::json buy_xrp;
   buy_xrp["taker_gets"]["currency"] = "XRP";
   buy_xrp["taker_pays"]["currency"] = "USD";
-  buy_xrp["taker_pays"]["issuer"] = currency::bitstamp_trust;
+  buy_xrp["taker_pays"]["issuer"] = currencies::bitstamp_trust;
   buy_xrp["snapshot"] = true;
   // selling xrp
   nlohmann::json sell_xrp;
   sell_xrp["taker_pays"]["currency"] = "XRP";
   sell_xrp["taker_gets"]["currency"] = "USD";
-  sell_xrp["taker_gets"]["issuer"] = currency::bitstamp_trust;
+  sell_xrp["taker_gets"]["issuer"] = currencies::bitstamp_trust;
   sell_xrp["snapshot"] = true;
   // subscribe to 2 books
   command["books"] = nlohmann::json::array({buy_xrp, sell_xrp});
@@ -61,8 +61,7 @@ void websocket_subscribe_offers()
 
   using namespace std::placeholders;
   auto ws_orderbook = net::ws::create_session(io_contexts_.ioc, io_contexts_.ctx, "s1.ripple.com",
-      "443", subscription,
-      std::bind(new_orderbook_data, nullptr, currency_pair{currency{}, currency{}}, _1));
+      "443", subscription, std::bind(new_orderbook_data, nullptr, currency_pair{{}, {}}, _1));
 
   int completed = 0;
   int const sec = 8;

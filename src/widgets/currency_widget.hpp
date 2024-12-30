@@ -18,7 +18,7 @@ class currency_widget : public QWidget
   private:
   Ui::currency_widget* ui;
   int decimals_;
-  currency currency_;
+  currency_amount currency_;
   basic_account* account_;
   std::shared_ptr<exchange> network_;
   double amount_;
@@ -27,7 +27,7 @@ class currency_widget : public QWidget
   currency_widget(int decimals, QWidget* parent = nullptr);
   ~currency_widget();
 
-  void set_data(currency const* c, basic_account* acct = nullptr,
+  void set_data(currency_amount const* c, basic_account* acct = nullptr,
       std::shared_ptr<exchange> network = nullptr);
   void buy_sell_status();
 

@@ -11,6 +11,8 @@
 
 struct currency_pair
 {
+  using list = std::vector<currency_pair>;
+  //
   currency_code c1_;
   currency_code c2_;
   //
@@ -27,11 +29,6 @@ struct currency_pair
   // stream operators
   friend std::ostream& operator<<(std::ostream&, currency_pair const&);
 };
-
-// bool operator<(currency_pair const& cp1, currency_pair const& cp2)
-
-// ----------------------------------------------------------------------------
-using currency_pairlist = std::vector<currency_pair>;
 
 // ----------------------------------------------------------------------------
 currency_pair get_currency_pair(std::string_view c1, std::string_view c2);

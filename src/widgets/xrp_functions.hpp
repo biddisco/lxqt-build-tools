@@ -14,7 +14,7 @@ class xrp_functions : public QWidget
 
   private:
   Ui::xrp_functions* ui;
-  currency currency_;
+  currency_code currency_;
   basic_account* account_;
   xrpl_network* network_;
   double amount_;

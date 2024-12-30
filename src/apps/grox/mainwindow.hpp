@@ -121,7 +121,7 @@ class GroxMainWindow : public QMainWindow
   void transaction_event();
 
   // to connect to xrpl ledger signals
-  void update_currency_widget(currency*);
+  void update_currency_widget(currency_amount*);
   void update_wallet_widget(ledger_wallet*);
 
   // ----------------------------------

@@ -1,4 +1,6 @@
 set(grox_data_SRCS
+    currency_code.cpp
+    currency_code.hpp
     currency.cpp
     currency.hpp
     currency_pair.cpp

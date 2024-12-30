@@ -61,8 +61,8 @@ namespace grox {
   // ----------------------------------------------------------------------------
   struct xrp_amount
   {
-    double value;
-    currency_code currency;
+    double value_;
+    currency_code currency_;
   };
 
   // ----------------------------------------------------------------------------
@@ -81,19 +81,19 @@ namespace grox {
     xrp_amount TakerGets;
     xrp_amount TakerPays;
 
-    double amount(currency const& c) const
+    double amount(currency_code const& c) const
     {
       // @ todo : check if currency type of C is same as type of TakerPays
-      if (TakerPays.currency.is_xrp() == c.is_xrp()) { return TakerPays.value; }
-      else { return TakerGets.value; }
+      if (TakerPays.currency_.is_xrp() == c.is_xrp()) { return TakerPays.value_; }
+      else { return TakerGets.value_; }
     }
 
     // if the taker gives xrp, offer is selling xrp
     // if the takes gives usd, offer is buying xrp
     double rate() const
     {
-      if (TakerPays.currency.is_xrp()) { return 1E6 * TakerGets.value / TakerPays.value; }
-      else { return 1E6 * TakerPays.value / TakerGets.value; }
+      if (TakerPays.currency_.is_xrp()) { return 1E6 * TakerGets.value_ / TakerPays.value_; }
+      else { return 1E6 * TakerPays.value_ / TakerGets.value_; }
     }
 
     // we do not need to compare all fields when modifying XRP leddger offers
@@ -114,16 +114,16 @@ namespace grox {
 
     bool unfunded(double epsilon = 0.0) const
     {
-      return (funded_offer <= epsilon || TakerGets.value == 0) || (TakerPays.value == 0);
+      return (funded_offer <= epsilon || TakerGets.value_ == 0) || (TakerPays.value_ == 0);
     }
 
     bool grox_compatible() const
     {
-      bool ok = TakerGets.currency.is_xrp() &&
-          (TakerPays.currency == currency_code{currency::bitstamp_trust, "USD"});
+      bool ok = TakerGets.currency_.is_xrp() &&
+          (TakerPays.currency_ == currency_code{currencies::bitstamp_trust, "USD"});
       ok = ok ||
-          (TakerPays.currency.is_xrp() &&
-              (TakerGets.currency == currency_code{currency::bitstamp_trust, "USD"}));
+          (TakerPays.currency_.is_xrp() &&
+              (TakerGets.currency_ == currency_code{currencies::bitstamp_trust, "USD"}));
       return ok;
     }
   };

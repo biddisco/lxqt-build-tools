@@ -44,7 +44,7 @@ public:
           {"Order-Book-1", order_book_param{"Bitstamp", {{"", "XRP"}, {"", "USD"}}}},
           {"Order-Book-2",
               order_book_param{
-                  "XRPL Mainnet", {{"", "XRP"}, currency_code{currency::bitstamp_trust, "USD"}}}},
+                  "XRPL Mainnet", {{"", "XRP"}, currency_code{currencies::bitstamp_trust, "USD"}}}},
           {"Window size", 14}, {"mode", ohlc_modes::mid_open_close}};
     }
 

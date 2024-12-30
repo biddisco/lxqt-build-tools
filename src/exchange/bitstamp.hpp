@@ -40,7 +40,7 @@ class bitstamp_network : public exchange
 
   // map of fees for trading of currency pairs
   std::map<currency_pair, double> transaction_fee_map_;
-  std::map<currency, double> withdrawal_fee_map_;
+  std::map<currency_code, double> withdrawal_fee_map_;
 
   std::mutex candlestick_mutex_;
   std::set<currency_pair> candlestick_updates_active_;
@@ -93,7 +93,7 @@ class bitstamp_network : public exchange
   bitstamp_account& account() { return accounts_[0]; }
 
   // Is sending this currency to the destination exchange supported
-  bool can_send(currency const& c, exchange* dest) override;
+  bool can_send(currency_code const& c, exchange* dest) override;
 
   // ---------------------------------------
   // return the order book for this exchange
@@ -157,7 +157,7 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // make a payment/transfer from bitstamp
-  bool make_payment(currency const& c, basic_account* src, basic_account* dest) override;
+  bool make_payment(currency_amount const& c, basic_account* src, basic_account* dest) override;
 
   // ---------------------------------------
   // place a buy/sell order
@@ -192,7 +192,7 @@ class bitstamp_network : public exchange
 
   double get_transaction_fee_percent(currency_pair const& cp) override;
   double get_transaction_fee_fixed(currency_pair const& cp) override;
-  double get_transfer_fee(currency const& /*c1*/) override { return 0; }
+  double get_transfer_fee(currency_code const& /*c1*/) override { return 0; }
 
   void custom_functions(basic_account* /*acct*/) override {};
 

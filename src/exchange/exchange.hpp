@@ -100,7 +100,7 @@ class exchange
   std::map<std::string, factory_function> factories_;
 
   // ticker pairs available
-  currency_pairlist tickers_available_;
+  currency_pair::list tickers_available_;
 
   // ticker pairs subscribed to
   exchange_map tickers_subscribed_;
@@ -176,13 +176,13 @@ class exchange
   // setup / query tickers
   // ---------------------------------------
   virtual bool add_currency_pair(currency_pair const& cp);
-  virtual currency_pairlist const& get_currency_pairs() const;
+  virtual currency_pair::list const& get_currency_pairs() const;
 
   // ---------------------------------------
   // currency management
   // ---------------------------------------
-  virtual bool can_send(currency const& c, exchange* dest) = 0;
-  virtual bool make_payment(currency const& c, basic_account* src, basic_account* dest) = 0;
+  virtual bool can_send(currency_code const& c, exchange* dest) = 0;
+  virtual bool make_payment(currency_amount const& c, basic_account* src, basic_account* dest) = 0;
   virtual std::string get_name() const { return exchange_name_; }
   virtual any_bytearray_sender request_cancel_order(trade_data const& t) = 0;
   virtual void place_buy_sell_orders(basic_account*, std::vector<trade_data> const&) = 0;
@@ -198,7 +198,7 @@ class exchange
   // ---------------------------------------
   virtual double get_transaction_fee_percent(currency_pair const& cp) = 0;
   virtual double get_transaction_fee_fixed(currency_pair const& cp) = 0;
-  virtual double get_transfer_fee(currency const& c1) = 0;
+  virtual double get_transfer_fee(currency_code const& c1) = 0;
   virtual void custom_functions(basic_account* acct) = 0;
 
   Q_SIGNALS:

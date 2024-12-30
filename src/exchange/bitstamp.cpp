@@ -335,12 +335,12 @@ bool bitstamp_network::stream_subscribe(
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::can_send(currency const& c, exchange* dest)
+bool bitstamp_network::can_send(currency_code const& c, exchange* dest)
 {
   auto xrp_net = dynamic_cast<xrpl_network*>(dest);
   if (xrp_net && !xrp_net->testnet())
   {
-    if (c.is_xrp() && (c.issuer_ == currency::bitstamp_trust) &&
+    if (c.is_xrp() && (c.issuer_ == currencies::bitstamp_trust) &&
         ((c.code_ == "USD") || (c.code_ == "EUR")))
       return true;
   }
@@ -361,7 +361,8 @@ double bitstamp_network::get_transaction_fee_percent(currency_pair const& cp)
 double bitstamp_network::get_transaction_fee_fixed(currency_pair const& cp) { return 0.0; }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic_account* dest)
+bool bitstamp_network::make_payment(
+    currency_amount const& c, basic_account* src, basic_account* dest)
 {
   bitstamp_account* from = static_cast<bitstamp_account*>(src);
   ledger_wallet* to = static_cast<ledger_wallet*>(dest);
@@ -373,7 +374,7 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
   req_string << "amount=" << c.balance_ << "&address=" << to->public_;
 
   // issue a withdrawal payment to the wallet
-  if (c.is_xrp())
+  if (c.symbol_.is_xrp())
   {
     req_string << "&destination_tag"
                << "PUT SOMETHING IN HERE";
@@ -390,7 +391,7 @@ bool bitstamp_network::make_payment(currency const& c, basic_account* src, basic
   // this is an IOU transfer
   else
   {
-    req_string << "&currency= this is wrong" << c.issuer_;
+    req_string << "&currency= this is wrong" << c.symbol_.issuer_;
     //
     auto* client = signed_request("/api/v2/ripple_withdrawal/", req_string.str());
     auto web = stdexec::starts_on(exec::inline_scheduler(), stdexec::just(client))    // Qt
@@ -465,14 +466,14 @@ any_bytearray_sender bitstamp_network::request_limit_order(trade_data const& t)
   {
     std::string ticker = lowercase(t.taker_payc_.code_ + t.taker_getc_.code_);
     req = fmt::format("/api/v2/buy/{}/", ticker);
-    query = fmt::format("?&amount={}&price={}", to_string(amount, t.taker_payc_),
+    query = fmt::format("?&amount={}&price={}", currency_precision(amount, t.taker_payc_),
         to_string_with_precision(t.exchange_rate_, 5));
   }
   else
   {
     std::string ticker = lowercase(t.taker_getc_.code_ + t.taker_payc_.code_);
     req = fmt::format("/api/v2/sell/{}/", ticker);
-    query = fmt::format("?&amount={}&price={}", to_string(amount, t.taker_payc_),
+    query = fmt::format("?&amount={}&price={}", currency_precision(amount, t.taker_payc_),
         to_string_with_precision(t.exchange_rate_, 5));
   }
   //
@@ -484,12 +485,12 @@ any_bytearray_sender bitstamp_network::request_limit_order(trade_data const& t)
 }
 
 // ----------------------------------------------------------------------------
-currency add_fiat_issuer(currency const& c)
+currency_code add_fiat_issuer(currency_code const& c)
 {
   static std::vector<std::string> fiat{"USD", "EUR", "GBP"};
   for (auto const& f : fiat)
   {
-    if ((c.code_ == f)) return {currency_code::bitstamp_trust, c.code_};
+    if ((c.code_ == f)) return {currencies::bitstamp_trust, c.code_};
   }
   return c;
 }
@@ -508,8 +509,10 @@ currency_pair bitstamp_network::split_token_string(std::string utoken) const
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_account_info(std::string_view data)
 {
-  std::vector<currency> fiat{{currency_code::bitstamp_trust, "USD"},
-      {currency_code::bitstamp_trust, "EUR"}, {currency_code::bitstamp_trust, "GBP"}};
+  currency_code::list fiat{                   //
+      {currencies::bitstamp_trust, "USD"},    //
+      {currencies::bitstamp_trust, "EUR"},    //
+      {currencies::bitstamp_trust, "GBP"}};
   try
   {
     nlohmann::json jdata = nlohmann::json::parse(data);
@@ -532,7 +535,7 @@ void bitstamp_network::handle_account_info(std::string_view data)
         {
           std::string ltoken = mtch[1];
           std::string utoken = uppercase(ltoken);
-          currency cur{{"", utoken},                              //
+          currency_amount cur{{"", utoken},                       //
               value,                                              //
               std::stod(JCHARP(jdata[ltoken + "_available"])),    //
               std::stod(JCHARP(jdata[ltoken + "_reserved"])),     //
@@ -562,10 +565,8 @@ void bitstamp_network::handle_account_info(std::string_view data)
           // bitstamp (so far) always quotes fees as token_fiat not fiat_token
           std::string utoken = uppercase(mtch[1]);
           currency_pair cp = split_token_string(utoken);
-          currency tmp1 = cp.c1_;
-          currency tmp2 = cp.c2_;
-          transaction_fee_map_[currency_pair{tmp1, tmp2}] = value;
-          bitstamp_dbg<0>.debug(str<>("account info"), "transaction fee", tmp1, tmp2, value);
+          transaction_fee_map_[cp] = value;
+          bitstamp_dbg<0>.debug(str<>("account info"), "transaction fee", cp.c1_, cp.c2_, value);
         }
       }
     }

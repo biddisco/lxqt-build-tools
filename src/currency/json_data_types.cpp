@@ -12,7 +12,7 @@ namespace grox {
 
   std::ostream& operator<<(std::ostream& os, xrp_amount const& x)
   {
-    os << x.currency;
+    os << x.currency_;
     return os;
   }
 
@@ -52,14 +52,14 @@ namespace grox {
     // if this is a simple value (just plain XRP amount)
     if (j.size() == 1)
     {
-      p.currency = {"", "XRP"};
-      p.value = std::stod(j.get<std::string>());
+      p.currency_ = {"", "XRP"};
+      p.value_ = std::stod(j.get<std::string>());
     }
     else
     {
       // allow balance OR value string id
-      if (j.count("balance") != 0) { p.value = std::stod(j.at("balance").get<std::string>()); }
-      else if (j.count("value") != 0) { p.value = std::stod(j.at("value").get<std::string>()); }
+      if (j.count("balance") != 0) { p.value_ = std::stod(j.at("balance").get<std::string>()); }
+      else if (j.count("value") != 0) { p.value_ = std::stod(j.at("value").get<std::string>()); }
       else
         throw std::runtime_error("No value in currency amount");
       //
@@ -71,7 +71,7 @@ namespace grox {
       else if (j.count("counterparty") != 0) { issuer = j.at("counterparty").get<std::string>(); }
       else if (j.count("issuer") != 0) { issuer = j.at("issuer").get<std::string>(); }
       //
-      p.currency = {issuer, currency};
+      p.currency_ = {issuer, currency};
     }
   }
 

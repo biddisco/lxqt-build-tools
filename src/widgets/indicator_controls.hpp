@@ -104,7 +104,7 @@ QWidget* get_widget(order_book_param const& param)
   // this lambda will set the ticker combo using the tickers available from the exchange
   auto set_ticker_strings = [exchange, ticker, param](int index) {
     auto exchange = global_settings.networks_[index];
-    currency_pairlist const& cplist = exchange->get_currency_pairs();
+    currency_pair::list const& cplist = exchange->get_currency_pairs();
     auto tickers = exchange->tickers_subscribed();
     QStringList temp;
     for (auto const [cp, td] : tickers) { temp << currency_pair_qstring(cp); }

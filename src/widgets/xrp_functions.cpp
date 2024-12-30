@@ -20,7 +20,7 @@ xrp_functions::xrp_functions(xrpl_network* network, basic_account* account, QWid
   , network_(network)
 {
   ui->setupUi(this);
-  for (auto const& t : currency::trustlines)
+  for (auto const& t : currencies::trustlines)
   {
     std::string temp = hex_to_currency(t.code_) + " " + t.issuer_;
     ui->trustlines->addItem(QString(temp.c_str()));

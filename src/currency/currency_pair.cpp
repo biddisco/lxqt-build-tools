@@ -27,7 +27,7 @@ currency_pair string_to_pair(std::string_view s, std::string_view delim)
   }
   std::string_view p0 = s.substr(0, e0);
   std::string_view p1 = s.substr(e1, s.back());
-  return {string_to_code(p0), string_to_code(p1)};
+  return {currency_code(p0), currency_code(p1)};
 }
 
 // ----------------------------------------------------------------------------

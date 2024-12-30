@@ -57,10 +57,10 @@ void xrpl_network::initialize()
 {
   if (!testnet())
   {
-    add_currency_pair({{currency::bitstamp_trust, "USD"}, currency_code{"", "XRP"}});
-    add_currency_pair({{currency::bitstamp_trust, "EUR"}, currency_code{"", "XRP"}});
-    add_currency_pair({{currency::gatehub_trust, "USD"}, currency_code{"", "XRP"}});
-    add_currency_pair({{currency::gatehub_trust, "EUR"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currencies::bitstamp_trust, "USD"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currencies::bitstamp_trust, "EUR"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currencies::gatehub_trust, "USD"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currencies::gatehub_trust, "EUR"}, currency_code{"", "XRP"}});
   }
 
   // spawn a task that performs init functions, we must do this on a pika thread because
@@ -109,7 +109,7 @@ int xrpl_network::jsonrpc_port() const
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::can_send(currency const& c, exchange* dest)
+bool xrpl_network::can_send(currency_code const& c, exchange* dest)
 {
   // yes to anything if the source is also an xrpl wallet
   if (dynamic_cast<xrpl_network*>(dest))
@@ -119,7 +119,7 @@ bool xrpl_network::can_send(currency const& c, exchange* dest)
   else if (!testnet() && dynamic_cast<bitstamp_network*>(dest))
   {
     if (c.is_xrp() ||
-        ((c.issuer_ == currency::bitstamp_trust) && ((c.code_ == "USD") || (c.code_ == "EUR"))))
+        ((c.issuer_ == currencies::bitstamp_trust) && ((c.code_ == "USD") || (c.code_ == "EUR"))))
     {
       return true;
     }
@@ -376,8 +376,8 @@ void xrpl_network::new_account_data_q(xrpl_network* nw, QString qdata)
           auto t = jdata["transaction"];
           std::string fm_acct = t["Account"];
           std::string to_acct = t["Destination"];
-          currency curr(
-              t["SendMax"]["issuer"].get<std::string>(), b["currency"].get<std::string>());
+          currency_amount curr(
+              {t["SendMax"]["issuer"].get<std::string>(), b["currency"].get<std::string>()}, 0.0);
           curr.balance_ = std::stod(b["value"].get_ptr<json::string_t*>()->c_str());
           if (to_acct == f["LowLimit"]["issuer"].get<std::string>())
           {
@@ -436,20 +436,21 @@ ledger_wallet* xrpl_network::get_wallet_by_name(std::string_view name)
 }
 
 // ----------------------------------------------------------------------------
-std::vector<currency>::iterator xrpl_network::get_currency(std::string_view addr, currency t)
+std::vector<currency_amount>::iterator xrpl_network::get_currency(
+    std::string_view addr, currency_code t)
 {
   auto it = get_wallet_by_addr(addr);
   if (!it)
   {
     std::cerr << "get currency did not find acct " << addr << std::endl;
-    return std::vector<currency>::iterator(nullptr);
+    return std::vector<currency_amount>::iterator(nullptr);
   }
   auto& c_list = it->currencies_;
-  auto it2 = ranges::find_if(c_list, [t](currency const& c) { return c == t; });
+  auto it2 = ranges::find_if(c_list, [t](currency_amount const& c) { return c.symbol_ == t; });
   if (it2 == c_list.end())
   {
     std::cerr << "get currency did not find ledger currency" << std::endl;
-    return std::vector<currency>::iterator(nullptr);
+    return std::vector<currency_amount>::iterator(nullptr);
   }
   return it2;
 }
@@ -457,8 +458,8 @@ std::vector<currency>::iterator xrpl_network::get_currency(std::string_view addr
 // ----------------------------------------------------------------------------
 void xrpl_network::update_XRP_balance(std::string_view addr, double oldb, double newb)
 {
-  auto it = get_currency(addr, currency("", "XRP"));
-  if (it == std::vector<currency>::iterator(nullptr)) return;
+  auto it = get_currency(addr, {"", "XRP"});
+  if (it == std::vector<currency_amount>::iterator(nullptr)) return;
   //
   if (it->balance_ != oldb)
   {
@@ -474,10 +475,10 @@ void xrpl_network::update_XRP_balance(std::string_view addr, double oldb, double
 
 // ----------------------------------------------------------------------------
 // an IOU update sets the new balance directly - it does not add/subtract
-void xrpl_network::update_IOU_balance(std::string_view addr, currency const& curr)
+void xrpl_network::update_IOU_balance(std::string_view addr, currency_amount const& curr)
 {
-  auto it = get_currency(addr, curr);
-  if (it == std::vector<currency>::iterator(nullptr)) return;
+  auto it = get_currency(addr, curr.symbol_);
+  if (it == std::vector<currency_amount>::iterator(nullptr)) return;
   //
   double oldb = it->balance_;
   double newb = curr.balance_;
@@ -567,27 +568,27 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
   //
   for (auto const& b : balances)
   {
-    if (!b.currency.is_xrp())
+    if (!b.currency_.is_xrp())
     {
-      currency_code const ic = b.currency;
+      currency_code const ic = b.currency_;
       if (ic.is_xrp())
       {
-        currency c{ic, b.value, b.value, 0, nullptr};
+        currency_amount c{ic, b.value_, b.value_, 0, nullptr};
         w.add_currency(c);
       }
-      else if (ic.issuer_ == currency::bitstamp_trust)
+      else if (ic.issuer_ == currencies::bitstamp_trust)
       {
-        currency c{ic, b.value, b.value, 0, nullptr};
+        currency_amount c{ic, b.value_, b.value_, 0, nullptr};
         w.add_currency(c);
       }
-      else if (ic.issuer_ == currency::gatehub_trust)
+      else if (ic.issuer_ == currencies::gatehub_trust)
       {
-        currency c{ic, b.value, b.value, 0, nullptr};
+        currency_amount c{ic, b.value_, b.value_, 0, nullptr};
         w.add_currency(c);
       }
       else    // must be some other trustline balance
       {
-        currency c{ic, b.value, b.value, 0, nullptr};
+        currency_amount c{ic, b.value_, b.value_, 0, nullptr};
         w.add_currency(c);
         query_iou_fee(ic);
       }
@@ -663,7 +664,7 @@ void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
   double avail = balance;
   double reserved = 0;
   //
-  currency c{{"", "XRP"}, balance, avail, reserved, nullptr};
+  currency_amount c{{"", "XRP"}, balance, avail, reserved, nullptr};
   w.add_currency(c);
   w.compute_ledger_reserve();
   //
@@ -742,8 +743,8 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
     grox::from_json(offer["taker_gets"], taker_get);
     grox::from_json(offer["taker_pays"], taker_pay);
     //
-    trade_data t{get_instance(testnet()), w.name_, taker_pay.currency, taker_get.currency,
-        taker_pay.value, taker_get.value,
+    trade_data t{get_instance(testnet()), w.name_, taker_pay.currency_, taker_get.currency_,
+        taker_pay.value_, taker_get.value_,
         0.0,    // fee %
         0.0,    // fee fixed
         0,      // id
@@ -768,33 +769,33 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::make_payment(currency const& c, basic_account* src, basic_account* dest)
+bool xrpl_network::make_payment(currency_amount const& c, basic_account* src, basic_account* dest)
 {
   ledger_wallet* from = static_cast<ledger_wallet*>(src);
   ledger_wallet* to = static_cast<ledger_wallet*>(dest);
   std::string signed_tx;
   // are we sending xrp or an IOU? xrp is always sent in drops
-  if (c.is_xrp())
+  if (c.symbol_.is_xrp())
   {
     std::cout << "XRP payment amount " << c.balance_ << " from " << from->public_ << " to "
               << to->public_ << ((to->tag_ != 0) ? "(" + std::to_string(to->tag_) + ")" : "")
               << std::endl;
 
-    signed_tx =
-        make_xrp_payment(ripple::KeyType::secp256k1, from->private_, from->public_, from->sequence_,
-            to->get_receive_address(c).begin(), to->tag_, c.balance_ * 1000000, "", "", 0.0);
+    signed_tx = make_xrp_payment(ripple::KeyType::secp256k1, from->private_, from->public_,
+        from->sequence_, to->get_receive_address(c.symbol_).begin(), to->tag_, c.balance_ * 1000000,
+        "", "", 0.0);
   }
   else
   {
-    double fee = get_transfer_fee(c);
-    std::cout << "XRP IOU payment amount " << c.balance_ << " " << c.code_ << " TransferRate "
-              << fee << " from " << from->public_ << " to " << to->public_ << " IOU addr "
-              << c.issuer_ << ((to->tag_ != 0) ? "(" + std::to_string(to->tag_) + ")" : "")
-              << std::endl;
+    double fee = get_transfer_fee(c.symbol_);
+    std::cout << "XRP IOU payment amount " << c.balance_ << " " << c.symbol_.code_
+              << " TransferRate " << fee << " from " << from->public_ << " to " << to->public_
+              << " IOU addr " << c.symbol_.issuer_
+              << ((to->tag_ != 0) ? "(" + std::to_string(to->tag_) + ")" : "") << std::endl;
 
-    signed_tx =
-        make_xrp_payment(ripple::KeyType::secp256k1, from->private_, from->public_, from->sequence_,
-            to->get_receive_address(c).begin(), to->tag_, c.balance_, c.code_, c.issuer_, fee);
+    signed_tx = make_xrp_payment(ripple::KeyType::secp256k1, from->private_, from->public_,
+        from->sequence_, to->get_receive_address(c.symbol_).begin(), to->tag_, c.balance_,
+        c.symbol_.code_, c.symbol_.issuer_, fee);
   }
   from->sequence_++;
 
@@ -943,7 +944,10 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
 }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_transfer_fee(currency const& c1) { return currency_fees_[c1.issuer_]; }
+double xrpl_network::get_transfer_fee(currency_code const& c1)
+{
+  return currency_fees_[c1.issuer_];
+}
 
 // ----------------------------------------------------------------------------
 double xrpl_network::get_transaction_fee_percent(currency_pair const& cp) { return 0.0; }

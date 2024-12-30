@@ -535,7 +535,7 @@ void GroxMainWindow::connect_gui_controls()
 
 // ----------------------------------------------------------------------------
 // slot to ensure widget updates on GUI thread
-void GroxMainWindow::update_currency_widget(currency* c)
+void GroxMainWindow::update_currency_widget(currency_amount* c)
 {
   assert(c->widget_);
   c->widget_->set_data(c);
@@ -684,7 +684,7 @@ void GroxMainWindow::saveTrustlines()
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   // Start Grox MainWindow section
   settings.beginGroup("Trustlines");
-  for (auto const& t : currency::trustlines)
+  for (auto const& t : currencies::trustlines)
   {
     std::string key = hex_to_currency(t.code_);
     settings.setValue(key.c_str(), t.issuer_.c_str());
@@ -704,7 +704,7 @@ void GroxMainWindow::loadTrustlines()
   {
     std::string code = k.toStdString();
     std::string issuer = settings.value(k).toString().toStdString();
-    currency::trustlines.push_back({issuer, currency_to_hex(code)});
+    currencies::trustlines.push_back({issuer, currency_to_hex(code)});
   }
   settings.endGroup();
   main_dbg<0>.debug(str<>("Trustlines loaded"), settings.fileName().toStdString());

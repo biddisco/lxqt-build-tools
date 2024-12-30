@@ -121,7 +121,7 @@ class xrpl_network : public exchange
   std::string jsonrpc_address() const;
   int jsonrpc_port() const;
   //
-  bool can_send(currency const& /*c*/, exchange* dest) override;
+  bool can_send(currency_code const& /*c*/, exchange* dest) override;
   //
   xrpl_order_book const& get_orderbook(currency_pair const& cp) const;
   //
@@ -165,9 +165,9 @@ class xrpl_network : public exchange
   static void new_account_data_q(xrpl_network* nw, QString);
 
   // ----------------------------------------------------------------------------
-  std::vector<currency>::iterator get_currency(std::string_view addr, currency c);
+  std::vector<currency_amount>::iterator get_currency(std::string_view addr, currency_code c);
   void update_XRP_balance(std::string_view addr, double oldb, double newb);
-  void update_IOU_balance(std::string_view addr, currency const& curr);
+  void update_IOU_balance(std::string_view addr, currency_amount const& curr);
 
   any_bytearray_sender submit_signed_transaction(std::string&& signed_tx);
 
@@ -186,7 +186,7 @@ class xrpl_network : public exchange
   void get_all_account_offers(exec::async_scope& scope);
   void handle_account_offers(ledger_wallet& w, std::string_view data);
 
-  bool make_payment(currency const& c, basic_account* src, basic_account* dest) override;
+  bool make_payment(currency_amount const& c, basic_account* src, basic_account* dest) override;
   any_bytearray_sender request_cancel_order(trade_data const& t) override;
 
   // place a buy/sell order
@@ -196,7 +196,7 @@ class xrpl_network : public exchange
 
   double get_transaction_fee_percent(currency_pair const& cp) override;
   double get_transaction_fee_fixed(currency_pair const& cp) override;
-  double get_transfer_fee(currency const& c1) override;
+  double get_transfer_fee(currency_code const& c1) override;
 
   void trustline(
       basic_account* acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags);
@@ -210,7 +210,7 @@ class xrpl_network : public exchange
   // procesing operations that affect Qt/GUI managed items in a thread safe way
 
   // emitted when a single currency balance changes and GUI needs updating
-  void update_currency_widget(currency*);
+  void update_currency_widget(currency_amount*);
 
   // emitted when a wallet is updated with new balances for multiple currencies
   void update_wallet_widget(ledger_wallet*);

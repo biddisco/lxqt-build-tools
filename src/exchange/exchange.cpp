@@ -131,7 +131,7 @@ void exchange::ticker_unsubscribe(currency_pair const& cp)
 }
 
 // ----------------------------------------------------------------------------
-currency_pairlist const& exchange::get_currency_pairs() const { return tickers_available_; }
+currency_pair::list const& exchange::get_currency_pairs() const { return tickers_available_; }
 
 // ----------------------------------------------------------------------------
 bool exchange::add_currency_pair(currency_pair const& cp)
