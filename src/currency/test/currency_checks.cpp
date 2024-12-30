@@ -1,5 +1,6 @@
 #include <bitset>
 #include <iostream>
+#include <map>
 #include <numeric>
 #include <string>
 //
@@ -238,6 +239,20 @@ TEST(currency, formatting)
     double v = 1.2345678;
     std::string s1 = to_string_with_precision(v, 4);
     EXPECT_TRUE(compare("1.2346", s1));
+  }
+}
+
+// ------------------------------------------------------------------
+TEST(currency, map)
+{
+  std::vector<currency_pair> pairs{{{"", "USD"}, {"", "XRP"}}, {{"", "USD"}, {"", "BTC"}},
+      {{"", "USD"}, {"", "EUR"}}, {{"", "USD"}, {"", "GBP"}}};
+  {
+    // insert all ppairs into map
+    std::map<currency_pair, std::string> test_map;
+    for (auto key : pairs) test_map.insert({key, currency_pair_string(key, "/")});
+    // check they are present
+    for (auto [key, value] : test_map) EXPECT_TRUE(test_map.contains(key));
   }
 }
 
