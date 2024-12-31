@@ -21,6 +21,20 @@
 
 using namespace ads;
 
+ticker_data init_order_book_params(indicators::param_pair const& p, QLabel* l1, QLabel* l2)
+{
+  std::string name = std::get<order_book_param>(p.value).exchange_;
+  currency_pair cp = std::get<order_book_param>(p.value).ticker_;
+  l1->setText(name.c_str());
+  l2->setText(currency_pair_qstring(cp));
+  //
+  auto it = std::find_if(global_settings.networks_.begin(), global_settings.networks_.end(),
+      [name](auto n) { return n->get_name() == name; });
+  auto tdata = (*it)->get_subscribed_ticker_data(cp);
+  //
+  return tdata;
+}
+
 // ----------------------------------------------------------------------------
 std::shared_ptr<arbitrage_widget> create_arbitrage_widget(exchange::exchange_vector exchange_list_)
 {
@@ -49,19 +63,80 @@ std::shared_ptr<arbitrage_widget> create_arbitrage_widget(exchange::exchange_vec
     AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
     AlgorithmsDockWidget->setMinimumSize(128, 196);
     auto const AlgorithmsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
-        SideBarLocation::SideBarRight, AlgorithmsDockWidget);
+        SideBarLocation::SideBarTop, AlgorithmsDockWidget);
     AlgorithmsautoHideContainer->setSize(256);
     // global_settings.dock_manager_->addDockWidgetFloating(PlotDockWidget);
     global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
-    ui_->exchange1->setText(
-        std::get<order_book_param>(arb->get_params()[0].value).exchange_.c_str());
-    ui_->ticker1->setText(
-        currency_pair_qstring(std::get<order_book_param>(arb->get_params()[0].value).ticker_));
-    ui_->exchange2->setText(
-        std::get<order_book_param>(arb->get_params()[1].value).exchange_.c_str());
-    ui_->ticker2->setText(
-        currency_pair_qstring(std::get<order_book_param>(arb->get_params()[1].value).ticker_));
+    // fill orderbook text display
+    size_t const font_size = 8;
+    //auto* orderbook_text = new QPlainTextEdit(nullptr);
+    QString txt = "X";
+    int char_size = QFontMetrics(ui_->orderbook1->font()).horizontalAdvance(txt);
+    int calcWidth = char_size * 85 + 8;
+    ui_->orderbook1->setMinimumWidth(calcWidth);
+    QFont font = QFont();
+    font.setPointSize(font_size);
+    font.setFamily("Courier");
+    ui_->orderbook1->setFont(font);
+    ui_->orderbook2->setFont(font);
+    ui_->arbitrage_orders->setFont(font);
+
+    auto tdata1 = init_order_book_params(arb->get_params()[0], ui_->exchange1, ui_->ticker1);
+    auto tdata2 = init_order_book_params(arb->get_params()[1], ui_->exchange2, ui_->ticker2);
+
+    auto arb_lambda = [en = ui_->enable_arbitrage, cb = ui_->arbitrage_test_mode,
+                          lb = ui_->arbitrage_test_offset, tb = ui_->arbitrage_orders, tdata1,
+                          tdata2]() {
+      double budget = 100000;
+      std::string arbitrage_string;
+      double test_offset = 0.00;
+      if (cb->isChecked())
+      {
+        try
+        {
+          test_offset = std::stod(lb->text().toStdString());
+        }
+        catch (...)
+        {
+          test_offset = 0.00;
+        }
+      }
+
+      //
+      fee_data sell_fee{0.12, 0.0};
+      fee_data buy_fee{0.0, 0.01};
+      //
+      if (en->isChecked())
+      {
+        // @TODO fix arbitrage for CP
+        tdata1->orderbook_->compute_arbitrage(
+            *(tdata2->orderbook_), budget, buy_fee, sell_fee, test_offset, arbitrage_string);
+
+        if (arbitrage_string.size() > 0)
+        {
+          QString arb_string = QString::fromStdString(arbitrage_string);
+          tb->setPlainText(arb_string);
+        }
+        else { tb->setPlainText(""); }
+      }
+    };
+
+    auto makeLambda = [arb_lambda](ticker_data tdata, auto* obwidget) {
+      return [tdata, obwidget, arb_lambda](currency_pair cp) {
+        QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
+          if (tdata && tdata->orderbook_)
+          {
+            QString datastring = QString::fromStdString(tdata->orderbook_->get_orderbook_string());
+            obwidget->setPlainText(datastring);
+            arb_lambda();
+          }
+        });
+      };
+    };
+
+    tdata1->orderbook_subscribers_.subscribe("arbitrage1", makeLambda(tdata1, ui_->orderbook1));
+    tdata2->orderbook_subscribers_.subscribe("arbitrage2", makeLambda(tdata2, ui_->orderbook2));
 
     return algowidget_;
   }
@@ -69,40 +144,3 @@ std::shared_ptr<arbitrage_widget> create_arbitrage_widget(exchange::exchange_vec
 }
 
 // ----------------------------------------------------------------------------
-// void GroxMainWindow::perform_arbitrage()
-// {
-//   double budget = 100000;
-//   std::string arbitrage_string;
-//   double test_offset = 0.00;
-//   if (algo_form_->arbitrage_test_mode->isChecked())
-//   {
-//     try
-//     {
-//       test_offset = std::stod(algo_form_->arbitrage_test_offset->text().toStdString());
-//     }
-//     catch (...)
-//     {
-//       test_offset = 0.00;
-//     }
-//   }
-
-//   //
-//   fee_data sell_fee{0.12, 0.0};
-//   fee_data buy_fee{0.0, 0.01};
-//   //
-//   if (algo_form_->enable_arbitrage->isChecked())
-//   {
-//     // @TODO fix arbitrage for CP
-//     auto& xrp_orderbook = xrpl_network_->get_orderbook({{"", "XRP"}, {"", "USD"}});
-//     auto& bit_orderbook = bitstamp_network_->get_orderbook({{"", "XRP"}, {"", "USD"}});
-//     xrp_orderbook.compute_arbitrage(
-//         bit_orderbook, budget, buy_fee, sell_fee, test_offset, arbitrage_string);
-
-//     if (arbitrage_string.size() > 0)
-//     {
-//       QString arb_string = QString::fromStdString(arbitrage_string);
-//       algo_form_->arbitrage_orders->setPlainText(arb_string);
-//     }
-//     else { algo_form_->arbitrage_orders->setPlainText(""); }
-//   }
-// }
