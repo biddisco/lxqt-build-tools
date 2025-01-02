@@ -1,0 +1,33 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+  # add package specs to the `specs` list
+  specs:
+  - cmake
+  - ninja
+  - hdf5+cxx+hl
+  - boost+atomic+chrono+container+context+coroutine+date_time+filesystem+json+program_options+regex+serialization+system+test+thread cxxstd=17
+  - range-v3 cxxstd=17
+  - nlohmann-json
+  - pika@main
+  - soci+boost+sqlite~static~visibility cxxstd=20
+  - grpc@1.50 cxxstd=17
+  - protobuf@3.21.9
+  - sqlite
+  - snappy
+  - date
+  - NuDB
+  - re2
+  - xxhash@0.8.2
+  - googletest
+  - gperftools
+  - mimalloc
+  - spdlog
+  - cuda
+  - hwloc+cuda
+  - fmt
+  view: true
+  concretizer:
+    unify: true

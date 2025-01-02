@@ -15,6 +15,7 @@ class Nudb(CMakePackage):
 
     version("master", branch="master")
 
+    depends_on("cxx", type="build")
     depends_on("cmake@3.22:", type="build")
     depends_on("boost@1.80: +filesystem +program_options +system +thread", type="build")
 
