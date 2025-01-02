@@ -43,5 +43,15 @@ echo "pika"
 cd $HOME/src/grox/extern/pika
 pwd ; git branch ; git fetch --all && git pull --rebase origin main
 
+printf "\n#---------------------------"
+echo "aqtinstall"
+cd $HOME/src/grox/extern/aqtinstall
+pwd ; git branch ; git fetch --all && git pull --rebase origin master
+
+printf "\n#---------------------------"
+echo "qt6-docker"
+cd $HOME/src/grox/extern/qt6-docker
+pwd ; git branch ; git fetch --all && git pull --rebase origin master
+
 popd
 
