@@ -1,0 +1,87 @@
+# Image: stateoftheartio/qt6:6.8-gcc-aqt
+
+FROM spack/ubuntu-noble:latest
+#FROM ubuntu:latest
+MAINTAINER biddisco
+
+# PIP requirement like "aqtinstall==2.0.6" or url with egg file
+ARG AQT_VERSION="aqtinstall==3.1.21"
+
+ARG QT_VERSION=6.8.0
+# LINUXDEPLOY_COMMIT Aug 7, 2024
+ARG LINUXDEPLOY_COMMIT=f6730d2fbacd9005dd9640ea517771f7597eec73
+# LINUXDEPLOY_QT_COMMIT Sep 19, 2024
+ARG LINUXDEPLOY_QT_COMMIT=70b466586a3a311d0319ff687c3d14bbd73373db
+ARG QT_PATH=/opt/Qt
+
+ARG ADDITIONAL_PACKAGES="sudo git openssh-client ca-certificates build-essential curl python3 locales patchelf"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    DEBCONF_NONINTERACTIVE_SEEN=true \
+    QT_VERSION=${QT_VERSION} \
+    AQT_VERSION=${AQT_VERSION} \
+    QT_PATH=${QT_PATH} \
+    QT_GCC=${QT_PATH}/${QT_VERSION}/gcc_64 \
+    PATH=${QT_PATH}/Tools/CMake/bin:${QT_PATH}/Tools/Ninja:${QT_PATH}/${QT_VERSION}/gcc_64/bin:/root/.local/bin:$PATH
+
+WORKDIR /tmp
+
+# Get Qt binaries with aqt
+RUN /grox/extern/qt6-docker/6.8-gcc-aqt/get_qt.sh
+
+# Get linuxdeploy and build it
+RUN /grox/extern/qt6-docker/6.8-gcc-aqt/get_linuxdeploy.sh
+
+# Install the required packages
+RUN /grox/extern/qt6-docker/6.8-gcc-aqt/install_packages.sh
+
+# Reconfigure locale
+RUN locale-gen en_US.UTF-8 && dpkg-reconfigure locales
+
+# ------------------------------------------
+#
+# ------------------------------------------
+
+# Install a recent developer version of Spack.
+#WORKDIR /opt/spack
+#ARG SPACK_VERSION=866785bd74964142e4b47bf71bee68d7426c84ee
+#RUN git init --quiet && \
+#    git remote add spackrepo https://github.com/spack/spack.git && \
+#    git fetch --quiet --depth 1 spackrepo ${SPACK_VERSION} --no-tags && \
+#    git checkout --quiet FETCH_HEAD
+#ENV PATH="/opt/spack/bin:${PATH}"
+#
+## Find all external packages and compilers.
+#RUN spack compiler find
+#RUN spack external find --all # --not-buildable
+
+# Enable Spack build cache
+#ARG SPACK_BUILD_CACHE=develop-2024-12-15
+#RUN spack mirror add ${SPACK_BUILD_CACHE} https://binaries.spack.io/${SPACK_BUILD_CACHE} && \
+#    spack mirror add develop https://binaries.spack.io/develop && \
+#    spack buildcache keys --install --trust --force && \
+#    spack mirror rm develop
+
+
+#&&  spack env create myenv ./grox-env.yaml \
+#&&  spack -e myenv concretize -f \
+#&&  spack -e myenv env depfile -o spack-makefile && make -j32 --file=spack-makefile SPACK_COLOR=never --output-sync=recurse
+
+# Install grox dependencies via Spack.
+WORKDIR /
+# COPY ./spack.yaml .
+# COPY ./repo.yaml .
+# COPY ./packages .
+
+RUN spack repo add /grox/spack \
+&&  spack install --only=dependencies grox
+
+RUN spack install grox
+
+# Add group & user + sudo
+RUN groupadd -r user && useradd --create-home --gid user user && echo 'user ALL=NOPASSWD: ALL' > /etc/sudoers.d/user
+
+USER user
+WORKDIR /home/user
+ENV HOME /home/user
+
