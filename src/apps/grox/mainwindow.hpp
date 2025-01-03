@@ -16,7 +16,6 @@
 #include "data/order_book.hpp"
 #include "exchange/bitstamp.hpp"
 #include "exchange/xrpl_network.hpp"
-#include "widgets/arbitrage_widget.hpp"
 #include "widgets/connection_widget.hpp"
 
 class AdjustingScrollArea : public QScrollArea
@@ -76,7 +75,7 @@ class GroxMainWindow : public QMainWindow
   QShortcut* qs_arbitrage_;
   int dark_mode_;
 
-  std::shared_ptr<arbitrage_widget> arbs_;
+  std::vector<std::shared_ptr<QDialog>> trade_widgets_;
 
   public:
   explicit GroxMainWindow(QWidget* parent = nullptr);

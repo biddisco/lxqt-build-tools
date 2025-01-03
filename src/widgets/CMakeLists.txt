@@ -1,6 +1,4 @@
 set(grox_widgets_SRCS
-    arbitrage_widget.cpp
-    arbitrage_widget.hpp
     check_trades_dialog.cpp
     check_trades_dialog.hpp
     collapsible_groupbox.cpp
@@ -19,6 +17,8 @@ set(grox_widgets_SRCS
     price_chart_widget.hpp
     trade_widget.cpp
     trade_widget.hpp
+    trade_algorithm_widget.cpp
+    trade_algorithm_widget.hpp
     wallet_widget.cpp
     wallet_widget.hpp
     xrp_functions.cpp
@@ -27,7 +27,8 @@ set(grox_widgets_SRCS
 
 set(grox_widgets_SRCS
     ${grox_widgets_SRCS}
-    arbitrage_widget.ui
+    trade_algorithm_arbitrage.ui
+    trade_algorithm_market_maker.ui
     connection_widget.ui
     currency_widget.ui
     indicator_widget.ui

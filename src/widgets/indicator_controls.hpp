@@ -6,6 +6,7 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QLabel>
 #include <QLineEdit>
 #include <QString>
 #include <QVBoxLayout>
@@ -179,4 +180,19 @@ void set_param(QWidget* widget, order_book_param& param)
   currency_pair cp = string_to_pair(s, "-");
   //
   param = {exch, cp};
+}
+
+// ----------------------------------------------------------------------------
+ticker_data init_order_book_params(indicators::param_pair const& p, QLabel* l1, QLabel* l2)
+{
+  std::string name = std::get<order_book_param>(p.value).exchange_;
+  currency_pair cp = std::get<order_book_param>(p.value).ticker_;
+  l1->setText(name.c_str());
+  l2->setText(currency_pair_qstring(cp));
+  //
+  auto it = std::find_if(global_settings.networks_.begin(), global_settings.networks_.end(),
+      [name](auto n) { return n->get_name() == name; });
+  auto tdata = (*it)->get_subscribed_ticker_data(cp);
+  //
+  return tdata;
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>arbitrage_widget</class>
- <widget class="QWidget" name="arbitrage_widget">
+ <class>trade_algorithm_arbitrage</class>
+ <widget class="QWidget" name="trade_algorithm_arbitrage">
   <property name="geometry">
    <rect>
     <x>0</x>

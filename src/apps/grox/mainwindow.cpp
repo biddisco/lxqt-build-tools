@@ -35,12 +35,12 @@
 #include "network/evp-encrypt.hpp"
 #include "senders/qtstdexec.hpp"
 #include "util/datetime_utils.hpp"
-#include "widgets/arbitrage_widget.hpp"
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/connection_widget.hpp"
 #include "widgets/currency_widget.hpp"
 #include "widgets/password_dialog.hpp"
 #include "widgets/price_chart_widget.hpp"
+#include "widgets/trade_algorithm_widget.hpp"
 #include "widgets/trade_widget.hpp"
 #include "widgets/wallet_widget.hpp"
 
@@ -455,6 +455,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 // ----------------------------------------------------------------------------
 GroxMainWindow::~GroxMainWindow()
 {
+  trade_widgets_.clear();
+  //
   delete qs_shutdown_;
   delete qs_darkmode_;
   // release dockmanager
@@ -527,9 +529,14 @@ void GroxMainWindow::connect_gui_controls()
         if (npw.exec() == QDialog::Accepted) { generate_encrypted_ini_data(npw); }
       });
 
-  qs_arbitrage_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_A)), this, [this]() {
-    std::shared_ptr<arbitrage_widget> widget = create_arbitrage_widget(exchange_list_);
-    arbs_ = widget;
+  // qs_arbitrage_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_A)), this, [this]() {
+  //   std::shared_ptr<arbitrage_widget> widget = create_arbitrage_widget(exchange_list_);
+  //   arbs_ = widget;
+  // });
+
+  qs_arbitrage_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_M)), this, [this]() {
+    std::shared_ptr<QDialog> widget = create_trading_widget(exchange_list_);
+    trade_widgets_.push_back(widget);
   });
 }
 
