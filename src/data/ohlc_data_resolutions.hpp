@@ -55,7 +55,7 @@ class ohlc_data_resolutions
   // for easy access to array of all available resolutions
   static std::vector<candle_res> const& available_resolutions()
   {
-    static const std::vector<candle_res> resolutions = {minute, minute3, minute5, minute10,
+    static std::vector<candle_res> const resolutions = {minute, minute3, minute5, minute10,
         minute15, minute30, hour, hour2, hour4, hour6, hour12, day, day2, day3, day7, day15};
     return resolutions;
   }
@@ -92,8 +92,8 @@ class ohlc_data_resolutions
 // ----------------------------------------------------------------------------
 struct candle_data
 {
-  static constexpr std::array<char const*, 8> durations = {
-      "1h", "1d", "1w", "2w", "1m", "6m", "1y", "all"};
+  static constexpr std::array<char const*, 10> durations = {
+      "1h", "1d", "1w", "2w", "1m", "6m", "1y", "2y", "4y", "all"};
   candle_res res_;
   std::uint64_t numSamples_;
 
@@ -107,6 +107,8 @@ struct candle_data
     else if (timestring == "1m") { samples = (30 * 24 * 60 * 60 * 1000ll) / res; }
     else if (timestring == "6m") { samples = (182 * 24 * 60 * 60 * 1000ll) / res; }
     else if (timestring == "1y") { samples = (365 * 24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "2y") { samples = (2 * 365 * 24 * 60 * 60 * 1000ll) / res; }
+    else if (timestring == "4y") { samples = (4 * 365 * 24 * 60 * 60 * 1000ll) / res; }
     else if (timestring == "all") { samples = std::numeric_limits<std::uint64_t>::max(); }
     return samples;
   }
@@ -127,6 +129,10 @@ struct candle_data
       return "6m";
     else if (numSamples_ <= (365 * 24 * 60 * 60 * 1000ll) / res_)
       return "1y";
+    else if (numSamples_ <= (2 * 365 * 24 * 60 * 60 * 1000ll) / res_)
+      return "2y";
+    else if (numSamples_ <= (4 * 365 * 24 * 60 * 60 * 1000ll) / res_)
+      return "4y";
     return "all";
   }
 
