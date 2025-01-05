@@ -81,6 +81,8 @@ public:
     // ---------------------------------------
     inline double getLastResult() { return mean_; }
 
+    int size() { return buffer_.size(); }
+
 private:
     int window_size_;
     ohlc_modes mode_;

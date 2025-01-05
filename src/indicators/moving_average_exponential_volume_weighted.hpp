@@ -63,7 +63,7 @@ public:
     double operator()(ohlctv_sample const& ohlc)
     {
       double vwma = vwma_(ohlc);
-      double alpha = user_alpha_ ? decay_factor_ : 2.0 / (window_size_ + 1.0);
+      double alpha = user_alpha_ ? decay_factor_ : 2.0 / (vwma_.size() + 1.0);
       //
       mean_ = (alpha * vwma) + ((1.0 - alpha) * mean_);
       return mean_;
