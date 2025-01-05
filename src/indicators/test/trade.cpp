@@ -73,17 +73,17 @@ TEST(trade, sliding_Stop)
     }
   }
   std::string expected =
-      "sell 0.30707 xrp 0.00000 - buy 0.26563 xrp 1.08933 - sell 0.27468 xrp 0.00000 - buy 0.25911 "
-      "xrp 0.97916 - sell 0.30289 xrp 0.00000 - buy 0.28154 xrp 0.92647 - sell 0.28548 xrp 0.00000 "
-      "- buy 0.25807 xrp 0.90845 - sell 0.25818 xrp 0.00000 - buy 0.19355 xrp 1.14701 - sell "
-      "0.19690 xrp 0.00000 - buy 0.16821 xrp 1.16189 - sell 0.19284 xrp 0.00000 - buy 0.16869 xrp "
-      "1.18525 - sell 0.18241 xrp 0.00000 - buy 0.18629 xrp 1.13841 - sell 0.18701 xrp 0.00000 - "
-      "buy 0.16033 xrp 1.28606 - sell 0.26867 xrp 0.00000 - buy 0.21226 xrp 1.38770 - sell 0.24924 "
-      "xrp 0.00000 - buy 0.22195 xrp 1.39653 - sell 0.22220 xrp 0.00000 - buy 0.18602 xrp 1.59837 "
-      "- sell 0.20399 xrp 0.00000 - buy 0.21033 xrp 1.48546 - sell 0.26409 xrp 0.00000 - buy "
-      "0.25796 xrp 1.46288 - sell 0.27031 xrp 0.00000 - buy 0.19868 xrp 1.72494 - sell 0.20538 xrp "
-      "0.00000 - buy 0.21047 xrp 1.61260 - sell 0.21413 xrp 0.00000 - buy 0.22310 xrp 1.62666 - "
-      "sell 0.24791 xrp 0.00000 - buy 0.24952 xrp 1.48686 - ";
+      "sell 0.31764 xrp 0.00000 - buy 0.26563 xrp 1.14624 - sell 0.27468 xrp 0.00000 - buy 0.25911 "
+      "xrp 1.03031 - sell 0.30289 xrp 0.00000 - buy 0.28154 xrp 0.97486 - sell 0.28548 xrp 0.00000 "
+      "- buy 0.25807 xrp 0.95590 - sell 0.25818 xrp 0.00000 - buy 0.19355 xrp 1.20692 - sell "
+      "0.19690 xrp 0.00000 - buy 0.16821 xrp 1.22258 - sell 0.19284 xrp 0.00000 - buy 0.16869 xrp "
+      "1.24716 - sell 0.18241 xrp 0.00000 - buy 0.18629 xrp 1.19787 - sell 0.18701 xrp 0.00000 - "
+      "buy 0.16033 xrp 1.35324 - sell 0.26867 xrp 0.00000 - buy 0.21226 xrp 1.46019 - sell 0.24924 "
+      "xrp 0.00000 - buy 0.22195 xrp 1.46948 - sell 0.22220 xrp 0.00000 - buy 0.18602 xrp 1.68186 "
+      "- sell 0.20399 xrp 0.00000 - buy 0.21033 xrp 1.56305 - sell 0.26409 xrp 0.00000 - buy "
+      "0.25796 xrp 1.53929 - sell 0.27031 xrp 0.00000 - buy 0.19868 xrp 1.81504 - sell 0.20538 xrp "
+      "0.00000 - buy 0.21047 xrp 1.69684 - sell 0.21413 xrp 0.00000 - buy 0.22310 xrp 1.71163 - "
+      "sell 0.24791 xrp 0.00000 - buy 0.24952 xrp 1.56452 - ";
   EXPECT_EQ(expected, tmp.str());
 }
 
