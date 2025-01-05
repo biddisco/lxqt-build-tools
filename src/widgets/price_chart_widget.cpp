@@ -19,6 +19,8 @@
 #include "indicators/indicator_types.hpp"
 #include "plot/ohlc_chart_curve.hpp"
 #include "plot/timebased_data_curve.hpp"
+#include "senders/pika_stdexec.hpp"
+#include "senders/qtstdexec.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/digital_clock.hpp"
 #include "widgets/indicator_widget.hpp"
@@ -26,12 +28,8 @@
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
-// a debug level of zero disables messages with a priority>0
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
-//
 template <int Level>
-inline constexpr print_threshold<Level, debug_level> pplot_dbg("PricePlt");
+inline constexpr print_threshold<Level, 0> pplot_dbg("PricePlt");
 
 // ----------------------------------------------------------------------------
 QColor chart_colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QColor("darkRed"),
@@ -240,61 +238,71 @@ void price_chart_widget::connect_gui()
   connect(btn_indicator_, &QPushButton::clicked, this, [this](bool b) {
     pplot_dbg<0>.debug(ffmt<s20>("Indicators"), ticker_string_);
 
-    QDialog ind_dialog;
+    using namespace grox::senders;
+
+    QDialog* ind_dialog = new QDialog(this);
     indicator_widget* widget = new indicator_widget(
         indicators::available_indicators, indicators::available_indicators_index);
-    widget->add_to_dialog(&ind_dialog);
+    widget->add_to_dialog(ind_dialog);
 
-    auto result = ind_dialog.exec();
+    auto result = ind_dialog->exec();
     if (result == QDialog::Accepted)
     {
       static int colour_count = 0;
-      // copy the algorithm out of the dialog
-      indicators::indicator_ptr algp(widget->get_algorithm(), hdf5_ohlc_);
+      auto snd = stdexec::starts_on(default_pool_scheduler(), stdexec::just())    //
+          | stdexec::then([this, ind_dialog, widget]() {
+              // do this on a pika thread as it executes the algorithm
+              indicators::indicator_ptr algp(widget->get_algorithm(), hdf5_ohlc_);
+              return algp;
+            })                                                      //
+          | stdexec::continues_on(QtStdExec::QThreadScheduler())    //
+          | stdexec::then([this](indicators::indicator_ptr algp) {
+              auto colour = chart_colours[colour_count++ % 10];
+              QString name = QString(algp.indicator()->get_name().c_str());
 
-      auto colour = chart_colours[colour_count++ % 10];
-      QString name = QString(algp.indicator()->get_name().c_str());
+              for (int i = 0; i < algp.indicator()->num_outputs(); ++i)
+              {
+                auto ot = algp.indicator()->get_overlay(i);
+                QwtPlotCurve* curve;
+                if (ot == indicators::overlay_type::price)
+                  curve = price_plot_->add_overlay_curve(
+                      name, algp.indicator()->get_outputs()[i], colour);
+                else if (ot == indicators::overlay_type::buy_sell)
+                {
+                  if (i == 0)
+                    curve = price_plot_->add_buy_sell_curve(
+                        "Buy", algp.indicator()->get_outputs()[i]->samples(), Qt::green);
+                  else if (i == 1)
+                    curve = price_plot_->add_buy_sell_curve(
+                        "Sell", algp.indicator()->get_outputs()[i]->samples(), Qt::red);
+                  else
+                    curve = price_plot_->add_overlay_curve(
+                        name, algp.indicator()->get_outputs()[i], colour);
+                }
+                else if (ot == indicators::overlay_type::mode_select)
+                {
+                  ohlc_modes mode = std::get<ohlc_modes>(algp.indicator()->get_params()[2].value);
+                  if (mode == ohlc_modes::volume)
+                    curve = price_plot_->add_overlay_volume_curve(
+                        name, algp.indicator()->get_outputs()[i], colour);
+                  else if (mode == ohlc_modes::value)
+                    std::tie(algp.plot, curve) =
+                        add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);
+                  else
+                    curve = price_plot_->add_overlay_curve(
+                        name, algp.indicator()->get_outputs()[i], colour);
+                }
+                else
+                  std::tie(algp.plot, curve) =
+                      add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);
+                algp.curves.push_back(curve);
+              }
 
-      for (int i = 0; i < algp.indicator()->num_outputs(); ++i)
-      {
-        auto ot = algp.indicator()->get_overlay(i);
-        QwtPlotCurve* curve;
-        if (ot == indicators::overlay_type::price)
-          curve = price_plot_->add_overlay_curve(name, algp.indicator()->get_outputs()[i], colour);
-        else if (ot == indicators::overlay_type::buy_sell)
-        {
-          if (i == 0)
-            curve = price_plot_->add_buy_sell_curve(
-                "Buy", algp.indicator()->get_outputs()[i]->samples(), Qt::green);
-          else if (i == 1)
-            curve = price_plot_->add_buy_sell_curve(
-                "Sell", algp.indicator()->get_outputs()[i]->samples(), Qt::red);
-          else
-            curve =
-                price_plot_->add_overlay_curve(name, algp.indicator()->get_outputs()[i], colour);
-        }
-        else if (ot == indicators::overlay_type::mode_select)
-        {
-          ohlc_modes mode = std::get<ohlc_modes>(algp.indicator()->get_params()[2].value);
-          if (mode == ohlc_modes::volume)
-            curve = price_plot_->add_overlay_volume_curve(
-                name, algp.indicator()->get_outputs()[i], colour);
-          else if (mode == ohlc_modes::value)
-            std::tie(algp.plot, curve) =
-                add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);
-          else
-            curve =
-                price_plot_->add_overlay_curve(name, algp.indicator()->get_outputs()[i], colour);
-        }
-        else
-          std::tie(algp.plot, curve) =
-              add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);
-        algp.curves.push_back(curve);
-      }
-
-      ind_model_.indicators_.push_back(algp);
-      ind_model_.dataAdded();
-      this->replot();
+              ind_model_.indicators_.push_back(algp);
+              ind_model_.dataAdded();
+              this->replot();
+            });
+      stdexec::start_detached(std::move(snd));
     }
   });
 }

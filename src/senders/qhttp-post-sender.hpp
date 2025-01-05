@@ -15,6 +15,7 @@
 #include <pika/modules/schedulers.hpp>
 //
 #include "network/qhttp-request-client.hpp"
+#include "senders/pika_stdexec.hpp"
 
 // @TODO: This code is built on top of the pika implementation of stdexec
 // it ought to be rewritten to use 'pure' stdexec and reduce pika dependencies
@@ -32,8 +33,7 @@ namespace grox::senders {
   template <int Level>
   inline constexpr print_threshold<Level, 2> qt_trig("QT_TRIGG");
 
-  namespace pexec = pika::execution;
-  namespace ex = pexec::experimental;
+  namespace ex = pika::execution::experimental;
   using namespace pika::debug::detail;
 
   enum http_request_type
@@ -42,14 +42,6 @@ namespace grox::senders {
     http_get = 1,
     http_unset = 2,
   };
-
-  // -----------------------------------------------------------------
-  // return a scheduler on the default pool with added priority if requested
-  inline auto default_pool_scheduler(pexec::thread_priority p = pexec::thread_priority::normal)
-  {
-    return ex::with_priority(
-        ex::thread_pool_scheduler{&pika::resource::get_thread_pool("default")}, p);
-  }
 
   // -----------------------------------------------------------------
   namespace detail {
