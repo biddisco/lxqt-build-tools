@@ -97,7 +97,7 @@ class ohlc_price_scaledraw : public QwtScaleDraw
     }
     else { dig_ = dec_ + 2; }
     fstr = fmt::format("%{}.{}{}", dig_, dec_, form_);
-    plot_dbg<0>.debug(str<>("Format string"), range, exponent, dig_, dec_, form_, fstr);
+    plot_dbg<0>.debug(ffmt<s20>("Format string"), range, exponent, dig_, dec_, form_, fstr);
   }
 
   QwtText label(double value) const QWT_OVERRIDE
@@ -390,7 +390,7 @@ void ohlc_price_plot::update_time_axis(double t1, double t2, bool emit_signal)
   // volume bars as they sum more/less data)
   setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
 
-  plot_dbg<8>.debug(str<>("min_max"),
+  plot_dbg<8>.debug(ffmt<s20>("min_max"),
       ohlc_data_resolutions::get_resolution(get_candle_resolution()).name_,
       msecs_unix_to_calendar_time(t1), "->", msecs_unix_to_calendar_time(t2), "(",
       minmax.min_price_, ",", minmax.max_price_, ")");
@@ -528,7 +528,7 @@ void ohlc_price_plot::updateLayout()
   QwtPlot::updateLayout();
   if (first_update_)
   {
-    plot_dbg<5>.debug(str<>("updateLayout"), "adjust_candle_size");
+    plot_dbg<5>.debug(ffmt<s20>("updateLayout"), "adjust_candle_size");
     update_candle_size();
     first_update_ = false;
   }

@@ -121,7 +121,7 @@ void make_request(QNetworkAccessManager& networkmanager)
   std::string url_path = "/api/v2/websockets_token/";
   std::string url_query = "";
 
-  //test1_dbg<0>.debug(str<>("ref count"), client.get(), "test", client.use_count());
+  //test1_dbg<0>.debug(ffmt<s20>("ref count"), client.get(), "test", client.use_count());
 
   // Run
   account_request(networkmanager, url_path, url_query, [](QByteArray byteArray) {

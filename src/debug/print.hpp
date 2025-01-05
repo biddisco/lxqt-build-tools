@@ -2,14 +2,18 @@
 
 #if __has_include(<pika/debugging/print.hpp>)
 # include <pika/debugging/print.hpp>
+
 namespace grox::debug {
   using namespace pika::debug;
 }    // namespace grox::debug
+
 namespace grox::debug::detail {
   using namespace pika::debug::detail;
 }
 
 #elif __has_include(<fmt/format.h>)
+ad asd sda asd sda
+
 # include <array>
 # include <atomic>
 # include <chrono>
@@ -42,7 +46,7 @@ namespace grox::debug::detail {
 //
 // Later in code you may print information using
 //
-//             spq_deb.debug(str<16>("cleanup_terminated"), "v1"
+//             spq_deb.debug(ffmt<s16>("cleanup_terminated"), "v1"
 //                  , "D" , dec<2>(domain_num)
 //                  , "Q" , ffmt<dec3>(q_index)
 //                  , "thread_num", ffmt<dec3>(local_num));
@@ -54,7 +58,7 @@ namespace grox::debug::detail {
 // produced, so a simple timer based output is provided
 // To instantiate a timed output
 //      static auto getnext = spq_deb.make_timer(1
-//              , str<16>("get_next_thread"));
+//              , ffmt<s16>("get_next_thread"));
 // then inside a tight loop
 //      spq_deb.timed(getnext, dec<>(thread_num));
 // The output will only be produced every N seconds
@@ -71,11 +75,11 @@ namespace grox::debug::detail {
 
 # define GROX_DETAIL_NS_DEBUG grox::debug::detail
 
-// ------------------------------------------------------------
-/// \cond NODETAIL
-// NOLINTNEXTLINE(modernize-concat-nested-namespaces)
-namespace GROX_DETAIL_NS_DEBUG {
-
+    // ------------------------------------------------------------
+    /// \cond NODETAIL
+    // NOLINTNEXTLINE(modernize-concat-nested-namespaces)
+    namespace GROX_DETAIL_NS_DEBUG
+{
   // common formats that are used with acceptable alignment
   constexpr char bin8[] = "{:08b}";
   constexpr char bin16[] = "{:016b}";
@@ -94,6 +98,7 @@ namespace GROX_DETAIL_NS_DEBUG {
   constexpr char fp12_8[] = "{:12.8f}";    // a commmon layout
   constexpr char strl[] = "{:<{}}";
   constexpr char strr[] = "{:>{}}";
+  constexpr char s20[] = "{:>20}";
 
   // ------------------------------------------------------------------
   // helper for N>M true/false
@@ -189,13 +194,13 @@ namespace GROX_DETAIL_NS_DEBUG {
   };
 
   template <typename TupleType, std::size_t... I>
-  void tuple_print(std::ostream& os, TupleType const& t, std::index_sequence<I...>)
+  void tuple_print(std::ostream & os, TupleType const& t, std::index_sequence<I...>)
   {
     (..., (os << (I == 0 ? "" : " ") << std::get<I>(t)));
   }
 
   template <typename... Args>
-  void tuple_print(std::ostream& os, std::tuple<Args...> const& t)
+  void tuple_print(std::ostream & os, std::tuple<Args...> const& t)
   {
     tuple_print(os, t, std::make_index_sequence<sizeof...(Args)>());
   }
@@ -214,7 +219,7 @@ namespace GROX_DETAIL_NS_DEBUG {
 
   ///////////////////////////////////////////////////////////////////////
   GROX_EXPORT void register_print_info(void (*)(std::ostream&));
-  GROX_EXPORT void generate_prefix(std::ostream& os);
+  GROX_EXPORT void generate_prefix(std::ostream & os);
 
   ///////////////////////////////////////////////////////////////////////
   template <typename... Args>
@@ -282,10 +287,10 @@ namespace GROX_DETAIL_NS_DEBUG {
       std::stringstream tempstream;
       tuple_print(tempstream, message_);
       buffered_msg = tempstream.str();
-      display("<SCO> ", prefix_, str<>(">> enter <<"), tempstream.str());
+      display("<SCO> ", prefix_, ffmt<s20>(">> enter <<"), tempstream.str());
     }
 
-    ~scoped_var() { display("<SCO> ", prefix_, str<>("<< leave >>"), buffered_msg); }
+    ~scoped_var() { display("<SCO> ", prefix_, ffmt<s20>("<< leave >>"), buffered_msg); }
   };
 
   struct empty_timed_var

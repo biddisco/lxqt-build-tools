@@ -56,7 +56,7 @@ QStandardItem* findChildItem(QStandardItem* parent, data_slot slot, T cdata)
     QStandardItem* child = parent->child(c);
     auto stream = magic_enum::enum_cast<network::streams>(child->data(slot).toInt());
     auto s = magic_enum::enum_name(stream.value());
-    conn_dbg<7>.debug(str<>("stream-load"), c, child, s);
+    conn_dbg<7>.debug(ffmt<s20>("stream-load"), c, child, s);
     if (child->data(slot) == cdata) { return child; }
   }
   return nullptr;
@@ -95,7 +95,7 @@ void connection_widget::setup_gui()
       stream_item->setCheckState(Qt::Unchecked);
       children.append(stream_item);
       auto name = magic_enum::enum_name(s);
-      conn_dbg<7>.debug(str<>("stream-create"), stream_item, name);
+      conn_dbg<7>.debug(ffmt<s20>("stream-create"), stream_item, name);
     }
     ticker_item->appendColumn(children);
   }
@@ -175,7 +175,7 @@ void connection_widget::setup_gui()
           else
           {
             conn_dbg<0>.error(
-                str<>("stream-load"), "Did not find a child tree item with the right data");
+                ffmt<s20>("stream-load"), "Did not find a child tree item with the right data");
           }
         }
       }

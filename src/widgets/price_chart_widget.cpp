@@ -100,7 +100,7 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
 // ----------------------------------------------------------------------------
 price_chart_widget::~price_chart_widget()
 {
-  pplot_dbg<0>.debug(str<>("~price_chart_widget"));
+  pplot_dbg<0>.debug(ffmt<s20>("~price_chart_widget"));
   delete ui;
   delete price_plot_;
   for (auto p : filter_plots_) { delete p; }
@@ -168,11 +168,11 @@ void price_chart_widget::connect_gui()
         if (reply == QMessageBox::Yes)
         {
           hdf5_ohlc_->truncate_from_time(msecs);
-          pplot_dbg<0>.error(str<>("emit update_candlestick_data"));
+          pplot_dbg<0>.error(ffmt<s20>("emit update_candlestick_data"));
           this->replot();
           // update_candlestick_data();
         }
-        else { pplot_dbg<0>.debug(str<>("Yes *not* clicked")); }
+        else { pplot_dbg<0>.debug(ffmt<s20>("Yes *not* clicked")); }
       },
       Qt::QueuedConnection);
 
@@ -238,7 +238,7 @@ void price_chart_widget::connect_gui()
   });
 
   connect(btn_indicator_, &QPushButton::clicked, this, [this](bool b) {
-    pplot_dbg<0>.debug(str<>("Indicators"), ticker_string_);
+    pplot_dbg<0>.debug(ffmt<s20>("Indicators"), ticker_string_);
 
     QDialog ind_dialog;
     indicator_widget* widget = new indicator_widget(
@@ -322,7 +322,7 @@ void price_chart_widget::resizeEvent(QResizeEvent* event)
 {
   QWidget::resizeEvent(event);
   bool changed = price_plot_->update_candle_size();
-  pplot_dbg<5>.debug(str<>("Resize"), "res changed", changed);
+  pplot_dbg<5>.debug(ffmt<s20>("Resize"), "res changed", changed);
 }
 
 // ----------------------------------------------------------------------------
@@ -330,7 +330,7 @@ void price_chart_widget::showEvent(QShowEvent* event)
 {
   QWidget::showEvent(event);
   bool changed = price_plot_->update_candle_size();
-  pplot_dbg<5>.debug(str<>("Show"), "res changed", changed);
+  pplot_dbg<5>.debug(ffmt<s20>("Show"), "res changed", changed);
 }
 
 // ----------------------------------------------------------------------------

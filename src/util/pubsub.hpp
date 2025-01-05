@@ -39,7 +39,7 @@ namespace grox {
         using namespace grox::debug;
         for (auto& subscriber : subscriptions)
         {
-          pubsub_dbg<6>.debug(str<>("publish"), subscriber.first, print_type<Signature>());
+          pubsub_dbg<6>.debug(ffmt<s20>("publish"), subscriber.first, print_type<Signature>());
           subscriber.second(message...);
         }
       }
@@ -52,7 +52,7 @@ namespace grox {
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
       if (subscriptions.contains(id))
       {
-        pubsub_dbg<0>.error(str<>("duplicate subscribe"), id, print_type<Signature>());
+        pubsub_dbg<0>.error(ffmt<s20>("duplicate subscribe"), id, print_type<Signature>());
       }
       subscriptions.insert(std::make_pair(id, callback));
     }
@@ -67,13 +67,14 @@ namespace grox {
       {
         if (subscriptions.empty())
         {
-          pubsub_dbg<0>.error(str<>("unsubscribe"), id, "empty/cleared", print_type<Signature>());
+          pubsub_dbg<0>.error(
+              ffmt<s20>("unsubscribe"), id, "empty/cleared", print_type<Signature>());
         }
         else
         {
           for (auto const& [k, v] : subscriptions)
           {
-            pubsub_dbg<0>.error(str<>("unsubscribe"), id, k, print_type<Signature>());
+            pubsub_dbg<0>.error(ffmt<s20>("unsubscribe"), id, k, print_type<Signature>());
           }
           throw std::runtime_error("Incorrect Id given to unsubscribe");
         }
@@ -86,7 +87,7 @@ namespace grox {
       using namespace grox::debug;
       for (auto const& [k, v] : subscriptions)
       {
-        pubsub_dbg<0>.debug(str<>("unsubscribe"), "clear", k, print_type<Signature>());
+        pubsub_dbg<0>.debug(ffmt<s20>("unsubscribe"), "clear", k, print_type<Signature>());
       }
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
       subscriptions.clear();

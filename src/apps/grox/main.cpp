@@ -48,7 +48,7 @@ void init_settings(app_settings* settings, QNetworkAccessManager* networkmanager
   settings->hdfFileName = "grox.hdf5";
   settings->logFileName = QLatin1String("grox.log").data();
   settings->iniFileName = (settings->configLocation + QLatin1String("/grox.ini")).toLatin1().data();
-  app_dbg<5>.debug(str<>("Ini"), settings->iniFileName.toLatin1().data());
+  app_dbg<5>.debug(ffmt<s20>("Ini"), settings->iniFileName.toLatin1().data());
 }
 
 QByteArray base64_encode(QByteArray const& ba) { return ba.toBase64(); }
@@ -164,9 +164,9 @@ int qt_main(pika::program_options::variables_map& vm)
     {
       global_settings.grox_password = result;
       authenticated = true;
-      app_dbg<5>.debug(str<>("authentication"), "pass", "ok");
+      app_dbg<5>.debug(ffmt<s20>("authentication"), "pass", "ok");
     }
-    else { app_dbg<5>.error(str<>("Authentication"), "pass", "fail"); }
+    else { app_dbg<5>.error(ffmt<s20>("Authentication"), "pass", "fail"); }
   }
   if (!authenticated)
   {
@@ -175,12 +175,12 @@ int qt_main(pika::program_options::variables_map& vm)
     {
       global_settings.grox_password = npw.getPassword().toStdString();
       authenticated = true;
-      app_dbg<5>.debug(str<>("authentication"), "password", "ok");
+      app_dbg<5>.debug(ffmt<s20>("authentication"), "password", "ok");
     }
   }
   if (!authenticated)
   {
-    app_dbg<5>.error(str<>("Authentication"), "fail");
+    app_dbg<5>.error(ffmt<s20>("Authentication"), "fail");
     // return EXIT_FAILURE;
   }
 
@@ -219,7 +219,7 @@ int qt_main(pika::program_options::variables_map& vm)
     if (std::getenv("Rand2"))
     {
       bitstamp.API_key = std::getenv("Rand2");
-      app_dbg<5>.debug(str<>("Using ENV key"));
+      app_dbg<5>.debug(ffmt<s20>("Using ENV key"));
     }
     //
     QByteArray API_secret =
@@ -228,7 +228,7 @@ int qt_main(pika::program_options::variables_map& vm)
     if (std::getenv("Rand3"))
     {
       bitstamp.API_secret = std::getenv("Rand3");
-      app_dbg<5>.debug(str<>("Using ENV sec"));
+      app_dbg<5>.debug(ffmt<s20>("Using ENV sec"));
     }
     //
     QByteArray API_tag_ =

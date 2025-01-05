@@ -139,7 +139,7 @@ TEST(debug_print, print_format)
   }
   {    // simple string, left padded
     std::stringstream tmp;
-    tmp << str<24>("a string of 20 chars");
+    tmp << ffmt<strl>("a string of 20 chars", 24);
     EXPECT_TRUE(compare("a string of 20 chars    ", tmp.str()));
   }
   {    // ip adddress format

@@ -34,7 +34,7 @@ void exchange::shut_down()
   // do not allow shutdown / async operations concurrently
   closing_down_ = true;
   std::lock_guard l(async_mutex_);
-  exchange_dbg<0>.debug(str<>(get_name().c_str()), "shutdown start");
+  exchange_dbg<0>.debug(ffmt<s20>(get_name().c_str()), "shutdown start");
   //
   for (auto& [ticker, tdata] : tickers_subscribed_)
   {
@@ -43,7 +43,7 @@ void exchange::shut_down()
       try
       {
         exchange_dbg<0>.debug(
-            str<>("websocket reset"), currency_pair_string(ticker), fmt::ptr(websocket.get()));
+            ffmt<s20>("websocket reset"), currency_pair_string(ticker), fmt::ptr(websocket.get()));
         websocket.reset();
       }
       catch (std::exception const& e)
@@ -56,7 +56,7 @@ void exchange::shut_down()
   }
   tickers_subscribed_.clear();
   //
-  exchange_dbg<0>.debug(str<>(get_name().c_str()), "shutdown complete");
+  exchange_dbg<0>.debug(ffmt<s20>(get_name().c_str()), "shutdown complete");
 }
 
 // ----------------------------------------------------------------------------
@@ -96,7 +96,7 @@ ticker_data exchange::get_subscribed_ticker_data(currency_pair cp) const
   {
     for (auto const& [key, value] : tickers_subscribed_)
     {
-      exchange_dbg<0>.error(str<>("tickers_subscribed"), "want", cp, "Found", key);
+      exchange_dbg<0>.error(ffmt<s20>("tickers_subscribed"), "want", cp, "Found", key);
     }
     throw std::runtime_error("Attempt to access unsubscribed ticker");
   }

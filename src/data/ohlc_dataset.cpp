@@ -49,23 +49,23 @@ std::uint64_t ohlc_dataset::merge_data(ohlctv_vector const& new_ohlc_samples_)
     auto first_new = new_ohlc_samples_.front().time;
     // new samples must start exactly one timestep after old
     int offset = (first_new - last_existing) / ohlc_data_resolutions::minute;
-    ohlc_dbg<5>.debug(str<>("merging"), ticker_str_, "new samples offset", ffmt<dec6>(offset));
+    ohlc_dbg<5>.debug(ffmt<s20>("merging"), ticker_str_, "new samples offset", ffmt<dec6>(offset));
     if (first_new - last_existing != ohlc_data_resolutions::minute)
     {
-      // ohlc_dbg<0>.error(str<>("merging"), ticker_str_, "last_existing", ffmt<dec12>(last_existing),
+      // ohlc_dbg<0>.error(ffmt<s20>("merging"), ticker_str_, "last_existing", ffmt<dec12>(last_existing),
       //   "first_new", ffmt<dec12>(first_new), "difference", ffmt<dec12>(first_new - last_existing));
       if (first_new - last_existing != ohlc_data_resolutions::minute)
         throw std::runtime_error("Data OHLC time mismatch in merge");
     }
     // add new samples
     ohlc_dbg<5>.debug(
-        str<>("merging"), ticker_str_, "new samples", ffmt<dec6>(new_ohlc_samples_.size()));
+        ffmt<s20>("merging"), ticker_str_, "new samples", ffmt<dec6>(new_ohlc_samples_.size()));
     data().append(new_ohlc_samples_);
     update += new_ohlc_samples_.size();
   }
   if (update > 0)
   {
-    ohlc_dbg<2>.debug(str<>("publish"), ticker_str_, "new samples", ffmt<dec4>(update));
+    ohlc_dbg<2>.debug(ffmt<s20>("publish"), ticker_str_, "new samples", ffmt<dec4>(update));
     new_data_subscribers_.publish(update);
   }
   return update;
@@ -93,7 +93,7 @@ int64_t ohlc_dataset::validate_ohlc(
     init_index = offset_index(origin_time, time, res);
     init_time = samples.at(init_index).time;
   }
-  ohlc_dbg<6>.debug(str<>("validating"), name, str<3>(res.name_), "from",
+  ohlc_dbg<6>.debug(ffmt<s20>("validating"), name, ffmt<s3>(res.name_), "from",
       msecs_unix_to_calendar_time(init_time), "index", ffmt<dec9>(init_index));
 
   for (int64_t index = init_index; index < samples.size(); ++index)
@@ -103,13 +103,13 @@ int64_t ohlc_dataset::validate_ohlc(
     double expected_time = origin_time + (res * index);
     if (expected_time != s1.time)
     {
-      ohlc_dbg<0>.error(str<>("validation"), name, str<3>(res.name_), "index", ffmt<dec9>(index),
-          "expected", msecs_unix_to_calendar_time(expected_time), "found",
+      ohlc_dbg<0>.error(ffmt<s20>("validation"), name, ffmt<s3>(res.name_), "index",
+          ffmt<dec9>(index), "expected", msecs_unix_to_calendar_time(expected_time), "found",
           msecs_unix_to_calendar_time(s1.time));
       throw ohlc_data_exception(index);
     }
   }
-  ohlc_dbg<1>.debug(str<>("validated"), name, str<3>(res.name_), "from",
+  ohlc_dbg<1>.debug(ffmt<s20>("validated"), name, ffmt<s3>(res.name_), "from",
       msecs_unix_to_calendar_time(init_time), "index", ffmt<dec9>(init_index));
   return samples.size();
 }
@@ -134,8 +134,8 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
 
   // how many of the hi-res candles in the new lower-res candle?
   int subsamples = static_cast<int>(res_lo / res_hi);
-  ohlc_dbg<6>.debug(str<>("resample"), ticker_str_, str<3>(res_hi.name_), "subsamples",
-      str<3>(res_lo.name_), ffmt<dec3>(subsamples));
+  ohlc_dbg<6>.debug(ffmt<s20>("resample"), ticker_str_, ffmt<s3>(res_hi.name_), "subsamples",
+      ffmt<s3>(res_lo.name_), ffmt<dec3>(subsamples));
 
   // Get the final time-point of this dataset if present -
   // and increment it by 1 hi-res sample to get next start time
@@ -152,7 +152,7 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
   // the start time must start an integral candle at the new resolution
   while (static_cast<int>(0.5 + start_T / res_hi) % subsamples != 0)
   {
-    ohlc_dbg<7>.debug(str<>("candle modulus"), ticker_str_,
+    ohlc_dbg<7>.debug(ffmt<s20>("candle modulus"), ticker_str_,
         ffmt<dec3>(static_cast<int>(0.5 + start_T / res_hi) % subsamples), "of",
         ffmt<dec3>(subsamples));
     start_T += res_hi;
@@ -190,13 +190,13 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
       modified = true;
     }
   }
-  ohlc_dbg<1>.debug(str<>("resampled"), ticker_str_, str<3>(res_lo.name_), "from",
+  ohlc_dbg<1>.debug(ffmt<s20>("resampled"), ticker_str_, ffmt<s3>(res_lo.name_), "from",
       msecs_unix_to_calendar_time(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of", size());
   validate_ohlc(data(), res_lo, orig_T, ticker_str_);
 
   if (modified)
   {
-    ohlc_dbg<1>.debug(str<>("publish"), ticker_str_, str<3>(res_lo.name_), "new samples",
+    ohlc_dbg<1>.debug(ffmt<s20>("publish"), ticker_str_, ffmt<s3>(res_lo.name_), "new samples",
         ffmt<dec4>(size() - orig_size));
     new_data_subscribers_.publish(size() - orig_size);
   }

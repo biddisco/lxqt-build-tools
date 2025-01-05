@@ -90,7 +90,7 @@ namespace net::http {
   {
     // just for debugging, to track use
     debug_count_--;
-    http_dbg<5>.debug(str<>("destructor"), this, debug_count_.load());
+    http_dbg<5>.debug(ffmt<s20>("destructor"), this, debug_count_.load());
   }
 
   // ----------------------------------------------------------------------------
@@ -99,7 +99,7 @@ namespace net::http {
     using namespace std::placeholders;
     if (nullptr == reply)
     {
-      http_dbg<0>.error(str<>("attach_handler"), this, "fail : nullptr");
+      http_dbg<0>.error(ffmt<s20>("attach_handler"), this, "fail : nullptr");
       return;
     }
     if (reply->isRunning())
@@ -117,7 +117,7 @@ namespace net::http {
     }
     else
     {    // if already finished
-      http_dbg<2>.debug(str<>("early completion"), this, "attach handler");
+      http_dbg<2>.debug(ffmt<s20>("early completion"), this, "attach handler");
       reply_finished(this, reply);
     }
   }
@@ -126,7 +126,7 @@ namespace net::http {
   void qhttp_request_client::get_request()
   {
     // issue get request
-    http_dbg<2>.debug(str<>("get_request"), this, url_);
+    http_dbg<2>.debug(ffmt<s20>("get_request"), this, url_);
     QNetworkReply* reply = networkmanager_.get(request_);
     attach_handler(reply);
   }
@@ -142,7 +142,7 @@ namespace net::http {
   void qhttp_request_client::post_request()
   {
     // issue post request
-    http_dbg<2>.debug(str<>("post_request"), this, url_, content_);
+    http_dbg<2>.debug(ffmt<s20>("post_request"), this, url_, content_);
     QNetworkReply* reply = networkmanager_.post(request_, QByteArray(content_.data()));
     attach_handler(reply);
   }
@@ -157,7 +157,7 @@ namespace net::http {
   // ----------------------------------------------------------------------------
   void qhttp_request_client::reply_finished(client_ptr self, QNetworkReply* reply)
   {
-    http_dbg<2>.debug(str<>("reply_finished"), self);
+    http_dbg<2>.debug(ffmt<s20>("reply_finished"), self);
     if (!reply) return;
     // convert raw data into std::string, this should be safe since our http traffic is utf8
     QByteArray byteArray = reply->readAll();
@@ -176,7 +176,7 @@ namespace net::http {
     reply->ignoreSslErrors();
     return;
 
-    // http_dbg<0>.debug(str<>("onSslErrors"), self);
+    // http_dbg<0>.debug(ffmt<s20>("onSslErrors"), self);
     // QString errorString;
     // foreach (QSslError const& error, errors)
     // {

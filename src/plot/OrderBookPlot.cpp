@@ -147,7 +147,7 @@ OrderBookPlot::OrderBookPlot(QWidget* parent, std::shared_ptr<order_book_base> o
 OrderBookPlot::~OrderBookPlot()
 {
   order_book_.reset();
-  book_dbg<2>.debug(str<>("Destroying"), "orderbook plot");
+  book_dbg<2>.debug(ffmt<s20>("Destroying"), "orderbook plot");
 }
 
 // ----------------------------------------------------------------------------

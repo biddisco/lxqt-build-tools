@@ -46,12 +46,14 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency_pair const& 
     if (new_data)
     {
       add_dataset(res, new_data);
-      man_dbg<5>.debug(str<>("subscribing"), new_data->ticker_str_, new_data->get_resolution(),
-          "to", origin_data->ticker_str_, origin_data->get_resolution());
+      std::cout << "subscribing" << new_data->ticker_str_ << new_data->get_resolution() << "to"
+                << origin_data->ticker_str_ << origin_data->get_resolution();
+      // man_dbg<5>.debug(ffmt<s20>("subscribing"), new_data->ticker_str_, new_data->get_resolution(),
+      //     "to", origin_data->ticker_str_, origin_data->get_resolution());
       origin_data->new_data_subscribers_.subscribe(
           "dataset_view" + new_data->ticker_str_ + new_data->get_resolution().name_,
           [origin_data, new_data](std::uint64_t N) {
-            man_dbg<5>.debug(str<>("dataset_view"), new_data->ticker_str_,
+            man_dbg<5>.debug(ffmt<s20>("dataset_view"), new_data->ticker_str_,
                 new_data->get_resolution(), "received new samples", ffmt<dec4>(N), "updating from",
                 origin_data->ticker_str_, origin_data->get_resolution());
             new_data->downsample_update(origin_data);
@@ -95,7 +97,8 @@ void ohlc_dataset_view::read_from_disk()
   {
     // QInputDialog requires int and not int64 unfortunately
     int64_t index = e.index();
-    man_dbg<0>.error(str<>("Data integrity error"), ticker_string_, "at index", ffmt<dec9>(index));
+    man_dbg<0>.error(
+        ffmt<s20>("Data integrity error"), ticker_string_, "at index", ffmt<dec9>(index));
     bool ok = false;
     QString label = "First bad index is :" + QString::number(index);
     index = QInputDialog::getInt(nullptr, "Truncate from", label, index, 0, 1 << 30, 1, &ok);
@@ -116,8 +119,8 @@ void ohlc_dataset_view::truncate_from_time(double t)
     auto samples = k.second;
     auto index = samples->sample_index(t);
     samples->data().resize(index);
-    man_dbg<0>.debug(str<>("Truncating"), ticker_string_,
-        str<3>(ohlc_data_resolutions::get_resolution(res).name_), "at index", ffmt<dec9>(index));
+    man_dbg<0>.debug(ffmt<s20>("Truncating"), ticker_string_,
+        ffmt<s3>(ohlc_data_resolutions::get_resolution(res).name_), "at index", ffmt<dec9>(index));
     if (res == ohlc_data_resolutions::minute)
     {
       global_settings.data_manager_->write_impl(
@@ -249,7 +252,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(
     result.min_volume_ = 0;
     result.max_volume_ = 1;
   }
-  man_dbg<8>.debug(str<>("min_max"), ohlc_data_resolutions::get_resolution(res).name_,
+  man_dbg<8>.debug(ffmt<s20>("min_max"), ohlc_data_resolutions::get_resolution(res).name_,
       msecs_unix_to_calendar_time(start_time), "->", msecs_unix_to_calendar_time(end_time), "(",
       result.min_price_, ",", result.max_price_, ")");
   return result;

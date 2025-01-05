@@ -50,7 +50,7 @@ private:
   {
     indicator_type_inserter()
     {
-      indicator_dbg<0>.debug(str<>("indicator inserter"), print_type<type>());
+      indicator_dbg<0>.debug(ffmt<s20>("indicator inserter"), print_type<type>());
       auto p = std::make_shared<type>();
       p->init_params();
       indicator_registry::getInstance().register_indicator(p);
@@ -62,7 +62,7 @@ private:
   {
     arbitrage_type_inserter()
     {
-      indicator_dbg<0>.debug(str<>("arbitrage inserter"), print_type<type>());
+      indicator_dbg<0>.debug(ffmt<s20>("arbitrage inserter"), print_type<type>());
       auto p = std::make_shared<type>();
       p->init_params();
       indicator_registry::getInstance().register_arbitrage(p);

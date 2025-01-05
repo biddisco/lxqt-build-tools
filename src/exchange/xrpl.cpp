@@ -151,7 +151,7 @@ std::string make_xrp_payment(ripple::KeyType keyType, std::string const& from_se
     }
   });
 
-  xrpl_dbg<0>.debug(str<>("payment"), "Before signing: \n",
+  xrpl_dbg<0>.debug(ffmt<s20>("payment"), "Before signing: \n",
       payTx.getJson(JsonOptions::none).toStyledString(), "\n",
       "Serialized:", payTx.getJson(JsonOptions::none, true)[jss::tx].asString());
 
@@ -193,7 +193,7 @@ std::string make_xrp_offer(ripple::KeyType keyType, std::string const& from_seed
     obj[sfTakerGets] = gets;
   });
 
-  xrpl_dbg<0>.debug(str<>("offer"), "Before signing: \n",
+  xrpl_dbg<0>.debug(ffmt<s20>("offer"), "Before signing: \n",
       offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
       "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
 
@@ -232,7 +232,7 @@ std::string cancel_xrp_offer(ripple::KeyType keyType, std::string const& from_se
     obj[sfOfferSequence] = offerSeq;
   });
 
-  xrpl_dbg<0>.debug(str<>("offer cancel"), "Before signing: \n",
+  xrpl_dbg<0>.debug(ffmt<s20>("offer cancel"), "Before signing: \n",
       offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
       "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
 
@@ -282,7 +282,7 @@ std::string set_trustline(ripple::KeyType keyType, std::string const& from_seed,
     }
   });
 
-  xrpl_dbg<0>.debug(str<>("trustline"), "Before signing: \n",
+  xrpl_dbg<0>.debug(ffmt<s20>("trustline"), "Before signing: \n",
       offerTx.getJson(JsonOptions::none).toStyledString(), "\n",
       "Serialized:", offerTx.getJson(JsonOptions::none, true)[jss::tx]);
 

@@ -51,7 +51,7 @@ void hdf5_ohlc_manager::read_impl(
   std::string path = group + "/" + dataname;
   if (std::filesystem::exists(file_name_))
   {
-    man_dbg<3>.debug(str<>("file open"), path, "read_hdf5", file_name_);
+    man_dbg<3>.debug(ffmt<s20>("file open"), path, "read_hdf5", file_name_);
     File file(file_name_, File::ReadWrite | File::OpenOrCreate);
     if (file.exist(path))
     {
@@ -61,7 +61,8 @@ void hdf5_ohlc_manager::read_impl(
       std::uint64_t Nread =
           std::min(Nelem, N >= 0 ? N : std::numeric_limits<std::uint64_t>().max());
       data.resize(Nread);
-      man_dbg<3>.debug(str<>("dataset read"), path, "size", ffmt<dec9>(Nread), ffmt<dec9>(Nelem));
+      man_dbg<3>.debug(
+          ffmt<s20>("dataset read"), path, "size", ffmt<dec9>(Nread), ffmt<dec9>(Nelem));
       std::vector<size_t> offset{0};
       std::vector<size_t> size{Nread * ohlc_size};
       Selection slice = dataset.select(offset, size);
@@ -70,13 +71,13 @@ void hdf5_ohlc_manager::read_impl(
     else
     {
       data.clear();
-      man_dbg<3>.debug(str<>("dataset missing"), path);
+      man_dbg<3>.debug(ffmt<s20>("dataset missing"), path);
     }
   }
   else { data.clear(); }
   //
   ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
-  man_dbg<3>.debug(str<>("file close"), path, "read_hdf5", ffmt<dec9>(data.size()));
+  man_dbg<3>.debug(ffmt<s20>("file close"), path, "read_hdf5", ffmt<dec9>(data.size()));
 }
 
 // ----------------------------------------------------------------------------
@@ -94,7 +95,7 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
   int valid = ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
   if (valid != data.size())
   {
-    man_dbg<0>.error(str<>("Error"), path, "Aborting write");
+    man_dbg<0>.error(ffmt<s20>("Error"), path, "Aborting write");
     throw ohlc_data_exception(valid);
     return;
   }
@@ -109,12 +110,12 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
 
   if (!std::filesystem::exists(file_name_))
   {
-    man_dbg<3>.debug(str<>("create"), path, "write_hdf5", file_name_);
+    man_dbg<3>.debug(ffmt<s20>("create"), path, "write_hdf5", file_name_);
     File file(file_name_, File::ReadWrite | File::OpenOrCreate);
   }
 
   // open for read/write
-  man_dbg<3>.debug(str<>("open"), path, "write_hdf5", file_name_);
+  man_dbg<3>.debug(ffmt<s20>("open"), path, "write_hdf5", file_name_);
   File file(file_name_, File::ReadWrite);
 
   // Create dataset if it does not already exist
@@ -130,13 +131,13 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
     DataSetCreateProps props;
     props.add(Chunking(std::vector<hsize_t>{65536}));
     // Create the dataset and write data
-    man_dbg<0>.debug(str<>("create"), path, "size", ffmt<dec9>(data.size()));
+    man_dbg<0>.debug(ffmt<s20>("create"), path, "size", ffmt<dec9>(data.size()));
     DataSet dataset = file.createDataSet(path, dataspace, create_datatype<double>(), props);
   }
   // if we are extending an existing dataset
   if (update > 0)
   {
-    man_dbg<5>.debug(str<>("extend"), path, ffmt<dec9>(update));
+    man_dbg<5>.debug(ffmt<s20>("extend"), path, ffmt<dec9>(update));
     DataSet dataset = file.getDataSet(path);
     // resize along 1 dimmension
     dataset.resize({N});
@@ -150,10 +151,10 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
   // truncating a dataset
   else if (truncate)
   {
-    man_dbg<0>.debug(str<>("truncate"), path, ffmt<dec9>(data.size()));
+    man_dbg<0>.debug(ffmt<s20>("truncate"), path, ffmt<dec9>(data.size()));
     DataSet dataset = file.getDataSet(path);
     // resize along 1 dimension
     dataset.resize({N});
   }
-  man_dbg<3>.debug(str<>("file close"), path, "write_hdf5", ffmt<dec9>(data.size()));
+  man_dbg<3>.debug(ffmt<s20>("file close"), path, "write_hdf5", ffmt<dec9>(data.size()));
 }

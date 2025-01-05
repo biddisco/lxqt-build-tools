@@ -50,7 +50,10 @@ xrpl_network::xrpl_network(bool testnet)
 }
 
 // ----------------------------------------------------------------------------
-xrpl_network::~xrpl_network() { xrpnet_dbg<0>.debug(str<>("destructor"), "testnet ", testnet()); }
+xrpl_network::~xrpl_network()
+{
+  xrpnet_dbg<0>.debug(ffmt<s20>("destructor"), "testnet ", testnet());
+}
 
 // ----------------------------------------------------------------------------
 void xrpl_network::initialize()
@@ -73,7 +76,7 @@ void xrpl_network::initialize()
     get_all_account_offers(scope);
     //
     stdexec::sync_wait(scope.on_empty());
-    xrpnet_dbg<5>.debug(str<>("initialize scope"), "complete");
+    xrpnet_dbg<5>.debug(ffmt<s20>("initialize scope"), "complete");
     emit network_initialized(this);
   };
 
@@ -168,10 +171,10 @@ stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
   std::string cps = currency_pair_string(cp);
   if (ticker_subscribed(cp))
   {
-    xrpnet_dbg<0>.debug(str<>("subscription"), cps, "subscribed");
+    xrpnet_dbg<0>.debug(ffmt<s20>("subscription"), cps, "subscribed");
     return stream_set{};
   }
-  xrpnet_dbg<0>.debug(str<>("subscribing"), cps);
+  xrpnet_dbg<0>.debug(ffmt<s20>("subscribing"), cps);
 
   // create a new data view from hdf5
   // std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("xrpl", c1, c2);
@@ -212,7 +215,7 @@ stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
 // ----------------------------------------------------------------------------
 void xrpl_network::shut_down()
 {
-  xrpnet_dbg<0>.debug(str<>("shutdown start"));
+  xrpnet_dbg<0>.debug(ffmt<s20>("shutdown start"));
   exchange::shut_down();
   //
   if (ws_orderbook) { ws_orderbook.reset(); }
@@ -247,8 +250,8 @@ bool xrpl_network::subscribe_order_book(currency_pair const& cp, bool enable)
   // subscribe to 2 books
   command["books"] = json::array({buy_xrp, sell_xrp});
   std::string subscription = command.dump();
-  xrpnet_dbg<0>.debug(str<>("Subscribing"), "orderbook xrpl:", currency_pair_string(cp));
-  xrpnet_dbg<5>.debug(str<>("subscribe orderbook"), subscription);
+  xrpnet_dbg<0>.debug(ffmt<s20>("Subscribing"), "orderbook xrpl:", currency_pair_string(cp));
+  xrpnet_dbg<5>.debug(ffmt<s20>("subscribe orderbook"), subscription);
 
   ws_orderbook = net::ws::qwebsocket_session::create("xrpl::orderbook" + currency_pair_string(cp),
       websocket_address(), websocket_port(), subscription,
@@ -268,7 +271,7 @@ bool xrpl_network::subscribe_accounts()
     addresses += "\"" + w.public_ + "\"";
   }
   std::string subscription = "{ \"command\": \"subscribe\", \"accounts\": [ " + addresses + " ] }";
-  xrpnet_dbg<0>.debug(str<>("Subscribing"), "account changes for", addresses);
+  xrpnet_dbg<0>.debug(ffmt<s20>("Subscribing"), "account changes for", addresses);
 
   ws_accounts =
       net::ws::qwebsocket_session::create("xrpl::accounts" + addresses, websocket_address(),
@@ -281,15 +284,15 @@ bool xrpl_network::subscribe_accounts()
 void xrpl_network::new_orderbook_data_q(
     xrpl_network* exchange, currency_pair const cp, QString data)
 {
-  xrpnet_dbg<5>.debug(str<>("Orderbook"), "Ticker", currency_pair_string(cp));
-  xrpnet_dbg<9>.debug(str<>("Orderbook data"), data.toStdString());
+  xrpnet_dbg<5>.debug(ffmt<s20>("Orderbook"), "Ticker", currency_pair_string(cp));
+  xrpnet_dbg<9>.debug(ffmt<s20>("Orderbook data"), data.toStdString());
 
   // if shutdown was started after this data was sent by the remote source
   // then it can be ignored/dropped as we will not handle it anyway
   std::lock_guard l(exchange->async_mutex_);
   if (exchange->closing_down_)
   {
-    xrpnet_dbg<0>.error(str<>("Orderbook data"), "Shutdown in progress: ignoring data");
+    xrpnet_dbg<0>.error(ffmt<s20>("Orderbook data"), "Shutdown in progress: ignoring data");
     return;
   }
 
@@ -301,28 +304,28 @@ void xrpl_network::new_orderbook_data_q(
       json jdata = json::parse(sdata);
       if (jdata.contains("result") && jdata["result"].contains("offers"))
       {
-        xrpnet_dbg<5>.debug(str<>("ledger_snapshot"));
+        xrpnet_dbg<5>.debug(ffmt<s20>("ledger_snapshot"));
         dynamic_pointer_cast<xrpl_order_book>(tdata->orderbook_)
             ->accept_json_ledger_snapshot(jdata["result"]["offers"]);
       }
       else if (jdata.contains("transaction") && jdata.contains("meta"))
       {
-        xrpnet_dbg<5>.debug(str<>("ledger_transaction"));
+        xrpnet_dbg<5>.debug(ffmt<s20>("ledger_transaction"));
         dynamic_pointer_cast<xrpl_order_book>(tdata->orderbook_)
             ->accept_json_ledger_transaction(jdata);
       }
       else
       {
         for (auto it = jdata.begin(); it != jdata.end(); it++)
-          xrpnet_dbg<0>.error(str<>("Unrecognized"), "key: ", it.key(), it.value().dump(4));
+          xrpnet_dbg<0>.error(ffmt<s20>("Unrecognized"), "key: ", it.key(), it.value().dump(4));
       }
       //
-      xrpnet_dbg<4>.debug(str<>("orderbook callback"), currency_pair_string(cp));
+      xrpnet_dbg<4>.debug(ffmt<s20>("orderbook callback"), currency_pair_string(cp));
       tdata->orderbook_subscribers_.publish(cp);
     }
     catch (...)
     {
-      xrpnet_dbg<0>.error(str<>("Orderbook error"), currency_pair_string(cp), tdata->orderbook_,
+      xrpnet_dbg<0>.error(ffmt<s20>("Orderbook error"), currency_pair_string(cp), tdata->orderbook_,
           data.toStdString());
     }
   };
@@ -336,21 +339,21 @@ void xrpl_network::new_orderbook_data_q(
 void xrpl_network::new_account_data_q(xrpl_network* nw, QString qdata)
 {
   std::string data = qdata.toStdString();
-  xrpnet_dbg<0>.debug(str<>("Account changes"), data);
+  xrpnet_dbg<0>.debug(ffmt<s20>("Account changes"), data);
   if (startswith(data, "{\"result\":"))
   {
     // ignore this, just a subscription ok
-    xrpnet_dbg<5>.debug(str<>("Account subscription"), data);
+    xrpnet_dbg<5>.debug(ffmt<s20>("Account subscription"), data);
   }
   else if (startswith(data, "{\"engine_result\":\"tesSUCCESS\""))
   {
     json jdata = json::parse(data);
-    xrpnet_dbg<5>.debug(str<>("Account changes"), jdata.dump(4));
+    xrpnet_dbg<5>.debug(ffmt<s20>("Account changes"), jdata.dump(4));
     json adata = jdata["meta"]["AffectedNodes"];
     for (auto const& a : adata)
     {
       //            try {
-      xrpnet_dbg<0>.debug(str<>("AffectedNode"), jdata.dump(4));
+      xrpnet_dbg<0>.debug(ffmt<s20>("AffectedNode"), jdata.dump(4));
       if (a.contains("ModifiedNode"))
       {
         auto m = a["ModifiedNode"];
@@ -411,7 +414,7 @@ void xrpl_network::new_account_data_q(xrpl_network* nw, QString qdata)
       }
       //            }
       //            catch (...) {
-      //                xrpnet_dbg<0>.debug(str<>("Exception Account changes : " << data);
+      //                xrpnet_dbg<0>.debug(ffmt<s20>("Exception Account changes : " << data);
       //            }
     }
   }
@@ -502,7 +505,7 @@ any_bytearray_sender xrpl_network::submit_signed_transaction(std::string&& signe
 
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
-  xrpnet_dbg<5>.debug(str<>("signed_transaction"), url);
+  xrpnet_dbg<5>.debug(ffmt<s20>("signed_transaction"), url);
   auto* client = net::http::qhttp_request_client::create(
       *global_settings.networkmanager_, url, content.dump());
   return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
@@ -521,7 +524,7 @@ any_bytearray_sender xrpl_network::get_account_lines(std::string addr)
 
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
-  xrpnet_dbg<5>.debug(str<>("account_lines"), url);
+  xrpnet_dbg<5>.debug(ffmt<s20>("account_lines"), url);
   auto* client = net::http::qhttp_request_client::create(
       *global_settings.networkmanager_, url, content.dump());
   return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
@@ -537,7 +540,7 @@ void xrpl_network::get_all_account_lines(exec::async_scope& scope)
         | stdexec::then([this, &w](QByteArray byteArray) {                                 // pika
             std::string_view data(byteArray.constData(), byteArray.length());
             // debug : print the response headers and body
-            xrpnet_dbg<8>.debug(str<>("Ledger response"), data);
+            xrpnet_dbg<8>.debug(ffmt<s20>("Ledger response"), data);
             this->handle_account_lines(w, data);
           });
     scope.spawn(std::move(snd));
@@ -559,11 +562,11 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
   }
   catch (...)
   {
-    xrpnet_dbg<0>.error(str<>("account trustline data error"));
+    xrpnet_dbg<0>.error(ffmt<s20>("account trustline data error"));
     return;
   }
 
-  xrpnet_dbg<8>.debug(str<>("account lines"), jdata.dump(4));
+  xrpnet_dbg<8>.debug(ffmt<s20>("account lines"), jdata.dump(4));
   std::vector<xrp_amount> balances = jdata.get<std::vector<xrp_amount>>();
   //
   for (auto const& b : balances)
@@ -616,7 +619,7 @@ any_bytearray_sender xrpl_network::get_account_info(std::string addr)
 
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
-  xrpnet_dbg<5>.debug(str<>("account_info"), url);
+  xrpnet_dbg<5>.debug(ffmt<s20>("account_info"), url);
   auto* client = net::http::qhttp_request_client::create(
       *global_settings.networkmanager_, url, content.dump());
   return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
@@ -631,7 +634,7 @@ void xrpl_network::get_all_account_infos(exec::async_scope& scope)
         | stdexec::then([this, &w](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
             // debug : print the response headers and body
-            xrpnet_dbg<8>.debug(str<>("account_info"), w.public_, data);
+            xrpnet_dbg<8>.debug(ffmt<s20>("account_info"), w.public_, data);
             this->handle_account_info(w, data);
           });
     scope.spawn(std::move(snd));
@@ -648,11 +651,11 @@ void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
   }
   catch (...)
   {
-    xrpnet_dbg<0>.error(str<>("account info data error"));
+    xrpnet_dbg<0>.error(ffmt<s20>("account info data error"));
     return;
   }
 
-  xrpnet_dbg<8>.debug(str<>("account info"), jdata.dump(4));
+  xrpnet_dbg<8>.debug(ffmt<s20>("account info"), jdata.dump(4));
   //
   if (jdata.is_null()) return;
   //
@@ -668,7 +671,7 @@ void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
   w.add_currency(c);
   w.compute_ledger_reserve();
   //
-  xrpnet_dbg<5>.debug(str<>("sequence"), w.public_, w.sequence_);
+  xrpnet_dbg<5>.debug(ffmt<s20>("sequence"), w.public_, w.sequence_);
   // signal GUI to update
   emit update_wallet_widget(&w);
 }
@@ -685,7 +688,7 @@ any_bytearray_sender xrpl_network::get_account_offers(std::string addr)
 
   // init an http request object
   std::string url = fmt::format("https://{}:{}", jsonrpc_address(), jsonrpc_port());
-  xrpnet_dbg<5>.debug(str<>("account_offers"), url);
+  xrpnet_dbg<5>.debug(ffmt<s20>("account_offers"), url);
   auto* client = net::http::qhttp_request_client::create(
       *global_settings.networkmanager_, url, content.dump());
   return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
@@ -701,7 +704,7 @@ void xrpl_network::get_all_account_offers(exec::async_scope& scope)
         | stdexec::then([this, &w](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
             // debug : print the response headers and body
-            xrpnet_dbg<8>.debug(str<>("account_offers"), w.public_, data);
+            xrpnet_dbg<8>.debug(ffmt<s20>("account_offers"), w.public_, data);
             this->handle_account_offers(w, data);
           });
     scope.spawn(std::move(snd));
@@ -717,17 +720,17 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
     jdata = json::parse(data)["result"];
     if (jdata.contains("error") && jdata.at("error") == "actNotFound")
     {
-      xrpnet_dbg<0>.error(str<>("actNotFound"));
+      xrpnet_dbg<0>.error(ffmt<s20>("actNotFound"));
       return;
     }
   }
   catch (...)
   {
-    xrpnet_dbg<0>.error(str<>("account offers data error"));
+    xrpnet_dbg<0>.error(ffmt<s20>("account offers data error"));
     return;
   }
 
-  xrpnet_dbg<8>.debug(str<>("account offers"), jdata.dump(4));
+  xrpnet_dbg<8>.debug(ffmt<s20>("account offers"), jdata.dump(4));
   //
   if (jdata.is_null()) return;
   assert(w.public_ == jdata.at("account").get<std::string>());
@@ -803,7 +806,7 @@ bool xrpl_network::make_payment(currency_amount const& c, basic_account* src, ba
                  submit_signed_transaction(std::move(signed_tx)))    //
       | stdexec::then([this](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
-          xrpnet_dbg<8>.debug(str<>("make_payment"), data);
+          xrpnet_dbg<8>.debug(ffmt<s20>("make_payment"), data);
           emit transaction_event();
         });
   stdexec::start_detached(std::move(snd));
@@ -870,7 +873,7 @@ any_bytearray_sender xrpl_network::request_limit_order(
   // |
   //     stdexec::then([this](QByteArray byteArray) {
   //       std::string_view data(byteArray.constData(), byteArray.length());
-  //       xrpnet_dbg<8>.debug(str<>("request_limit_order"), data);
+  //       xrpnet_dbg<8>.debug(ffmt<s20>("request_limit_order"), data);
   //       emit transaction_event();
   //     });
   // stdexec::start_detached(std::move(snd));
@@ -905,7 +908,7 @@ any_bytearray_sender xrpl_network::request_cancel_order(trade_data const& t)
   // '
   //       stdexec::then([this](QByteArray byteArray) {
   //         std::string_view data(byteArray.constData(), byteArray.length());
-  //         xrpnet_dbg<8>.debug(str<>("cancel_order"), data);
+  //         xrpnet_dbg<8>.debug(ffmt<s20>("cancel_order"), data);
   //         emit transaction_event();
   //       });
   //   stdexec::start_detached(std::move(snd));
@@ -925,7 +928,7 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
       | stdexec::then([this, c1](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           // debug : print the response headers and body
-          xrpnet_dbg<8>.debug(str<>("query_iou_fee"), c1.issuer_, data);
+          xrpnet_dbg<8>.debug(ffmt<s20>("query_iou_fee"), c1.issuer_, data);
           json jdata = json::parse(data)["result"]["account_data"];
           if (jdata.contains("TransferRate"))
           {
@@ -935,7 +938,7 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
             // recipient to get 1 billion units of the same currency.
             // A TransferRate of 1005000000 is equivalent to a transfer fee of 0.5%
             double feepercent = 100.0 * (1E-9 * sfee - 1.0);
-            xrpnet_dbg<0>.debug(str<>("fee %"), c1.issuer_, feepercent);
+            xrpnet_dbg<0>.debug(ffmt<s20>("fee %"), c1.issuer_, feepercent);
             currency_fees_[c1.issuer_] = feepercent;
           }
         });
@@ -967,7 +970,7 @@ void xrpl_network::trustline(
                  submit_signed_transaction(std::move(signed_tx)))    //
       | stdexec::then([this](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
-          xrpnet_dbg<8>.debug(str<>("trustline"), data);
+          xrpnet_dbg<8>.debug(ffmt<s20>("trustline"), data);
           emit transaction_event();
         });
   stdexec::start_detached(std::move(snd));

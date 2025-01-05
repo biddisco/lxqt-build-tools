@@ -49,14 +49,14 @@ namespace {
 int request_account_info()
 {
   using namespace grox::debug;
-  test1_dbg<2>.debug(str<>("TEST(exchange, request_account_info)"));
+  test1_dbg<2>.debug(ffmt<s20>("TEST(exchange, request_account_info)"));
   std::atomic<bool> finished{false};
   auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                //
       | ex::let_value([]() { return bitstamp_exchange->request_account_info(); })    // Qt -> pika
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
-          test1_dbg<0>.debug(str<>("request_account_info"), jdata.dump(4));
+          test1_dbg<0>.debug(ffmt<s20>("request_account_info"), jdata.dump(4));
           assert(jdata.size() > 0);
           assert(jdata["eur_available"] != "");
           finished = true;
@@ -73,7 +73,7 @@ int request_account_info()
 int qt_main(int argc, char* argv[])
 {
   using namespace grox::debug;
-  test1_dbg<2>.debug(str<>("enter qt_main"));
+  test1_dbg<2>.debug(ffmt<s20>("enter qt_main"));
   QCoreApplication a(argc, argv);
   // the lifetime of the network manager must be as long as the qt application
   QNetworkAccessManager networkmanager;
@@ -107,7 +107,7 @@ int qt_main(int argc, char* argv[])
 int pika_main(int argc, char** argv, pika::program_options::variables_map& vm)
 {
   using namespace grox::debug;
-  test1_dbg<2>.debug(str<>("enter pika_main"));
+  test1_dbg<2>.debug(ffmt<s20>("enter pika_main"));
   // Get a scheduler on the thread pool we have reserved for Qt
   auto qt_sch = pika::execution::experimental::thread_pool_scheduler{
       &pika::resource::get_thread_pool(qt_pool_name)};
@@ -122,7 +122,7 @@ int pika_main(int argc, char** argv, pika::program_options::variables_map& vm)
   auto ret = [&] {
     // launch and block on completion of the Qt application thread
     int test_results = tt::sync_wait(std::move(snd));
-    test1_dbg<2>.debug(str<>("qt_main complete"));
+    test1_dbg<2>.debug(ffmt<s20>("qt_main complete"));
     return test_results;
   }();
   pika::finalize();

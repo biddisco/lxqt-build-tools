@@ -231,11 +231,11 @@ bool ohlc_interactor::eventFilter(QObject* object, QEvent* event)
 
     if (value > 0)
     {
-      inter_dbg<5>.debug(str<>("gesture"), static_cast<QNativeGestureEvent*>(event)->value());
+      inter_dbg<5>.debug(ffmt<s20>("gesture"), static_cast<QNativeGestureEvent*>(event)->value());
     }
     else if (value < 0)
     {
-      inter_dbg<5>.debug(str<>("gesture"), static_cast<QNativeGestureEvent*>(event)->value());
+      inter_dbg<5>.debug(ffmt<s20>("gesture"), static_cast<QNativeGestureEvent*>(event)->value());
     }
     break;
   }

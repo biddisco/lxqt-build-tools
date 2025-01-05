@@ -86,7 +86,7 @@ public:
       for (auto d : get_inputs())
       {
         std::string id = subscription_name();
-        indicator_dbg<0>.debug(str<>("UnSubscribing"), id, d.dataset_->get_resolution());
+        indicator_dbg<0>.debug(ffmt<s20>("UnSubscribing"), id, d.dataset_->get_resolution());
         d.dataset_->new_data_subscribers_.unsubscribe(id);
       }
     }
@@ -149,9 +149,9 @@ public:
       for (auto d : get_inputs())
       {
         std::string id = subscription_name();
-        indicator_dbg<0>.debug(str<>("Subscribing"), id, d.dataset_->get_resolution());
+        indicator_dbg<0>.debug(ffmt<s20>("Subscribing"), id, d.dataset_->get_resolution());
         d.dataset_->new_data_subscribers_.subscribe(id, [this](std::uint64_t N) {
-          indicator_dbg<0>.debug(str<>(get_name().c_str()), "new samples", ffmt<dec4>(N));
+          indicator_dbg<0>.debug(ffmt<s20>(get_name().c_str()), "new samples", ffmt<dec4>(N));
           // todo - only call if all inputs are updated
           execute(N);
         });

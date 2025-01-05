@@ -162,7 +162,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
 
   auto orderbook_text_sub = [tdata, orderbook_text](currency_pair cp) {
     QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
-      main_dbg<4>.debug(str<>("Orderbook-Text"), "orderbook_plot_sub");
+      main_dbg<4>.debug(ffmt<s20>("Orderbook-Text"), "orderbook_plot_sub");
       // check pointers in case messages arrive after cleanup has started
       if (tdata && tdata->orderbook_)
       {
@@ -175,7 +175,7 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
 
   auto orderbook_plot_sub = [tdata, orderbook_plot](currency_pair cp) {
     QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
-      main_dbg<4>.debug(str<>("Orderbook-Plot"), "orderbook_plot_sub");
+      main_dbg<4>.debug(ffmt<s20>("Orderbook-Plot"), "orderbook_plot_sub");
       // check pointers in case messages arrive after cleanup has started
       if (tdata && tdata->orderbook_)
       {
@@ -191,28 +191,28 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
 // ----------------------------------------------------------------------------
 void ticker_stream_gui_constructor(currency_pair cp, ticker_data tdata, network::streams stream)
 {
-  main_dbg<0>.debug(str<>("Stream"), "factory_create");
+  main_dbg<0>.debug(ffmt<s20>("Stream"), "factory_create");
   if (stream == network::streams::price_data)
     create_ticker_price_plot(tdata, cp);
   else if (stream == network::streams::order_book)
     create_ticker_orderbook_widgets(tdata, cp);
   else
     main_dbg<0>.error(
-        str<>("Stream"), "factory_create no GUI for stream", network::stream_names[stream]);
+        ffmt<s20>("Stream"), "factory_create no GUI for stream", network::stream_names[stream]);
 }
 
 // ----------------------------------------------------------------------------
 void ticker_stream_gui_destructor(currency_pair cp, ticker_data tdata, network::streams stream)
 {
-  main_dbg<0>.debug(str<>("Stream"), "factory_destroy");
+  main_dbg<0>.debug(ffmt<s20>("Stream"), "factory_destroy");
   if (stream == network::streams::price_data)
   {
     tdata->chart_widget_->parentWidget()->deleteLater();
     tdata->chart_widget_.reset();
     tdata->live_trade_subscribers_.clear();
     tdata->view_.reset();
-    main_dbg<0>.error(str<>("Stream"), tdata->chart_widget_.use_count());
-    main_dbg<0>.error(str<>("Stream"), tdata->view_.use_count());
+    main_dbg<0>.error(ffmt<s20>("Stream"), tdata->chart_widget_.use_count());
+    main_dbg<0>.error(ffmt<s20>("Stream"), tdata->view_.use_count());
   }
   else if (stream == network::streams::order_book)
   {
@@ -220,7 +220,7 @@ void ticker_stream_gui_destructor(currency_pair cp, ticker_data tdata, network::
     tdata->orderbook_.reset();
   }
   else
-    main_dbg<0>.error(str<>("Stream"), "factory_destroy unknown stream");
+    main_dbg<0>.error(ffmt<s20>("Stream"), "factory_destroy unknown stream");
 }
 
 // ----------------------------------------------------------------------------
@@ -424,7 +424,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   // initialize networks / start websocket connections etc
   for (auto const& e : exchange_list_)
   {
-    main_dbg<0>.debug(str<>("Init exchange"), e->get_name());
+    main_dbg<0>.debug(ffmt<s20>("Init exchange"), e->get_name());
     e->initialize();
   }
 
@@ -480,7 +480,10 @@ void GroxMainWindow::progress_events(int ms)
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::appExitCleanupHandler() { main_dbg<0>.debug(str<>("appExitCleanupHandler")); }
+void GroxMainWindow::appExitCleanupHandler()
+{
+  main_dbg<0>.debug(ffmt<s20>("appExitCleanupHandler"));
+}
 
 // ----------------------------------------------------------------------------
 bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
@@ -565,7 +568,7 @@ void GroxMainWindow::execute_xrp()
       this, "Confirm", "Execute transaction?", QMessageBox::Yes | QMessageBox::No);
   if (reply == QMessageBox::Yes)
   {
-    main_dbg<0>.debug(str<>("Yes clicked"));
+    main_dbg<0>.debug(ffmt<s20>("Yes clicked"));
     //        std::uint32_t tag = bitstamp_network_->account().tag_;
     //        bool test = make_xrp_payment(ripple::KeyType::secp256k1,
     //                global_settings.xrpl_wallets[    global_settings.active_wallet].private_,
@@ -574,7 +577,7 @@ void GroxMainWindow::execute_xrp()
 
     QApplication::quit();
   }
-  else { main_dbg<0>.debug(str<>("Yes *not* clicked")); }
+  else { main_dbg<0>.debug(ffmt<s20>("Yes *not* clicked")); }
 }
 
 // ----------------------------------------------------------------------------
@@ -585,10 +588,10 @@ void GroxMainWindow::execute_usd()
       this, "Confirm", "Execute transaction?", QMessageBox::Yes | QMessageBox::No);
   if (reply == QMessageBox::Yes)
   {
-    main_dbg<0>.debug(str<>("Yes clicked"));
+    main_dbg<0>.debug(ffmt<s20>("Yes clicked"));
     QApplication::quit();
   }
-  else { main_dbg<0>.debug(str<>("Yes *not* clicked")); }
+  else { main_dbg<0>.debug(ffmt<s20>("Yes *not* clicked")); }
 }
 
 // ----------------------------------------------------------------------------
@@ -639,7 +642,7 @@ void GroxMainWindow::display_offers()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::closeEvent(QCloseEvent* event)
 {
-  main_dbg<0>.debug(str<>("closeEvent"));
+  main_dbg<0>.debug(ffmt<s20>("closeEvent"));
   saveWindowSettings();
   saveTrustlines();
   saveConnectionSetups();
@@ -647,12 +650,12 @@ void GroxMainWindow::closeEvent(QCloseEvent* event)
   for (auto& e : exchange_list_)
   {
     auto name = e->get_name();
-    main_dbg<0>.debug(str<>("shut down"), name, "start");
+    main_dbg<0>.debug(ffmt<s20>("shut down"), name, "start");
     e->shut_down();
     e.reset();
-    main_dbg<0>.debug(str<>("shut down"), name, "complete");
+    main_dbg<0>.debug(ffmt<s20>("shut down"), name, "complete");
   }
-  main_dbg<0>.debug(str<>("exchanges"), "shutdown complete");
+  main_dbg<0>.debug(ffmt<s20>("exchanges"), "shutdown complete");
 
   // auto map = global_settings.dock_manager_->dockWidgetsMap();
   // for (auto [key, val] : map.asKeyValueRange())
@@ -697,7 +700,7 @@ void GroxMainWindow::saveTrustlines()
     settings.setValue(key.c_str(), t.issuer_.c_str());
   }
   settings.endGroup();
-  main_dbg<0>.debug(str<>("Trustlines saved"), settings.fileName().toStdString());
+  main_dbg<0>.debug(ffmt<s20>("Trustlines saved"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -714,7 +717,7 @@ void GroxMainWindow::loadTrustlines()
     currencies::trustlines.push_back({issuer, currency_to_hex(code)});
   }
   settings.endGroup();
-  main_dbg<0>.debug(str<>("Trustlines loaded"), settings.fileName().toStdString());
+  main_dbg<0>.debug(ffmt<s20>("Trustlines loaded"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -745,18 +748,18 @@ void GroxMainWindow::saveConnectionSetups()
       for (auto const& s : streams)
       {
         auto skey = std::string(magic_enum::enum_name(s));
-        main_dbg<6>.debug(str<>("Stream subscribed?"), key, skey);
+        main_dbg<6>.debug(ffmt<s20>("Stream subscribed?"), key, skey);
         bool subscribed = e->is_stream_subscribed(cp, s);
         settings.setValue(skey.c_str(), subscribed);
         if (subscribed)
-          main_dbg<0>.debug(str<>("Stream subscribed"), settings.group().toStdString(), key);
+          main_dbg<0>.debug(ffmt<s20>("Stream subscribed"), settings.group().toStdString(), key);
       }
       settings.endGroup();    // ticker
     }
     settings.endGroup();    // exchange
   }
   settings.endGroup();    // streams
-  main_dbg<0>.debug(str<>("Connections saved"), settings.fileName().toStdString());
+  main_dbg<0>.debug(ffmt<s20>("Connections saved"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -788,7 +791,7 @@ void GroxMainWindow::loadConnectionSetups()
   }
   settings.endGroup();    // streams
 */
-  main_dbg<0>.debug(str<>("Connections loaded"), settings.fileName().toStdString());
+  main_dbg<0>.debug(ffmt<s20>("Connections loaded"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -812,7 +815,7 @@ void GroxMainWindow::saveWindowSettings()
   settings.setValue("active", active_perspective_);
   settings.endGroup();
 
-  main_dbg<0>.debug(str<>("Settings saved"), settings.fileName().toStdString());
+  main_dbg<0>.debug(ffmt<s20>("Settings saved"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -841,13 +844,13 @@ void GroxMainWindow::loadWindowSettings()
   }
   settings.endGroup();
 
-  main_dbg<0>.debug(str<>("Settings loaded"), settings.fileName().toStdString());
+  main_dbg<0>.debug(ffmt<s20>("Settings loaded"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::stream_process(ohlctv_sample const& ohlc)
 {
-  main_dbg<0>.debug(str<>("New data"), msecs_unix_to_calendar_time(ohlc.time), ohlc);
+  main_dbg<0>.debug(ffmt<s20>("New data"), msecs_unix_to_calendar_time(ohlc.time), ohlc);
   //    df_.process(ohlc);
 }
 
@@ -1000,7 +1003,7 @@ void GroxMainWindow::execute_filter()
                 funding[0].xrp = fee_estimate*funding[0].usd/p;
                 funding[0].usd = 0;
                 std::cout << "Buy  :" << msecs_unix_to_calendar_time(e.time_) << " "
-                          << "Res " << str<6>(base_resolution.name_)
+                          << "Res " << ffmt<s6>(base_resolution.name_)
                           << "xrp (" << fp<2,11>(funding[0].xrp) << ") "
                           << "usd (" << fp<2,11>(funding[0].usd) << ") "
                           << "\n";
@@ -1025,17 +1028,17 @@ void GroxMainWindow::execute_filter()
                 funding[0].usd = fee_estimate*funding[0].xrp*p;
                 funding[0].xrp = 0;
                 std::cout << "Sell :" << msecs_unix_to_calendar_time(e.time_) << " "
-                          << "Res " << str<6>(base_resolution.name_)
+                          << "Res " << ffmt<s6>(base_resolution.name_)
                           << "xrp (" << fp<2,11>(funding[0].xrp) << ") "
                           << "usd (" << fp<2,11>(funding[0].usd) << ") "
                           << "\n";
             }
         }
 //            static auto algo_deb =
-//                mainwin_debug.make_timer(60, str<>("Algorithm"));
+//                mainwin_debug.make_timer(60, ffmt<s20>("Algorithm"));
 
 //            mainwin_debug.timed(algo_deb, "time",
-//                str<20>(msecs_unix_to_calendar_time(e.time_).c_str())
+//                ffmt<s20>(msecs_unix_to_calendar_time(e.time_).c_str())
 //                , lambda(
 //                    [&](){
 //                        int res_i = 0;
@@ -1155,7 +1158,7 @@ void GroxMainWindow::LoadStyleSheet(int dark)
   QFile f(name);
   if (!f.exists())
   {
-    main_dbg<0>.error(str<>("Stylesheet"), "Unable to set stylesheet, file not found");
+    main_dbg<0>.error(ffmt<s20>("Stylesheet"), "Unable to set stylesheet, file not found");
   }
   else
   {

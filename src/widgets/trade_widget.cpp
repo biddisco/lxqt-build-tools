@@ -103,7 +103,7 @@ void trade_widget::connect_events()
         | stdexec::then([this](QByteArray byteArray) {                               // pika
             std::string_view data(byteArray.constData(), byteArray.length());
             nlohmann::json jdata = nlohmann::json::parse(data);
-            trade_dbg<2>.debug(str<>("cancel_order"), trade_.id_, jdata.dump());
+            trade_dbg<2>.debug(ffmt<s20>("cancel_order"), trade_.id_, jdata.dump());
             if (!jdata.contains("error"))
             {
               if (jdata["id"] == trade_.id_)
@@ -111,7 +111,7 @@ void trade_widget::connect_events()
                 auto acct = std::dynamic_pointer_cast<bitstamp_network>(trade_.network_)->account();
                 acct.remove_trade(trade_);
               }
-              else { trade_dbg<0>.error(str<>("cancel_order"), trade_.id_, jdata.dump()); }
+              else { trade_dbg<0>.error(ffmt<s20>("cancel_order"), trade_.id_, jdata.dump()); }
             }
           });
     stdexec::start_detached(std::move(web));

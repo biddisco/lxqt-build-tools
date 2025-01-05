@@ -111,8 +111,8 @@ namespace grox::senders {
             assert(r.op_state.client_ != nullptr);
 
             PIKA_DETAIL_DP(qt_trig<5>,
-                debug(
-                    str<>("qhttp_post_recv"), "set_value_t", "req", fmt::ptr(r.op_state.client_)));
+                debug(ffmt<s20>("qhttp_post_recv"), "set_value_t", "req",
+                    fmt::ptr(r.op_state.client_)));
 
             pika::detail::try_catch_exception_ptr(
                 [&]() mutable {
@@ -128,7 +128,8 @@ namespace grox::senders {
                           ex::then([receiver = std::move(receiver)](QByteArray byteArray) mutable {
                             std::string_view strv(byteArray.constData(), byteArray.length());
                             PIKA_DETAIL_DP(qt_trig<5>,
-                                debug(str<>("set_value_error_helper"), fmt::format("{}", strv)));
+                                debug(
+                                    ffmt<s20>("set_value_error_helper"), fmt::format("{}", strv)));
                             ex::set_value(std::move(receiver), std::move(byteArray));
                           });
                       ex::start_detached(std::move(snd0));
@@ -173,10 +174,10 @@ namespace grox::senders {
           , client_(nullptr)
           , req_type_{req_type}
         {
-          PIKA_DETAIL_DP(qt_trig<3>, debug(str<>("create"), client_));
+          PIKA_DETAIL_DP(qt_trig<3>, debug(ffmt<s20>("create"), client_));
         }
 
-        ~operation_state() { PIKA_DETAIL_DP(qt_trig<3>, debug(str<>("destroy"), client_)); }
+        ~operation_state() { PIKA_DETAIL_DP(qt_trig<3>, debug(ffmt<s20>("destroy"), client_)); }
 
         friend constexpr auto tag_invoke(ex::start_t, operation_state& os) noexcept
         {

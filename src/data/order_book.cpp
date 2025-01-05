@@ -56,7 +56,10 @@ order_book_base::order_book_base()
 }
 
 // ----------------------------------------------------------------------------
-order_book_base::~order_book_base() { obook_dbg<0>.debug(str<>("order_book_base"), "destructing"); }
+order_book_base::~order_book_base()
+{
+  obook_dbg<0>.debug(ffmt<s20>("order_book_base"), "destructing");
+}
 
 // ----------------------------------------------------------------------------
 std::unique_lock<std::mutex> order_book_base::take_bid_ask_lock() const
@@ -97,7 +100,7 @@ void order_book_base::update_graph_limits(bool primary)
   double yscale = scale * std::pow(10, static_cast<int64_t>(std::log10(yrange)));
   double ymax = (std::ceil(yrange / yscale)) * yscale;
   //
-  obook_dbg<6>.debug(str<>("order_book_base"), xmin, xmax, 0.0, ymax);
+  obook_dbg<6>.debug(ffmt<s20>("order_book_base"), xmin, xmax, 0.0, ymax);
 
   static bool first_time[2] = {true, true};
   if (first_time[index])
@@ -116,8 +119,8 @@ void order_book_base::update_graph_limits(bool primary)
     prev_xmax[index] -= x2;
     prev_ymax[index] -= y2;
   }
-  obook_dbg<6>.debug(str<>("order_book_base"), "prev_xminmax", prev_xmin[0], prev_xmax[0]);
-  obook_dbg<6>.debug(str<>("order_book_base"), "prev_ymax", prev_ymax[0]);
+  obook_dbg<6>.debug(ffmt<s20>("order_book_base"), "prev_xminmax", prev_xmin[0], prev_xmax[0]);
+  obook_dbg<6>.debug(ffmt<s20>("order_book_base"), "prev_ymax", prev_ymax[0]);
   in_function = false;
 }
 
