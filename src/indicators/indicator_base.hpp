@@ -150,6 +150,7 @@ public:
       {
         std::string id = subscription_name();
         indicator_dbg<0>.debug(ffmt<s20>("Subscribing"), id, d.dataset_->get_resolution());
+        // attach a callback that is triggered when new data arrives
         d.dataset_->new_data_subscribers_.subscribe(id, [this](std::uint64_t N) {
           indicator_dbg<0>.debug(ffmt<s20>(get_name().c_str()), "new samples", ffmt<dec4>(N));
           // todo - only call if all inputs are updated
@@ -209,8 +210,8 @@ public:
       {
         auto const& ohlc = *it;
         auto vals = fn(ohlc);
-        QPointF xyval(ohlc.time, vals.value_);
-        if (vals.event_type_ == buy_sell_event_type::buy)    //
+        QPointF xyval(ohlc.time, vals.price_);
+        if (vals.event_type_ == buy_sell_event_type::buy)
         {
           outputs[0]->data().push_back(xyval);
           outputs[2]->data().push_back(xyval);
@@ -226,7 +227,7 @@ public:
         }
         else { outputs[2]->data().push_back(xyval); }
         {
-          QPointF trade(ohlc.time, vals.tokens_);
+          QPointF trade(ohlc.time, vals.value_);
           outputs[3]->data().push_back(trade);
         }
       }

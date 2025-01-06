@@ -23,7 +23,7 @@
 QWidget* get_widget(double const& param)
 {
   QLineEdit* const widget = new QLineEdit();
-  widget->setValidator(new QDoubleValidator(-10.0E9, 10.0E9, 5, widget));
+  widget->setValidator(new QDoubleValidator(-10.0E9, 10.0E9, 6, widget));
   widget->setText(QString::number(param));
   return widget;
 }

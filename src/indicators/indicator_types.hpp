@@ -87,8 +87,13 @@ namespace indicators {
   struct buy_sell_point
   {
     buy_sell_event_type event_type_;
+    // the price the trade was computed at (nominally)
+    double price_;
+    // the total valuation of tokens + cash
     double value_;
+    // amount of cash held
     double tokens_;
+    // amount of tokens held
     double cash_;
   };
 
