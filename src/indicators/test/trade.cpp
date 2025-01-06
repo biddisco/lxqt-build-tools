@@ -29,8 +29,8 @@ std::shared_ptr<ohlc_dataset_view> hdf5_ohlc;
 ohlc_dataset* dataset = nullptr;
 QVector<ohlctv_sample> data_4h;
 //
-int const min_samples = 6 * 60 * 24 * 30;          // 6 month of 1 minute candle data
-int const hr4_samples = min_samples / (4 * 60);    // 6 month of 4hr candle data
+int const min_samples = 3 * 60 * 24 * 30;          // 3 months of 1 minute candle data
+int const hr4_samples = min_samples / (4 * 60);    // 3 months of 4hr candle data
 
 //----------------------------------------------------------------------------
 void init_test_data()
@@ -53,7 +53,6 @@ void init_test_data()
 
 //----------------------------------------------------------------------------
 auto trade_loop = [](std::shared_ptr<indicators::trade_sell_sliding_stop> alg) {
-  int i = 0;
   std::stringstream tmp;
   for (auto ohlc : data_4h)
   {
@@ -78,36 +77,37 @@ TEST(trade, sliding_stop_fee_00)
   using namespace indicators;
 
   // test trade algorithm using fee = 0.0 %
-  trade_sell_sliding_stop alg_(3, ohlc_modes::high, 0.5 / 100, 0.0);
-  indicators::param_list params = {                                    //
+  trade_sell_sliding_stop alg_{};
+  indicators::param_list params = {
       {"Samples", candle_data{ohlc_data_resolutions::hour4, 1000}},    // p-0
       {"Window size", 7},                                              // p-1
       {"mode", ohlc_modes::high},                                      // p-2
-      {"Sliding Gap", 0.5 / 100},                                      // p-3
-      {"Percentage fee", 0.0}};                                        // p-4
+      {"Percentage fee Buy", 0.0},                                     // p-3
+      {"Percentage fee Sell", 0.0},                                    // p-4
+      {"Sliding Gap Upper", 0.5 / 100},                                // p-5
+      {"Gradient Threshold Upper", 0.0},                               // p-6
+      {"Sliding Gap Lower", 0.5 / 100},                                // p-7
+      {"Gradient Threshold Lower", 0.0},                               // p-8
+  };
+
   alg_.set_params(params);
   alg_.initialize();
   std::shared_ptr<trade_sell_sliding_stop> alg =
       std::dynamic_pointer_cast<trade_sell_sliding_stop>(alg_.create(&alg_, hdf5_ohlc));
 
   std::string expected =
-      "sell 0.31764 xrp 0.00000 value 0.29687 | buy  0.26563 xrp 1.14624 value 0.29687 | sell "
-      "0.27468 xrp 0.00000 value 0.26811 | buy  0.25911 xrp 1.03031 value 0.26811 | sell 0.30289 "
-      "xrp 0.00000 value 0.28076 | buy  0.28154 xrp 0.97486 value 0.28076 | sell 0.28548 xrp "
-      "0.00000 value 0.25331 | buy  0.25807 xrp 0.95590 value 0.25331 | sell 0.25818 xrp 0.00000 "
-      "value 0.23758 | buy  0.19355 xrp 1.20692 value 0.23758 | sell 0.19690 xrp 0.00000 value "
-      "0.21484 | buy  0.16821 xrp 1.22258 value 0.21484 | sell 0.19284 xrp 0.00000 value 0.20940 | "
-      "buy  0.16869 xrp 1.24716 value 0.20940 | sell 0.18241 xrp 0.00000 value 0.22340 | buy  "
-      "0.18629 xrp 1.19787 value 0.22340 | sell 0.18701 xrp 0.00000 value 0.21558 | buy  0.16033 "
-      "xrp 1.35324 value 0.21558 | sell 0.26867 xrp 0.00000 value 0.29154 | buy  0.21226 xrp "
-      "1.46019 value 0.29154 | sell 0.24924 xrp 0.00000 value 0.33719 | buy  0.22195 xrp 1.46948 "
-      "value 0.33719 | sell 0.22220 xrp 0.00000 value 0.31015 | buy  0.18602 xrp 1.68186 value "
-      "0.31015 | sell 0.20399 xrp 0.00000 value 0.33449 | buy  0.21033 xrp 1.56305 value 0.33449 | "
-      "sell 0.26409 xrp 0.00000 value 0.40254 | buy  0.25796 xrp 1.53929 value 0.40254 | sell "
-      "0.27031 xrp 0.00000 value 0.36480 | buy  0.19868 xrp 1.81504 value 0.36480 | sell 0.20538 "
-      "xrp 0.00000 value 0.36295 | buy  0.21047 xrp 1.69684 value 0.36295 | sell 0.21413 xrp "
-      "0.00000 value 0.35434 | buy  0.22310 xrp 1.71163 value 0.35434 | sell 0.24791 xrp 0.00000 "
-      "value 0.38587 | buy  0.24952 xrp 1.56452 value 0.38587 | ";
+      "sell 0.29899 xrp 0.00000 value 0.29899 | buy  0.29253 xrp 1.02209 value 0.29898 | sell "
+      "0.29687 xrp 0.00000 value 0.30343 | buy  0.28500 xrp 1.06468 value 0.30342 | sell 0.23390 "
+      "xrp 0.00000 value 0.24903 | buy  0.26022 xrp 0.95700 value 0.24799 | sell 0.27250 xrp "
+      "0.00000 value 0.26078 | buy  0.29200 xrp 0.89309 value 0.25999 | sell 0.25984 xrp 0.00000 "
+      "value 0.23206 | buy  0.26843 xrp 0.86450 value 0.23182 | sell 0.24854 xrp 0.00000 value "
+      "0.21487 | buy  0.25504 xrp 0.84248 value 0.21485 | sell 0.24002 xrp 0.00000 value 0.20221 | "
+      "buy  0.19133 xrp 1.05688 value 0.20221 | sell 0.17801 xrp 0.00000 value 0.18813 | buy  "
+      "0.17322 xrp 1.08610 value 0.18734 | sell 0.17127 xrp 0.00000 value 0.18602 | buy  0.16740 "
+      "xrp 1.11124 value 0.18601 | sell 0.17913 xrp 0.00000 value 0.19906 | buy  0.19448 xrp "
+      "1.02353 value 0.19899 | sell 0.17997 xrp 0.00000 value 0.18421 | buy  0.17000 xrp 1.08358 "
+      "value 0.18421 | sell 0.21544 xrp 0.00000 value 0.23345 | buy  0.19966 xrp 1.16922 value "
+      "0.23345 | ";
   EXPECT_EQ(expected, trade_loop(alg));
 }
 
@@ -116,37 +116,37 @@ TEST(trade, sliding_stop_fee_02)
 {
   using namespace indicators;
 
-  // test trade algorithm using fee = 0.0 %
-  trade_sell_sliding_stop alg_(3, ohlc_modes::high, 0.5 / 100, 0.0);
-  indicators::param_list params = {                                    //
+  // test trade algorithm using fee = 0.2 %
+  trade_sell_sliding_stop alg_{};
+  indicators::param_list params = {
       {"Samples", candle_data{ohlc_data_resolutions::hour4, 1000}},    // p-0
       {"Window size", 7},                                              // p-1
       {"mode", ohlc_modes::high},                                      // p-2
-      {"Sliding Gap", 0.5 / 100},                                      // p-3
-      {"Percentage fee", 0.2}};                                        // p-4
+      {"Percentage fee Buy", 0.2},                                     // p-3
+      {"Percentage fee Sell", 0.2},                                    // p-4
+      {"Sliding Gap Upper", 0.5 / 100},                                // p-5
+      {"Gradient Threshold Upper", 0.0},                               // p-6
+      {"Sliding Gap Lower", 0.5 / 100},                                // p-7
+      {"Gradient Threshold Lower", 0.0},                               // p-8
+  };
   alg_.set_params(params);
   alg_.initialize();
   std::shared_ptr<trade_sell_sliding_stop> alg =
       std::dynamic_pointer_cast<trade_sell_sliding_stop>(alg_.create(&alg_, hdf5_ohlc));
 
   std::string expected =
-      "sell 0.31764 xrp 0.00000 value 0.29628 | buy  0.26563 xrp 1.14166 value 0.29569 | sell "
-      "0.27468 xrp 0.00000 value 0.26650 | buy  0.25911 xrp 1.02209 value 0.26597 | sell 0.30289 "
-      "xrp 0.00000 value 0.27796 | buy  0.28154 xrp 0.96322 value 0.27741 | sell 0.28548 xrp "
-      "0.00000 value 0.24978 | buy  0.25807 xrp 0.94072 value 0.24928 | sell 0.25818 xrp 0.00000 "
-      "value 0.23334 | buy  0.19355 xrp 1.18300 value 0.23287 | sell 0.19690 xrp 0.00000 value "
-      "0.21016 | buy  0.16821 xrp 1.19356 value 0.20974 | sell 0.19284 xrp 0.00000 value 0.20402 | "
-      "buy  0.16869 xrp 1.21269 value 0.20361 | sell 0.18241 xrp 0.00000 value 0.21679 | buy  "
-      "0.18629 xrp 1.16011 value 0.21636 | sell 0.18701 xrp 0.00000 value 0.20837 | buy  0.16033 "
-      "xrp 1.30534 value 0.20795 | sell 0.26867 xrp 0.00000 value 0.28066 | buy  0.21226 xrp "
-      "1.40288 value 0.28010 | sell 0.24924 xrp 0.00000 value 0.32330 | buy  0.22195 xrp 1.40616 "
-      "value 0.32266 | sell 0.22220 xrp 0.00000 value 0.29619 | buy  0.18602 xrp 1.60296 value "
-      "0.29560 | sell 0.20399 xrp 0.00000 value 0.31816 | buy  0.21033 xrp 1.48377 value 0.31753 | "
-      "sell 0.26409 xrp 0.00000 value 0.38136 | buy  0.25796 xrp 1.45538 value 0.38060 | sell "
-      "0.27031 xrp 0.00000 value 0.34423 | buy  0.19868 xrp 1.70924 value 0.34354 | sell 0.20538 "
-      "xrp 0.00000 value 0.34111 | buy  0.21047 xrp 1.59154 value 0.34043 | sell 0.21413 xrp "
-      "0.00000 value 0.33169 | buy  0.22310 xrp 1.59900 value 0.33103 | sell 0.24791 xrp 0.00000 "
-      "value 0.35976 | buy  0.24952 xrp 1.45573 value 0.35904 | ";
+      "sell 0.29899 xrp 0.00000 value 0.29839 | buy  0.29253 xrp 1.01801 value 0.29779 | sell "
+      "0.29687 xrp 0.00000 value 0.30162 | buy  0.28500 xrp 1.05619 value 0.30100 | sell 0.23390 "
+      "xrp 0.00000 value 0.24655 | buy  0.26022 xrp 0.94558 value 0.24503 | sell 0.27250 xrp "
+      "0.00000 value 0.25715 | buy  0.29200 xrp 0.87890 value 0.25586 | sell 0.25984 xrp 0.00000 "
+      "value 0.22792 | buy  0.26843 xrp 0.84737 value 0.22722 | sell 0.24854 xrp 0.00000 value "
+      "0.21019 | buy  0.25504 xrp 0.82248 value 0.20975 | sell 0.24002 xrp 0.00000 value 0.19702 | "
+      "buy  0.19133 xrp 1.02767 value 0.19662 | sell 0.17801 xrp 0.00000 value 0.18257 | buy  "
+      "0.17322 xrp 1.05186 value 0.18144 | sell 0.17127 xrp 0.00000 value 0.17980 | buy  0.16740 "
+      "xrp 1.07191 value 0.17943 | sell 0.17913 xrp 0.00000 value 0.19163 | buy  0.19448 xrp "
+      "0.98336 value 0.19118 | sell 0.17997 xrp 0.00000 value 0.17662 | buy  0.17000 xrp 1.03689 "
+      "value 0.17627 | sell 0.21544 xrp 0.00000 value 0.22294 | buy  0.19966 xrp 1.11437 value "
+      "0.22249 | ";
   EXPECT_EQ(expected, trade_loop(alg));
 }
 
