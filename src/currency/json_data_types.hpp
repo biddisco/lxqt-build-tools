@@ -142,7 +142,6 @@ namespace grox {
   std::ostream& operator<<(std::ostream& os, xrp_amount const&);
 
   // ----------------------------------------------------------------------------
-  void to_json(nlohmann::json&, xrp_amount const&);
   void from_json(nlohmann::json const&, xrp_amount&);
   void from_json(nlohmann::json const&, xrpl_offer&);
   void from_json(nlohmann::json const&, price&);

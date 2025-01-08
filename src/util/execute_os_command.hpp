@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
-#include <memory>
+#include <exception>
 #include <string>
 
 static std::string execute_os_command(char const* cmd)

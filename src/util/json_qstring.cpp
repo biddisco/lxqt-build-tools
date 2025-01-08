@@ -8,8 +8,6 @@
 
 namespace util {
 
-  void to_json(nljson& j, QString const& qstr) { j = nljson{qstr.toStdString()}; }
-
   void from_json(nljson const j, QString& qstr)
   {
     if (j.type() == nljson::value_t::string)
@@ -17,8 +15,6 @@ namespace util {
     else
       qstr = QString::fromStdString(j.dump());
   }
-
-  void to_json(nljson& j, QByteArray const& qba) { j = nljson{qba.toStdString()}; }
 
   void from_json(nljson& j, QByteArray& qba)
   {
