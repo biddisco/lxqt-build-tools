@@ -9,7 +9,7 @@ add_library(grox_util ${grox_util_SRCS})
 target_include_directories(grox_util PUBLIC ${GROX_INCLUDE_ROOT})
 target_link_libraries(grox_util PUBLIC nlohmann_json::nlohmann_json range-v3 Qt::Core)
 
-if(BUILD_TESTING AND (EXISTS test))
+if(BUILD_TESTING AND (EXISTS ${CMAKE_CURRENT_LIST_DIR}/test))
   pika_add_pseudo_target(tests.util)
   pika_add_pseudo_dependencies(tests tests.util)
   add_subdirectory(test)
