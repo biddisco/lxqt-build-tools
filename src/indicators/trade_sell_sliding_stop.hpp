@@ -12,7 +12,6 @@
 #include "indicators/kernels/gradient.hpp"
 #include "indicators/kernels/sliding_stop.hpp"
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
-#include "util/datetime_utils.hpp"
 
 namespace indicators {
 

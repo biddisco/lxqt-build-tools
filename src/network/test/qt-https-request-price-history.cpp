@@ -38,7 +38,7 @@ void from_json(nlohmann::json const& j, price& p)
     else
       p.value = stod(j[0].get<std::string>());
     p.time = j[1];
-    test_dbg<7>.debug(ffmt<s20>("price history"), msecs_unix_to_calendar_time(p.time * 1000));
+    test_dbg<7>.debug(ffmt<s20>("price history"), msecs_unix_to_calendar_time_local(p.time * 1000));
   }
 }
 
@@ -54,7 +54,7 @@ void handle_price_history(QByteArray byteArray)
   test_dbg<8>.debug(ffmt<s20>("price history"), subsect.dump(4));
   auto prices = subsect.get<std::vector<price>>();
   auto first_date = prices.back().time;
-  std::string first_string = msecs_unix_to_calendar_time(first_date * 1000);
+  std::string first_string = msecs_unix_to_calendar_time_local(first_date * 1000);
   test_dbg<6>.debug(ffmt<s20>("First date"), first_string);
   //
   if (first_string != "2020-05-26 02:00:00")

@@ -850,7 +850,7 @@ void GroxMainWindow::loadWindowSettings()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::stream_process(ohlctv_sample const& ohlc)
 {
-  main_dbg<0>.debug(ffmt<s20>("New data"), msecs_unix_to_calendar_time(ohlc.time), ohlc);
+  main_dbg<0>.debug(ffmt<s20>("New data"), msecs_unix_to_calendar_time_local(ohlc.time), ohlc);
   //    df_.process(ohlc);
 }
 

@@ -18,7 +18,6 @@
 #include "debug/print.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
-#include "util/datetime_utils.hpp"
 #include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------

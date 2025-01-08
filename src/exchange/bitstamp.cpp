@@ -928,7 +928,7 @@ std::uint64_t bitstamp_network::handle_price_history(std::string_view data)
   auto prices = subsect.get<std::vector<price>>();
   auto first_time = prices[prices.size() - 2].time;
   bitstamp_dbg<1>.debug(
-      ffmt<s20>("First date"), first_time, secs_unix_to_calendar_time(first_time));
+      ffmt<s20>("First date"), first_time, secs_unix_to_calendar_time_local(first_time));
   return first_time;
 }
 
@@ -969,7 +969,7 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data tdata)
           if ((unixtime_secs - start_t_sec) < 60)
           {
             bitstamp_dbg<0>.debug(ffmt<s20>("candlesticks"), tdata->view_->get_ticker_string(),
-                "up to date", secs_unix_to_calendar_time(start_t_sec));
+                "up to date", secs_unix_to_calendar_time_local(start_t_sec));
             bitstamp_dbg<0>.debug(ffmt<s20>("OHLC up-to-date"));
             {
               std::lock_guard<std::mutex> l(candlestick_mutex_);
@@ -980,7 +980,7 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data tdata)
 
           std::uint64_t samples = (unixtime_secs - start_t_sec) / 60;
           bitstamp_dbg<0>.debug(ffmt<s20>("requesting"), tdata->view_->get_ticker_string(), "from",
-              secs_unix_to_calendar_time(start_t_sec), samples);
+              secs_unix_to_calendar_time_local(start_t_sec), samples);
           return request_new_ohlc_data(cp, start_t_sec, samples);
         })    //
       | stdexec::then([this, cp, tdata](QByteArray byteArray) {
@@ -1156,7 +1156,7 @@ void bitstamp_network::handle_new_ohlc_data(ticker_data tdata, std::string_view 
     // what is the last sample we currently have
     auto last_time = tdata->view_->get_last_sample_time_msec(false);
     bitstamp_dbg<0>.debug(ffmt<s20>("data merged up to"), tdata->view_->get_ticker_string(),
-        msecs_unix_to_calendar_time(last_time));
+        msecs_unix_to_calendar_time_local(last_time));
     tdata->view_->delete_live_data_up_to(last_time);
     // replot on a Qt thread
     QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {

@@ -4,9 +4,6 @@
 #include <iomanip>
 #include <string>
 //
-#include <QDateTime>
-#include <QLocale>
-//
 
 // ----------------------------------------------------------------------------
 // namespace grox::date {
@@ -42,14 +39,56 @@
 
 // ----------------------------------------------------------------------------
 // unixtime * 1000 is msecs since 1970/1/1
-static std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
+static std::string msecs_unix_to_calendar_time_local(uint64_t unixmsecs)
 {
-  QDateTime dt = QDateTime::fromMSecsSinceEpoch(unixmsecs);
-  return QLocale().toString(dt, "yyyy-MM-dd hh:mm:ss").toStdString();
+  // Convert milliseconds to seconds and nanoseconds
+  auto seconds = unixmsecs / 1000;
+  auto remaining_milliseconds = unixmsecs % 1000;
+
+  // Convert seconds since epoch to time_t
+  std::time_t time = static_cast<std::time_t>(seconds);
+
+  // Convert to a tm structure (UTC)
+  // std::tm tm = *std::gmtime(&time);
+  // Convert to a tm structure (local time)
+  std::tm tm = *std::localtime(&time);
+
+  // Format the time as "yyyy-MM-dd hh:mm:ss" and append milliseconds
+  std::ostringstream oss;
+  oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+  // oss << '.' << std::setfill('0') << std::setw(3) << remaining_milliseconds;
+
+  return oss.str();
 }
 
-static std::string secs_unix_to_calendar_time(uint64_t unixsecs)
+// ----------------------------------------------------------------------------
+static std::string secs_unix_to_calendar_time_local(uint64_t unixsecs)
 {
-  QDateTime dt = QDateTime::fromSecsSinceEpoch(unixsecs);
-  return QLocale().toString(dt, "yyyy-MM-dd hh:mm:ss").toStdString();
+  // Convert seconds since epoch to time_t
+  std::time_t time = static_cast<std::time_t>(unixsecs);
+
+  // Convert to a tm structure (UTC)
+  // std::tm tm = *std::gmtime(&time);
+  // Convert to a tm structure (local time)
+  std::tm tm = *std::localtime(&time);
+
+  // Format the time as "yyyy-MM-dd hh:mm:ss"
+  std::ostringstream oss;
+  oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+
+  return oss.str();
+}
+
+// ----------------------------------------------------------------------------
+static std::string getCurrentUtcTime()
+{
+  // Get current time in UTC
+  auto now = std::chrono::system_clock::now();
+  auto now_time_t = std::chrono::system_clock::to_time_t(now);
+
+  // Format the time as "yyyy-MM-dd hh:mm:ss"
+  std::ostringstream oss;
+  oss << std::put_time(std::gmtime(&now_time_t), "%Y-%m-%d %H:%M:%S");
+
+  return oss.str();
 }

@@ -69,14 +69,14 @@ TEST(util, datetime)
     std::uint64_t msec =
         std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
     msec = 1736347128670;
-    std::string tstr = msecs_unix_to_calendar_time(msec);
+    std::string tstr = msecs_unix_to_calendar_time_local(msec);
     EXPECT_TRUE(compare("2025-01-08 15:38:48", tstr));
   }
   {
     std::uint64_t sec =
         std::chrono::system_clock::now().time_since_epoch() / std::chrono::seconds(1);
     sec = 1736347437;
-    std::string tstr = secs_unix_to_calendar_time(sec);
+    std::string tstr = secs_unix_to_calendar_time_local(sec);
     EXPECT_TRUE(compare("2025-01-08 15:43:57", tstr));
   }
 }

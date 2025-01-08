@@ -94,7 +94,7 @@ int64_t ohlc_dataset::validate_ohlc(
     init_time = samples.at(init_index).time;
   }
   ohlc_dbg<6>.debug(ffmt<s20>("validating"), name, ffmt<s3>(res.name_), "from",
-      msecs_unix_to_calendar_time(init_time), "index", ffmt<dec9>(init_index));
+      msecs_unix_to_calendar_time_local(init_time), "index", ffmt<dec9>(init_index));
 
   for (int64_t index = init_index; index < samples.size(); ++index)
   {
@@ -104,13 +104,13 @@ int64_t ohlc_dataset::validate_ohlc(
     if (expected_time != s1.time)
     {
       ohlc_dbg<0>.error(ffmt<s20>("validation"), name, ffmt<s3>(res.name_), "index",
-          ffmt<dec9>(index), "expected", msecs_unix_to_calendar_time(expected_time), "found",
-          msecs_unix_to_calendar_time(s1.time));
+          ffmt<dec9>(index), "expected", msecs_unix_to_calendar_time_local(expected_time), "found",
+          msecs_unix_to_calendar_time_local(s1.time));
       throw ohlc_data_exception(index);
     }
   }
   ohlc_dbg<1>.debug(ffmt<s20>("validated"), name, ffmt<s3>(res.name_), "from",
-      msecs_unix_to_calendar_time(init_time), "index", ffmt<dec9>(init_index));
+      msecs_unix_to_calendar_time_local(init_time), "index", ffmt<dec9>(init_index));
   return samples.size();
 }
 
@@ -191,7 +191,8 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
     }
   }
   ohlc_dbg<1>.debug(ffmt<s20>("resampled"), ticker_str_, ffmt<s3>(res_lo.name_), "from",
-      msecs_unix_to_calendar_time(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of", size());
+      msecs_unix_to_calendar_time_local(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of",
+      size());
   validate_ohlc(data(), res_lo, orig_T, ticker_str_);
 
   if (modified)

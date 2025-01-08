@@ -253,8 +253,9 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(
     result.max_volume_ = 1;
   }
   man_dbg<8>.debug(ffmt<s20>("min_max"), ohlc_data_resolutions::get_resolution(res).name_,
-      msecs_unix_to_calendar_time(start_time), "->", msecs_unix_to_calendar_time(end_time), "(",
-      result.min_price_, ",", result.max_price_, ")");
+      msecs_unix_to_calendar_time_local(start_time), "->",
+      msecs_unix_to_calendar_time_local(end_time), "(", result.min_price_, ",", result.max_price_,
+      ")");
   return result;
 }
 
