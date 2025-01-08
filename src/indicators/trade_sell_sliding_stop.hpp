@@ -1,6 +1,8 @@
 #pragma once
 
+#include <iostream>
 #include <limits>
+#include <sstream>
 //
 #include <boost/circular_buffer.hpp>
 //
@@ -10,6 +12,7 @@
 #include "indicators/kernels/gradient.hpp"
 #include "indicators/kernels/sliding_stop.hpp"
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
+#include "util/datetime_utils.hpp"
 
 namespace indicators {
 
@@ -94,29 +97,61 @@ public:
       average_ = moving_average_exponential_volume_weighted(window_size_, mode_);
       upper_stop_ = kernels::sliding_limit(kernels::sliding_limit::up, gap_upper_);
       lower_stop_ = kernels::sliding_limit(kernels::sliding_limit::down, gap_lower_);
+      //
+      auto d1 = get_inputs()[0];
+      set_time_resolution(d1.dataset_->get_resolution());
+    }
+
+    // ----------------------------------------------------------------------------
+    static std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
+    {
+      // Convert milliseconds to seconds and nanoseconds
+      auto seconds = unixmsecs / 1000;
+      auto remaining_milliseconds = unixmsecs % 1000;
+
+      // Convert seconds since epoch to time_t
+      std::time_t time = static_cast<std::time_t>(seconds);
+
+      // Convert to a tm structure (UTC)
+      std::tm tm = *std::gmtime(&time);
+
+      // Format the time as "yyyy-MM-dd hh:mm:ss" and append milliseconds
+      std::ostringstream oss;
+      oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+      oss << '.' << std::setfill('0') << std::setw(3) << remaining_milliseconds;
+
+      return oss.str();
     }
 
     // ---------------------------------------
     void buy(double time)
     {
+      // std::string t1 = msecs_unix_to_calendar_time(static_cast<uint64_t>(time));
+      // std::string t2 = msecs_unix_to_calendar_time(static_cast<uint64_t>(time + time_res_));
+      // std::cout << "Buy:  Time " << t1.c_str() << " Using " << t2 << std::endl;
+
       double fee = 0.01 * fee_percent_buy_ * cash_total_;
       double taker_pay = cash_total_ - fee;
       //
-      auto p = hdf5_ohlc_->get_trade_data_by_value(taker_pay, time, 2.0);
-      xrp_total_ = taker_pay / p.high;
+      auto p = hdf5_ohlc_->get_trade_data_by_value(taker_pay, time + time_res_, 2.0);
+      xrp_total_ = taker_pay / p.open;
       cash_total_ = 0;
       // pay the high price, value by low price
-      last_result_ = {buy_sell_event_type::buy, p.high, (p.low * xrp_total_) + cash_total_,
+      last_result_ = {buy_sell_event_type::buy, p.open, (p.open * xrp_total_) + cash_total_,
           xrp_total_, cash_total_};
     }
 
     // ---------------------------------------
     void sell(double time)
     {
+      // std::string t1 = msecs_unix_to_calendar_time(static_cast<uint64_t>(time));
+      // std::string t2 = msecs_unix_to_calendar_time(static_cast<uint64_t>(time + time_res_));
+      // std::cout << "Sell: Time " << t1.c_str() << " Using " << t2 << std::endl;
+
       double fee = 0.01 * fee_percent_sell_ * xrp_total_;
       double maker_pay = xrp_total_ - fee;
       //
-      double p = hdf5_ohlc_->get_estimated_sell_price(maker_pay, time, 2.0);
+      double p = hdf5_ohlc_->get_estimated_sell_price(maker_pay, time + time_res_, 2.0);
       cash_total_ = maker_pay * p;
       xrp_total_ = 0;
       // note we output the actual sell price and not the current running average
@@ -178,6 +213,8 @@ public:
     // ---------------------------------------
     inline operator_type getLastResult() { return last_result_; }
 
+    void set_time_resolution(double res) { time_res_ = res; }
+
 private:
     ohlc_modes mode_;
     moving_average_exponential_volume_weighted average_;
@@ -197,6 +234,7 @@ private:
     buy_sell_point last_result_;
     double xrp_total_;
     double cash_total_;
+    double time_res_;
   };
 
 }    // namespace indicators

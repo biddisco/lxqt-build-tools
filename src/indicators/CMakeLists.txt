@@ -34,6 +34,7 @@ target_link_libraries(
   grox_indicators
   PUBLIC qwt
          grox_data
+         grox_util
          grox_io
          Qt::Core
          fmt::fmt
