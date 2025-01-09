@@ -24,7 +24,7 @@
 using namespace ads;
 
 // ----------------------------------------------------------------------------
-extern ticker_data init_order_book_params(indicators::param_pair const& p, QLabel* l1, QLabel* l2);
+extern ticker_data init_order_book_params(order_book_param const& p, QLabel* l1, QLabel* l2);
 
 // ----------------------------------------------------------------------------
 std::shared_ptr<QDialog> gui_trade_market_maker(
@@ -48,7 +48,8 @@ std::shared_ptr<QDialog> gui_trade_market_maker(
   font.setFamily("Courier");
   ui_->orderbook1->setFont(font);
 
-  auto tdata1 = init_order_book_params(alg->get_params()[0], ui_->exchange1, ui_->ticker1);
+  auto tdata1 = init_order_book_params(
+      indicators::get<order_book_param>(alg->get_params(), 0), ui_->exchange1, ui_->ticker1);
 
   auto makeLambda = [](ticker_data tdata, auto* obwidget) {
     return [tdata, obwidget](currency_pair cp) {
@@ -91,8 +92,10 @@ std::shared_ptr<QDialog> gui_trade_arbitrage(
   ui_->orderbook2->setFont(font);
   ui_->arbitrage_orders->setFont(font);
 
-  auto tdata1 = init_order_book_params(alg->get_params()[0], ui_->exchange1, ui_->ticker1);
-  auto tdata2 = init_order_book_params(alg->get_params()[1], ui_->exchange2, ui_->ticker2);
+  auto tdata1 = init_order_book_params(
+      indicators::get<order_book_param>(alg->get_params(), 0), ui_->exchange1, ui_->ticker1);
+  auto tdata2 = init_order_book_params(
+      indicators::get<order_book_param>(alg->get_params(), 1), ui_->exchange2, ui_->ticker2);
 
   auto arb_lambda = [en = ui_->enable_arbitrage, cb = ui_->arbitrage_test_mode,
                         lb = ui_->arbitrage_test_offset, tb = ui_->arbitrage_orders, tdata1,

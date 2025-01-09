@@ -126,28 +126,28 @@ QWidget* get_widget(order_book_param const& param)
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, double& param)
+void set_param(QWidget* widget, indicators::param<double>& param)
 {
   QLineEdit* w = dynamic_cast<QLineEdit*>(widget);
-  param = QLocale().toDouble(w->text(), nullptr);
+  param.put(QLocale().toDouble(w->text(), nullptr));
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, int& param)
+void set_param(QWidget* widget, indicators::param<int>& param)
 {
   QLineEdit* w = dynamic_cast<QLineEdit*>(widget);
-  param = QLocale().toInt(w->text(), nullptr);
+  param.put(QLocale().toInt(w->text(), nullptr));
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, bool& param)
+void set_param(QWidget* widget, indicators::param<bool>& param)
 {
   QCheckBox* w = dynamic_cast<QCheckBox*>(widget);
-  param = w->isChecked();
+  param.put(w->isChecked());
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, candle_data& param)
+void set_param(QWidget* widget, indicators::param<candle_data>& param)
 {
   QFrame* f = dynamic_cast<QFrame*>(widget);
   QComboBox* c = f->findChild<QComboBox*>("CandleRes");
@@ -157,19 +157,19 @@ void set_param(QWidget* widget, candle_data& param)
   QComboBox* d = f->findChild<QComboBox*>("TimeRange");
   std::string s = d->currentText().toLatin1().data();
   std::uint64_t samples = candle_data::samples(res, s);
-  param = {res, samples};
+  param.put({res, samples});
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, ohlc_modes& param)
+void set_param(QWidget* widget, indicators::param<ohlc_modes>& param)
 {
   QComboBox* w = dynamic_cast<QComboBox*>(widget);
   int index = w->currentIndex();
-  param = magic_enum::enum_value<ohlc_modes>(index);
+  param.put(magic_enum::enum_value<ohlc_modes>(index));
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, order_book_param& param)
+void set_param(QWidget* widget, indicators::param<order_book_param>& param)
 {
   QFrame* f = dynamic_cast<QFrame*>(widget);
   QComboBox* e = f->findChild<QComboBox*>("Exchange");
@@ -179,14 +179,14 @@ void set_param(QWidget* widget, order_book_param& param)
   std::string s = t->currentText().toLatin1().data();
   currency_pair cp = string_to_pair(s, "-");
   //
-  param = {exch, cp};
+  param.put({exch, cp});
 }
 
 // ----------------------------------------------------------------------------
-ticker_data init_order_book_params(indicators::param_pair const& p, QLabel* l1, QLabel* l2)
+ticker_data init_order_book_params(order_book_param const& p, QLabel* l1, QLabel* l2)
 {
-  std::string name = std::get<order_book_param>(p.value).exchange_;
-  currency_pair cp = std::get<order_book_param>(p.value).ticker_;
+  std::string name = p.exchange_;
+  currency_pair cp = p.ticker_;
   l1->setText(name.c_str());
   l2->setText(currency_pair_qstring(cp));
   //

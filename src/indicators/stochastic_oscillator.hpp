@@ -31,18 +31,21 @@ public:
     /// fields required for auto gui generation
     void init_params() override
     {
-      params_ = {                                                             //
-          {"Samples", candle_data{ohlc_data_resolutions::minute15, 5000}},    //
-          {"Window size", 14}};
+      params_ = {
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}},    // 0
+          param<int>{"Window size", 14},                                             // 1
+          param<ohlc_modes>{"mode", ohlc_modes::mid_open_close},                     // 2
+      };
     }
 
     // ---------------------------------------
     /// initialize internals from a parameter list
     void initialize() override
     {
-      auto window_size = std::get<int>(params_[1].value);
+      auto window_size = get<int>(params_, 1);
+      mode_ = get<ohlc_modes>(params_, 2);
+      //
       buffer_ = boost::circular_buffer<double>(window_size);
-      // mode_ = std::get<int>(params_[2].value);
     }
 
     // ---------------------------------------
@@ -70,7 +73,7 @@ public:
 private:
     boost::circular_buffer<double> buffer_;
     double stoch_val_;
-    int mode_;
+    ohlc_modes mode_;
   };
 
 }    // namespace indicators

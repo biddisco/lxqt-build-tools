@@ -79,15 +79,15 @@ TEST(trade, sliding_stop_fee_00)
   // test trade algorithm using fee = 0.0 %
   trade_sell_sliding_stop alg_{};
   indicators::param_list params = {
-      {"Samples", candle_data{ohlc_data_resolutions::hour4, 1000}},    // p-0
-      {"Window size", 7},                                              // p-1
-      {"mode", ohlc_modes::high},                                      // p-2
-      {"Percentage fee Buy", 0.0},                                     // p-3
-      {"Percentage fee Sell", 0.0},                                    // p-4
-      {"Sliding Gap Upper", 0.5 / 100},                                // p-5
-      {"Gradient Threshold Upper", 0.0},                               // p-6
-      {"Sliding Gap Lower", 0.5 / 100},                                // p-7
-      {"Gradient Threshold Lower", 0.0},                               // p-8
+      param<candle_data>{"Samples", {ohlc_data_resolutions::hour4, 1000}},    // 0
+      param<int>{"Window size", 7},                                           // 1
+      param<ohlc_modes>{"mode", ohlc_modes::high},                            // 2
+      param<double>{"Percentage fee Buy", 0.0},                               // 3
+      param<double>{"Percentage fee Sell", 0.0},                              // 4
+      param<double>{"Sliding Gap Upper", 0.5 / 100},                          // 5
+      param<double>{"Gradient Threshold Upper", 0.0},                         // 6
+      param<double>{"Sliding Gap Lower", 0.5 / 100},                          // 7
+      param<double>{"Gradient Threshold Lower", 0.0},                         // 8
   };
   alg_.set_params(params);
   std::shared_ptr<trade_sell_sliding_stop> alg =
@@ -117,15 +117,15 @@ TEST(trade, sliding_stop_fee_02)
   // test trade algorithm using fee = 0.2 %
   trade_sell_sliding_stop alg_{};
   indicators::param_list params = {
-      {"Samples", candle_data{ohlc_data_resolutions::hour4, 1000}},    // p-0
-      {"Window size", 7},                                              // p-1
-      {"mode", ohlc_modes::high},                                      // p-2
-      {"Percentage fee Buy", 0.2},                                     // p-3
-      {"Percentage fee Sell", 0.2},                                    // p-4
-      {"Sliding Gap Upper", 0.5 / 100},                                // p-5
-      {"Gradient Threshold Upper", 0.0},                               // p-6
-      {"Sliding Gap Lower", 0.5 / 100},                                // p-7
-      {"Gradient Threshold Lower", 0.0},                               // p-8
+      param<candle_data>{"Samples", {ohlc_data_resolutions::hour4, 1000}},    // 0
+      param<int>{"Window size", 7},                                           // 1
+      param<ohlc_modes>{"mode", ohlc_modes::high},                            // 2
+      param<double>{"Percentage fee Buy", 0.2},                               // 3
+      param<double>{"Percentage fee Sell", 0.2},                              // 4
+      param<double>{"Sliding Gap Upper", 0.5 / 100},                          // 5
+      param<double>{"Gradient Threshold Upper", 0.0},                         // 6
+      param<double>{"Sliding Gap Lower", 0.5 / 100},                          // 7
+      param<double>{"Gradient Threshold Lower", 0.0},                         // 8
   };
   alg_.set_params(params);
   std::shared_ptr<trade_sell_sliding_stop> alg =

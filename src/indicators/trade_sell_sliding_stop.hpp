@@ -63,15 +63,15 @@ public:
     void init_params() override
     {
       params_ = {
-          {"Samples", candle_data{ohlc_data_resolutions::hour4, 1000}},    // p-0
-          {"Window size", 3},                                              // p-1
-          {"mode", ohlc_modes::mid_high_low},                              // p-2
-          {"Percentage fee Buy", 0.2},                                     // p-3
-          {"Percentage fee Sell", 0.2},                                    // p-4
-          {"Sliding Gap Upper", 0.1 / 100},                                // p-5
-          {"Gradient Threshold Upper", 0.0},                               // p-6
-          {"Sliding Gap Lower", 0.1 / 100},                                // p-7
-          {"Gradient Threshold Lower", 0.1},                               // p-8
+          param<candle_data>{"Samples", {ohlc_data_resolutions::hour4, 1000}},    // 0
+          param<int>{"Window size", 3},                                           // 1
+          param<ohlc_modes>{"mode", ohlc_modes::mid_high_low},                    // 2
+          param<double>{"Percentage fee Buy", 0.2},                               // 3
+          param<double>{"Percentage fee Sell", 0.2},                              // 4
+          param<double>{"Sliding Gap Upper", 0.1 / 100},                          // 5
+          param<double>{"Gradient Threshold Upper", 0.0},                         // 6
+          param<double>{"Sliding Gap Lower", 0.1 / 100},                          // 7
+          param<double>{"Gradient Threshold Lower", 0.1},                         // 8
       };
     }
 
@@ -79,14 +79,14 @@ public:
     /// initialize internals from a parameter list
     void initialize() override
     {
-      window_size_ = std::get<int>(params_[1].value);
-      mode_ = std::get<ohlc_modes>(params_[2].value);
-      fee_percent_buy_ = std::get<double>(params_[3].value);
-      fee_percent_sell_ = std::get<double>(params_[4].value);
-      double gap_upper_ = std::get<double>(params_[5].value);
-      gradient_upper_ = std::get<double>(params_[6].value);
-      double gap_lower_ = std::get<double>(params_[7].value);
-      gradient_lower_ = std::get<double>(params_[8].value);
+      window_size_ = get<int>(params_, 1);
+      mode_ = get<ohlc_modes>(params_, 2);
+      fee_percent_buy_ = get<double>(params_, 3);
+      fee_percent_sell_ = get<double>(params_, 4);
+      double gap_upper_ = get<double>(params_, 5);
+      gradient_upper_ = get<double>(params_, 6);
+      double gap_lower_ = get<double>(params_, 7);
+      gradient_lower_ = get<double>(params_, 8);
       //
       first_ = true;
       xrp_total_ = 1;

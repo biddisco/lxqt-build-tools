@@ -37,18 +37,19 @@ public:
     /// fields required for auto gui generation
     void init_params() override
     {
-      params_ = {                                                             //
-          {"Samples", candle_data{ohlc_data_resolutions::minute15, 5000}},    //
-          {"Window size", 14},                                                //
-          {"mode", ohlc_modes::mid_open_close}};
+      params_ = {
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}},    // 0
+          param<int>{"Window size", 14},                                             // 1
+          param<ohlc_modes>{"mode", ohlc_modes::mid_open_close},                     // 2
+      };
     }
 
     // ---------------------------------------
     /// initialize internals from a parameter list
     void initialize() override
     {
-      window_size_ = std::get<int>(params_[1].value);
-      mode_ = std::get<ohlc_modes>(params_[2].value);
+      window_size_ = get<int>(params_, 1);
+      mode_ = get<ohlc_modes>(params_, 2);
       mean_ = 0;
       //
       buffer_ = boost::circular_buffer<mov_av_vw_data>(window_size_);

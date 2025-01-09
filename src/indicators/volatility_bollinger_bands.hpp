@@ -36,11 +36,12 @@ public:
     /// fields required for auto gui generation
     void init_params() override
     {
-      params_ = {                                                             //
-          {"Samples", candle_data{ohlc_data_resolutions::minute15, 5000}},    //
-          {"Window size", 14},                                                //
-          {"mode", ohlc_modes::close},                                        //
-          {QString("Num Bands (each 1") + sigma + ")", 2}};
+      params_ = {
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 1000}},    // 0
+          param<int>{"Window size", 3},                                              // 1
+          param<ohlc_modes>{"mode", ohlc_modes::close},                              // 2
+          param<double>{QString("Num Bands (each 1") + sigma + ")", 2},              // 3
+      };
     }
 
     // ---------------------------------------
@@ -51,9 +52,9 @@ public:
     /// initialize internals from a parameter list
     void initialize() override
     {
-      window_size_ = std::get<int>(params_[1].value);
-      mode_ = std::get<ohlc_modes>(params_[2].value);
-      num_bands_ = std::get<int>(params_[3].value);
+      window_size_ = get<int>(params_, 1);
+      mode_ = get<ohlc_modes>(params_, 2);
+      num_bands_ = get<int>(params_, 3);
       // average_ = moving_average(window_size_, mode_);
       buffer_ = boost::circular_buffer<float>(window_size_);
     }

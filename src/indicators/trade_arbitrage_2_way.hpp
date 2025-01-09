@@ -40,12 +40,14 @@ public:
     /// fields required for auto gui generation
     void init_params() override
     {
-      params_ = {//
-          {"Order-Book-1", order_book_param{"Bitstamp", {{"", "XRP"}, {"", "USD"}}}},
-          {"Order-Book-2",
-              order_book_param{
-                  "XRPL Mainnet", {{"", "XRP"}, currency_code{currencies::bitstamp_trust, "USD"}}}},
-          {"Window size", 14}, {"mode", ohlc_modes::mid_open_close}};
+      params_ = {
+          //
+          param<order_book_param>{"Order-Book-1", {"Bitstamp", {{"", "XRP"}, {"", "USD"}}}},    // 0
+          param<order_book_param>{"Order-Book-2",
+              {"XRPL Mainnet", {{"", "XRP"}, {currencies::bitstamp_trust, "USD"}}}},    // 1
+          param<int>{"Window size", 14},                                                // 2
+          param<ohlc_modes>{"mode", ohlc_modes::mid_open_close},                        // 3
+      };
     }
 
     // ---------------------------------------

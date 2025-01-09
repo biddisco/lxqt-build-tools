@@ -38,5 +38,5 @@ class indicator_widget : public QWidget
   //
   indicators::indicator_vector const& indicators_;
   std::size_t& index_;
-  QVector<QWidget*> params_;
+  QVector<QWidget*> param_widgets_;
 };

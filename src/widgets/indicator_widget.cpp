@@ -110,7 +110,7 @@ int get_column(P const& param)
 }
 
 template <>
-int get_column(candle_res const& param)
+int get_column(indicators::param<candle_res> const& param)
 {
   return 0;
 }
@@ -121,7 +121,7 @@ void indicator_widget::refresh_gui(int index)
   // wipe the contents of the dialog
   QLayout* oldlayout = ui.algo_params->layout();
   if (oldlayout) clearLayout(oldlayout, true);
-  params_.clear();
+  param_widgets_.clear();
   std::array<int, 2> counts = {0, 0};
 
   auto alg = indicators_[index];
@@ -137,19 +137,23 @@ void indicator_widget::refresh_gui(int index)
     // get the i-th param from the variant algorithm list
     auto p = alg->get_params()[i];
 
-    // draw datasets in left column, params_ in right
-    int column = std::visit([&](auto const& v) { return get_column(v); }, p.value);
+    // create a widget for the parameter, variant unwrapped to correct Type in v
+    std::visit(
+        [&](auto const& v) {
+          // draw datasets in left column, widgets in right
+          int column = get_column(v);
 
-    // get label for parameter
-    QLabel* const label = new QLabel(p.name);
-    layout->addWidget(label, counts[column], column * 2);
+          // get label for parameter
+          QLabel* const label = new QLabel(v.name());
+          layout->addWidget(label, counts[column], column * 2);
 
-    // get a widget to represent the parameter (based on param type)
-    QWidget* widget = std::visit([&](auto const& v) { return get_widget(v); }, p.value);
-    layout->addWidget(widget, counts[column], column * 2 + 1);
-    params_ << widget;
-    //
-    counts[column]++;
+          // get a widget to represent the parameter (based on param type)
+          QWidget* widget = get_widget(v.get());
+          layout->addWidget(widget, counts[column], column * 2 + 1);
+          param_widgets_ << widget;
+          counts[column]++;
+        },
+        p);
   }
   ui.algo_params->setLayout(layout);
   // compute the new best guess size
@@ -159,7 +163,7 @@ void indicator_widget::refresh_gui(int index)
 }
 
 // ----------------------------------------------------------------------------
-// copy user params_ from dialog into default indicator param object
+// copy user params from dialog into default indicator param object
 // so that they persist and are there again next time the dialog is opened
 void indicator_widget::update_parameters()
 {
@@ -168,20 +172,18 @@ void indicator_widget::update_parameters()
   auto& alg = indicators_[index];
 
   // create a new param list from the gui widget
-  indicators::param_list new_params;
-  new_params = alg->get_params();
-  // std::visit([](auto const& obj) { return obj.get_params(); }, alg);
+  indicators::param_list new_params = alg->get_params();
 
   for (int i = 0; i < new_params.size(); ++i)
   {
     // get the widget that represents the param
-    QWidget* widget = params_[i];
+    QWidget* widget = param_widgets_[i];
 
     // update the param value from the widget
-    std::visit([i, widget](auto& value) { set_param(widget, value); }, new_params[i].value);
+    std::visit([i, widget](auto& p) { set_param(widget, p); }, new_params[i]);
   }
 
-  // overwrite the original params_ with the new default / updated values
+  // overwrite the original params with the new default / updated values
   alg->set_params(new_params);
   // std::visit([&](auto& obj) { obj.set_params(new_params); }, alg);
 }

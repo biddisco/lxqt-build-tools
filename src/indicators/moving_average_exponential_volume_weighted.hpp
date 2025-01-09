@@ -38,11 +38,11 @@ public:
     void init_params() override
     {
       params_ = {
-          {"Samples", candle_data{ohlc_data_resolutions::minute15, 5000}},    //
-          {"Window size", 14},                                                //
-          {"mode", ohlc_modes::close},                                        //
-          {"User-defined alpha", false},                                      //
-          {"Decay 1 - alpha", 0.1},
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}},    // 0
+          param<int>{"Window size", 14},                                             // 1
+          param<ohlc_modes>{"mode", ohlc_modes::close},                              // 2
+          param<bool>{"User-defined alpha", false},                                  // 3
+          param<double>{"Decay 1 - alpha", 0.1},                                     // 4
       };
     }
 
@@ -50,10 +50,10 @@ public:
     /// initialize internals from a parameter list
     void initialize() override
     {
-      window_size_ = std::get<int>(params_[1].value);
-      mode_ = std::get<ohlc_modes>(params_[2].value);
-      user_alpha_ = std::get<bool>(params_[3].value);
-      decay_factor_ = std::get<double>(params_[4].value);
+      window_size_ = get<int>(params_, 1);
+      mode_ = get<ohlc_modes>(params_, 2);
+      user_alpha_ = get<bool>(params_, 3);
+      decay_factor_ = get<double>(params_, 4);
       mean_ = 0.0;
       //      first_ = true;
       vwma_ = moving_average_volume_weighted(window_size_, mode_);

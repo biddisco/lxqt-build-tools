@@ -132,10 +132,10 @@ public:
       std::vector<candle_input_data> result;
       for (auto const& p : get_params())
       {
-        if (candle_data const* d = std::get_if<candle_data>(&p.value))
+        if (param<candle_data> const* d = std::get_if<param<candle_data>>(&p))
         {
-          auto dataset = view->get_dataset(d->res_);
-          result.push_back({dataset, d->numSamples_});
+          auto dataset = view->get_dataset(d->get().res_);
+          result.push_back({dataset, d->get().numSamples_});
         }
       }
       return result;

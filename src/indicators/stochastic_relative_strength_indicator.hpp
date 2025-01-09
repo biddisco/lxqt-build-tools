@@ -33,7 +33,6 @@ public:
       , osc_{}
       , stoch_rsi_K{0}
       , stoch_rsi_D{0}
-      , mode_{1}
     {
     }
 
@@ -41,10 +40,11 @@ public:
     /// fields required for auto gui generation
     void init_params() override
     {
+      // we pass these params to rsi and osc filters, eve though we don't use all directly here
       params_ = {
-          {"Samples", candle_data{ohlc_data_resolutions::minute15, 5000}},    //
-          {"Window size", 14},                                                //
-          {"K smooth", 3},
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}},    // 0
+          param<int>{"K smooth", 14},                                                // 1
+          param<ohlc_modes>{"mode", ohlc_modes::mid_open_close},                     // 2
       };
     }
 
@@ -52,7 +52,7 @@ public:
     /// initialize internals from a parameter list
     void initialize() override
     {
-      int k_smooth = std::get<int>(params_[2].value);
+      int k_smooth = get<int>(params_, 1);
       mov_av_k_ = ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>>(
           ba::tag::rolling_window::window_size = k_smooth);
       //
@@ -61,7 +61,6 @@ public:
       //
       osc_.set_params(params_);
       osc_.initialize();
-      // mode_ = std::get<int>(params_[2].value);
     }
 
     // ---------------------------------------
@@ -84,8 +83,6 @@ private:
     //
     double stoch_rsi_K;
     double stoch_rsi_D;
-    //
-    int mode_;
   };
 
 }    // namespace indicators

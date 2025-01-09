@@ -35,15 +35,83 @@ struct order_book_param
 // ----------------------------------------------------------------------------
 namespace indicators {
 
-  using param_types = std::variant<double, int, ohlc_modes, bool, candle_data, order_book_param>;
+  // ---------------------------------------
+  template <typename... Ts>
+  struct typelist;
 
-  struct param_pair
+  using supported_types = typelist<double, int, ohlc_modes, bool, candle_data, order_book_param>;
+
+  // ---------------------------------------
+  template <typename T>
+  struct param
   {
-    QString name;
-    param_types value;
+    QString name_;
+    T val_;
+    //
+    QString name() const { return name_; }
+    void put(T val) { val_ = val; }
+    T const& get() const { return val_; }
+    T& get_ref() { return val_; }
+    //
+    friend std::ostream& operator<<(std::ostream& os, param<T> const& p)
+    {
+      os << p.get();
+      return os;
+    }
   };
 
-  using param_list = std::vector<param_pair>;
+  template <typename T>
+  struct types_generator;
+
+  template <typename... Ts>
+  struct types_generator<typelist<Ts...>>
+  {
+    // variant with every type in the typelist
+    using type = std::variant<param<Ts>...>;
+  };
+
+  using variant_type = types_generator<supported_types>::type;
+  using param_list = std::vector<variant_type>;
+
+  template <typename T>
+  T const& get(param_list const& params, std::size_t i)
+  {
+    param<T> const* temp = std::get_if<param<T>>(&params[i]);
+    return temp->get();
+  }
+
+  // // ---------------------------------------
+  // void copy_from_params(param_list& params)
+  // {
+  //   for (param_struct& pstruct : params)
+  //   {
+  //     std::visit(
+  //         [&pstruct](auto param) {
+  //           using T = decltype(param);
+  //           T* ptr = reinterpret_cast<T*>(pstruct.data_var);
+  //           (*ptr) = param;
+  //         },
+  //         pstruct.value);
+  //   }
+  // }
+
+  // // ---------------------------------------
+  // param_list copy_to_params()
+  // {
+  //   for (param_struct& pstruct : params_)
+  //   {
+  //     std::visit(
+  //         [&pstruct](auto param) {
+  //           using T = decltype(param);
+  //           T* ptr = reinterpret_cast<T*>(pstruct.data_var);
+  //           (*ptr) = param;
+  //         },
+  //         pstruct.value);
+  //   }
+  //   std::get<int>(params_[1].value) = period_;
+  //   std::get<int>(params_[2].value) = mode_;
+  //   return params_;
+  // }
 
   // ----------------------------------------------------------------------------
   /// greek symbol for sigma, used in certain indicator texts
