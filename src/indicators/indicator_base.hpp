@@ -72,6 +72,8 @@ protected:
     std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;
 
 public:
+    using algorithm_base::initialize;
+
     // ----------------------------------------------------------------------------
     indicator_base(std::string const& name, std::string const& desc, overlay_vector const& overlay)
       : algorithm_base(name, desc)

@@ -12,6 +12,7 @@
 #include "indicators/kernels/gradient.hpp"
 #include "indicators/kernels/sliding_stop.hpp"
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
+#include "indicators/stochastic_relative_strength_indicator.hpp"
 
 namespace indicators {
 
@@ -45,6 +46,7 @@ public:
             })
       , mode_(mode)
       , average_{}
+      , srsi_{}
       , buffer1_(window_size)
       , window_size_(window_size)
       , fee_percent_buy_(0.2)
@@ -52,6 +54,7 @@ public:
       , upper_stop_(kernels::sliding_limit::up, ugap)
       , lower_stop_(kernels::sliding_limit::down, lgap)
       , gradient_(0, 0)
+      , rsi_gradient_(0, 0)
     {
     }
 
@@ -68,7 +71,7 @@ public:
           param<ohlc_modes>{"mode", ohlc_modes::mid_high_low},                    // 2
           param<double>{"Percentage fee Buy", 0.2},                               // 3
           param<double>{"Percentage fee Sell", 0.2},                              // 4
-          param<double>{"Sliding Gap Upper", 0.1 / 100},                          // 5
+          param<double>{"Sliding Gap Upper", 0.15 / 100},                         // 5
           param<double>{"Gradient Threshold Upper", 0.0},                         // 6
           param<double>{"Sliding Gap Lower", 0.1 / 100},                          // 7
           param<double>{"Gradient Threshold Lower", 0.1},                         // 8
@@ -93,42 +96,24 @@ public:
       cash_total_ = 0;
       //
       buffer1_ = boost::circular_buffer<float>(window_size_);
+      srsi_ = stochastic_relative_strength_indicator();
       average_ = moving_average_exponential_volume_weighted(window_size_, mode_);
       upper_stop_ = kernels::sliding_limit(kernels::sliding_limit::up, gap_upper_);
       lower_stop_ = kernels::sliding_limit(kernels::sliding_limit::down, gap_lower_);
+      //
+      param_list rsi_params_ = {                                 //
+          params_[0],                                            // 0
+          param<int>{"Window size", /*window_size_ * 4*/ 15},    // 1
+          params_[2]};                                           // 2
+      srsi_.algorithm_base::initialize(rsi_params_);
       //
       auto d1 = get_inputs()[0];
       set_time_resolution(d1.dataset_->get_resolution());
     }
 
-    // ----------------------------------------------------------------------------
-    static std::string msecs_unix_to_calendar_time(uint64_t unixmsecs)
-    {
-      // Convert milliseconds to seconds and nanoseconds
-      auto seconds = unixmsecs / 1000;
-      auto remaining_milliseconds = unixmsecs % 1000;
-
-      // Convert seconds since epoch to time_t
-      std::time_t time = static_cast<std::time_t>(seconds);
-
-      // Convert to a tm structure (UTC)
-      std::tm tm = *std::gmtime(&time);
-
-      // Format the time as "yyyy-MM-dd hh:mm:ss" and append milliseconds
-      std::ostringstream oss;
-      oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
-      oss << '.' << std::setfill('0') << std::setw(3) << remaining_milliseconds;
-
-      return oss.str();
-    }
-
     // ---------------------------------------
     void buy(double time)
     {
-      // std::string t1 = msecs_unix_to_calendar_time(static_cast<uint64_t>(time));
-      // std::string t2 = msecs_unix_to_calendar_time(static_cast<uint64_t>(time + time_res_));
-      // std::cout << "Buy:  Time " << t1.c_str() << " Using " << t2 << std::endl;
-
       double fee = 0.01 * fee_percent_buy_ * cash_total_;
       double taker_pay = cash_total_ - fee;
       //
@@ -143,10 +128,6 @@ public:
     // ---------------------------------------
     void sell(double time)
     {
-      // std::string t1 = msecs_unix_to_calendar_time(static_cast<uint64_t>(time));
-      // std::string t2 = msecs_unix_to_calendar_time(static_cast<uint64_t>(time + time_res_));
-      // std::cout << "Sell: Time " << t1.c_str() << " Using " << t2 << std::endl;
-
       double fee = 0.01 * fee_percent_sell_ * xrp_total_;
       double maker_pay = xrp_total_ - fee;
       //
@@ -163,14 +144,19 @@ public:
     {
       // update the moving average filter
       double current_average_ = average_(val);
+      double rsi = srsi_(val);
 
       if (first_)
       {
         gradient_ = kernels::gradient(current_average_, val.time);
+        rsi_gradient_ = kernels::gradient(rsi, val.time);
         first_ = false;
       }
       else
+      {
         gradient_(current_average_, val.time);
+        rsi_gradient_(rsi, val.time);
+      }
 
       // set default output to value with current price
       last_result_ = {buy_sell_event_type::value, current_average_,
@@ -178,7 +164,7 @@ public:
 
       if (upper_stop_.active_)
       {
-        if (!upper_stop_(current_average_) && (gradient_.value() < gradient_upper_))
+        if (!upper_stop_(current_average_) && (rsi > 0.5) && (rsi_gradient_.value() <= 0.0))
         {
           // fallen out of the upper stop range
           upper_stop_.stop();
@@ -186,26 +172,30 @@ public:
           lower_stop_.restart(current_average_);
         }
       }
-      else if (lower_stop_.active_)
-      {
-        if (!lower_stop_(current_average_) && (gradient_.value() >= gradient_lower_))
-        {
-          // fallen out of the lower stop range
-          lower_stop_.stop();
-          buy(val.time);
-          upper_stop_.restart(current_average_);
-        }
-      }
-      else if ((gradient_.value() > 0) && (cash_total_ > 0))
+      // else if (lower_stop_.active_)
+      // {
+      //   if (!lower_stop_(current_average_) && (rsi < 0.4) && (rsi_gradient_.value() > 0.0))
+      //   {
+      //     // fallen out of the lower stop range
+      //     lower_stop_.stop();
+      //     buy(val.time);
+      //     upper_stop_.restart(current_average_);
+      //   }
+      // }
+
+      else if ((cash_total_ > 0) && (rsi_gradient_.value() >= 0.0) && (gradient_.value() > 0.05) &&
+          (rsi < 0.4))
       {
         buy(val.time);
         upper_stop_.restart(current_average_);
       }
-      else if ((gradient_.value() < 0) && (xrp_total_ > 0))
+      else if ((xrp_total_ > 0) && (rsi_gradient_.value() < 0.0) && (rsi > 0.6))
       {
         sell(val.time);
         lower_stop_.restart(current_average_);
       }
+      // last_result_.value_ = rsi;
+      last_result_.price_ = current_average_;
       return last_result_;
     }
 
@@ -217,11 +207,13 @@ public:
 private:
     ohlc_modes mode_;
     moving_average_exponential_volume_weighted average_;
+    stochastic_relative_strength_indicator srsi_;
     boost::circular_buffer<float> buffer1_;
     //
     kernels::sliding_limit upper_stop_;
     kernels::sliding_limit lower_stop_;
     kernels::gradient gradient_;
+    kernels::gradient rsi_gradient_;
     //
     double gradient_upper_;
     double gradient_lower_;

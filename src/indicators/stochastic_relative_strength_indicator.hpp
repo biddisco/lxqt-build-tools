@@ -25,10 +25,13 @@ public:
 
     // ---------------------------------------
     /// Default constructor
-    stochastic_relative_strength_indicator()
+    stochastic_relative_strength_indicator(
+        int window_size = 7, ohlc_modes mode = ohlc_modes::mid_high_low)
       : indicator_base(
             "Stochastic RSI", "Stochastic Relatve Strength Indicator", {overlay_type::minmax_limit})
-      , mov_av_k_(ba::tag::rolling_window::window_size = 3)
+      , window_size_(window_size)
+      , mode_{mode}
+      , mov_av_k_(ba::tag::rolling_window::window_size = window_size_)
       , rsi_{}
       , osc_{}
       , stoch_rsi_K{0}
@@ -52,9 +55,9 @@ public:
     /// initialize internals from a parameter list
     void initialize() override
     {
-      int k_smooth = get<int>(params_, 1);
+      window_size_ = get<int>(params_, 1);
       mov_av_k_ = ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>>(
-          ba::tag::rolling_window::window_size = k_smooth);
+          ba::tag::rolling_window::window_size = window_size_);
       //
       rsi_.set_params(params_);
       rsi_.initialize();
@@ -77,6 +80,8 @@ public:
     inline double getLastResult() { return stoch_rsi_D; }
 
 private:
+    int window_size_;
+    ohlc_modes mode_;
     ba::accumulator_set<double, ba::stats<ba::tag::rolling_mean>> mov_av_k_;
     relative_strength_indicator rsi_;
     stochastic_oscillator osc_;

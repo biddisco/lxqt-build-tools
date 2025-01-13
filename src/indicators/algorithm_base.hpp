@@ -45,6 +45,11 @@ public:
     // ----------------------------------------------------------------------------
     virtual std::shared_ptr<algorithm_base> create(algorithm_base* alg) const { return nullptr; }
     virtual void initialize() = 0;
+    inline void initialize(indicators::param_list& p)
+    {
+      set_params(p);
+      this->initialize();
+    }
     virtual void init_params() = 0;
 
     // ----------------------------------------------------------------------------
