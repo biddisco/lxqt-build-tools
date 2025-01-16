@@ -62,7 +62,7 @@ void currency_widget::set_data(
   ui->reserved->setText(currency_precision(c->reserved_, c->symbol_).c_str());
   update();
   /*
-    ui.bitstamp_xrp_fee->setText(boost::str(boost::format("fee %.4f%%") %     global_settings.bitstamp_xrp_fee).c_str());
+    ui.bitstamp_xrp_fee->setText(fmt::format("fee %.4f%%") %     global_settings.bitstamp_xrp_fee).c_str());
 */
 }
 

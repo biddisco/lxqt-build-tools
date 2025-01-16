@@ -2,8 +2,6 @@
 #include "currency_widget.hpp"
 #include "ui_wallet_widget.h"
 //
-#include <boost/format.hpp>
-//
 // ----------------------------------------------------------------------------
 wallet_widget::wallet_widget(QWidget* parent)
   : QWidget(parent)

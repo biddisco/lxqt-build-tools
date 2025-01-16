@@ -5,7 +5,6 @@
 #include "ui_xrp_functions.h"
 #include "xrp_functions.hpp"
 //
-#include <boost/format.hpp>
 #include <string>
 //
 #include "currency/currency.hpp"
