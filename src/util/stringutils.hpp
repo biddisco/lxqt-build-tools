@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
 #include <string>
 #include <string_view>
+#include <utility>
 //
 #include <QString>
 //

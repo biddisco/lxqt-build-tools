@@ -1,6 +1,9 @@
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <string>
+#include <vector>
 //
 #include <highfive/H5File.hpp>
 //

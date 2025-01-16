@@ -15,12 +15,15 @@
 //
 //------------------------------------------------------------------------------
 
+#include <chrono>
+#include <cstddef>
 #include <cstdlib>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 //
 #include <boost/asio/strand.hpp>
 #include <boost/beast/core.hpp>

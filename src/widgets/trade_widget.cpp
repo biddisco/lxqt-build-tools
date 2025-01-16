@@ -1,5 +1,7 @@
-#include "trade_widget.hpp"
+#include <utility>
+//
 #include "debug/print.hpp"
+#include "trade_widget.hpp"
 #include "ui_trade_widget.h"
 #include "util/stringutils.hpp"
 

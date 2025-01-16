@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <vector>
+//
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QLabel>

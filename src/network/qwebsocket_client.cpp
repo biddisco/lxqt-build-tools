@@ -1,10 +1,12 @@
+#include <string>
+//
+#include <fmt/format.h>
+//
 #include <QtCore/QDebug>
 #include <QtCore/QString>
 #include <QtNetwork/QAbstractSocket>
 #include <QtNetwork/QSslError>
 #include <QtWebSockets/QWebSocket>
-//
-#include <fmt/format.h>
 //
 #include "debug/print.hpp"
 #include "network/qwebsocket_client.hpp"

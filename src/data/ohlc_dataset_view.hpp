@@ -1,11 +1,14 @@
 #pragma once
 
-// STL
+//
+#include <cstdint>
+#include <map>
 #include <mutex>
+#include <string>
 #include <vector>
-// Qt
+//
 #include <QVector>
-// Grox
+//
 #include "currency/currency.hpp"
 #include "currency/currency_pair.hpp"
 #include "currency/ohlctv_sample.hpp"

@@ -1,5 +1,6 @@
 // This file exists just to ensure that static instances of indicators are created
 // and the initial vector of algorithm/indicator types is filled
+#include <cstddef>
 #include <memory>
 #include <vector>
 //

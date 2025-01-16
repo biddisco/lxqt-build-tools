@@ -5,6 +5,8 @@
 #include <type_traits>
 #include <utility>
 //
+#include <fmt/format.h>
+//
 #include <pika/assert.hpp>
 #include <pika/config.hpp>
 //

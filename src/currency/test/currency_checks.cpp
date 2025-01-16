@@ -1,8 +1,11 @@
 #include <bitset>
+#include <cstddef>
 #include <iostream>
 #include <map>
 #include <numeric>
+#include <sstream>
 #include <string>
+#include <vector>
 //
 #include <QString>
 //

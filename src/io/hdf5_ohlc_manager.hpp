@@ -1,11 +1,12 @@
 #pragma once
 
-// STL
+#include <cstdint>
 #include <mutex>
+#include <string>
 #include <vector>
-// Qt
+//
 #include <QVector>
-// Grox
+//
 #include "currency/currency.hpp"
 #include "currency/ohlctv_sample.hpp"
 #include "data/abstract_data_manager.hpp"
@@ -46,5 +47,5 @@ class hdf5_ohlc_manager : public abstract_dataset_manager
 
   // write out data to hdf5
   void write_impl(std::string group, std::string dataname, QVector<ohlctv_sample> const& samples,
-      const uint64_t update, bool truncate) override;
+      uint64_t const update, bool truncate) override;
 };

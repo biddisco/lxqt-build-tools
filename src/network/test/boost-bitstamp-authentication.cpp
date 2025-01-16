@@ -1,8 +1,12 @@
+#include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <boost/beast/ssl.hpp>
 #include "boost/asio.hpp"

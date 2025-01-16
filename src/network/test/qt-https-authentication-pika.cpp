@@ -1,8 +1,11 @@
+#include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 //
 #include <QCoreApplication>
 #include <QDebug>

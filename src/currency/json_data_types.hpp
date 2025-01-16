@@ -1,12 +1,12 @@
 #pragma once
-//
-#include "currency/ohlctv_sample.hpp"
-//
+
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
 //
 #include "currency/currency.hpp"
+#include "currency/ohlctv_sample.hpp"
 #include "nlohmann/json.hpp"
 
 namespace grox {

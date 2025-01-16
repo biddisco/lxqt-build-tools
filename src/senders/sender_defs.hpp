@@ -1,6 +1,7 @@
 #pragma once
 //
 #include <cstdint>
+#include <exception>
 //
 #include <exec/any_sender_of.hpp>
 #include <stdexec/execution.hpp>

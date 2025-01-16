@@ -1,6 +1,11 @@
-#include <QObject>
+#include <iostream>
+#include <string>
 //
 #include <range/v3/algorithm.hpp>
+#include <fmt/format.h>
+//
+#include <QObject>
+//
 #include "debug/print.hpp"
 #include "exchange/exchange.hpp"
 

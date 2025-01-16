@@ -1,11 +1,14 @@
 #include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <random>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 //

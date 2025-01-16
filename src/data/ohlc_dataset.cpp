@@ -1,8 +1,9 @@
-// STL
+#include <cstdint>
+#include <string>
 #include <vector>
-// Qt
+//
 #include <QVector>
-// Grox
+//
 #include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_dataset.hpp"
 #include "data/timebased_chart_data.hpp"

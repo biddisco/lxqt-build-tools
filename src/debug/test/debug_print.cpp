@@ -1,7 +1,12 @@
 #include <bitset>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <numeric>
+#include <sstream>
 #include <string>
+#include <vector>
 //
 #include <fmt/format.h>
 //

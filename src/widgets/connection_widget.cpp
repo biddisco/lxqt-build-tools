@@ -1,8 +1,10 @@
+#include <string>
+//
+#include <range/v3/view.hpp>
+//
 #include <QCheckBox>
 #include <QRegularExpression>
 #include <QStandardItemModel>
-//
-#include <range/v3/view.hpp>
 //
 #include "config/config.hpp"
 #include "debug/print.hpp"

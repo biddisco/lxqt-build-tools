@@ -1,10 +1,13 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include <openssl/evp.h>
 #include <openssl/rand.h>

@@ -1,4 +1,7 @@
+#include <atomic>
+#include <cstdlib>
 #include <iostream>
+#include <string>
 //
 #include <QCoreApplication>
 #include <QDebug>

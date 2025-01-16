@@ -1,12 +1,13 @@
-#include <curl/curl.h>
-#include <openssl/hmac.h>
-#include <uuid/uuid.h>
-
 #include <cassert>
 #include <chrono>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <string>
+//
+#include <curl/curl.h>
+#include <openssl/hmac.h>
+#include <uuid/uuid.h>
 //
 #include "network/evp-encrypt.hpp"
 #include "util/execute_os_command.hpp"

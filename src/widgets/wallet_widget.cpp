@@ -1,6 +1,8 @@
-#include "wallet_widget.hpp"
+#include <utility>
+//
 #include "currency_widget.hpp"
 #include "ui_wallet_widget.h"
+#include "wallet_widget.hpp"
 //
 // ----------------------------------------------------------------------------
 wallet_widget::wallet_widget(QWidget* parent)

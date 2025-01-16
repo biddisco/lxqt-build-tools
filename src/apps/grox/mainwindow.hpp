@@ -1,5 +1,8 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+//
 #include <QAction>
 #include <QMainWindow>
 #include <QScrollArea>

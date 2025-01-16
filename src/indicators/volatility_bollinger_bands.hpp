@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+//
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"

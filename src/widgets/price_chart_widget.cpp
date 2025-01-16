@@ -1,3 +1,9 @@
+#include <memory>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <vector>
+//
 #include <QColorDialog>
 #include <QCommonStyle>
 #include <QHeaderView>
@@ -6,9 +12,6 @@
 //
 #include <QwtPlotCurve>
 #include <QwtPlotItem>
-//
-#include <type_traits>
-#include <vector>
 //
 #include "ui_price_chart_widget.h"
 //

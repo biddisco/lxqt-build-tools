@@ -1,9 +1,12 @@
 #pragma once
 
 // STL
+#include <array>
+#include <cstdint>
 #include <exception>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 

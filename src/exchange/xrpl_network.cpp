@@ -1,5 +1,10 @@
 // STL
+#include <cstdint>
+#include <iostream>
+#include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 // Qt
 #include <QDialog>
 #include <QHBoxLayout>

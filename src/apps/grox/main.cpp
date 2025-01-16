@@ -1,6 +1,11 @@
 #include <algorithm>
+#include <cstdlib>
+#include <iostream>
 #include <memory>
+#include <ostream>
 #include <regex>
+#include <string>
+#include <utility>
 //
 #include <QApplication>
 #include <QNetworkAccessManager>

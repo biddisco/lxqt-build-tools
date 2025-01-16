@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+//
 #include "currency/currency.hpp"
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/order_book.hpp"

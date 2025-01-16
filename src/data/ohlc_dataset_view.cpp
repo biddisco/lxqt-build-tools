@@ -1,5 +1,10 @@
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <iostream>
+#include <string>
+#include <utility>
+#include <vector>
 //
 #include <QInputDialog>
 //

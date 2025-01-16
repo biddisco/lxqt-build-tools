@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
-
+//
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_dataset_view.hpp"

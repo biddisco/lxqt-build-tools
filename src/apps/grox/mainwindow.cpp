@@ -1,8 +1,15 @@
 // STL
+#include <array>
+#include <chrono>
 #include <ctime>
 #include <filesystem>
+#include <functional>
 #include <iomanip>
 #include <iostream>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 // Qt
 #include <QAction>
 #include <QApplication>

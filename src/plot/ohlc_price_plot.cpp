@@ -1,14 +1,18 @@
-// STL
 #include <cassert>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
-// Qt
+#include <utility>
+//
+#include <range/v3/view.hpp>
+#include <fmt/format.h>
+//
 #include <QDateTime>
 #include <QFontDatabase>
 #include <QMouseEvent>
 #include <QWheelEvent>
-// Qwt
+//
 #include <QwtDateScaleDraw>
 #include <QwtDateScaleEngine>
 #include <QwtPlot>
@@ -24,7 +28,7 @@
 #include <QwtSeriesData>
 #include <QwtSymbol>
 #include <QwtTextLabel>
-// Grox
+//
 #include "data/ohlc_utils.hpp"
 #include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
@@ -35,9 +39,6 @@
 #include "plot/ohlc_price_plot.hpp"
 #include "plot/timebased_data_curve.hpp"
 #include "util/datetime_utils.hpp"
-//
-#include <range/v3/view.hpp>
-#include <fmt/format.h>
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

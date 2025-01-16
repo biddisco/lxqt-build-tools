@@ -1,6 +1,9 @@
 // STL
 #include <algorithm>
+#include <cstdint>
+#include <functional>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <string_view>
 // Grox

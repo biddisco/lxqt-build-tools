@@ -1,3 +1,7 @@
+#include <array>
+#include <string>
+#include <vector>
+//
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFileInfo>

@@ -1,11 +1,15 @@
 #pragma once
 
+#include <memory>
+#include <string>
+#include <tuple>
+#include <vector>
+//
 #include <QAbstractTableModel>
 #include <QComboBox>
 #include <QPushButton>
 #include <QTableView>
 #include <QWidget>
-
 //
 #include "exchange/exchange.hpp"
 #include "indicators/indicator_params.hpp"

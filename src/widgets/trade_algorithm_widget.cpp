@@ -1,13 +1,5 @@
 #include <memory>
-
-#include "config/config.hpp"
-#include "currency/currency.hpp"
-#include "data/ohlc_dataset_view.hpp"
-#include "exchange/exchange.hpp"
-#include "indicators/trade_arbitrage_2_way.hpp"
-#include "indicators/trade_market_maker.hpp"
-#include "widgets/indicator_widget.hpp"
-#include "widgets/trade_algorithm_widget.hpp"
+#include <string>
 //
 // Qt Advanced Docking System
 #include "AutoHideDockContainer.h"
@@ -17,6 +9,15 @@
 #include "DockComponentsFactory.h"
 #include "DockManager.h"
 #include "FloatingDockContainer.h"
+//
+#include "config/config.hpp"
+#include "currency/currency.hpp"
+#include "data/ohlc_dataset_view.hpp"
+#include "exchange/exchange.hpp"
+#include "indicators/trade_arbitrage_2_way.hpp"
+#include "indicators/trade_market_maker.hpp"
+#include "widgets/indicator_widget.hpp"
+#include "widgets/trade_algorithm_widget.hpp"
 // generated
 #include "ui_trade_algorithm_arbitrage.h"
 #include "ui_trade_algorithm_market_maker.h"

@@ -1,5 +1,6 @@
 #include <iomanip>
 #include <sstream>
+#include <string>
 //
 #include "currency/currency_code.hpp"
 

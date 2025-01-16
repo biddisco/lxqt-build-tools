@@ -1,10 +1,10 @@
-// STL
 #include <iostream>
-// Qt
+#include <memory>
+//
 #include <QDateTime>
 #include <QFont>
 #include <QPalette>
-// Qwt
+//
 #include <QwtLinearScaleEngine>
 #include <QwtPlot>
 #include <QwtPlotGrid>
@@ -12,7 +12,7 @@
 #include <QwtPlotRenderer>
 #include <QwtScaleWidget>
 #include <QwtText>
-// Grox
+//
 #include "debug/print.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"

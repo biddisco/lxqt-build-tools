@@ -1,14 +1,17 @@
 #pragma once
-// stl
+//
+#include <atomic>
+#include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
-// qt
+//
 #include <QObject>
 #include <QTimer>
-// extern
+//
 #include <magic_enum/magic_enum.hpp>
-// grox
+//
 #include "currency/currency.hpp"
 #include "currency/currency_pair.hpp"
 #include "currency/json_data_types.hpp"

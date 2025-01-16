@@ -5,6 +5,8 @@
 //
 //------------------------------------------------------------------------------
 
+#include <atomic>
+#include <chrono>
 #include <cstdlib>
 #include <functional>
 #include <iostream>

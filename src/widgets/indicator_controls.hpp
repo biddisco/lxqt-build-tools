@@ -1,9 +1,9 @@
 #pragma once
 
-// STL
+#include <cstdint>
 #include <string>
 #include <vector>
-// Qt
+//
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
@@ -13,7 +13,7 @@
 #include <QString>
 #include <QVBoxLayout>
 #include <QValidator>
-// Grox
+//
 #include "config/config.hpp"
 #include "data/ohlc_dataset.hpp"
 #include "exchange/exchange.hpp"

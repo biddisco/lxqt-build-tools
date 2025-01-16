@@ -1,9 +1,10 @@
 #pragma once
 
+#include <map>
 #include <memory>
-// Qwt
+//
 #include <QwtPlot>
-// Grox
+//
 #include "currency/ohlctv_sample.hpp"
 #include "data/timebased_chart_data.hpp"
 #include "plot/timebased_chart_plot.hpp"
@@ -63,7 +64,7 @@ class ohlc_price_plot : public timebased_chart_plot
   void update_time_axis(double t1, double t2, bool emit_signal = false) override;
   double quantize_x_coord(double x) override;
   // when the picker moves, we find the current candle and display info
-  void display_picker_info(const QPointF pos) override;
+  void display_picker_info(QPointF const pos) override;
 
   // when candle resolution changes, the volume bar min/max must be updated
   void adjust_data_scaling();

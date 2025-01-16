@@ -8,15 +8,17 @@
 #ifndef QTHREADSENDER_H
 # define QTHREADSENDER_H
 
-# include <QAbstractEventDispatcher>
-# include <QMetaObject>
-# include <QObject>
-# include <QThread>
 # include <exception>
 # include <stdexec/concepts.hpp>
 # include <stdexec/execution.hpp>
 # include <tuple>
 # include <type_traits>
+# include <utility>
+//
+# include <QAbstractEventDispatcher>
+# include <QMetaObject>
+# include <QObject>
+# include <QThread>
 
 namespace QtStdExec {
 

@@ -1,6 +1,12 @@
+#include <atomic>
+#include <chrono>
+#include <cstddef>
+#include <cstdlib>
 #include <iostream>
-#include <nlohmann/json.hpp>
 #include <string>
+#include <vector>
+//
+#include <nlohmann/json.hpp>
 //
 #include "currency/currency.hpp"
 #include "currency/currency_pair.hpp"

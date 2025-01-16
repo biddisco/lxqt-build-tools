@@ -1,10 +1,11 @@
 #pragma once
 
-// Qt
+#include <memory>
+//
 #include <QFont>
-// Qwt
+//
 #include <QwtPlot>
-// Grox
+//
 #include "data/order_book.hpp"
 #include "plot/OrderBookCurve.h"
 

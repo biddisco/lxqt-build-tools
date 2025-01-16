@@ -1,10 +1,11 @@
 #pragma once
 
-#include <QDialog>
-#include <QString>
-//
+#include <array>
 #include <string>
 #include <vector>
+//
+#include <QDialog>
+#include <QString>
 //
 #include "exchange/account.hpp"
 //

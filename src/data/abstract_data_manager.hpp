@@ -1,25 +1,26 @@
 #pragma once
 
-#include <QVector>
-//
+#include <cstdint>
 #include <string>
 #include <vector>
+//
+#include <QVector>
 //
 #include "currency/ohlctv_sample.hpp"
 
 class abstract_dataset_manager
 {
   public:
-  abstract_dataset_manager(){};
-  virtual ~abstract_dataset_manager(){};
+  abstract_dataset_manager() {};
+  virtual ~abstract_dataset_manager() {};
   //
-  virtual void init(std::string data_dir, std::string filename){};
-  virtual void create_data_dir(){};
+  virtual void init(std::string data_dir, std::string filename) {};
+  virtual void create_data_dir() {};
 
   // templated functions to read/write data of type T
   template <typename T>
   void write_file(std::string group, std::string dataname, QVector<T> const& data,
-      const uint64_t update, bool truncate)
+      uint64_t const update, bool truncate)
   {
     this->write_impl(group, dataname, data, update, truncate);
   }
@@ -38,9 +39,9 @@ class abstract_dataset_manager
 
   // virtual functions that implement data loads for different types
   virtual void write_impl(std::string group, std::string dataname,
-      QVector<ohlctv_sample> const& data, const uint64_t update, bool truncate){};
+      QVector<ohlctv_sample> const& data, uint64_t const update, bool truncate) {};
 
-  virtual void read_impl(std::string group, std::string dataname, QVector<ohlctv_sample>& data){};
+  virtual void read_impl(std::string group, std::string dataname, QVector<ohlctv_sample>& data) {};
   virtual void read_impl(
-      std::string group, std::string dataname, QVector<ohlctv_sample>& data, std::uint64_t N){};
+      std::string group, std::string dataname, QVector<ohlctv_sample>& data, std::uint64_t N) {};
 };

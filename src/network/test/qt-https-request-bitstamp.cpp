@@ -1,5 +1,8 @@
+#include <atomic>
 #include <iostream>
 #include <regex>
+#include <string>
+#include <vector>
 //
 #include <QCoreApplication>
 #include <QDebug>

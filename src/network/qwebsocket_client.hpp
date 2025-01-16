@@ -1,7 +1,7 @@
 #pragma once
 
-//
 #include <atomic>
+#include <string>
 //
 #include <QString>
 #include <QtCore/QList>
@@ -15,7 +15,7 @@ class QWebSocket;
 
 namespace net::ws {
 
-  using rx_msg_handler_type = std::function<void(const QString message)>;
+  using rx_msg_handler_type = std::function<void(QString const message)>;
 
   class qwebsocket_client : public QObject
   {
@@ -29,8 +29,8 @@ private:
     std::string id_;                        // a name we use for debugging
 
 public:
-    explicit qwebsocket_client(std::string const& id, QUrl const& url, const QString subscribe,
-        const rx_msg_handler_type handler, QObject* parent = nullptr);
+    explicit qwebsocket_client(std::string const& id, QUrl const& url, QString const subscribe,
+        rx_msg_handler_type const handler, QObject* parent = nullptr);
     ~qwebsocket_client();
 
     std::string const& id() { return id_; }

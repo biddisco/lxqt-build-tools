@@ -1,4 +1,9 @@
+#include <iostream>
+#include <memory>
 #include <string>
+#include <vector>
+//
+#include <fmt/format.h>
 //
 #include <QDialog>
 #include <QMessageBox>

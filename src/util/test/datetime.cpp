@@ -1,7 +1,11 @@
 #include <bitset>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <numeric>
+#include <sstream>
 #include <string>
 //
 #include <QString>

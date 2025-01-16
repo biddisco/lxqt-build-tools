@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <cstdlib>
 #include <exception>
+#include <iostream>
 #include <string>
 
 static std::string execute_os_command(char const* cmd)

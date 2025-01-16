@@ -1,10 +1,10 @@
 #pragma once
 
-// STL
+#include <cstdint>
 #include <string>
-// Qt
+//
 #include <QVector>
-// Grox
+//
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/timebased_chart_data.hpp"
 #include "util/pubsub.hpp"

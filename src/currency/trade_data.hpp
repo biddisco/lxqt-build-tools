@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cstdint>
+#include <memory>
+#include <string>
+//
 // to pass structs as params we must declare metatypes to Qt
 #include <QtCore>
-//
-#include <memory>
 //
 #include "currency/currency.hpp"
 

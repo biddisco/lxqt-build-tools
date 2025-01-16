@@ -1,11 +1,12 @@
 #pragma once
-// Qt
+
+#include <cstddef>
+#include <string>
+#include <vector>
+//
 #include <QDialog>
 #include <QVector>
 #include <QWidget>
-// STL
-#include <string>
-#include <vector>
 //
 #include "data/ohlc_data_resolutions.hpp"
 #include "indicators/algorithm_base.hpp"

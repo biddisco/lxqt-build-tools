@@ -1,5 +1,8 @@
+#include <atomic>
 #include <functional>
 #include <iostream>
+#include <string>
+#include <utility>
 //
 #include <QNetworkAccessManager>
 #include <QNetworkReply>

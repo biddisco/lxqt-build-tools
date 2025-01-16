@@ -1,15 +1,17 @@
-#include <xrpl/protocol/TxFlags.h>
-//
-#include "check_trades_dialog.hpp"
-#include "trade_widget.hpp"
-#include "ui_xrp_functions.h"
-#include "xrp_functions.hpp"
-//
+#include <cstdint>
+#include <iostream>
 #include <string>
+//
+#include <xrpl/protocol/TxFlags.h>
 //
 #include "currency/currency.hpp"
 #include "exchange/exchange.hpp"
 #include "exchange/xrpl_network.hpp"
+#include "widgets/check_trades_dialog.hpp"
+#include "widgets/trade_widget.hpp"
+#include "widgets/xrp_functions.hpp"
+//
+#include "ui_xrp_functions.h"
 // ----------------------------------------------------------------------------
 xrp_functions::xrp_functions(xrpl_network* network, basic_account* account, QWidget* parent)
   : QWidget(parent)
