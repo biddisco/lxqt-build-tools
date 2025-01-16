@@ -91,7 +91,7 @@ int main(int argc, char** argv)
 
   if (curl)
   {
-    struct curl_slist* headers = NULL;
+    struct curl_slist* headers = nullptr;
     headers = curl_slist_append(headers, ("X-Auth: " + x_auth).c_str());
     headers = curl_slist_append(headers, ("X-Auth-Signature: " + x_auth_signature).c_str());
     headers = curl_slist_append(headers, ("X-Auth-Nonce: " + x_auth_nonce).c_str());

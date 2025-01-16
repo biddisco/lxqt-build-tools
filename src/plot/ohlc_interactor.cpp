@@ -132,7 +132,7 @@ void ohlc_interactor::panCanvas(int dx, int dy)
 {
   if (dx == 0 && dy == 0) return;
   timebased_chart_plot* plot = this->plot();
-  if (plot == NULL) return;
+  if (plot == nullptr) return;
 
   // get the X axis pixel/plot coordinate transform
   QwtScaleMap const map = plot->canvasMap(QwtAxis::XBottom);
@@ -152,7 +152,7 @@ void ohlc_interactor::zoomCanvas(int dx, int dy)
 {
   if (dx == 0 && dy == 0) return;
   timebased_chart_plot* plot = this->plot();
-  if (plot == NULL) return;
+  if (plot == nullptr) return;
 
   // get the X axis pixel/plot coordinate transform
   QwtScaleMap const map = plot->canvasMap(QwtAxis::XBottom);
@@ -376,7 +376,7 @@ void ohlc_interactor::widgetKeyPressEvent(QKeyEvent* keyEvent)
   if (keyEvent->key() == Qt::Key_R)
   {
     timebased_chart_plot* plot = this->plot();
-    if (plot == NULL) return;
+    if (plot == nullptr) return;
 
     // get the X axis pixel/plot coordinate transform
     QwtScaleMap const mapx = plot->canvasMap(QwtAxis::XBottom);

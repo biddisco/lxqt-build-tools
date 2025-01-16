@@ -71,7 +71,7 @@ void aes_encrypt(byte const key[encryption::KEY_SIZE], byte const iv[encryption:
     secure_string const& ptext, secure_string& ctext)
 {
   EVP_CIPHER_CTX_free_ptr ctx(EVP_CIPHER_CTX_new(), ::EVP_CIPHER_CTX_free);
-  int rc = EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_cbc(), NULL, key, iv);
+  int rc = EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_cbc(), nullptr, key, iv);
   if (rc != 1) throw std::runtime_error("EVP_EncryptInit_ex failed");
 
   // Recovered text expands upto encryption::BLOCK_SIZE
@@ -94,7 +94,7 @@ void aes_decrypt(byte const key[encryption::KEY_SIZE], byte const iv[encryption:
     secure_string const& ctext, secure_string& rtext)
 {
   EVP_CIPHER_CTX_free_ptr ctx(EVP_CIPHER_CTX_new(), ::EVP_CIPHER_CTX_free);
-  int rc = EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_cbc(), NULL, key, iv);
+  int rc = EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_cbc(), nullptr, key, iv);
   if (rc != 1) throw std::runtime_error("EVP_DecryptInit_ex failed");
 
   // Recovered text contracts upto encryption::BLOCK_SIZE
