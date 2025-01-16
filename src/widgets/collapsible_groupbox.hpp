@@ -1,5 +1,4 @@
-#ifndef COLLAPSIBLEGROUPBOX_H
-#define COLLAPSIBLEGROUPBOX_H
+#pragma once
 
 #include <QGroupBox>
 #include <QMap>
@@ -41,5 +40,3 @@ class CollapsibleGroupBox : public QGroupBox
   void onScreenChanged();
   void onVisibilityChanged(bool checked);
 };
-
-#endif    // COLLAPSIBLEGROUPBOX_H
