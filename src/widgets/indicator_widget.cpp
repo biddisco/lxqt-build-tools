@@ -160,8 +160,8 @@ void indicator_widget::refresh_gui(int index)
   ui.algo_params->setLayout(layout);
   // compute the new best guess size
   adjustSize();
-  // force a resize to fit best guess
-  resize(sizeHint());
+  // "layout takes responsibility to automatically resize when widgets are shown or hidden"
+  if (parentWidget()) { parentWidget()->layout()->setSizeConstraint(QLayout::SetFixedSize); }
 }
 
 // ----------------------------------------------------------------------------
