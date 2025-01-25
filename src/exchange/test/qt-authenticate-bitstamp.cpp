@@ -7,9 +7,11 @@
 #include <string_view>
 #include <utility>
 //
+#include <exec/async_scope.hpp>
 #include <fmt/format.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
+#include <stdexec/execution.hpp>
 //
 #include <pika/init.hpp>
 #include <pika/modules/execution.hpp>
@@ -22,6 +24,7 @@
 #include "config/config.hpp"
 #include "debug/print.hpp"
 #include "exchange/bitstamp.hpp"
+#include "senders/pika_stdexec.hpp"
 #include "senders/qhttp-post-sender.hpp"
 #include "senders/qtstdexec.hpp"
 //
@@ -29,7 +32,7 @@ namespace ex = stdexec;
 namespace tt = pika::this_thread::experimental;
 //
 std::string qt_pool_name = "Qt:pool";
-std::shared_ptr<bitstamp_network> bitstamp_exchange;
+std::shared_ptr<bitstamp_network> bitstamp;
 
 /// This test starts up in 'int main' and initializes pika with N threads,
 /// it sets the initialization callback for the resource manager to allocate 1
@@ -44,30 +47,82 @@ std::shared_ptr<bitstamp_network> bitstamp_exchange;
 // ----------------------------------------------------------------------------
 namespace {
   template <int Level>
-  inline constexpr grox::debug::detail::print_threshold<Level, 0> test1_dbg("test-exB");
+  inline constexpr grox::debug::detail::print_threshold<Level, 3> test1_dbg("test-exB");
 }    // namespace
 
 // ------------------------------------------------------------------
 TEST(exchange, request_account_info)
 {
+  // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
+  namespace tt = pika::this_thread::experimental;
   using namespace grox::debug;
-  test1_dbg<2>.debug(ffmt<s20>("TEST(exchange, request_account_info)"));
+  //
+  test1_dbg<2>.debug(ffmt<s20>("TEST"), "request_account_info");
   std::atomic<bool> finished{false};
-  auto wallets = bitstamp_exchange->wallets();
-  bitstamp_account& acct = *static_cast<bitstamp_account*>(wallets[0]);
-  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())    //
-      | ex::let_value(
-            [&acct]() { return bitstamp_exchange->request_account_info(acct); })    // Qt -> pika
-      | ex::then([&](QByteArray byteArray) {
+  bitstamp_account& acct = bitstamp->accounts()[0];
+  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                //
+      | ex::let_value([&acct]() { return bitstamp->request_account_info(acct); })    // Qt -> pika
+      | ex::then([&acct, &finished](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
-          test1_dbg<0>.debug(ffmt<s20>("request_account_info"), jdata.dump(4));
+          test1_dbg<5>.debug(ffmt<s20>("request_account_info"), jdata.dump(4));
           EXPECT_TRUE(jdata.size() > 0);
           EXPECT_TRUE(jdata["eur_available"] != "");
           finished = true;
         });
-  ex::start_detached(std::move(snd));
-  pika::util::yield_while([&]() { return !finished; });
+
+  test1_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "request_account_info");
+  tt::sync_wait(std::move(snd));
+  EXPECT_TRUE(finished);
+  test1_dbg<2>.debug(ffmt<s20>("COMPLETE"), "request_account_info");
+}
+
+// ------------------------------------------------------------------
+TEST(exchange, request_all_account_infos)
+{
+  // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
+  namespace tt = pika::this_thread::experimental;
+  using namespace grox::debug;
+  //
+  test1_dbg<2>.debug(ffmt<s20>("TEST"), "request_all_account_infos");
+  std::atomic<std::size_t> finished{bitstamp->wallets().size()};
+
+  auto get_all_account_infos = [&finished]() {
+    exec::async_scope scope;
+    for (auto& acct : bitstamp->accounts())
+    {
+      auto handle_account_info = [&acct, &finished](QByteArray byteArray) {
+        std::string_view data(byteArray.constData(), byteArray.length());
+        nlohmann::json jdata = nlohmann::json::parse(data);
+        test1_dbg<5>.debug(ffmt<s20>("handle_account_info"), acct.name_, jdata.dump(4));
+        EXPECT_TRUE(jdata.size() > 0);
+        EXPECT_TRUE(jdata["eur_available"] != "");
+        finished--;
+        test1_dbg<0>.debug(
+            ffmt<s20>("handle_account_info"), "complete", acct.name_, finished.load());
+      };
+
+      auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                // Qt
+          | ex::let_value([&acct]() { return bitstamp->request_account_info(acct); })    // -> pika
+          | ex::then(handle_account_info);
+
+      scope.spawn(std::move(snd));
+    }
+
+    test1_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "request_all_account_infos");
+    EXPECT_TRUE(pika::this_thread::get_pool()->get_pool_name() != qt_pool_name);
+    tt::sync_wait(scope.on_empty());
+    test1_dbg<2>.debug(ffmt<s20>("COMPLETE"), "request_all_account_infos");
+  };
+
+  stdexec::sender auto snd =
+      stdexec::starts_on(grox::senders::default_pool_scheduler(), stdexec::just())    //
+      | stdexec::then(get_all_account_infos);
+
+  test1_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope");
+  EXPECT_TRUE(pika::this_thread::get_pool()->get_pool_name() != qt_pool_name);
+  tt::sync_wait(std::move(snd));
+  test1_dbg<2>.debug(ffmt<s20>("COMPLETE"), "scope");
 }
 
 // ----------------------------------------------------------------------------
@@ -79,8 +134,8 @@ TEST(exchange, cancel_order)
   using namespace grox::debug;
   test1_dbg<2>.debug(ffmt<s20>("TEST(exchange, request_account_info)"));
   std::atomic<bool> finished{false};
-  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                  //
-      | ex::let_value([t]() { return bitstamp_exchange->request_cancel_order(t); })    // Qt -> pika
+  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())         //
+      | ex::let_value([t]() { return bitstamp->request_cancel_order(t); })    // Qt -> pika
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
@@ -106,15 +161,15 @@ int qt_main(int argc, char* argv[])
   QNetworkAccessManager networkmanager;
   global_settings.networkmanager_ = &networkmanager;
   //
-  bitstamp_exchange = std::make_shared<bitstamp_network>();
-  auto wallets = bitstamp_exchange->wallets();
-  bitstamp_account* acct = static_cast<bitstamp_account*>(wallets[0]);
-  if (!bitstamp_network::get_pass_authentication(*acct))
+  bitstamp = std::make_shared<bitstamp_network>();
+  for (auto& acct : bitstamp->accounts())
   {
-    std::cout << "Password authentication failed" << std::endl;
-    return EXIT_FAILURE;
+    if (!bitstamp_network::get_pass_authentication(acct))
+    {
+      std::cout << "Password authentication failed" << std::endl;
+      return EXIT_FAILURE;
+    }
   }
-
   int test_result;
   auto snd = ex::starts_on(grox::senders::default_pool_scheduler(), ex::just())    //
       | ex::then([&test_result]() {
@@ -127,7 +182,7 @@ int qt_main(int argc, char* argv[])
   a.exec();
 
   // cleanup bitstamp instance before Qt Application/threads go out of scope
-  bitstamp_exchange.reset();
+  bitstamp.reset();
   return test_result;
 }
 

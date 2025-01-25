@@ -42,13 +42,12 @@
 #include "network/evp-encrypt.hpp"
 #include "senders/qtstdexec.hpp"
 #include "util/datetime_utils.hpp"
+#include "util/stringutils.hpp"
 #include "widgets/check_trades_dialog.hpp"
-#include "widgets/connection_widget.hpp"
 #include "widgets/currency_widget.hpp"
 #include "widgets/password_dialog.hpp"
 #include "widgets/price_chart_widget.hpp"
 #include "widgets/trade_algorithm_widget.hpp"
-#include "widgets/trade_widget.hpp"
 #include "widgets/wallet_widget.hpp"
 
 // Qt Advanced Docking System
@@ -513,29 +512,30 @@ void GroxMainWindow::connect_gui_controls()
     LoadStyleSheet(dark_mode_);
   });
 
-  auto& acct = bitstamp_network::get_bitstamp_instance()->accounts()[0];
-  qs_password_ = new QShortcut(
-      QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_P)), this, [this, &acct]() {
+  qs_password_ =
+      new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_P)), this, [this]() {
         //do what you need
-        main_dbg<6>.debug("Shift click pressed");
-        std::array<std::string, 5> strings{
-            acct.API_user, acct.API_key, acct.API_secret, std::to_string(acct.tag_), acct.public_};
+        // main_dbg<6>.debug("Shift click pressed");
+        // std::array<std::string, 5> strings{bitstamp_network_->account().API_user,
+        //     bitstamp_network_->account().API_key, bitstamp_network_->account().API_secret,
+        //     std::to_string(bitstamp_network_->account().tag_),
+        //     bitstamp_network_->account().public_};
 
-        // iterate over wallets to convert type from basic pointers
-        // @TODO - improve this
-        std::vector<ledger_wallet> wallets;
-        auto x1 = xrpl_network::get_xrpl_instance(false)->wallets();
-        auto x2 = xrpl_network::get_xrpl_instance(true)->wallets();
-        ranges::for_each(x1, [&](basic_account* b) {
-          ledger_wallet w = *static_cast<ledger_wallet*>(b);
-          wallets.push_back(w);
-        });
-        ranges::for_each(x2, [&](basic_account* b) {
-          ledger_wallet w = *static_cast<ledger_wallet*>(b);
-          wallets.push_back(w);
-        });
-        password_dialog npw = password_dialog(strings, wallets);
-        if (npw.exec() == QDialog::Accepted) { generate_encrypted_ini_data(npw); }
+        // // iterate over wallets to convert type from basic pointers
+        // // @TODO - improve this
+        // std::vector<ledger_wallet> wallets;
+        // auto x1 = xrpl_network::get_xrpl_instance(false)->wallets();
+        // auto x2 = xrpl_network::get_xrpl_instance(true)->wallets();
+        // ranges::for_each(x1, [&](basic_account* b) {
+        //   ledger_wallet w = *static_cast<ledger_wallet*>(b);
+        //   wallets.push_back(w);
+        // });
+        // ranges::for_each(x2, [&](basic_account* b) {
+        //   ledger_wallet w = *static_cast<ledger_wallet*>(b);
+        //   wallets.push_back(w);
+        // });
+        // password_dialog npw = password_dialog(strings, wallets);
+        // if (npw.exec() == QDialog::Accepted) { generate_encrypted_ini_data(npw); }
       });
 
   // qs_arbitrage_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_A)), this, [this]() {

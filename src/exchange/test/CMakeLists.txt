@@ -1,43 +1,15 @@
-option(
-  GROX_AUTHENTICATION_TESTS
-  "Enable tests requiring authentication"
-  OFF
-)
+option(GROX_AUTHENTICATION_TESTS "Enable tests requiring authentication" OFF)
 
-# ~~~
 set(TEST_SRCS)
 
 if(GROX_AUTHENTICATION_TESTS)
-  set(TEST_SRCS
-      ${TEST_SRCS} #
-      qt-authenticate-bitstamp.cpp
-  )
+  set(TEST_SRCS ${TEST_SRCS} qt-authenticate-bitstamp.cpp)
+  set(qt-authenticate-bitstamp_PARAMETERS THREADS 2)
 endif()
-# ~~~
 
-set(qt-authenticate-bitstamp_PARAMETERS
-    ARGS
-    "www.bitstamp.net"
-    "443"
-    "/api/v2/cancel_order/"
-    THREADS
-    2
-)
-
-foreach(
-  test
-  ${TEST_SRCS}
-)
-  cmake_path(
-    GET
-    test
-    STEM
-    testname
-  )
-  add_executable(
-    ${testname}
-    ${test}
-  )
+foreach(test ${TEST_SRCS})
+  cmake_path(GET test STEM testname)
+  add_executable(${testname} ${test})
   target_link_libraries(
     ${testname}
     PUBLIC grox_debug
@@ -47,45 +19,21 @@ foreach(
            grox_network
            grox_exchange
            GTest::gtest
-           OpenSSL::SSL
            Threads::Threads
   )
 
   if(GROX_WITH_TESTING_SANITIZER)
     target_add_sanitizer_flags(${testname})
   endif()
-  if(testname
-     MATCHES
-     "qt"
-  )
+  if(testname MATCHES "qt")
     # set_property(TARGET ${testname} PROPERTY AUTOMOC ON)
   endif()
 
-  if(testname
-     MATCHES
-     "pika"
-  )
-    set(${testname}_PARAMETERS
-        "${${testname}_PARAMETERS}"
-        THREADS
-        4
-    )
-    target_link_libraries(
-      ${testname}
-      PUBLIC pika::pika
-    )
+  if(testname MATCHES "pika")
+    set(${testname}_PARAMETERS "${${testname}_PARAMETERS}" THREADS 4)
+    target_link_libraries(${testname} PUBLIC pika::pika)
   endif()
 
-  grox_add_test_and_deps(
-    "exchange"
-    ${testname}
-    EXECUTABLE
-    ${testname}
-    ${${testname}_PARAMETERS}
-  )
-  set_tests_properties(
-    "tests.exchange.${testname}"
-    PROPERTIES TIMEOUT
-               30
-  )
+  grox_add_test_and_deps("exchange" ${testname} EXECUTABLE ${testname} ${${testname}_PARAMETERS})
+  set_tests_properties("tests.exchange.${testname}" PROPERTIES TIMEOUT 30)
 endforeach()

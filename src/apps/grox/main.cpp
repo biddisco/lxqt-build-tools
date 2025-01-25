@@ -95,28 +95,33 @@ void generate_encrypted_ini_data(password_dialog& npw)
   // -----------------------
   encryption encryptor(global_settings.grox_password, global_settings.randomBytes);
   //
-  auto& bitstamp = bitstamp_network::get_bitstamp_instance()->accounts()[0];
-  bitstamp.API_user = npw.getAPIUser().toStdString();
-  bitstamp.API_key = npw.getAPIKey().toStdString();
-  bitstamp.API_secret = npw.getAPISecret().toStdString();
-  bitstamp.tag_ = npw.getAPIDestTag().toLong();
-  bitstamp.public_ = npw.getAPIXRPAddress().toStdString();
-  secure_string API_user = encryptor.encrypt(bitstamp.API_user);
-  secure_string API_key = encryptor.encrypt(bitstamp.API_key);
-  secure_string API_secret = encryptor.encrypt(bitstamp.API_secret);
-  secure_string API_tag_ = encryptor.encrypt(std::to_string(bitstamp.tag_));
-  secure_string API_public_ = encryptor.encrypt(bitstamp.public_);
-  //
-  settings.setValue(
-      "EncryptedData/API_key", QString::fromStdString(base64_encode(API_key).toStdString()));
-  settings.setValue(
-      "EncryptedData/API_user", QString::fromStdString(base64_encode(API_user).toStdString()));
-  settings.setValue(
-      "EncryptedData/API_secret", QString::fromStdString(base64_encode(API_secret).toStdString()));
-  settings.setValue(
-      "EncryptedData/API_desttag", QString::fromStdString(base64_encode(API_tag_).toStdString()));
-  settings.setValue("EncryptedData/API_xrpaddress",
-      QString::fromStdString(base64_encode(API_public_).toStdString()));
+  auto bitstamp = bitstamp_network::get_bitstamp_instance();
+  for (auto acct : bitstamp->accounts())
+  {
+    if (!bitstamp_network::get_pass_authentication(acct))
+    {
+      throw std::runtime_error("Password authentication failed");
+    }
+    acct.tag_ = npw.getAPIDestTag().toLong();
+    acct.public_ = npw.getAPIXRPAddress().toStdString();
+
+    // secure_string API_user = encryptor.encrypt(acct.API_user);
+    // secure_string API_key = encryptor.encrypt(acct.API_key);
+    // secure_string API_secret = encryptor.encrypt(acct.API_secret);
+    secure_string API_tag_ = encryptor.encrypt(std::to_string(acct.tag_));
+    secure_string API_public_ = encryptor.encrypt(acct.public_);
+    //
+    // settings.setValue(
+    //     "EncryptedData/API_key", QString::fromStdString(base64_encode(API_key).toStdString()));
+    // settings.setValue(
+    //     "EncryptedData/API_user", QString::fromStdString(base64_encode(API_user).toStdString()));
+    // settings.setValue("EncryptedData/API_secret",
+    //     QString::fromStdString(base64_encode(API_secret).toStdString()));
+    settings.setValue(
+        "EncryptedData/API_desttag", QString::fromStdString(base64_encode(API_tag_).toStdString()));
+    settings.setValue("EncryptedData/API_xrpaddress",
+        QString::fromStdString(base64_encode(API_public_).toStdString()));
+  }
   //
   xrpl_network::get_xrpl_instance(true)->clear_wallets();
   xrpl_network::get_xrpl_instance(false)->clear_wallets();
@@ -213,39 +218,25 @@ int qt_main(pika::program_options::variables_map& vm)
     // Bitstamp exchange details
     // ---------------------------------------
     global_settings.networks_.push_back(bitstamp_network::get_bitstamp_instance());
-    auto& bitstamp = bitstamp_network::get_bitstamp_instance()->accounts()[0];
-    bitstamp.network_ = bitstamp_network::get_bitstamp_instance();
-
-    QByteArray API_user = base64_decode(settings.value("EncryptedData/API_user", "").toByteArray());
-    bitstamp.API_user = encryptor.decrypt(secure_string(API_user.data(), API_user.size()));
-    //
-    QByteArray API_key = base64_decode(settings.value("EncryptedData/API_key", "").toByteArray());
-    bitstamp.API_key = encryptor.decrypt(secure_string(API_key.data(), API_key.size()));
-    if (std::getenv("Rand2"))
+    auto bitstamp = bitstamp_network::get_bitstamp_instance();
+    for (auto& acct : bitstamp->accounts())
     {
-      bitstamp.API_key = std::getenv("Rand2");
-      app_dbg<5>.debug(ffmt<s20>("Using ENV key"));
-    }
-    //
-    QByteArray API_secret =
-        base64_decode(settings.value("EncryptedData/API_secret", "").toByteArray());
-    bitstamp.API_secret = encryptor.decrypt(secure_string(API_secret.data(), API_secret.size()));
-    if (std::getenv("Rand3"))
-    {
-      bitstamp.API_secret = std::getenv("Rand3");
-      app_dbg<5>.debug(ffmt<s20>("Using ENV sec"));
-    }
-    //
-    QByteArray API_tag_ =
-        base64_decode(settings.value("EncryptedData/API_desttag", "").toByteArray());
-    bitstamp.tag_ =
-        std::atol(encryptor.decrypt(secure_string(API_tag_.data(), API_tag_.size())).c_str());
+      if (!bitstamp_network::get_pass_authentication(acct))
+      {
+        throw std::runtime_error("Password authentication failed");
+      }
+      acct.network_ = bitstamp;
+      //
+      QByteArray API_tag_ =
+          base64_decode(settings.value("EncryptedData/API_desttag", "").toByteArray());
+      acct.tag_ =
+          std::atol(encryptor.decrypt(secure_string(API_tag_.data(), API_tag_.size())).c_str());
 
-    //
-    QByteArray API_public_ =
-        base64_decode(settings.value("EncryptedData/API_xrpaddress", "").toByteArray());
-    bitstamp.public_ = encryptor.decrypt(secure_string(API_public_.data(), API_public_.size()));
-
+      //
+      QByteArray API_public_ =
+          base64_decode(settings.value("EncryptedData/API_xrpaddress", "").toByteArray());
+      acct.public_ = encryptor.decrypt(secure_string(API_public_.data(), API_public_.size()));
+    }
     // ---------------------------------------
     // XRP wallet details
     // ---------------------------------------
@@ -298,32 +289,32 @@ int qt_main(pika::program_options::variables_map& vm)
 #ifdef GROX_SUPPORT_DECODE
   if (vm["decode"].as<bool>())
   {
-    auto& bitstamp = bitstamp_network::get_bitstamp_instance()->accounts()[0];
-    app_dbg<5>.debug("\nDecrypted information\n");
-    app_dbg<5>.debug("API_user       : ", bitstamp.API_user);
-    app_dbg<5>.debug("API_key        : ", bitstamp.API_key);
-    app_dbg<5>.debug("API_secret     : ", bitstamp.API_secret);
-    app_dbg<5>.debug("xrp.tag        : ", bitstamp.tag_);
-    app_dbg<5>.debug("xrp.public     : ", bitstamp.public_);
-    //
-    auto const& x1 = xrpl_network::get_xrpl_instance(false)->wallets();
-    auto const& x2 = xrpl_network::get_xrpl_instance(true)->wallets();
-    for (auto const lw : x1)
-    {
-      auto w = static_cast<ledger_wallet*>(lw);
-      app_dbg<5>.debug("XRP_name       : ", w->name_);
-      app_dbg<5>.debug("XRP_public     : ", w->public_);
-      app_dbg<5>.debug("XRP_secret     : ", w->private_);
-      app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
-    }
-    for (auto const lw : x2)
-    {
-      auto w = static_cast<ledger_wallet*>(lw);
-      app_dbg<5>.debug("XRP_name       : ", w->name_);
-      app_dbg<5>.debug("XRP_public     : ", w->public_);
-      app_dbg<5>.debug("XRP_secret     : ", w->private_);
-      app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
-    }
+    // auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
+    // app_dbg<5>.debug("\nDecrypted information\n");
+    // app_dbg<5>.debug("API_user       : ", bitstamp.API_user);
+    // app_dbg<5>.debug("API_key        : ", bitstamp.API_key);
+    // app_dbg<5>.debug("API_secret     : ", bitstamp.API_secret);
+    // app_dbg<5>.debug("xrp.tag        : ", bitstamp.tag_);
+    // app_dbg<5>.debug("xrp.public     : ", bitstamp.public_);
+    // //
+    // auto const& x1 = xrpl_network::get_xrpl_instance(false)->wallets();
+    // auto const& x2 = xrpl_network::get_xrpl_instance(true)->wallets();
+    // for (auto const lw : x1)
+    // {
+    //   auto w = static_cast<ledger_wallet*>(lw);
+    //   app_dbg<5>.debug("XRP_name       : ", w->name_);
+    //   app_dbg<5>.debug("XRP_public     : ", w->public_);
+    //   app_dbg<5>.debug("XRP_secret     : ", w->private_);
+    //   app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
+    // }
+    // for (auto const lw : x2)
+    // {
+    //   auto w = static_cast<ledger_wallet*>(lw);
+    //   app_dbg<5>.debug("XRP_name       : ", w->name_);
+    //   app_dbg<5>.debug("XRP_public     : ", w->public_);
+    //   app_dbg<5>.debug("XRP_secret     : ", w->private_);
+    //   app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
+    // }
     return EXIT_SUCCESS;
   }
 #endif

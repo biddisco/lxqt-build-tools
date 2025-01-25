@@ -14,7 +14,7 @@
 // ----------------------------------------------------------------------------
 using namespace grox::debug::detail;
 template <int Level>
-inline constexpr print_threshold<Level, 9> http_dbg("https://");
+inline constexpr print_threshold<Level, 2> http_dbg("https://");
 
 // ----------------------------------------------------------------------------
 namespace net::http {
@@ -112,7 +112,10 @@ namespace net::http {
 
       QObject::connect(
           reply, &QNetworkReply::errorOccurred, this,
-          [this](QNetworkReply::NetworkError err) { qDebug() << QVariant(err).toString(); },
+          [this](QNetworkReply::NetworkError err) {
+            http_dbg<0>.error(
+                ffmt<s20>("handler"), this, QVariant(err).toString().toLatin1().data());
+          },
           Qt::DirectConnection);
 
       QObject::connect(reply, &QNetworkReply::sslErrors, this,

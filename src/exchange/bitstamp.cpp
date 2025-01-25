@@ -81,7 +81,7 @@ std::string what(std::exception_ptr const& eptr = std::current_exception())
 bitstamp_network::bitstamp_network()
 {
   exchange_name_ = "Bitstamp";
-  for (auto n : {"Main" /*, "Test", "Currency"*/})
+  for (auto n : {"Main", "Test", "Currency"})
   {
     bitstamp_account acct;
     acct.name_ = n;
@@ -155,12 +155,7 @@ void bitstamp_network::initialize()
         })                                                      //
       | stdexec::continues_on(QtStdExec::QThreadScheduler())    // pika -> Qt
       | stdexec::let_value(
-            std::bind(&bitstamp_network::request_account_info, this, acct))    // Qt -> pika
-      | stdexec::then([this, &acct](QByteArray byteArray) {                    // pika
-          std::string_view data(byteArray.constData(), byteArray.length());
-          bitstamp_dbg<6>.debug(ffmt<s20>("Initialize"), "AccountInfo", data);
-          handle_account_info(acct, data);
-        })                                                                             //
+            std::bind(&bitstamp_network::request_all_account_infos, this))             // Qt -> pika
       | stdexec::continues_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
       | stdexec::let_value(std::bind(&bitstamp_network::request_open_orders, this))    // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                                   // pika
@@ -432,30 +427,39 @@ any_bytearray_sender bitstamp_network::request_account_info(bitstamp_account con
 // ----------------------------------------------------------------------------
 any_void_sender bitstamp_network::request_all_account_infos()
 {
+  // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
+  namespace tt = pika::this_thread::experimental;
+  using namespace grox::debug;
   bitstamp_dbg<0>.debug(ffmt<s20>("all_account_infos"));
+
   // we can't block the Qt thread, so put async_scope onto a pika thread
-  auto wait_for_accounts = [this]() {
-    bitstamp_dbg<0>.debug(ffmt<s20>("all_account_infos"), "lambda");
+  auto get_all_account_infos = [this]() {
     exec::async_scope scope;
-    //
-    for (auto& acct : accounts_)
+    for (auto& acct : accounts())
     {
-      bitstamp_dbg<0>.debug(ffmt<s20>("all_account_infos"), acct.name_);
-      auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())    // Qt
-          | ex::let_value([this, &acct]() { return request_account_info(acct); })      // Qt->pika
-          | stdexec::then([this, &acct](QByteArray byteArray) {                        // pika
-              std::string_view data(byteArray.constData(), byteArray.length());
-              bitstamp_dbg<0>.debug(ffmt<s20>("Initialize"), "AccountInfo", data);
-              handle_account_info(acct, data);
-            });
+      auto handle_info = [this, &acct](QByteArray byteArray) {    // pika
+        std::string_view data(byteArray.constData(), byteArray.length());
+        bitstamp_dbg<6>.debug(ffmt<s20>("Initialize"), "AccountInfo", data);
+        handle_account_info(acct, data);
+      };
+
+      auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())            // Qt
+          | ex::let_value([this, &acct]() { return request_account_info(acct); })    // -> pika
+          | ex::then(handle_info);
+
       scope.spawn(std::move(snd));
     }
-    bitstamp_dbg<0>.debug(ffmt<s20>("sync_wait"), "going to sleep");
-    stdexec::sync_wait(scope.on_empty());
-    bitstamp_dbg<0>.debug(ffmt<s20>("all_account_infos"), "sync_wait lambda complete");
+
+    bitstamp_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope", "get_all_account_infos");
+    tt::sync_wait(scope.on_empty());
+    bitstamp_dbg<2>.debug(ffmt<s20>("COMPLETE"), "scope", "get_all_account_infos");
   };
-  stdexec::sender auto snd = stdexec::starts_on(default_pool_scheduler(), stdexec::just())    //
-      | stdexec::then(wait_for_accounts);
+
+  // must be on a pika thread if we are using sync_wait
+  auto snd = stdexec::just()                               //
+      | stdexec::continues_on(default_pool_scheduler())    //
+      | stdexec::then(get_all_account_infos);
+
   return any_void_sender{std::move(snd)};
 }
 
@@ -562,7 +566,8 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
   try
   {
     nlohmann::json jdata = nlohmann::json::parse(data);
-    bitstamp_dbg<0>.debug(ffmt<s20>("account info"), jdata.dump(4));
+    bitstamp_dbg<6>.debug(ffmt<s20>("account info"), jdata.dump(4));
+    bitstamp_dbg<2>.debug(ffmt<s20>("account info"), "Processing", acct.name_);
 
     std::regex bal_regex("_balance", std::regex_constants::icase);
     std::regex tok_regex("([^_]+)_.*");

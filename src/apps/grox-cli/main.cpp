@@ -53,9 +53,7 @@ int request_account_info()
   test1_dbg<2>.debug(ffmt<s20>("TEST(exchange, request_account_info)"));
   std::atomic<bool> finished{false};
 
-  auto wallets = bitstamp_exchange->wallets();
-  bitstamp_account& acct = *static_cast<bitstamp_account*>(wallets[0]);
-
+  bitstamp_account& acct = bitstamp_exchange->accounts()[0];
   auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())    //
       | ex::let_value(
             [&acct]() { return bitstamp_exchange->request_account_info(acct); })    // Qt -> pika
