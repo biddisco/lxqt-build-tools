@@ -13,6 +13,8 @@
 #include "widgets/trade_widget.hpp"
 
 // ----------------------------------------------------------------------------
+// This dialog display a series of trades before they are submitted
+// the user can cancel or ok them
 class check_trades_dialog : public QDialog
 {
   Q_OBJECT

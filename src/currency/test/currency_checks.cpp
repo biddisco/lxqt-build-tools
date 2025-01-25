@@ -250,7 +250,7 @@ TEST(currency, formatting)
 // check comparison operators used in map checks
 TEST(currency, map)
 {
-  std::vector<currency_pair> pairs{
+  currency_pair::list pairs{
       {{"", "USD"}, {"", "XRP"}},                                                  //
       {{"", "USD"}, {"", "BTC"}},                                                  //
       {{"", "USD"}, {"", "EUR"}},                                                  //
@@ -265,7 +265,7 @@ TEST(currency, map)
   {
     // insert all pairs into map, also add reversed pairs for extra testing
     std::map<currency_pair, std::string> test_map;
-    std::vector<currency_pair> pairs2;
+    currency_pair::list pairs2;
     for (auto key : pairs)
     {
       auto rev = reverse_pair(key);

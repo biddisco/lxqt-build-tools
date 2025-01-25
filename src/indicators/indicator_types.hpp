@@ -23,9 +23,8 @@ inline constexpr grox::debug::detail::print_threshold<Level, 5> indicator_dbg("I
 // ----------------------------------------------------------------------------
 struct order_book_param
 {
-  // std::shared_ptr<order_book_base> order_book_;
   std::string exchange_;
-  currency_pair ticker_;
+  currency_pair::list tickers_;
   //
   friend std::ostream& operator<<(std::ostream& os, order_book_param const& ob)
   {

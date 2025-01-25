@@ -14,6 +14,9 @@
 #include <QVBoxLayout>
 #include <QValidator>
 //
+#include <range/v3/view.hpp>
+#include <fmt/format.h>
+//
 #include "config/config.hpp"
 #include "data/ohlc_dataset.hpp"
 #include "exchange/exchange.hpp"
@@ -93,6 +96,7 @@ QWidget* get_widget(order_book_param const& param)
   QFrame* widget = new QFrame();
   QVBoxLayout* layout = new QVBoxLayout(widget);
   widget->setLayout(layout);
+  widget->setProperty("TSize", QVariant(static_cast<int>(param.tickers_.size())));
 
   // put all the exchanges we know about into the combox box
   QComboBox* const exchange = new QComboBox(widget);
@@ -100,20 +104,28 @@ QWidget* get_widget(order_book_param const& param)
   layout->addWidget(exchange);
   QStringList qsl;
 
-  QComboBox* const ticker = new QComboBox(widget);
-  ticker->setObjectName("Ticker");
-  layout->addWidget(ticker);
+  std::vector<QComboBox*> qtickers;
+  for (auto [i, t] : param.tickers_ | ranges::views::enumerate)
+  {
+    QComboBox* ticker = new QComboBox(widget);
+    qtickers.push_back(ticker);
+    ticker->setObjectName(fmt::format("Ticker %d", i));
+    layout->addWidget(ticker);
+  }
 
   // this lambda will set the ticker combo using the tickers available from the exchange
-  auto set_ticker_strings = [exchange, ticker, param](int index) {
+  auto set_ticker_strings = [exchange, &qtickers, param](int index) {
     auto exchange = global_settings.networks_[index];
     currency_pair::list const& cplist = exchange->get_currency_pairs();
     auto tickers = exchange->tickers_subscribed();
-    QStringList temp;
-    for (auto const [cp, td] : tickers) { temp << currency_pair_qstring(cp); }
-    ticker->clear();
-    ticker->addItems(temp);
-    ticker->setCurrentText(currency_pair_qstring(param.ticker_));
+    for (auto [i, ticker] : qtickers | ranges::views::enumerate)
+    {
+      QStringList temp;
+      for (auto const [cp, td] : tickers) { temp << currency_pair_qstring(cp); }
+      ticker->clear();
+      ticker->addItems(temp);
+      ticker->setCurrentText(currency_pair_qstring(param.tickers_[i]));
+    }
   };
 
   QWidget::connect(exchange, &QComboBox::currentIndexChanged, widget,
@@ -176,25 +188,16 @@ void set_param(QWidget* widget, indicators::param<order_book_param>& param)
   QFrame* f = dynamic_cast<QFrame*>(widget);
   QComboBox* e = f->findChild<QComboBox*>("Exchange");
   std::string exch = e->currentText().toLatin1().data();
+  int num_tickers = f->property("TSize").value<int>();
   //
-  QComboBox* t = f->findChild<QComboBox*>("Ticker");
-  std::string s = t->currentText().toLatin1().data();
-  currency_pair cp = string_to_pair(s, "-");
+  currency_pair::list tickers;
+  for (int i = 0; i < num_tickers; ++i)
+  {
+    QComboBox* t = f->findChild<QComboBox*>(fmt::format("Ticker %d", i));
+    std::string s = t->currentText().toLatin1().data();
+    currency_pair cp = string_to_pair(s, "-");
+    tickers.push_back(cp);
+  }
   //
-  param.put({exch, cp});
-}
-
-// ----------------------------------------------------------------------------
-ticker_data init_order_book_params(order_book_param const& p, QLabel* l1, QLabel* l2)
-{
-  std::string name = p.exchange_;
-  currency_pair cp = p.ticker_;
-  l1->setText(name.c_str());
-  l2->setText(currency_pair_qstring(cp));
-  //
-  auto it = std::find_if(global_settings.networks_.begin(), global_settings.networks_.end(),
-      [name](auto n) { return n->get_name() == name; });
-  auto tdata = (*it)->get_subscribed_ticker_data(cp);
-  //
-  return tdata;
+  param.put({exch, tickers});
 }

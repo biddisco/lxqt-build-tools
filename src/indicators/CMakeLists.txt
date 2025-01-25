@@ -23,8 +23,10 @@ set(grox_indicators_SRCS
     volatility_garman_klass.hpp
     volatility_rogers_satchell.hpp
     # trading
-    trade_sell_sliding_stop.hpp
     trade_arbitrage_2_way.hpp
+    trade_currency_exchange.hpp
+    trade_market_maker.hpp
+    trade_sell_sliding_stop.hpp
 )
 
 add_library(grox_indicators ${grox_indicators_SRCS})

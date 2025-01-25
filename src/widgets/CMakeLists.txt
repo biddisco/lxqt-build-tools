@@ -28,6 +28,7 @@ set(grox_widgets_SRCS
 set(grox_widgets_SRCS
     ${grox_widgets_SRCS}
     trade_algorithm_arbitrage.ui
+    trade_algorithm_currency_exchange.ui
     trade_algorithm_market_maker.ui
     connection_widget.ui
     currency_widget.ui

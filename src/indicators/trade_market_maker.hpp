@@ -39,8 +39,8 @@ public:
     void init_params() override
     {
       params_ = {
-          param<order_book_param>{"Order-Book-1", {"Bitstamp", {{"", "XRP"}, {"", "USD"}}}},    // 0
-          param<int>{"Num Spreads", 5},                                                         // 1
+          param<order_book_param>{"Order-Book-1", {"Bitstamp", {{{"XRP"}, {"USD"}}}}},    // 0
+          param<int>{"Num Spreads", 5},                                                   // 1
       };
     }
 

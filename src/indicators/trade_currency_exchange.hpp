@@ -16,23 +16,19 @@
 // ----------------------------------------------------------------------------
 namespace indicators {
 
-  struct arbitrage_decision
-  {
-  };
-
   //----------------------------------------------------------------------------
-  class trade_arbitrage_2_way : public algorithm_base
+  class trade_currency_exchange : public algorithm_base
   {
 public:
     using operator_type = arbitrage_decision;
 
     // ---------------------------------------
-    FACTORY_ARBITRAGE_CREATE(trade_arbitrage_2_way);
+    FACTORY_ARBITRAGE_CREATE(trade_currency_exchange);
 
     // ---------------------------------------
     /// Default constructor
-    trade_arbitrage_2_way(std::string exchange = "Bistamp", currency_pair ticker = {})
-      : algorithm_base("Arbitrage 2-way", "Arbitrage 2-way")
+    trade_currency_exchange(std::string exchange = "Bistamp", currency_pair ticker = {})
+      : algorithm_base("Currency-Exchange", "Currency-Exchange using live orderbooks")
       , exchange_(exchange)
       , ticker_(ticker)
     {
@@ -43,11 +39,9 @@ public:
     void init_params() override
     {
       params_ = {
-          param<order_book_param>{"Order-Book-1", {"Bitstamp", {{{"XRP"}, {"USD"}}}}},    // 0
-          param<order_book_param>{"Order-Book-2",                                         //
-              {"XRPL Mainnet", {{{"XRP"}, {currencies::bitstamp_trust, "USD"}}}}},        // 1
-          param<int>{"Window size", 14},                                                  // 2
-          param<ohlc_modes>{"mode", ohlc_modes::mid_open_close},                          // 3
+          param<order_book_param>{
+              "Order-Book-1", {"Bitstamp", {{{"XRP"}, {"USD"}}, {{"XRP"}, {"EUR"}}}}},    // 0
+          param<int>{"Num Spreads", 5},                                                   // 1
       };
     }
 
