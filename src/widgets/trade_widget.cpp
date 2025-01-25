@@ -110,8 +110,9 @@ void trade_widget::connect_events()
             {
               if (jdata["id"] == trade_.id_)
               {
-                auto acct = std::dynamic_pointer_cast<bitstamp_network>(trade_.network_)->account();
-                acct.remove_trade(trade_);
+                auto acct =
+                    std::dynamic_pointer_cast<bitstamp_network>(trade_.network_)->wallets()[0];
+                acct->remove_trade(trade_);
               }
               else { trade_dbg<0>.error(ffmt<s20>("cancel_order"), trade_.id_, jdata.dump()); }
             }

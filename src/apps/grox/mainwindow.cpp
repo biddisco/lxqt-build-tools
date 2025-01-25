@@ -513,14 +513,13 @@ void GroxMainWindow::connect_gui_controls()
     LoadStyleSheet(dark_mode_);
   });
 
-  qs_password_ =
-      new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_P)), this, [this]() {
+  auto& acct = bitstamp_network::get_bitstamp_instance()->accounts()[0];
+  qs_password_ = new QShortcut(
+      QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_P)), this, [this, &acct]() {
         //do what you need
         main_dbg<6>.debug("Shift click pressed");
-        std::array<std::string, 5> strings{bitstamp_network_->account().API_user,
-            bitstamp_network_->account().API_key, bitstamp_network_->account().API_secret,
-            std::to_string(bitstamp_network_->account().tag_),
-            bitstamp_network_->account().public_};
+        std::array<std::string, 5> strings{
+            acct.API_user, acct.API_key, acct.API_secret, std::to_string(acct.tag_), acct.public_};
 
         // iterate over wallets to convert type from basic pointers
         // @TODO - improve this

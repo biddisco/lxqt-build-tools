@@ -47,6 +47,8 @@ class bitstamp_network : public exchange
   std::mutex candlestick_mutex_;
   std::set<currency_pair> candlestick_updates_active_;
 
+  bitstamp_account& account() { return accounts_[0]; }
+
   public:
   //
   static inline std::string const bitstamp_https_address = "www.bitstamp.net";
@@ -92,7 +94,7 @@ class bitstamp_network : public exchange
     return accts;
   }
 
-  bitstamp_account& account() { return accounts_[0]; }
+  std::vector<bitstamp_account>& accounts() { return accounts_; }
 
   // Is sending this currency to the destination exchange supported
   bool can_send(currency_code const& c, exchange* dest) override;
@@ -135,7 +137,9 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // https: get account info/data
-  any_bytearray_sender request_account_info();
+  any_bytearray_sender request_account_info(bitstamp_account const& acct);
+  // get account info for all accounts
+  any_void_sender request_all_account_infos();
   // https: get new websocket token to subscribe to streams
   any_bytearray_sender request_websocket_token();
   // https: get open order data
@@ -148,7 +152,7 @@ class bitstamp_network : public exchange
   any_bytearray_sender request_cancel_order(trade_data const& t) override;
 
   // process account info response
-  void handle_account_info(std::string_view);
+  void handle_account_info(bitstamp_account& acct, std::string_view);
   void handle_websocket_token(std::string_view);
   void handle_tickers_available(std::string_view);
 
@@ -167,7 +171,8 @@ class bitstamp_network : public exchange
   void handle_buy_sell_order(std::string_view data);
 
   // ----------------------------------------------------------------------------
-  net::http::client_ptr signed_request(std::string const& url_path, std::string const& url_query);
+  net::http::client_ptr signed_request(
+      bitstamp_account const& acct, std::string const& url_path, std::string const& url_query);
 
   // ----------------------------------------------------------------------------
   // OHLC candlestick updating

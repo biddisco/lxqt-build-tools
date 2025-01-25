@@ -95,7 +95,7 @@ void generate_encrypted_ini_data(password_dialog& npw)
   // -----------------------
   encryption encryptor(global_settings.grox_password, global_settings.randomBytes);
   //
-  auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
+  auto& bitstamp = bitstamp_network::get_bitstamp_instance()->accounts()[0];
   bitstamp.API_user = npw.getAPIUser().toStdString();
   bitstamp.API_key = npw.getAPIKey().toStdString();
   bitstamp.API_secret = npw.getAPISecret().toStdString();
@@ -213,7 +213,7 @@ int qt_main(pika::program_options::variables_map& vm)
     // Bitstamp exchange details
     // ---------------------------------------
     global_settings.networks_.push_back(bitstamp_network::get_bitstamp_instance());
-    auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
+    auto& bitstamp = bitstamp_network::get_bitstamp_instance()->accounts()[0];
     bitstamp.network_ = bitstamp_network::get_bitstamp_instance();
 
     QByteArray API_user = base64_decode(settings.value("EncryptedData/API_user", "").toByteArray());
@@ -298,7 +298,7 @@ int qt_main(pika::program_options::variables_map& vm)
 #ifdef GROX_SUPPORT_DECODE
   if (vm["decode"].as<bool>())
   {
-    auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
+    auto& bitstamp = bitstamp_network::get_bitstamp_instance()->accounts()[0];
     app_dbg<5>.debug("\nDecrypted information\n");
     app_dbg<5>.debug("API_user       : ", bitstamp.API_user);
     app_dbg<5>.debug("API_key        : ", bitstamp.API_key);

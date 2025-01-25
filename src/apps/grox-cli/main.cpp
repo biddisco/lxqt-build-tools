@@ -52,8 +52,13 @@ int request_account_info()
   using namespace grox::debug;
   test1_dbg<2>.debug(ffmt<s20>("TEST(exchange, request_account_info)"));
   std::atomic<bool> finished{false};
-  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                //
-      | ex::let_value([]() { return bitstamp_exchange->request_account_info(); })    // Qt -> pika
+
+  auto wallets = bitstamp_exchange->wallets();
+  bitstamp_account& acct = *static_cast<bitstamp_account*>(wallets[0]);
+
+  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())    //
+      | ex::let_value(
+            [&acct]() { return bitstamp_exchange->request_account_info(acct); })    // Qt -> pika
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
@@ -81,7 +86,9 @@ int qt_main(int argc, char* argv[])
   global_settings.networkmanager_ = &networkmanager;
   //
   bitstamp_exchange = std::make_shared<bitstamp_network>();
-  if (!bitstamp_network::get_pass_authentication(bitstamp_exchange->account()))
+
+  auto acct = static_cast<bitstamp_account*>(bitstamp_exchange->wallets()[0]);
+  if (!bitstamp_network::get_pass_authentication(*acct))
   {
     std::cout << "Password authentication failed" << std::endl;
     return EXIT_FAILURE;
