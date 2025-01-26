@@ -592,7 +592,7 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
               nullptr};
           acct.add_currency(cur);
 
-          bitstamp_dbg<0>.debug(ffmt<s20>("account info"), cur);
+          bitstamp_dbg<5>.debug(ffmt<s20>("account info"), cur);
         }
       }
 
@@ -604,7 +604,7 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
           // @todo - this needs to be checked to correctly handle non 3 letter codes
           std::string utoken = uppercase(mtch[1]);
           withdrawal_fee_map_[{"", utoken}] = value;
-          bitstamp_dbg<0>.debug(ffmt<s20>("account info"), "withdrawal fee", utoken, value);
+          bitstamp_dbg<5>.debug(ffmt<s20>("account info"), "withdrawal fee", utoken, value);
         }
       }
       else if (std::regex_search(key, trans_fee_regex))
@@ -615,7 +615,7 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
           std::string utoken = uppercase(mtch[1]);
           currency_pair cp = split_token_string(utoken);
           transaction_fee_map_[cp] = value;
-          bitstamp_dbg<0>.debug(
+          bitstamp_dbg<5>.debug(
               ffmt<s20>("account info"), "transaction fee", cp.c1_, cp.c2_, value);
         }
       }

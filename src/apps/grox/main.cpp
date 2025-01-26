@@ -7,6 +7,8 @@
 #include <string>
 #include <utility>
 //
+#include <range/v3/view.hpp>
+//
 #include <QApplication>
 #include <QNetworkAccessManager>
 #include <QObject>
@@ -24,6 +26,7 @@
 #include "debug/print.hpp"
 #include "network/evp-encrypt.hpp"
 #include "util/execute_os_command.hpp"
+#include "util/stringutils.hpp"
 #include "widgets/password_dialog.hpp"
 //
 #include "mainwindow.hpp"
@@ -81,67 +84,76 @@ secure_string base64_string(QByteArray ba)
 void generate_encrypted_ini_data(password_dialog& npw)
 {
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
-  //
+
+  // ----------------------------------------------
+  // Generate data we need for encryption
+  // ----------------------------------------------
   global_settings.grox_password = npw.getPassword().toStdString();
 
   // we write a dummy random number to ini file
   // if this is present assume that the initial encryption step is valid
   secure_string adummy_string = generate_random_alphanumeric_string(encryption::BLOCK_SIZE, 111111);
-  settings.setValue("EncodedData/randomBytes",
-      QString::fromStdString(base64_encode(adummy_string).toStdString()));
+  settings.setValue(
+      "EncodedData/randomBytes", to_qstring(base64_encode(adummy_string).toStdString()));
 
-  // -----------------------
-  // Generate encrypted data
-  // -----------------------
+  // create an encryption helper object
   encryption encryptor(global_settings.grox_password, global_settings.randomBytes);
-  //
+
+  // -------------------------------------
+  // Write Bitstamp accounts
+  settings.beginGroup("Bitstamp");
   auto bitstamp = bitstamp_network::get_bitstamp_instance();
-  for (auto acct : bitstamp->accounts())
+  for (auto const& [i, acct] : bitstamp->accounts() | ranges::views::enumerate)
   {
     if (!bitstamp_network::get_pass_authentication(acct))
     {
       throw std::runtime_error("Password authentication failed");
     }
-    acct.tag_ = npw.getAPIDestTag().toLong();
-    acct.public_ = npw.getAPIXRPAddress().toStdString();
+    settings.beginGroup(acct.name_);
+    acct.tag_ = npw.getBitstampDestTag(i).toLong();
+    acct.public_ = npw.getBitstampXRPAddress(i).toStdString();
 
+    // api key/secret and user are taken  from pass authentication and not written to ini
     // secure_string API_user = encryptor.encrypt(acct.API_user);
     // secure_string API_key = encryptor.encrypt(acct.API_key);
     // secure_string API_secret = encryptor.encrypt(acct.API_secret);
+    // settings.setValue("API_key", to_qstring(base64_encode(API_key).toStdString()));
+    // settings.setValue("API_user", to_qstring(base64_encode(API_user).toStdString()));
+    // settings.setValue("API_secret", to_qstring(base64_encode(API_secret).toStdString()));
+
     secure_string API_tag_ = encryptor.encrypt(std::to_string(acct.tag_));
     secure_string API_public_ = encryptor.encrypt(acct.public_);
-    //
-    // settings.setValue(
-    //     "EncryptedData/API_key", QString::fromStdString(base64_encode(API_key).toStdString()));
-    // settings.setValue(
-    //     "EncryptedData/API_user", QString::fromStdString(base64_encode(API_user).toStdString()));
-    // settings.setValue("EncryptedData/API_secret",
-    //     QString::fromStdString(base64_encode(API_secret).toStdString()));
-    settings.setValue(
-        "EncryptedData/API_desttag", QString::fromStdString(base64_encode(API_tag_).toStdString()));
-    settings.setValue("EncryptedData/API_xrpaddress",
-        QString::fromStdString(base64_encode(API_public_).toStdString()));
+    settings.setValue("API_desttag", to_qstring(base64_encode(API_tag_).toStdString()));
+    settings.setValue("API_xrpaddress", to_qstring(base64_encode(API_public_).toStdString()));
+    settings.endGroup();    // account
   }
-  //
-  xrpl_network::get_xrpl_instance(true)->clear_wallets();
-  xrpl_network::get_xrpl_instance(false)->clear_wallets();
-  int index = 0;
-  for (auto const& w : npw.get_wallets())
+  settings.endGroup();    // bitstamp
+
+  // -------------------------------------
+  // Write XRPL accounts
+  // loop over wallets twice, once for main-net once for test-net
+  auto xrp_wallets = npw.getXRPwallets();
+  for (auto const is_test : {false, true})
   {
-    std::dynamic_pointer_cast<xrpl_network>(w.network_)->add_wallet(w);
-    secure_string name_ = encryptor.encrypt(w.name_);
-    secure_string public_ = encryptor.encrypt(w.public_);
-    secure_string private_ = encryptor.encrypt(w.private_);
-    QString num = QString::number(index++);
-    //
-    settings.setValue("EncryptedData/XRP_name_" + num,
-        QString::fromStdString(base64_encode(name_).toStdString()));
-    settings.setValue("EncryptedData/XRP_public_" + num,
-        QString::fromStdString(base64_encode(public_).toStdString()));
-    settings.setValue("EncryptedData/XRP_secret_" + num,
-        QString::fromStdString(base64_encode(private_).toStdString()));
-    xrpl_network* net = dynamic_cast<xrpl_network*>(w.network_.get());
-    settings.setValue("EncryptedData/XRP_test_" + num, net->testnet());
+    settings.beginGroup(is_test ? "XRPL-testnet" : "XRPL-mainnet");
+    xrpl_network::get_xrpl_instance(is_test)->clear_wallets();
+    std::vector<ledger_wallet> wallets2;
+    std::copy_if(
+        xrp_wallets.begin(), xrp_wallets.end(), std::back_inserter(wallets2), [is_test](auto& w) {
+          return is_test == std::dynamic_pointer_cast<xrpl_network>(w.network_)->testnet();
+        });
+    for (auto const& w : wallets2)
+    {
+      settings.beginGroup(w.name_);
+      std::dynamic_pointer_cast<xrpl_network>(w.network_)->add_wallet(w);
+      secure_string public_ = encryptor.encrypt(w.public_);
+      secure_string private_ = encryptor.encrypt(w.private_);
+      //
+      settings.setValue("public", to_qstring(base64_encode(public_).toStdString()));
+      settings.setValue("secret", to_qstring(base64_encode(private_).toStdString()));
+      settings.endGroup();    // wallet
+    }
+    settings.endGroup();    // main/test network
   }
 }
 
@@ -219,6 +231,7 @@ int qt_main(pika::program_options::variables_map& vm)
     // ---------------------------------------
     global_settings.networks_.push_back(bitstamp_network::get_bitstamp_instance());
     auto bitstamp = bitstamp_network::get_bitstamp_instance();
+    settings.beginGroup("Bitstamp");
     for (auto& acct : bitstamp->accounts())
     {
       if (!bitstamp_network::get_pass_authentication(acct))
@@ -227,94 +240,81 @@ int qt_main(pika::program_options::variables_map& vm)
       }
       acct.network_ = bitstamp;
       //
-      QByteArray API_tag_ =
-          base64_decode(settings.value("EncryptedData/API_desttag", "").toByteArray());
+      settings.beginGroup(acct.name_);
+      QByteArray API_tag_ = base64_decode(settings.value("API_desttag").toByteArray());
       acct.tag_ =
           std::atol(encryptor.decrypt(secure_string(API_tag_.data(), API_tag_.size())).c_str());
-
       //
-      QByteArray API_public_ =
-          base64_decode(settings.value("EncryptedData/API_xrpaddress", "").toByteArray());
+      QByteArray API_public_ = base64_decode(settings.value("API_xrpaddress").toByteArray());
       acct.public_ = encryptor.decrypt(secure_string(API_public_.data(), API_public_.size()));
+      settings.endGroup();
     }
+    settings.endGroup();
+
     // ---------------------------------------
     // XRP wallet details
     // ---------------------------------------
     global_settings.networks_.push_back(xrpl_network::get_instance(false));
     global_settings.networks_.push_back(xrpl_network::get_instance(true));
-    //
-    bool present = true;
-    int index = 0;
-    while (present)
+
+    // -------------------------------------
+    for (auto const is_test : {false, true})
     {
-      QString num = QString::number(index);
-      if (!settings.contains("EncryptedData/XRP_name_" + num))
-        present = false;
-      else
+      auto xrpl = xrpl_network::get_xrpl_instance(is_test);
+      settings.beginGroup(is_test ? "XRPL-testnet" : "XRPL-mainnet");
+      // get all wallets
+      QStringList children = settings.childGroups();
+      for (auto const& wallet : children)
       {
+        settings.beginGroup(wallet);
         ledger_wallet w;
+        w.name_ = wallet.toStdString();
+        w.testnet_ = is_test;
         //
-        bool XRP_testnet = settings.value("EncryptedData/XRP_test_" + num, "false").toBool();
-        if (XRP_testnet)
-        {
-          w.network_ = xrpl_network::get_xrpl_instance(true);
-          w.testnet_ = true;
-        }
-        else
-        {
-          w.network_ = xrpl_network::get_xrpl_instance(false);
-          w.testnet_ = false;
-        }
-        w.tag_ = 0;
-        w.widget_ = nullptr;
-        //
-        QByteArray XRP_name =
-            base64_decode(settings.value("EncryptedData/XRP_name_" + num, "").toByteArray());
-        w.name_ = encryptor.decrypt(secure_string(XRP_name.data(), XRP_name.size()));
-        //
-        QByteArray XRP_public =
-            base64_decode(settings.value("EncryptedData/XRP_public_" + num, "").toByteArray());
+        QByteArray XRP_public = base64_decode(settings.value("public").toByteArray());
         w.public_ = encryptor.decrypt(secure_string(XRP_public.data(), XRP_public.size()));
         //
-        QByteArray XRP_secret =
-            base64_decode(settings.value("EncryptedData/XRP_secret_" + num, "").toByteArray());
+        QByteArray XRP_secret = base64_decode(settings.value("secret").toByteArray());
         w.private_ = encryptor.decrypt(secure_string(XRP_secret.data(), XRP_secret.size()));
-
-        std::dynamic_pointer_cast<xrpl_network>(w.network_)->add_wallet(w);
+        //
+        w.network_ = xrpl;
+        xrpl->add_wallet(w);
+        settings.endGroup();    // wallet
       }
-      index++;
+      settings.endGroup();    // main/test network
     }
   }
+
 #define GROX_SUPPORT_DECODE 1
 #ifdef GROX_SUPPORT_DECODE
   if (vm["decode"].as<bool>())
   {
-    // auto& bitstamp = bitstamp_network::get_bitstamp_instance()->account();
-    // app_dbg<5>.debug("\nDecrypted information\n");
-    // app_dbg<5>.debug("API_user       : ", bitstamp.API_user);
-    // app_dbg<5>.debug("API_key        : ", bitstamp.API_key);
-    // app_dbg<5>.debug("API_secret     : ", bitstamp.API_secret);
-    // app_dbg<5>.debug("xrp.tag        : ", bitstamp.tag_);
-    // app_dbg<5>.debug("xrp.public     : ", bitstamp.public_);
-    // //
-    // auto const& x1 = xrpl_network::get_xrpl_instance(false)->wallets();
-    // auto const& x2 = xrpl_network::get_xrpl_instance(true)->wallets();
-    // for (auto const lw : x1)
-    // {
-    //   auto w = static_cast<ledger_wallet*>(lw);
-    //   app_dbg<5>.debug("XRP_name       : ", w->name_);
-    //   app_dbg<5>.debug("XRP_public     : ", w->public_);
-    //   app_dbg<5>.debug("XRP_secret     : ", w->private_);
-    //   app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
-    // }
-    // for (auto const lw : x2)
-    // {
-    //   auto w = static_cast<ledger_wallet*>(lw);
-    //   app_dbg<5>.debug("XRP_name       : ", w->name_);
-    //   app_dbg<5>.debug("XRP_public     : ", w->public_);
-    //   app_dbg<5>.debug("XRP_secret     : ", w->private_);
-    //   app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
-    // }
+    auto& bitstamp = bitstamp_network::get_bitstamp_instance()->accounts()[0];
+    app_dbg<5>.debug("\nDecrypted information\n");
+    app_dbg<5>.debug("API_user       : ", bitstamp.API_user);
+    app_dbg<5>.debug("API_key        : ", bitstamp.API_key);
+    app_dbg<5>.debug("API_secret     : ", bitstamp.API_secret);
+    app_dbg<5>.debug("xrp.tag        : ", bitstamp.tag_);
+    app_dbg<5>.debug("xrp.public     : ", bitstamp.public_);
+    //
+    auto const& x1 = xrpl_network::get_xrpl_instance(false)->wallets();
+    auto const& x2 = xrpl_network::get_xrpl_instance(true)->wallets();
+    for (auto const lw : x1)
+    {
+      auto w = static_cast<ledger_wallet*>(lw);
+      app_dbg<5>.debug("XRP_name       : ", w->name_);
+      app_dbg<5>.debug("XRP_public     : ", w->public_);
+      app_dbg<5>.debug("XRP_secret     : ", w->private_);
+      app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
+    }
+    for (auto const lw : x2)
+    {
+      auto w = static_cast<ledger_wallet*>(lw);
+      app_dbg<5>.debug("XRP_name       : ", w->name_);
+      app_dbg<5>.debug("XRP_public     : ", w->public_);
+      app_dbg<5>.debug("XRP_secret     : ", w->private_);
+      app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
+    }
     return EXIT_SUCCESS;
   }
 #endif

@@ -8,6 +8,8 @@
 #include <QString>
 //
 #include "exchange/account.hpp"
+#include "exchange/bitstamp.hpp"
+#include "exchange/xrpl_network.hpp"
 //
 namespace Ui {
   class password_dialog;
@@ -21,18 +23,20 @@ class password_dialog : public QDialog
   public:
   password_dialog(bool simple);
   password_dialog(
-      std::array<std::string, 5> const& strings, std::vector<ledger_wallet> const& wallets);
+      std::vector<bitstamp_account> const& bitstamp, std::vector<ledger_wallet> const& wallets);
   ~password_dialog();
 
-  // Exchange details
-  QString getAPIUser();
-  QString getAPIKey();
-  QString getAPISecret();
-  QString getAPIDestTag();
-  QString getAPIXRPAddress();
+  // Bitstamp exchange accounts
+  std::vector<bitstamp_account> const& geBitstampwallets();
 
-  // Wallet details
-  std::vector<ledger_wallet> const& get_wallets();
+  QString getBitstampUser(int index);
+  QString getBitstampKey(int index);
+  QString getBitstampSecret(int index);
+  QString getBitstampDestTag(int index);
+  QString getBitstampXRPAddress(int index);
+
+  // XRP ledger Wallet details
+  std::vector<ledger_wallet> const& getXRPwallets();
   //
   QString getPassword();
   //

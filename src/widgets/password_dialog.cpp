@@ -9,7 +9,9 @@
 #include <QString>
 //
 #include "exchange/xrpl_network.hpp"
-#include "password_dialog.hpp"
+#include "util/stringutils.hpp"
+#include "widgets/password_dialog.hpp"
+//
 #include "ui_password_dialog.h"
 
 // ----------------------------------------------------------------------------
@@ -50,16 +52,22 @@ password_dialog::password_dialog(bool simple)
 }
 
 password_dialog::password_dialog(
-    std::array<std::string, 5> const& strings, std::vector<ledger_wallet> const& wallets)
+    std::vector<bitstamp_account> const& bitstamp, std::vector<ledger_wallet> const& wallets)
   : password_dialog(false)
 {
-  // exchange data
-  ui->api_user->setText(QString(strings[0].c_str()));
-  ui->api_key->setText(QString(strings[1].c_str()));
-  ui->api_secret->setText(QString(strings[2].c_str()));
-  ui->api_tag->setText(QString(strings[3].c_str()));
-  ui->api_address->setText(QString(strings[4].c_str()));
-  // wallets
+  // bistamp account
+  bitstamp_account const& acct = bitstamp[0];
+  QStringList list;
+  for (auto const& a : bitstamp) list << to_qstring(a.name_);
+  ui->bitstamp_name->addItems(list);
+  //
+  ui->api_user->setText(to_qstring(acct.API_user));
+  ui->api_key->setText(to_qstring(acct.API_key));
+  ui->api_secret->setText(to_qstring(acct.API_secret));
+  ui->api_tag->setText(to_qstring(std::to_string(acct.tag_)));
+  ui->api_address->setText(to_qstring(acct.public_));
+
+  // xrp wallets
   wallets_ = wallets;
   for (auto const& w : wallets_) { ui->wallets_combo->addItem(QString(w.name_.c_str())); }
   ui->xrp_nickname->setText(wallets_[0].name_.c_str());
@@ -76,20 +84,20 @@ QString password_dialog::getPassword() { return ui->password->text(); }
 // ----------------------------------------------------------------------------
 // Exchange details
 // ----------------------------------------------------------------------------
-QString password_dialog::getAPIUser() { return ui->api_user->text(); }
+QString password_dialog::getBitstampUser(int index) { return ui->api_user->text(); }
 
-QString password_dialog::getAPIKey() { return ui->api_key->text(); }
+QString password_dialog::getBitstampKey(int index) { return ui->api_key->text(); }
 
-QString password_dialog::getAPISecret() { return ui->api_secret->text(); }
+QString password_dialog::getBitstampSecret(int index) { return ui->api_secret->text(); }
 
-QString password_dialog::getAPIDestTag() { return ui->api_tag->text(); }
+QString password_dialog::getBitstampDestTag(int index) { return ui->api_tag->text(); }
 
-QString password_dialog::getAPIXRPAddress() { return ui->api_address->text(); }
+QString password_dialog::getBitstampXRPAddress(int index) { return ui->api_address->text(); }
 
 // ----------------------------------------------------------------------------
 // Wallet details
 // ----------------------------------------------------------------------------
-std::vector<ledger_wallet> const& password_dialog::get_wallets() { return wallets_; }
+std::vector<ledger_wallet> const& password_dialog::getXRPwallets() { return wallets_; }
 
 void password_dialog::add_wallet()
 {

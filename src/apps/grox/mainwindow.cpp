@@ -514,34 +514,23 @@ void GroxMainWindow::connect_gui_controls()
 
   qs_password_ =
       new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_P)), this, [this]() {
-        //do what you need
-        // main_dbg<6>.debug("Shift click pressed");
-        // std::array<std::string, 5> strings{bitstamp_network_->account().API_user,
-        //     bitstamp_network_->account().API_key, bitstamp_network_->account().API_secret,
-        //     std::to_string(bitstamp_network_->account().tag_),
-        //     bitstamp_network_->account().public_};
-
-        // // iterate over wallets to convert type from basic pointers
-        // // @TODO - improve this
-        // std::vector<ledger_wallet> wallets;
-        // auto x1 = xrpl_network::get_xrpl_instance(false)->wallets();
-        // auto x2 = xrpl_network::get_xrpl_instance(true)->wallets();
-        // ranges::for_each(x1, [&](basic_account* b) {
-        //   ledger_wallet w = *static_cast<ledger_wallet*>(b);
-        //   wallets.push_back(w);
-        // });
-        // ranges::for_each(x2, [&](basic_account* b) {
-        //   ledger_wallet w = *static_cast<ledger_wallet*>(b);
-        //   wallets.push_back(w);
-        // });
-        // password_dialog npw = password_dialog(strings, wallets);
-        // if (npw.exec() == QDialog::Accepted) { generate_encrypted_ini_data(npw); }
+        main_dbg<6>.debug("Shift click pressed");
+        // iterate over wallets to convert type from basic pointers
+        // @TODO - improve this
+        std::vector<ledger_wallet> wallets;
+        auto x1 = xrpl_network::get_xrpl_instance(false)->wallets();
+        auto x2 = xrpl_network::get_xrpl_instance(true)->wallets();
+        ranges::for_each(x1, [&](basic_account* b) {
+          ledger_wallet w = *static_cast<ledger_wallet*>(b);
+          wallets.push_back(w);
+        });
+        ranges::for_each(x2, [&](basic_account* b) {
+          ledger_wallet w = *static_cast<ledger_wallet*>(b);
+          wallets.push_back(w);
+        });
+        password_dialog npw = password_dialog(bitstamp_network_->accounts(), wallets);
+        if (npw.exec() == QDialog::Accepted) { generate_encrypted_ini_data(npw); }
       });
-
-  // qs_arbitrage_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_A)), this, [this]() {
-  //   std::shared_ptr<arbitrage_widget> widget = create_arbitrage_widget(exchange_list_);
-  //   arbs_ = widget;
-  // });
 
   qs_arbitrage_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_M)), this, [this]() {
     std::shared_ptr<QDialog> widget = create_trading_widget(exchange_list_);
