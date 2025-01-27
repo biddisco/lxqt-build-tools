@@ -32,8 +32,7 @@
   }                                                                                                \
   void execute(std::uint64_t N) override                                                           \
   {                                                                                                \
-    if ((N == std::numeric_limits<std::uint64_t>::max()) ||                                        \
-        (N > get_inputs()[0].dataset_->size()))                                                    \
+    if ((N == std::numeric_limits<std::uint64_t>::max()) || (N > get_input(0).dataset_->size()))   \
       N = 0;                                                                                       \
     call_helper<operator_type> helper;                                                             \
     helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });      \
@@ -108,12 +107,25 @@ public:
 
     // ----------------------------------------------------------------------------
     virtual std::vector<candle_input_data> const& get_inputs() const { return in_datasets_; }
+
+    virtual candle_input_data const& get_input(std::size_t i) const
+    {
+      if (i >= in_datasets_.size()) { throw std::runtime_error("Setup inputs/outputs"); }
+      return in_datasets_[i];
+    }
+
     virtual std::vector<output_type*>& get_outputs() { return out_datasets_; }
+
+    virtual output_type* const get_output(std::size_t i) const
+    {
+      if (i >= out_datasets_.size()) { throw std::runtime_error("Setup inputs/outputs"); }
+      return out_datasets_[i];
+    }
 
     // ----------------------------------------------------------------------------
     // create a dataset for each indicator output
     // default implementation uses first input resolution and size
-    void create_outputs(std::shared_ptr<ohlc_dataset_view> view)
+    virtual void create_outputs(std::shared_ptr<ohlc_dataset_view> view)
     {
       in_datasets_ = connect_candle_input_datasets(view);
       //
@@ -170,8 +182,8 @@ public:
     // ----------------------------------------------------------------------------
     void call_operator_ohlc_1(std::uint64_t N, std::function<double(ohlctv_sample const&)> fn)
     {
-      auto const input = get_inputs()[0].dataset_;
-      auto output = get_outputs()[0];
+      auto const input = get_input(0).dataset_;
+      auto output = get_output(0);
       //
       auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
       for (auto it = i1; it != input->data().end(); ++it)
@@ -187,7 +199,7 @@ public:
     void call_operator_ohlc_v(
         std::uint64_t N, std::function<std::vector<float>(ohlctv_sample const&)> fn)
     {
-      auto const input = get_inputs()[0].dataset_;
+      auto const input = get_input(0).dataset_;
       auto outputs = get_outputs();
       //
       auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
@@ -207,7 +219,7 @@ public:
     void call_operator_buy_sell(
         std::uint64_t N, std::function<buy_sell_point(ohlctv_sample const&)> fn)
     {
-      auto const input = get_inputs()[0].dataset_;
+      auto const input = get_input(0).dataset_;
       auto outputs = get_outputs();
       //
       auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);

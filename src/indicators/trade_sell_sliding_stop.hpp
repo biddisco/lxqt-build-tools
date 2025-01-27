@@ -55,6 +55,7 @@ public:
       , lower_stop_(kernels::sliding_limit::down, lgap)
       , gradient_(0, 0)
       , rsi_gradient_(0, 0)
+      , time_res_{0}
     {
     }
 
@@ -106,8 +107,13 @@ public:
           param<int>{"Window size", /*window_size_ * 4*/ 15},    // 1
           params_[2]};                                           // 2
       srsi_.algorithm_base::initialize(rsi_params_);
-      //
-      auto d1 = get_inputs()[0];
+    }
+
+    // ----------------------------------------------------------------------------
+    void create_outputs(std::shared_ptr<ohlc_dataset_view> view) override
+    {
+      indicator_base::create_outputs(view);
+      auto d1 = get_input(0);
       set_time_resolution(d1.dataset_->get_resolution());
     }
 

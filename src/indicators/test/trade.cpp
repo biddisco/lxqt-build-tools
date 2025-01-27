@@ -91,6 +91,8 @@ TEST(trade, sliding_stop_fee_00)
       param<double>{"Gradient Threshold Lower", 0.0},                         // 8
   };
   alg_.set_params(params);
+  alg_.create_outputs(hdf5_ohlc);
+  alg_.initialize();
   std::shared_ptr<trade_sell_sliding_stop> alg =
       std::dynamic_pointer_cast<trade_sell_sliding_stop>(alg_.create(&alg_, hdf5_ohlc));
 
