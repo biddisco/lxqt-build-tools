@@ -43,7 +43,7 @@ public:
           param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 1000}},    // 0
           param<int>{"Window size", 3},                                              // 1
           param<double>{"Scale factor", 1.0},                                        // 2
-          param<double>{QString("Num Bands (each 1") + sigma + ")", 2},              // 3
+          param<int>{QString("Num Bands (each 1") + sigma + ")", 1},                 // 3
       };
     }
 
@@ -58,6 +58,7 @@ public:
       window_size_ = get<int>(params_, 1);
       scale_ = get<double>(params_, 2);
       num_bands_ = get<int>(params_, 3);
+      overlay_ = overlay_vector(1 + (2 * num_bands_), overlay_type::price);
       buffer1_ = boost::circular_buffer<float>(window_size_);
     }
 

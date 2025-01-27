@@ -25,8 +25,8 @@
     auto result = std::make_shared<type>();                                                        \
     *result = *dynamic_cast<type*>(alg);                                                           \
     result->hdf5_ohlc_ = hdf5_ohlc;                                                                \
-    result->create_outputs(hdf5_ohlc);                                                             \
     result->initialize();                                                                          \
+    result->create_outputs(hdf5_ohlc);                                                             \
     result->register_callbacks();                                                                  \
     return result;                                                                                 \
   }                                                                                                \
