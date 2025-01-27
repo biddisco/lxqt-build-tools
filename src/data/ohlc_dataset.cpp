@@ -191,7 +191,7 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
       modified = true;
     }
   }
-  ohlc_dbg<1>.debug(ffmt<s20>("resampled"), ticker_str_, ffmt<s3>(res_lo.name_), "from",
+  ohlc_dbg<2>.debug(ffmt<s20>("resampled"), ticker_str_, ffmt<s3>(res_lo.name_), "from",
       msecs_unix_to_calendar_time_local(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of",
       size());
   validate_ohlc(data(), res_lo, orig_T, ticker_str_);

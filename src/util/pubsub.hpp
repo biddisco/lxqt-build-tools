@@ -14,7 +14,7 @@
 // ----------------------------------------------------------------------------
 using namespace grox::debug::detail;
 template <int Level>
-inline constexpr print_threshold<Level, 5> pubsub_dbg("PubSub  ");
+inline constexpr print_threshold<Level, 2> pubsub_dbg("PubSub  ");
 
 // ----------------------------------------------------------------------------
 namespace grox {
@@ -89,7 +89,7 @@ namespace grox {
       using namespace grox::debug;
       for (auto const& [k, v] : subscriptions)
       {
-        pubsub_dbg<0>.debug(ffmt<s20>("unsubscribe"), "clear", k, print_type<Signature>());
+        pubsub_dbg<3>.debug(ffmt<s20>("unsubscribe"), "clear", k, print_type<Signature>());
       }
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
       subscriptions.clear();

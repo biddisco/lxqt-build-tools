@@ -51,10 +51,8 @@ ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency_pair const& 
     if (new_data)
     {
       add_dataset(res, new_data);
-      std::cout << "subscribing" << new_data->ticker_str_ << new_data->get_resolution() << "to"
-                << origin_data->ticker_str_ << origin_data->get_resolution();
-      // man_dbg<5>.debug(ffmt<s20>("subscribing"), new_data->ticker_str_, new_data->get_resolution(),
-      //     "to", origin_data->ticker_str_, origin_data->get_resolution());
+      man_dbg<5>.debug(ffmt<s20>("subscribing"), new_data->ticker_str_, new_data->get_resolution(),
+          "to", origin_data->ticker_str_, origin_data->get_resolution());
       origin_data->new_data_subscribers_.subscribe(
           "dataset_view" + new_data->ticker_str_ + new_data->get_resolution().name_,
           [origin_data, new_data](std::uint64_t N) {

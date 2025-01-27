@@ -267,7 +267,7 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
   command["data"]["auth"] = websocket_token_;
 
   ticker_data tdata = get_subscribed_ticker_data(cp);
-  bitstamp_dbg<3>.debug(ffmt<s20>("websocket myorders"), command["event"],
+  bitstamp_dbg<4>.debug(ffmt<s20>("websocket myorders"), command["event"],
       string_join("private-my_orders_", ticker), command.dump(4));
 
   if (enable)

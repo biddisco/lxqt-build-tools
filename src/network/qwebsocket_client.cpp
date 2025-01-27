@@ -36,7 +36,7 @@ namespace net::ws {
   // ----------------------------------------------------------------------------
   using namespace grox::debug::detail;
   template <int Level>
-  inline constexpr print_threshold<Level, 5> qwebsocket_dbg("QWebsock");
+  inline constexpr print_threshold<Level, 2> qwebsocket_dbg("QWebsock");
 
   // ------------------------------------------------------------------
   qwebsocket_client::qwebsocket_client(std::string const& id, QUrl const& url, QString subscribe,
@@ -55,7 +55,7 @@ namespace net::ws {
     qwebsocket_dbg<2>.debug(fmt::format("{:20s} Destructor", id_));
     if (websocket_)
     {
-      qwebsocket_dbg<2>.error(
+      qwebsocket_dbg<1>.error(
           fmt::format("{:20s}, Client::destructor : websocket delete - out of order", id_));
       delete websocket_;
     }
@@ -64,7 +64,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::startConnection()
   {
-    qwebsocket_dbg<2>.debug(fmt::format("{:20s} startConnection", id_, url_));
+    qwebsocket_dbg<3>.debug(fmt::format("{:20s} startConnection", id_, url_));
     //
     websocket_ = new QWebSocket;
     (*websocket_).setPauseMode(QAbstractSocket::PauseNever);    // @todo PauseOnSslErrors
@@ -124,7 +124,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onConnected()
   {
-    qwebsocket_dbg<2>.debug(fmt::format("{:20s} Connected : sending subscribe", id_));
+    qwebsocket_dbg<3>.debug(fmt::format("{:20s} Connected : sending subscribe", id_));
     (*websocket_).sendTextMessage(subscribe_);
   }
 
@@ -133,7 +133,7 @@ namespace net::ws {
   {
     if (websocket_)
     {
-      qwebsocket_dbg<2>.error(fmt::format("{:20s} Disconnected : Unexpected : CloseCode is : {} {}",
+      qwebsocket_dbg<0>.error(fmt::format("{:20s} Disconnected : Unexpected : CloseCode is : {} {}",
           id_, QVariant::fromValue((*websocket_).closeCode()).toString(),
           (*websocket_).errorString()));
     }
@@ -143,7 +143,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onStateChanged(QAbstractSocket::SocketState socketState)
   {
-    qwebsocket_dbg<2>.debug(
+    qwebsocket_dbg<3>.debug(
         fmt::format("{:20s} StateChanged {}", id_, QVariant::fromValue(socketState).toString()));
   }
 
@@ -160,7 +160,7 @@ namespace net::ws {
             "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
             QVariant::fromValue(code).toString(), (*websocket_).errorString()));
       }
-      else { qwebsocket_dbg<0>.debug(fmt::format("{:20s} AboutToClose : CloseCode Normal", id_)); }
+      else { qwebsocket_dbg<3>.debug(fmt::format("{:20s} AboutToClose : CloseCode Normal", id_)); }
       (*websocket_).deleteLater();
       websocket_ = nullptr;
     }
