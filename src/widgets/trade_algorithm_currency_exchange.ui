@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>369</width>
-    <height>487</height>
+    <width>393</width>
+    <height>501</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,6 +16,58 @@
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="1" column="0">
     <layout class="QGridLayout" name="gridLayout_3">
+     <item row="0" column="5">
+      <widget class="QLabel" name="C2">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>C2</string>
+       </property>
+       <property name="checked" stdset="0">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="3">
+      <widget class="QLabel" name="ratelabel">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Equivalent rate</string>
+       </property>
+       <property name="checked" stdset="0">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Taker Fee %</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="5">
+      <widget class="QLineEdit" name="rate">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>0.015</string>
+       </property>
+      </widget>
+     </item>
      <item row="1" column="3">
       <widget class="QLineEdit" name="partial">
        <property name="sizePolicy">
@@ -29,10 +81,19 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="4">
-      <widget class="QLabel" name="label_3">
+     <item row="0" column="3">
+      <widget class="QLabel" name="I1">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="text">
-        <string>-&gt;</string>
+        <string>I1</string>
+       </property>
+       <property name="checked" stdset="0">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
@@ -56,7 +117,27 @@
        </property>
       </widget>
      </item>
-     <item row="5" column="0" colspan="7">
+     <item row="2" column="1">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Maker Fee %</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="5">
+      <widget class="QLineEdit" name="receive">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>0.015</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0" colspan="7">
       <widget class="QSplitter" name="splitter_2">
        <property name="orientation">
         <enum>Qt::Orientation::Vertical</enum>
@@ -139,19 +220,6 @@
        </widget>
       </widget>
      </item>
-     <item row="1" column="5">
-      <widget class="QLineEdit" name="receive">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>0.015</string>
-       </property>
-      </widget>
-     </item>
      <item row="0" column="1">
       <widget class="QLabel" name="C1">
        <property name="sizePolicy">
@@ -168,64 +236,54 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="3">
-      <widget class="QLabel" name="I1">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
+     <item row="1" column="4">
+      <widget class="QLabel" name="label_3">
        <property name="text">
-        <string>I1</string>
-       </property>
-       <property name="checked" stdset="0">
-        <bool>false</bool>
+        <string>-&gt;</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="5">
-      <widget class="QLabel" name="C2">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
+     <item row="3" column="3">
+      <widget class="QDoubleSpinBox" name="taker_fee">
+       <property name="prefix">
+        <string/>
        </property>
-       <property name="text">
-        <string>C2</string>
+       <property name="suffix">
+        <string> %</string>
        </property>
-       <property name="checked" stdset="0">
-        <bool>false</bool>
+       <property name="decimals">
+        <number>4</number>
        </property>
-      </widget>
-     </item>
-     <item row="4" column="5">
-      <widget class="QLineEdit" name="rate">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
+       <property name="maximum">
+        <double>99.999899999999997</double>
        </property>
-       <property name="text">
-        <string>0.015</string>
+       <property name="singleStep">
+        <double>0.010000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.400000000000000</double>
        </property>
       </widget>
      </item>
-     <item row="4" column="3">
-      <widget class="QLabel" name="ratelabel">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
+     <item row="3" column="1">
+      <widget class="QDoubleSpinBox" name="maker_fee">
+       <property name="prefix">
+        <string/>
        </property>
-       <property name="text">
-        <string>Equivalent rate</string>
+       <property name="suffix">
+        <string> %</string>
        </property>
-       <property name="checked" stdset="0">
-        <bool>false</bool>
+       <property name="decimals">
+        <number>4</number>
+       </property>
+       <property name="maximum">
+        <double>99.999899999999997</double>
+       </property>
+       <property name="singleStep">
+        <double>0.010000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.300000000000000</double>
        </property>
       </widget>
      </item>

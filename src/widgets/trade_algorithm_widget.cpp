@@ -57,10 +57,12 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
 
   // fill orderbook text display
   size_t const font_size = 8;
+#ifdef RESIZE_TO_LIMIT
   QString txt = "X";
   int char_size = QFontMetrics(ui_->orderbook1->font()).horizontalAdvance(txt);
   int calcWidth = char_size * 85 + 8;
   ui_->orderbook1->setMinimumWidth(calcWidth);
+#endif
   QFont font = QFont();
   font.setPointSize(font_size);
   font.setFamily("Courier");
@@ -73,19 +75,21 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
   ui_->C1->setText(to_qstring(c1.c2_.code_));
   ui_->I1->setText(to_qstring(c1.c1_.code_));
   ui_->C2->setText(to_qstring(c2.c2_.code_));
-  auto tdata1 = set_gui_orderbook(p1, 0, ui_->exchange1, ui_->ticker1);
-  auto tdata2 = set_gui_orderbook(p1, 1, ui_->exchange2, ui_->ticker2);
+  ticker_data tdata1 = set_gui_orderbook(p1, 0, ui_->exchange1, ui_->ticker1);
+  ticker_data tdata2 = set_gui_orderbook(p1, 1, ui_->exchange2, ui_->ticker2);
+  ui_->taker_fee->setValue(tdata1->exchange_->get_transaction_fee_percent(c1));
+  ui_->maker_fee->setValue(tdata1->exchange_->get_transaction_fee_percent(c2));
 
   auto arb_lambda = [ui_](
                         ticker_data tdata1, ticker_data tdata2, auto* obwidget1, auto* obwidget2) {
     double budget = std::stod(ui_->spend->text().toStdString());
     //
     fee_data sell_fee{0.12, 0.0};
-    fee_data buy_fee{0.4, 0.01};
+    fee_data taker_fee{ui_->taker_fee->value(), 0.01};
     //
     std::string string_output;
-    auto buys = tdata1->orderbook_->compute_buy_amount(budget, buy_fee, string_output);
-    auto sells = tdata2->orderbook_->compute_sell_amount(buys.amount, buy_fee, string_output);
+    auto buys = tdata1->orderbook_->compute_buy_amount(budget, taker_fee, string_output);
+    auto sells = tdata2->orderbook_->compute_sell_amount(buys.amount, taker_fee, string_output);
     obwidget1->setPlainText(to_qstring(string_output));
     obwidget2->setPlainText(to_qstring(string_output));
     ui_->partial->setText(to_qstring(fmt::format("{:11.4f} ", buys.amount)));
