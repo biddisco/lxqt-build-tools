@@ -38,6 +38,14 @@ namespace network {
     invalid,
   };
   constexpr auto stream_names = magic_enum::enum_names<network::streams>();
+
+  struct transaction_fees
+  {
+    double maker_percent;
+    double taker_percent;
+    double fixed;
+    double transfer_percent;
+  };
 }    // namespace network
 
 using stream_set = std::set<network::streams>;
@@ -199,9 +207,11 @@ class exchange
   // ---------------------------------------
   // fees
   // ---------------------------------------
-  virtual double get_transaction_fee_percent(currency_pair const& cp) = 0;
-  virtual double get_transaction_fee_fixed(currency_pair const& cp) = 0;
-  virtual double get_transfer_fee(currency_code const& c1) = 0;
+  virtual network::transaction_fees get_fees(currency_pair const& cp) = 0;
+
+  // ---------------------------------------
+  // fees
+  // ---------------------------------------
   virtual void custom_functions(basic_account* acct) = 0;
 
   Q_SIGNALS:

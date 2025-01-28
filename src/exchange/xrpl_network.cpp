@@ -795,7 +795,8 @@ bool xrpl_network::make_payment(currency_amount const& c, basic_account* src, ba
   }
   else
   {
-    double fee = get_transfer_fee(c.symbol_);
+    currency_pair cp{c.symbol_, c.symbol_};
+    double fee = get_fees(cp).transfer_percent;
     std::cout << "XRP IOU payment amount " << c.balance_ << " " << c.symbol_.code_
               << " TransferRate " << fee << " from " << from->public_ << " to " << to->public_
               << " IOU addr " << c.symbol_.issuer_
@@ -952,16 +953,10 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
 }
 
 // ----------------------------------------------------------------------------
-double xrpl_network::get_transfer_fee(currency_code const& c1)
+network::transaction_fees xrpl_network::get_fees(currency_pair const& cp)
 {
-  return currency_fees_[c1.issuer_];
+  return {0, 0, 0, currency_fees_[cp.c1_.issuer_]};
 }
-
-// ----------------------------------------------------------------------------
-double xrpl_network::get_transaction_fee_percent(currency_pair const& cp) { return 0.0; }
-
-// ----------------------------------------------------------------------------
-double xrpl_network::get_transaction_fee_fixed(currency_pair const& cp) { return 0.0; }
 
 // ----------------------------------------------------------------------------
 void xrpl_network::trustline(

@@ -359,17 +359,16 @@ bool bitstamp_network::can_send(currency_code const& c, exchange* dest)
 }
 
 // ----------------------------------------------------------------------------
-double bitstamp_network::get_transaction_fee_percent(currency_pair const& cp)
+network::transaction_fees bitstamp_network::get_fees(currency_pair const& cp)
 {
-  if (transaction_fee_map_.contains(cp)) return transaction_fee_map_.at(cp);
+  if (transaction_fee_map_.contains(cp))
+    return {transaction_fee_map_.at(cp), transaction_fee_map_.at(cp), 0, 0};
   currency_pair cp2 = reverse_pair(cp);
-  if (transaction_fee_map_.contains(cp2)) return transaction_fee_map_.at(cp2);
+  if (transaction_fee_map_.contains(cp2))
+    return {transaction_fee_map_.at(cp2), transaction_fee_map_.at(cp2), 0, 0};
   throw std::runtime_error("transaction fee lookup failed");
-  return 0.0;
+  return {0, 0, 0, 0};
 }
-
-// ----------------------------------------------------------------------------
-double bitstamp_network::get_transaction_fee_fixed(currency_pair const& cp) { return 0.0; }
 
 // ----------------------------------------------------------------------------
 bool bitstamp_network::make_payment(

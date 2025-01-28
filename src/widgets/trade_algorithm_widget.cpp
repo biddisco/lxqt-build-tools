@@ -77,8 +77,8 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
   ui_->C2->setText(to_qstring(c2.c2_.code_));
   ticker_data tdata1 = set_gui_orderbook(p1, 0, ui_->exchange1, ui_->ticker1);
   ticker_data tdata2 = set_gui_orderbook(p1, 1, ui_->exchange2, ui_->ticker2);
-  ui_->taker_fee->setValue(tdata1->exchange_->get_transaction_fee_percent(c1));
-  ui_->maker_fee->setValue(tdata1->exchange_->get_transaction_fee_percent(c2));
+  ui_->taker_fee->setValue(tdata1->exchange_->get_fees(c1).taker_percent);
+  ui_->maker_fee->setValue(tdata1->exchange_->get_fees(c2).maker_percent);
 
   auto arb_lambda = [ui_](
                         ticker_data tdata1, ticker_data tdata2, auto* obwidget1, auto* obwidget2) {
