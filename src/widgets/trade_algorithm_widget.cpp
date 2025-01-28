@@ -1,6 +1,7 @@
 #include <memory>
 #include <string>
 //
+#include <fmt/format.h>
 // Qt Advanced Docking System
 #include "AutoHideDockContainer.h"
 #include "DockAreaTabBar.h"
@@ -17,6 +18,7 @@
 #include "indicators/trade_arbitrage_2_way.hpp"
 #include "indicators/trade_currency_exchange.hpp"
 #include "indicators/trade_market_maker.hpp"
+#include "util/stringutils.hpp"
 #include "widgets/indicator_widget.hpp"
 #include "widgets/trade_algorithm_widget.hpp"
 // generated
@@ -64,47 +66,48 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
   font.setFamily("Courier");
   ui_->orderbook1->setFont(font);
   ui_->orderbook2->setFont(font);
-  ui_->currency_exchange_orders->setFont(font);
 
-  auto tdata1 = set_gui_orderbook(
-      indicators::get<order_book_param>(alg->get_params(), 0), 0, ui_->exchange1, ui_->ticker1);
-  auto tdata2 = set_gui_orderbook(
-      indicators::get<order_book_param>(alg->get_params(), 0), 1, ui_->exchange1, ui_->ticker2);
+  order_book_param p1 = indicators::get<order_book_param>(alg->get_params(), 0);
+  currency_pair c1 = p1.tickers_[0];
+  currency_pair c2 = p1.tickers_[1];
+  ui_->C1->setText(to_qstring(c1.c2_.code_));
+  ui_->I1->setText(to_qstring(c1.c1_.code_));
+  ui_->C2->setText(to_qstring(c2.c2_.code_));
+  auto tdata1 = set_gui_orderbook(p1, 0, ui_->exchange1, ui_->ticker1);
+  auto tdata2 = set_gui_orderbook(p1, 1, ui_->exchange2, ui_->ticker2);
 
-  auto arb_lambda = [tb = ui_->currency_exchange_orders, tdata1, tdata2]() {
-    double budget = 100000;
-    std::string arbitrage_string;
-
+  auto arb_lambda = [ui_](
+                        ticker_data tdata1, ticker_data tdata2, auto* obwidget1, auto* obwidget2) {
+    double budget = std::stod(ui_->spend->text().toStdString());
     //
     fee_data sell_fee{0.12, 0.0};
-    fee_data buy_fee{0.0, 0.01};
+    fee_data buy_fee{0.4, 0.01};
     //
-    // tdata1->orderbook_->compute_arbitrage(
-    //     *(tdata2->orderbook_), budget, buy_fee, sell_fee, test_offset, arbitrage_string);
-
-    // if (arbitrage_string.size() > 0)
-    // {
-    //   QString arb_string = QString::fromStdString(arbitrage_string);
-    //   tb->setPlainText(arb_string);
-    // }
-    // else { tb->setPlainText(""); }
+    std::string string_output;
+    auto buys = tdata1->orderbook_->compute_buy_amount(budget, buy_fee, string_output);
+    auto sells = tdata2->orderbook_->compute_sell_amount(buys.amount, buy_fee, string_output);
+    obwidget1->setPlainText(to_qstring(string_output));
+    obwidget2->setPlainText(to_qstring(string_output));
+    ui_->partial->setText(to_qstring(fmt::format("{:11.4f} ", buys.amount)));
+    ui_->receive->setText(to_qstring(fmt::format("{:11.4f} ", sells.amount)));
+    ui_->rate->setText(to_qstring(fmt::format("{:11.4f} ", sells.amount / budget)));
   };
 
-  auto makeLambda = [arb_lambda](ticker_data tdata, auto* obwidget) {
-    return [tdata, obwidget, arb_lambda](currency_pair cp) {
+  auto makeLambda = [arb_lambda](
+                        ticker_data tdata1, ticker_data tdata2, auto* obwidget1, auto* obwidget2) {
+    return [tdata1, tdata2, obwidget1, obwidget2, arb_lambda](currency_pair cp) {
       QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
-        if (tdata && tdata->orderbook_)
+        if (tdata1 && tdata1->orderbook_ && tdata2 && tdata2->orderbook_)
         {
-          QString datastring = QString::fromStdString(tdata->orderbook_->get_orderbook_string());
-          obwidget->setPlainText(datastring);
-          arb_lambda();
+          arb_lambda(tdata1, tdata2, obwidget1, obwidget2);
         }
       });
     };
   };
 
-  tdata1->orderbook_subscribers_.subscribe("arbitrage1", makeLambda(tdata1, ui_->orderbook1));
-  tdata2->orderbook_subscribers_.subscribe("arbitrage2", makeLambda(tdata2, ui_->orderbook2));
+  tdata1->orderbook_subscribers_.subscribe(
+      "arbitrage1", makeLambda(tdata1, tdata2, ui_->orderbook1, ui_->orderbook2));
+  // tdata2->orderbook_subscribers_.subscribe("arbitrage2", makeLambda(tdata2, ui_->orderbook2));
 
   return algowidget_;
 }

@@ -58,6 +58,13 @@ class order_book_base
   mutable std::mutex bidask_mtx_;
 
   // ---------------------------------------------
+  struct trade_data
+  {
+    double cost;
+    double amount;
+  };
+
+  // ---------------------------------------------
   protected:
   using trade_set =
       std::tuple<double, double, double, double, double, double, double, double, double, double>;
@@ -104,6 +111,10 @@ class order_book_base
   // are there arbitrage opportunities between the two
   arb_vector compute_arbitrage(order_book_base const& other, double budget, fee_data buy_fee,
       fee_data sell_fee, double test_offset, std::string& string_output) const;
+
+  trade_data compute_buy_amount(double amount, fee_data buy_fee, std::string& string_output) const;
+  trade_data compute_sell_amount(
+      double amount, fee_data buy_fee, std::string& string_output, bool details = true) const;
 
   std::string get_orderbook_string() { return order_text; }
 

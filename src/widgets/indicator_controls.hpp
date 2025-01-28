@@ -108,15 +108,14 @@ QWidget* get_widget(order_book_param const& param)
   for (auto [i, t] : param.tickers_ | ranges::views::enumerate)
   {
     QComboBox* ticker = new QComboBox(widget);
-    qtickers.push_back(ticker);
-    ticker->setObjectName(fmt::format("Ticker %d", i));
+    ticker->setObjectName(fmt::format("Ticker {}", i));
     layout->addWidget(ticker);
+    qtickers.push_back(ticker);
   }
 
   // this lambda will set the ticker combo using the tickers available from the exchange
   auto set_ticker_strings = [exchange, &qtickers, param](int index) {
     auto exchange = global_settings.networks_[index];
-    currency_pair::list const& cplist = exchange->get_currency_pairs();
     auto tickers = exchange->tickers_subscribed();
     for (auto [i, ticker] : qtickers | ranges::views::enumerate)
     {
@@ -193,7 +192,7 @@ void set_param(QWidget* widget, indicators::param<order_book_param>& param)
   currency_pair::list tickers;
   for (int i = 0; i < num_tickers; ++i)
   {
-    QComboBox* t = f->findChild<QComboBox*>(fmt::format("Ticker %d", i));
+    QComboBox* t = f->findChild<QComboBox*>(fmt::format("Ticker {}", i));
     std::string s = t->currentText().toLatin1().data();
     currency_pair cp = string_to_pair(s, "-");
     tickers.push_back(cp);

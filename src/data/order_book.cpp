@@ -22,6 +22,7 @@
 #include "debug/print.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
+#include "util/datetime_utils.hpp"
 #include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
@@ -350,4 +351,86 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
     std::cout << "trades " << string_output << std::endl;
   }
   return trades;
+}
+
+// ----------------------------------------------------------------------------
+// for a certain amount, how much order book purchase can/do you consume
+order_book_base::trade_data order_book_base::compute_buy_amount(
+    double amount, fee_data buy_fee, std::string& string_output) const
+{
+  auto l = take_bid_ask_lock();
+  bool view_details = true;
+  //
+  if (asks_.size.size() == 0) return {};
+  auto here_ask_zipped = ranges::views::zip(asks_.size, asks_.rate);
+  //
+  QString now = to_qstring(getCurrentUtcTime());
+  //
+  // title format string
+  std::stringstream temp;
+  temp << now.toStdString() << "\n"
+       << fmt::format(
+              "{:11s} {:11s} {:10s} {:10s} {:10s}\n", "Buy", "Avail", "Price", "Cost", "Funds");
+  //
+  double spend_budget = amount;
+  double amount_bought = 0;
+  for (auto const& o : here_ask_zipped)
+  {
+    // if we buy the sells present in the ask list, how much do we pay?
+    double ask_size, ask_rate;
+    std::tie(ask_size, ask_rate) = o;
+    //
+    double tokens_bought, funds_spent;
+    std::tie(tokens_bought, funds_spent) =
+        buy_nibble(spend_budget, buy_fee.percent, buy_fee.fixed, ask_size, ask_rate);
+    spend_budget -= funds_spent;
+    amount_bought += tokens_bought;
+    assert(spend_budget >= 0);
+    temp << fmt::format("{:11.4f} {:11.4f} {:10.4f} {:10.4f} {:10.4f}\n", tokens_bought, ask_size,
+        ask_rate, funds_spent, (amount - spend_budget));
+    // always keep some small-change in the account
+    if (spend_budget < 0.5) break;
+  }
+  // dump out the trade details
+  if (view_details) { string_output = temp.str(); }
+  return {(amount - spend_budget), amount_bought};
+}
+
+// ----------------------------------------------------------------------------
+// for a certain amount, how much order book sales can/do you consume
+order_book_base::trade_data order_book_base::compute_sell_amount(
+    double amount, fee_data fee, std::string& string_output, bool details) const
+{
+  auto l = take_bid_ask_lock();
+  if (bids_.size.size() == 0) return {0, 0};
+  auto offers_zipped = ranges::views::zip(bids_.size, bids_.rate);
+
+  // prepare output string
+  std::stringstream temp;
+  if (details)
+  {
+    temp << getCurrentUtcTime() << "\n"
+         << fmt::format(
+                "{:11s} {:11s} {:10s} {:10s} {:10s}\n", "Buy", "Avail", "Price", "Cost", "Funds");
+  }
+
+  double currency_remaining = amount;
+  double other_received = 0;
+  for (auto const& o : offers_zipped)
+  {
+    // if we buy the sells present in the ask list, how much do we pay?
+    auto [offer_size, offer_rate] = o;
+    auto [currency_exchanged, received] =
+        sell_nibble(currency_remaining, fee.percent, fee.fixed, offer_size, offer_rate);
+    currency_remaining -= currency_exchanged;
+    other_received += received;
+    assert(currency_remaining >= 0);
+    temp << fmt::format("{:11.4f} {:11.4f} {:10.4f} {:10.4f} {:10.4f}\n", received, offer_size,
+        offer_rate, currency_exchanged, (amount - currency_remaining));
+    // always keep some small-change in the account
+    if (currency_remaining < 0.5) break;
+  }
+  // dump out the trade details
+  if (details) { string_output = temp.str(); }
+  return {(amount - currency_remaining), other_received};
 }
