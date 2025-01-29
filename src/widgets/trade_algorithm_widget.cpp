@@ -50,6 +50,7 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
     std::shared_ptr<indicators::algorithm_base> alg, exchange::exchange_vector exchange_list_)
 {
   std::shared_ptr<QDialog> algowidget_ = std::make_shared<QDialog>(nullptr);
+  algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
 
   // gui object for/with currency_exchange controls
   Ui::trade_algorithm_currency_exchange* ui_ = new Ui::trade_algorithm_currency_exchange();
@@ -87,11 +88,11 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
     fee_data sell_fee{0.12, 0.0};
     fee_data taker_fee{ui_->taker_fee->value(), 0.01};
     //
-    std::string string_output;
-    auto buys = tdata1->orderbook_->compute_buy_amount(budget, taker_fee, string_output);
-    auto sells = tdata2->orderbook_->compute_sell_amount(buys.amount, taker_fee, string_output);
-    obwidget1->setPlainText(to_qstring(string_output));
-    obwidget2->setPlainText(to_qstring(string_output));
+    std::string buy_output, sell_output;
+    auto buys = tdata1->orderbook_->compute_buy_amount(budget, taker_fee, buy_output);
+    obwidget1->setPlainText(to_qstring(buy_output));
+    auto sells = tdata2->orderbook_->compute_sell_amount(buys.amount, taker_fee, sell_output);
+    obwidget2->setPlainText(to_qstring(sell_output));
     ui_->partial->setText(to_qstring(fmt::format("{:11.4f} ", buys.amount)));
     ui_->receive->setText(to_qstring(fmt::format("{:11.4f} ", sells.amount)));
     ui_->rate->setText(to_qstring(fmt::format("{:11.4f} ", sells.amount / budget)));
@@ -121,6 +122,7 @@ std::shared_ptr<QDialog> gui_trade_market_maker(
     std::shared_ptr<indicators::algorithm_base> alg, exchange::exchange_vector exchange_list_)
 {
   std::shared_ptr<QDialog> algowidget_ = std::make_shared<QDialog>(nullptr);
+  algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
 
   // gui object for/with market_maker controls
   Ui::trade_algorithm_market_maker* ui_ = new Ui::trade_algorithm_market_maker();
@@ -163,6 +165,7 @@ std::shared_ptr<QDialog> gui_trade_arbitrage(
     std::shared_ptr<indicators::algorithm_base> alg, exchange::exchange_vector exchange_list_)
 {
   std::shared_ptr<QDialog> algowidget_ = std::make_shared<QDialog>(nullptr);
+  algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
 
   // gui object for/with market_maker controls
   Ui::trade_algorithm_arbitrage* ui_ = new Ui::trade_algorithm_arbitrage();
@@ -248,7 +251,7 @@ std::shared_ptr<QDialog> trade_widget_factory(
     std::shared_ptr<indicators::algorithm_base> alg, exchange::exchange_vector exchange_list_)
 {
   if (dynamic_pointer_cast<indicators::trade_currency_exchange>(alg))
-  {    //
+  {
     return gui_trade_currency_exchange(alg, exchange_list_);
   }
   else if (dynamic_pointer_cast<indicators::trade_market_maker>(alg))
@@ -256,10 +259,10 @@ std::shared_ptr<QDialog> trade_widget_factory(
     return gui_trade_market_maker(alg, exchange_list_);    //
   }
   else if (dynamic_pointer_cast<indicators::trade_arbitrage_2_way>(alg))
-  {    //
+  {
     return gui_trade_arbitrage(alg, exchange_list_);
   }
-  return nullptr;    // return create_arbitrage_widget();
+  return nullptr;
 }
 
 // ----------------------------------------------------------------------------
@@ -284,8 +287,9 @@ std::shared_ptr<QDialog> create_trading_widget(exchange::exchange_vector exchang
     AlgorithmsDockWidget->setWidget(algowidget_.get());
     AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
     AlgorithmsDockWidget->setMinimumSize(128, 196);
-    auto const AlgorithmsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
-        SideBarLocation::SideBarTop, AlgorithmsDockWidget);
+    SideBarLocation sidebarloc = algowidget_->property("DockPos").value<SideBarLocation>();
+    auto const AlgorithmsautoHideContainer =
+        global_settings.dock_manager_->addAutoHideDockWidget(sidebarloc, AlgorithmsDockWidget);
     AlgorithmsautoHideContainer->setSize(256);
     global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 

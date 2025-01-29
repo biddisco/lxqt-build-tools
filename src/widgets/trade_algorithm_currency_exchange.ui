@@ -176,7 +176,11 @@
           </layout>
          </item>
          <item>
-          <widget class="QPlainTextEdit" name="orderbook1"/>
+          <widget class="QPlainTextEdit" name="orderbook1">
+           <property name="lineWrapMode">
+            <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
@@ -214,7 +218,11 @@
           </layout>
          </item>
          <item>
-          <widget class="QPlainTextEdit" name="orderbook2"/>
+          <widget class="QPlainTextEdit" name="orderbook2">
+           <property name="lineWrapMode">
+            <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>

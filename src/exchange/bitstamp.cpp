@@ -558,10 +558,6 @@ currency_pair bitstamp_network::split_token_string(std::string utoken) const
 // ----------------------------------------------------------------------------
 void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_view data)
 {
-  currency_code::list fiat{                   //
-      {currencies::bitstamp_trust, "USD"},    //
-      {currencies::bitstamp_trust, "EUR"},    //
-      {currencies::bitstamp_trust, "GBP"}};
   try
   {
     nlohmann::json jdata = nlohmann::json::parse(data);
