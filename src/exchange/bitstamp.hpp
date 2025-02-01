@@ -47,7 +47,7 @@ class bitstamp_network : public exchange
   std::mutex candlestick_mutex_;
   std::set<currency_pair> candlestick_updates_active_;
 
-  bitstamp_account& account() { return accounts_[0]; }
+  // bitstamp_account& account() { return accounts_[0]; }
 
   public:
   //
@@ -96,6 +96,8 @@ class bitstamp_network : public exchange
 
   std::vector<bitstamp_account>& accounts() { return accounts_; }
 
+  bitstamp_account& get_account_by_name(std::string_view name);
+
   // Is sending this currency to the destination exchange supported
   bool can_send(currency_code const& c, exchange* dest) override;
 
@@ -109,8 +111,6 @@ class bitstamp_network : public exchange
   bool subscribe_order_book(currency_pair const& cp, bool enable);
   bool subscribe_my_trades(currency_pair const& cp, bool enable);
   bool subscribe_my_orders(currency_pair const& cp, bool enable);
-  //  bool unsubscribe_my_trades(currency_pair const& cp);
-  //  bool unsubscribe_my_orders(currency_pair const& cp);
 
   stream_set websocket_streams() override
   {
@@ -136,18 +136,20 @@ class bitstamp_network : public exchange
   void shut_down() override;
 
   // ---------------------------------------
+  // https: get new websocket token to subscribe to streams
+  any_bytearray_sender request_websocket_token();
   // https: get account info/data
   any_bytearray_sender request_account_info(bitstamp_account const& acct);
   // get account info for all accounts
   any_void_sender request_all_account_infos();
-  // https: get new websocket token to subscribe to streams
-  any_bytearray_sender request_websocket_token();
   // https: get open order data
-  any_bytearray_sender request_open_orders();
+  any_bytearray_sender request_account_orders(bitstamp_account const& acct);
+  // get account info for all accounts
+  any_void_sender request_all_account_orders();
   // https: get currency tickers available
   any_bytearray_sender request_tickers_available();
   // https: place a limit order
-  any_bytearray_sender request_limit_order(trade_data const& t);
+  any_bytearray_sender request_limit_order(bitstamp_account const& acct, trade_data const& t);
   // https: place an order cancel
   any_bytearray_sender request_cancel_order(trade_data const& t) override;
 
@@ -158,8 +160,8 @@ class bitstamp_network : public exchange
 
   // ---------------------------------------
   // process open order data response
-  void handle_open_orders(std::string_view);
-  void process_order(nlohmann::json& jdata, std::string_view event);
+  void handle_open_orders(bitstamp_account& acct, std::string_view);
+  void process_order(bitstamp_account& acct, nlohmann::json& jdata, std::string_view event);
 
   // ---------------------------------------
   // make a payment/transfer from bitstamp
