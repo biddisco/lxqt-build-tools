@@ -86,8 +86,8 @@ std::shared_ptr<price_chart_widget> create_price_chart_widget(
   using namespace ads;
   std::string title = currency_pair_string(cp) + " price " + tdata->exchange_->get_name();
   CDockWidget* PlotDockWidget = new CDockWidget(to_qstring(title));
-  PlotDockWidget->setWidget(chart_widget.get());
-  PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  PlotDockWidget->setWidget(chart_widget.get(), CDockWidget::AutoScrollArea);
+  PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
   global_settings.dock_manager_->addDockWidgetFloating(PlotDockWidget);
   global_settings.dockwindows_menu_->addAction(PlotDockWidget->toggleViewAction());
   return chart_widget;
@@ -112,8 +112,8 @@ QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
   using namespace ads;
   std::string obtitle = cps + " text " + name;
   CDockWidget* obPlotDockWidget = new CDockWidget(to_qstring(obtitle));
-  obPlotDockWidget->setWidget(orderbook_text);
-  obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  obPlotDockWidget->setWidget(orderbook_text, CDockWidget::AutoScrollArea);
+  obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
   global_settings.dock_manager_->addDockWidgetFloating(obPlotDockWidget);
   global_settings.dockwindows_menu_->addAction(obPlotDockWidget->toggleViewAction());
 
@@ -131,8 +131,8 @@ OrderBookPlot* create_order_book_plot_widget(
   //
   std::string obptitle = cps + " depth " + name;
   CDockWidget* obpDockWidget = new CDockWidget(to_qstring(obptitle));
-  obpDockWidget->setWidget(orderbook_plot);
-  obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  obpDockWidget->setWidget(orderbook_plot, CDockWidget::AutoScrollArea);
+  obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
   global_settings.dock_manager_->addDockWidgetFloating(obpDockWidget);
   global_settings.dockwindows_menu_->addAction(obpDockWidget->toggleViewAction());
   return orderbook_plot;
@@ -275,8 +275,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   net_layout_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   //
   CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
-  NetworkDockWidget->setWidget(net_layout_);
-  NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  NetworkDockWidget->setWidget(net_layout_, CDockWidget::AutoScrollArea);
+  NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
   NetworkDockWidget->setMinimumSize(128, 196);
   auto const NetworkautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
       SideBarLocation::SideBarRight, NetworkDockWidget);
@@ -289,8 +289,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   accounts_frame_->setLayout(new QVBoxLayout());
   //
   CDockWidget* AccountsDockWidget = new CDockWidget("Accounts");
-  AccountsDockWidget->setWidget(accounts_frame_);
-  AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  AccountsDockWidget->setWidget(accounts_frame_, CDockWidget::AutoScrollArea);
+  AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
   AccountsDockWidget->setMinimumSize(128, 196);
   auto const AccountsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
       SideBarLocation::SideBarRight, AccountsDockWidget);
@@ -303,7 +303,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   orders_frame_->setLayout(new QVBoxLayout());
   //
   CDockWidget* OrdersDockWidget = new CDockWidget("Trades");
-  OrdersDockWidget->setWidget(orders_frame_);
+  OrdersDockWidget->setWidget(orders_frame_, CDockWidget::AutoScrollArea);
   OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContentMinimumSize);
   OrdersDockWidget->setMinimumSize(128, 196);
   auto const OrdersautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(

@@ -284,8 +284,8 @@ std::shared_ptr<QDialog> create_trading_widget(exchange::exchange_vector exchang
     // Create dockwidget to hold our controls
     CDockWidget* AlgorithmsDockWidget =
         new CDockWidget(global_settings.dock_manager_.get(), alg->get_name().c_str());
-    AlgorithmsDockWidget->setWidget(algowidget_.get());
-    AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+    AlgorithmsDockWidget->setWidget(algowidget_.get(), CDockWidget::AutoScrollArea);
+    // AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
     AlgorithmsDockWidget->setMinimumSize(128, 196);
     SideBarLocation sidebarloc = algowidget_->property("DockPos").value<SideBarLocation>();
     auto const AlgorithmsautoHideContainer =
