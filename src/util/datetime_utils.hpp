@@ -81,15 +81,15 @@ static std::string secs_unix_to_calendar_time_local(uint64_t unixsecs)
 }
 
 // ----------------------------------------------------------------------------
-static std::string getCurrentUtcTime()
+static std::string getCurrentUtcTime(std::string const format = "%Y-%m-%d %H:%M:%S")
 {
   // Get current time in UTC
   auto now = std::chrono::system_clock::now();
   auto now_time_t = std::chrono::system_clock::to_time_t(now);
 
-  // Format the time as "yyyy-MM-dd hh:mm:ss"
+  // Format the time as (for example) "yyyy-MM-dd hh:mm:ss"
   std::ostringstream oss;
-  oss << std::put_time(std::gmtime(&now_time_t), "%Y-%m-%d %H:%M:%S");
+  oss << std::put_time(std::gmtime(&now_time_t), format.c_str());
 
   return oss.str();
 }

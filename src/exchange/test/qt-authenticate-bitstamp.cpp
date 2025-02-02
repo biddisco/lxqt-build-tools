@@ -130,6 +130,7 @@ TEST(exchange, cancel_order)
 {
   trade_data t;
   t.id_ = 1816315536502784;
+  t.wallet_ = "Main";
 
   using namespace grox::debug;
   test1_dbg<2>.debug(ffmt<s20>("TEST(exchange, request_account_info)"));

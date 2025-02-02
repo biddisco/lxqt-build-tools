@@ -47,8 +47,6 @@ class bitstamp_network : public exchange
   std::mutex candlestick_mutex_;
   std::set<currency_pair> candlestick_updates_active_;
 
-  // bitstamp_account& account() { return accounts_[0]; }
-
   public:
   //
   static inline std::string const bitstamp_https_address = "www.bitstamp.net";
@@ -136,18 +134,33 @@ class bitstamp_network : public exchange
   void shut_down() override;
 
   // ---------------------------------------
+  // https: get currency tickers available
+  any_bytearray_sender request_tickers_available();
+
   // https: get new websocket token to subscribe to streams
   any_bytearray_sender request_websocket_token();
+
   // https: get account info/data
   any_bytearray_sender request_account_info(bitstamp_account const& acct);
   // get account info for all accounts
   any_void_sender request_all_account_infos();
+
   // https: get open order data
   any_bytearray_sender request_account_orders(bitstamp_account const& acct);
-  // get account info for all accounts
+  // get orders for all accounts
   any_void_sender request_all_account_orders();
-  // https: get currency tickers available
-  any_bytearray_sender request_tickers_available();
+
+  // https: get token deposit/withdrawal type crypto transactions
+  any_bytearray_sender request_crypto_transactions(bitstamp_account const& acct);
+  // get all token transactions
+  any_void_sender request_all_crypto_transactions();
+
+  // https: get usertransactions
+  any_bytearray_sender request_user_transactions(
+      bitstamp_account const& acct, currency_pair const&);
+  // get all token transactions
+  any_void_sender request_all_user_transactions();
+
   // https: place a limit order
   any_bytearray_sender request_limit_order(bitstamp_account const& acct, trade_data const& t);
   // https: place an order cancel
@@ -206,6 +219,8 @@ class bitstamp_network : public exchange
   stream_set ticker_subscribe(currency_pair const& cp) override;
 
   currency_pair split_token_string(std::string utoken) const;
+
+  void load_saved_tickers();
 
   signals:
 
