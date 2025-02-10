@@ -162,6 +162,8 @@ void bitstamp_network::initialize()
       | stdexec::let_value([this]() { return request_all_crypto_transactions(); })    // Qt -> pika
       | stdexec::continues_on(QtStdExec::QThreadScheduler())                          // pika -> Qt
       | stdexec::let_value([this]() { return request_all_user_transactions(); })      // Qt -> pika
+      | stdexec::continues_on(QtStdExec::QThreadScheduler())                          // pika -> Qt
+      | stdexec::let_value([this]() { return request_all_market_transactions(); })    // Qt -> pika
       | stdexec::then([this]() { emit network_initialized(this); })                   //
       | stdexec::upon_error([this](std::exception_ptr const& e) {
           std::lock_guard<std::mutex> l(candlestick_mutex_);
@@ -550,13 +552,15 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
     {
       auto handle_data = [this, &acct](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
-        bitstamp_dbg<0>.debug(ffmt<s20>("Transactions"), "Handler", data);
+        bitstamp_dbg<6>.debug(ffmt<s20>("Transactions"), "Handler", data);
         nlohmann::json jdata = nlohmann::json::parse(data);
         if (jdata.size() > 0)
         {
-          std::ofstream transactions(
-              fmt::format("transactions-crypto-{}.json", getCurrentUtcTime("%Y-%m-%d.%H_%M_%S")));
+          std::string name = fmt::format("{}/transactions-crypto-{}.json",
+              global_settings.appDataLocation, getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
+          std::ofstream transactions(name);
           transactions << jdata.dump(4);
+          bitstamp_dbg<0>.debug(ffmt<s20>("Transactions"), "Written", name);
           // handle_open_orders(acct, data);
         }
       };
@@ -582,7 +586,7 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
 }
 
 // ----------------------------------------------------------------------------
-any_bytearray_sender bitstamp_network::request_user_transactions(
+any_bytearray_sender bitstamp_network::request_market_transactions(
     bitstamp_account const& acct, currency_pair const& cp)
 {
   // limit          : Limit result to that many transactions (default: 100; maximum: 1000).
@@ -595,6 +599,73 @@ any_bytearray_sender bitstamp_network::request_user_transactions(
   std::string query = fmt::format("?&limit={}", 1000);
   auto* client =
       signed_request(acct, fmt::format("/api/v2/user_transactions/{}/", market_symbol), query);
+  return stdexec::just(client) | qhttp_post();
+}
+
+// ----------------------------------------------------------------------------
+any_void_sender bitstamp_network::request_all_market_transactions()
+{
+  // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
+  namespace tt = pika::this_thread::experimental;
+  using namespace grox::debug;
+  bitstamp_dbg<0>.debug(ffmt<s20>("all_user_transactions"));
+
+  // we can't block the Qt thread, so put async_scope onto a pika thread
+  auto get_all_transactions = [this]() {
+    exec::async_scope scope;
+    for (auto& [cp, data] : tickers_subscribed_)
+    {
+      for (auto& acct : accounts())
+      {
+        auto handle_data = [this, cp, &acct](QByteArray byteArray) {
+          std::string_view data(byteArray.constData(), byteArray.length());
+          bitstamp_dbg<6>.debug(ffmt<s20>("Transactions"), "Handler", data);
+          nlohmann::json jdata = nlohmann::json::parse(data);
+          if (jdata.size() > 0)
+          {
+            std::string name =
+                fmt::format("{}/transactions-user-{}-{}.json", global_settings.appDataLocation,
+                    currency_pair_string(cp), getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
+            std::ofstream transactions(name);
+            transactions << jdata.dump(4);
+            bitstamp_dbg<0>.debug(ffmt<s20>("Transactions"), "Written", name);
+
+            // handle_open_orders(acct, data);
+          }
+        };
+
+        auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                   //
+            | ex::let_value([&, this]() { return request_market_transactions(acct, cp); })    //
+            | ex::then(handle_data);                                                          //
+
+        scope.spawn(std::move(snd));
+      }
+    }
+
+    bitstamp_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope", "all_user_transactions");
+    tt::sync_wait(scope.on_empty());
+    bitstamp_dbg<2>.debug(ffmt<s20>("COMPLETE"), "scope", "all_user_transactions");
+  };
+
+  // must be on a pika thread if we are using sync_wait
+  auto snd = stdexec::just()                               //
+      | stdexec::continues_on(default_pool_scheduler())    //
+      | stdexec::then(get_all_transactions);
+
+  return any_void_sender{std::move(snd)};
+}
+
+// ----------------------------------------------------------------------------
+any_bytearray_sender bitstamp_network::request_user_transactions(bitstamp_account const& acct)
+{
+  // limit          : Limit result to that many transactions (default: 100; maximum: 1000).
+  // offset         : Skip that many transactions before returning results (default: 0, maximum: 200000). If you need to export older history contact support OR use combination of limit and since_id parameters.
+  // since_id       : (Optional) Show only transactions from specified transaction id. If since_id parameter is used, limit parameter is set to 1000.
+  // since_timestamp: (Optional) Show only transactions from unix timestamp (for max 30 days old).
+  // sort           : Sorting by date and time: asc - ascending; desc - descending (default: desc).
+  // until_timestamp: Show only transactions to unix timestamp (for max 30 days old).
+  std::string query = fmt::format("?&limit={}", 1000);
+  auto* client = signed_request(acct, fmt::format("/api/v2/user_transactions/"), query);
   return stdexec::just(client) | qhttp_post();
 }
 
@@ -613,22 +684,25 @@ any_void_sender bitstamp_network::request_all_user_transactions()
     {
       for (auto& acct : accounts())
       {
-        auto handle_data = [this, cp, &acct](QByteArray byteArray) {
+        auto handle_data = [this, &acct](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
-          bitstamp_dbg<0>.debug(ffmt<s20>("Transactions"), "Handler", data);
+          bitstamp_dbg<6>.debug(ffmt<s20>("Transactions"), "Handler", data);
           nlohmann::json jdata = nlohmann::json::parse(data);
           if (jdata.size() > 0)
           {
-            std::ofstream transactions(fmt::format("transactions-user-{}-{}.json",
-                currency_pair_string(cp), getCurrentUtcTime("%Y-%m-%d.%H_%M_%S")));
+            std::string name = fmt::format("{}/transactions-user-{}.json",
+                global_settings.appDataLocation, getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
+            std::ofstream transactions(name);
             transactions << jdata.dump(4);
+            bitstamp_dbg<0>.debug(ffmt<s20>("Transactions"), "Written", name);
+
             // handle_open_orders(acct, data);
           }
         };
 
-        auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                 //
-            | ex::let_value([&, this]() { return request_user_transactions(acct, cp); })    //
-            | ex::then(handle_data);                                                        //
+        auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())             //
+            | ex::let_value([&, this]() { return request_user_transactions(acct); })    //
+            | ex::then(handle_data);                                                    //
 
         scope.spawn(std::move(snd));
       }
@@ -966,6 +1040,8 @@ void bitstamp_network::process_order(bitstamp_account& acct, json& jdata, std::s
 net::http::client_ptr bitstamp_network::signed_request(
     bitstamp_account const& acct, std::string const& url_path, std::string const& url_query)
 {
+  assert(acct.API_key.size() > 0 && acct.API_secret.size() > 0);
+  //
   std::string api_key = acct.API_key;
   std::string api_secret = acct.API_secret;
   secure_string randbytes = generate_random_alphanumeric_string(encryption::KEY_SIZE, 81192);
@@ -1411,8 +1487,8 @@ void bitstamp_network::load_saved_tickers()
   // get all subscribed tickers on this exchange from ini file
   for (auto const& ticker : settings.childKeys())
   {
-    bitstamp_dbg<0>.debug(ffmt<s20>("subscription"), ticker.toLatin1().data());
-    currency_pair cp = string_to_pair(ticker.toLatin1().data(), "-");
+    bitstamp_dbg<0>.debug(ffmt<s20>("subscription"), ticker.toStdString());
+    currency_pair cp = string_to_pair(ticker.toStdString(), "-");
     ticker_subscribe(cp);
   }
   settings.endGroup();

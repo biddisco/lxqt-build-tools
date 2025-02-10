@@ -168,7 +168,7 @@ void set_param(QWidget* widget, indicators::param<candle_data>& param)
   candle_res res = ohlc_data_resolutions::available_resolutions()[index];
 
   QComboBox* d = f->findChild<QComboBox*>("TimeRange");
-  std::string s = d->currentText().toLatin1().data();
+  std::string s = d->currentText().toStdString();
   std::uint64_t samples = candle_data::samples(res, s);
   param.put({res, samples});
 }
@@ -186,14 +186,14 @@ void set_param(QWidget* widget, indicators::param<order_book_param>& param)
 {
   QFrame* f = dynamic_cast<QFrame*>(widget);
   QComboBox* e = f->findChild<QComboBox*>("Exchange");
-  std::string exch = e->currentText().toLatin1().data();
+  std::string exch = e->currentText().toStdString();
   int num_tickers = f->property("TSize").value<int>();
   //
   currency_pair::list tickers;
   for (int i = 0; i < num_tickers; ++i)
   {
     QComboBox* t = f->findChild<QComboBox*>(fmt::format("Ticker {}", i));
-    std::string s = t->currentText().toLatin1().data();
+    std::string s = t->currentText().toStdString();
     currency_pair cp = string_to_pair(s, "-");
     tickers.push_back(cp);
   }

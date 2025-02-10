@@ -225,7 +225,7 @@ TEST(currency, currency_pair)
   {
     currency_pair cp1{{currencies::bitstamp_trust, "EUR"}, {currencies::ripple_trust, "USD"}};
     QString qstr1 = currency_pair_qstring(cp1, "-");
-    std::string s1 = qstr1.toLatin1().data();
+    std::string s1 = qstr1.toStdString();
     EXPECT_TRUE(compare(
         "EUR.rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B-USD.rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De", s1));
   }

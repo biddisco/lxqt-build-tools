@@ -156,10 +156,15 @@ class bitstamp_network : public exchange
   any_void_sender request_all_crypto_transactions();
 
   // https: get usertransactions
-  any_bytearray_sender request_user_transactions(
-      bitstamp_account const& acct, currency_pair const&);
+  any_bytearray_sender request_user_transactions(bitstamp_account const& acct);
   // get all token transactions
   any_void_sender request_all_user_transactions();
+
+  // https: get usertransactions
+  any_bytearray_sender request_market_transactions(
+      bitstamp_account const& acct, currency_pair const&);
+  // get all token transactions
+  any_void_sender request_all_market_transactions();
 
   // https: place a limit order
   any_bytearray_sender request_limit_order(bitstamp_account const& acct, trade_data const& t);

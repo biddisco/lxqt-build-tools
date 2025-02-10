@@ -28,7 +28,7 @@ struct app_settings
   //
   std::string appDataLocation;
   std::string tempLocation;
-  QString configLocation;
+  std::string configLocation;
   //
   secure_string grox_password;
   secure_string randomBytes;

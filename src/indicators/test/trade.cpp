@@ -38,7 +38,7 @@ void init_test_data()
 {
   // setup paths used by grox main appplication to store datasets
   global_settings.appDataLocation =
-      QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).first().toLatin1().data() +
+      QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).first().toStdString() +
       std::string("/grox");
   global_settings.hdfFileName = "grox.hdf5";
   // create an hddf5 data manager to read datasets

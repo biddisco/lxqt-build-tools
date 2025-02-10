@@ -8,6 +8,7 @@
 #include <utility>
 //
 #include <range/v3/view.hpp>
+#include <fmt/format.h>
 //
 #include <QApplication>
 #include <QNetworkAccessManager>
@@ -47,16 +48,16 @@ void init_settings(app_settings* settings, QNetworkAccessManager* networkmanager
 {
   settings->networkmanager_ = networkmanager;
   settings->tempLocation =
-      QStandardPaths::standardLocations(QStandardPaths::TempLocation).first().toLatin1().data();
+      QStandardPaths::standardLocations(QStandardPaths::TempLocation).first().toStdString();
   settings->configLocation =
-      QStandardPaths::standardLocations(QStandardPaths::ConfigLocation).first().toLatin1().data();
+      QStandardPaths::standardLocations(QStandardPaths::ConfigLocation).first().toStdString();
   settings->appDataLocation =
-      QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).first().toLatin1().data();
+      QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).first().toStdString();
   //
   settings->hdfFileName = "grox.hdf5";
   settings->logFileName = QLatin1String("grox.log").data();
-  settings->iniFileName = (settings->configLocation + QLatin1String("/grox.ini")).toLatin1().data();
-  app_dbg<5>.debug(ffmt<s20>("Ini"), settings->iniFileName.toLatin1().data());
+  settings->iniFileName = to_qstring(fmt::format("{}/grox.ini", settings->configLocation));
+  app_dbg<5>.debug(ffmt<s20>("Ini"), settings->iniFileName.toStdString());
 }
 
 QByteArray base64_encode(QByteArray const& ba) { return ba.toBase64(); }
