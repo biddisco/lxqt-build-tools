@@ -26,8 +26,8 @@ template <int Level>
 inline constexpr print_threshold<Level, debug_level> man_dbg("DataView");
 
 // ----------------------------------------------------------------------------
-ohlc_dataset_view::ohlc_dataset_view(std::string exchange, currency_pair const& cp)
-  : exchange_(exchange)
+ohlc_dataset_view::ohlc_dataset_view(std::string abstract_exchange, currency_pair const& cp)
+  : exchange_(abstract_exchange)
   , ticker_string_(currency_pair_string(cp))
 {
   // insert empty highest resolution live dataset

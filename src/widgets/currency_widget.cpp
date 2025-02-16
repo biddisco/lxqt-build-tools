@@ -9,8 +9,8 @@
 #include <QMessageBox>
 //
 #include "config/config.hpp"
+#include "exchange/abstract_exchange.hpp"
 #include "exchange/account.hpp"
-#include "exchange/exchange.hpp"
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/currency_widget.hpp"
 #include "widgets/trade_widget.hpp"
@@ -50,7 +50,7 @@ currency_widget::~currency_widget() { delete ui; }
 
 // ----------------------------------------------------------------------------
 void currency_widget::set_data(
-    currency_amount const* c, basic_account* acct, std::shared_ptr<exchange> network)
+    currency_amount const* c, basic_account* acct, std::shared_ptr<abstract_exchange> network)
 {
   currency_ = *c;
   if (acct) account_ = acct;
@@ -110,14 +110,14 @@ void currency_widget::show_hide()
     ui->dest_combo->addItem(QString("other XRP address"), v);
 
     /*
-        // Add bitstamp exchange to transfer list
+        // Add bitstamp abstract_exchange to transfer list
         if (network_->can_send(currency_,     global_settings.bitstamp.network_.get())) {
             QVariant v;
             v.setValue(static_cast<basic_account*>(&    global_settings.bitstamp));
             ui->dest_combo->addItem(QString(    global_settings.bitstamp.name_.c_str()), v);
         }
 
-        // Add xrpl exchange wallets to transfer list
+        // Add xrpl abstract_exchange wallets to transfer list
         for (auto & w:     global_settings.xrpl_wallets) {
             if (network_->can_send(currency_, w.network_.get())) {
                 QVariant v;
@@ -238,9 +238,9 @@ void currency_widget::execute_trade()
         this->currency_.symbol_,    // taker gets this currency
         taker_pay,                  // taker pays this amount (total)
         taker_get,                  // taker gets this amount (total)
-        price,                      // exchange rate : TODO - check fee settings
-        fee_percent,                // exchange rate : TODO - check fee settings
-        fee_percent,                // exchange rate : TODO - check fee settings
+        price,                      // abstract_exchange rate : TODO - check fee settings
+        fee_percent,                // abstract_exchange rate : TODO - check fee settings
+        fee_percent,                // abstract_exchange rate : TODO - check fee settings
         0,                          // Id
         now.toStdString(),
         false,

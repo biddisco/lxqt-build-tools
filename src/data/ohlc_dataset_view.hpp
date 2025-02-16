@@ -34,7 +34,7 @@ class ohlc_dataset_view
   std::string ticker_string_;
 
   public:
-  ohlc_dataset_view(std::string exchange, currency_pair const& cp);
+  ohlc_dataset_view(std::string abstract_exchange, currency_pair const& cp);
   ~ohlc_dataset_view();
 
   void read_from_disk();

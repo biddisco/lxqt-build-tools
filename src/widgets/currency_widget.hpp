@@ -6,7 +6,7 @@
 //
 #include "currency/currency.hpp"
 
-class exchange;
+class abstract_exchange;
 class basic_account;
 
 namespace Ui {
@@ -22,7 +22,7 @@ class currency_widget : public QWidget
   int decimals_;
   currency_amount currency_;
   basic_account* account_;
-  std::shared_ptr<exchange> network_;
+  std::shared_ptr<abstract_exchange> network_;
   double amount_;
 
   public:
@@ -30,7 +30,7 @@ class currency_widget : public QWidget
   ~currency_widget();
 
   void set_data(currency_amount const* c, basic_account* acct = nullptr,
-      std::shared_ptr<exchange> network = nullptr);
+      std::shared_ptr<abstract_exchange> network = nullptr);
   void buy_sell_status();
 
   public slots:

@@ -17,15 +17,15 @@
 //
 #include "currency/trade_data.hpp"
 #include "data/order_book.hpp"
+#include "exchange/abstract_exchange.hpp"
 #include "exchange/account.hpp"
-#include "exchange/exchange.hpp"
 #include "exchange/order_book_bitstamp.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "senders/sender_defs.hpp"
 
 // ----------------------------------------------------------------------------
-class bitstamp_network : public exchange
+class bitstamp_network : public abstract_exchange
 {
   Q_OBJECT
 
@@ -59,9 +59,9 @@ class bitstamp_network : public exchange
   // ---------------------------------------
   // singleton access to network/testnet
   // ---------------------------------------
-  static std::shared_ptr<exchange> get_instance()
+  static std::shared_ptr<abstract_exchange> get_instance()
   {
-    static std::shared_ptr<exchange> bitstamp_ptr = nullptr;
+    static std::shared_ptr<abstract_exchange> bitstamp_ptr = nullptr;
     if (bitstamp_ptr == nullptr) bitstamp_ptr = std::make_shared<bitstamp_network>();
     return bitstamp_ptr;
   }
@@ -96,11 +96,11 @@ class bitstamp_network : public exchange
 
   bitstamp_account& get_account_by_name(std::string_view name);
 
-  // Is sending this currency to the destination exchange supported
-  bool can_send(currency_code const& c, exchange* dest) override;
+  // Is sending this currency to the destination abstract_exchange supported
+  bool can_send(currency_code const& c, abstract_exchange* dest) override;
 
   // ---------------------------------------
-  // return the order book for this exchange
+  // return the order book for this abstract_exchange
   bitstamp_order_book const& get_orderbook(currency_pair const& cp) const;
 
   // ---------------------------------------
@@ -113,16 +113,16 @@ class bitstamp_network : public exchange
   stream_set websocket_streams() override
   {
     return {
-        network::streams::my_orders,      // private orders
-        network::streams::my_trades,      // private trades
-        network::streams::live_trades,    // all trades
-        network::streams::order_book,     // all orders
-        network::streams::price_data,     // ticker price feeds
+        ticker::streams::my_orders,      // private orders
+        ticker::streams::my_trades,      // private trades
+        ticker::streams::live_trades,    // all trades
+        ticker::streams::order_book,     // all orders
+        ticker::streams::price_data,     // ticker price feeds
     };
   }
 
   // connect to a single stream
-  bool stream_subscribe(currency_pair const& cp, network::streams const stream, bool enabled,
+  bool stream_subscribe(currency_pair const& cp, ticker::streams const stream, bool enabled,
       factory_function f) override;
 
   // connect to (multiple) streams
@@ -202,11 +202,11 @@ class bitstamp_network : public exchange
   // regularly
   void update_ohlc_datasets();
   // triggers an update for a single ticker
-  void update_ohlc_data(currency_pair cp, ticker_data data);
+  void update_ohlc_data(currency_pair cp, ticker::data data);
   // http : generate a request for candlestick data for a single ticker
   any_bytearray_sender request_new_ohlc_data(currency_pair cp, uint64_t start_t, uint64_t samples);
   // handler for an http request containing new data
-  void handle_new_ohlc_data(ticker_data, std::string_view);
+  void handle_new_ohlc_data(ticker::data, std::string_view);
   //
   any_bytearray_sender request_price_history(currency_pair cp);
   std::uint64_t handle_price_history(std::string_view data);
@@ -217,7 +217,7 @@ class bitstamp_network : public exchange
   // function called from websocket subscription to live orderbook data
   static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, QString const);
 
-  network::transaction_fees get_fees(currency_pair const& cp) override;
+  ticker::transaction_fees get_fees(currency_pair const& cp) override;
 
   void custom_functions(basic_account* /*acct*/) override {};
 

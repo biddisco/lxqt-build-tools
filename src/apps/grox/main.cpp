@@ -228,7 +228,7 @@ int qt_main(pika::program_options::variables_map& vm)
     encryption encryptor(global_settings.grox_password, global_settings.randomBytes);
 
     // ---------------------------------------
-    // Bitstamp exchange details
+    // Bitstamp abstract_exchange details
     // ---------------------------------------
     global_settings.networks_.push_back(bitstamp_network::get_bitstamp_instance());
     auto bitstamp = bitstamp_network::get_bitstamp_instance();

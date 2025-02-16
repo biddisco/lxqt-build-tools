@@ -22,7 +22,7 @@ template <int Level>
 inline constexpr print_threshold<Level, 2> conn_dbg("CxWidget");
 
 // ----------------------------------------------------------------------------
-connection_widget::connection_widget(QWidget* parent, exchange* ex)
+connection_widget::connection_widget(QWidget* parent, abstract_exchange* ex)
   : QWidget(parent)
   , ui(new Ui::connection_widget)
   , exchange_(ex)
@@ -56,7 +56,7 @@ QStandardItem* findChildItem(QStandardItem* parent, data_slot slot, T cdata)
   for (int c = 0; c < C; ++c)
   {
     QStandardItem* child = parent->child(c);
-    auto stream = magic_enum::enum_cast<network::streams>(child->data(slot).toInt());
+    auto stream = magic_enum::enum_cast<ticker::streams>(child->data(slot).toInt());
     auto s = magic_enum::enum_name(stream.value());
     conn_dbg<7>.debug(ffmt<s20>("stream-load"), c, child, s);
     if (child->data(slot) == cdata) { return child; }
@@ -73,7 +73,7 @@ void connection_widget::setup_gui()
   filter_->setAutoAcceptChildRows(true);
   ui->name->setText(QString::fromStdString(exchange_->get_name()));
 
-  // on creation, add all tickers available on the exchange to the model + gui
+  // on creation, add all tickers available on the abstract_exchange to the model + gui
   for (auto const& [i, cp] : exchange_->get_currency_pairs() | ranges::views::enumerate)
   {
     // create an item for each ticker, unchecked to go into the listbox gui
@@ -111,7 +111,7 @@ void connection_widget::setup_gui()
         if (item->checkState() != item->data(CheckState).value<Qt::CheckState>())
         {
           item->setData(item->checkState(), CheckState);
-          auto stream = magic_enum::enum_cast<network::streams>(item->data(StreamState).toInt());
+          auto stream = magic_enum::enum_cast<ticker::streams>(item->data(StreamState).toInt());
           bool ticker_node = !stream.has_value();
           currency_pair cp = (ticker_node) ?
               string_to_pair(item->text().toStdString(), "-") :
@@ -148,13 +148,13 @@ void connection_widget::setup_gui()
       },
       Qt::QueuedConnection);
 
-  // open ini file and get the group for the exchange tickers
+  // open ini file and get the group for the abstract_exchange tickers
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   // open global settings streams section
   settings.beginGroup("Streams");
-  // open group for this exchange
+  // open group for this abstract_exchange
   settings.beginGroup(QString::fromStdString(exchange_->get_name()));
-  // get all subscribed tickers on this exchange from ini file
+  // get all subscribed tickers on this abstract_exchange from ini file
   QStringList children = settings.childGroups();
   for (auto const& ticker : children)
   {
@@ -169,8 +169,8 @@ void connection_widget::setup_gui()
         bool subscribed = settings.value(k).toBool();
         if (subscribed)
         {
-          network::streams stream =
-              magic_enum::enum_cast<network::streams>(k.toLatin1().toStdString()).value();
+          ticker::streams stream =
+              magic_enum::enum_cast<ticker::streams>(k.toLatin1().toStdString()).value();
           QStandardItem* child = findChildItem<int>(item, data_slot::StreamState, stream);
           if (child)
             child->setCheckState(Qt::Checked);
@@ -202,7 +202,7 @@ void connection_widget::setup_gui()
     }
     else
     {
-      // sub groups are tickers on the exchange
+      // sub groups are tickers on the abstract_exchange
       QStringList children = settings.childGroups();
       for (auto const& ticker : children)
       {
@@ -211,7 +211,7 @@ void connection_widget::setup_gui()
         // subscribe to this ticker and get the streams available back
         stream_set streams_avail = exchange_->ticker_subscribe(cp);
       }
-      settings.endGroup();    // exchange
+      settings.endGroup();    // abstract_exchange
 
       settings.endGroup();    // streams
 

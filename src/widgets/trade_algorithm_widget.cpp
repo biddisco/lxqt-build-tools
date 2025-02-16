@@ -14,7 +14,7 @@
 #include "config/config.hpp"
 #include "currency/currency.hpp"
 #include "data/ohlc_dataset_view.hpp"
-#include "exchange/exchange.hpp"
+#include "exchange/abstract_exchange.hpp"
 #include "indicators/trade_arbitrage_2_way.hpp"
 #include "indicators/trade_currency_exchange.hpp"
 #include "indicators/trade_market_maker.hpp"
@@ -29,7 +29,7 @@
 using namespace ads;
 
 // ----------------------------------------------------------------------------
-ticker_data set_gui_orderbook(order_book_param const& p, int index, QLabel* l1, QLabel* l2)
+ticker::data set_gui_orderbook(order_book_param const& p, int index, QLabel* l1, QLabel* l2)
 {
   std::string name = p.exchange_;
   assert(index < p.tickers_.size());
@@ -47,7 +47,8 @@ ticker_data set_gui_orderbook(order_book_param const& p, int index, QLabel* l1, 
 
 // ----------------------------------------------------------------------------
 std::shared_ptr<QDialog> gui_trade_currency_exchange(
-    std::shared_ptr<indicators::algorithm_base> alg, exchange::exchange_vector exchange_list_)
+    std::shared_ptr<indicators::algorithm_base> alg,
+    abstract_exchange::exchange_vector exchange_list_)
 {
   std::shared_ptr<QDialog> algowidget_ = std::make_shared<QDialog>(nullptr);
   algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
@@ -76,13 +77,13 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
   ui_->C1->setText(to_qstring(c1.c2_.code_));
   ui_->I1->setText(to_qstring(c1.c1_.code_));
   ui_->C2->setText(to_qstring(c2.c2_.code_));
-  ticker_data tdata1 = set_gui_orderbook(p1, 0, ui_->exchange1, ui_->ticker1);
-  ticker_data tdata2 = set_gui_orderbook(p1, 1, ui_->exchange2, ui_->ticker2);
+  ticker::data tdata1 = set_gui_orderbook(p1, 0, ui_->exchange1, ui_->ticker1);
+  ticker::data tdata2 = set_gui_orderbook(p1, 1, ui_->exchange2, ui_->ticker2);
   ui_->taker_fee->setValue(tdata1->exchange_->get_fees(c1).taker_percent);
   ui_->maker_fee->setValue(tdata1->exchange_->get_fees(c2).maker_percent);
 
-  auto arb_lambda = [ui_](
-                        ticker_data tdata1, ticker_data tdata2, auto* obwidget1, auto* obwidget2) {
+  auto arb_lambda = [ui_](ticker::data tdata1, ticker::data tdata2, auto* obwidget1,
+                        auto* obwidget2) {
     double budget = std::stod(ui_->spend->text().toStdString());
     //
     fee_data sell_fee{0.12, 0.0};
@@ -98,8 +99,8 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
     ui_->rate->setText(to_qstring(fmt::format("{:11.4f} ", sells.amount / budget)));
   };
 
-  auto makeLambda = [arb_lambda](
-                        ticker_data tdata1, ticker_data tdata2, auto* obwidget1, auto* obwidget2) {
+  auto makeLambda = [arb_lambda](ticker::data tdata1, ticker::data tdata2, auto* obwidget1,
+                        auto* obwidget2) {
     return [tdata1, tdata2, obwidget1, obwidget2, arb_lambda](currency_pair cp) {
       QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
         if (tdata1 && tdata1->orderbook_ && tdata2 && tdata2->orderbook_)
@@ -118,8 +119,8 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
 }
 
 // ----------------------------------------------------------------------------
-std::shared_ptr<QDialog> gui_trade_market_maker(
-    std::shared_ptr<indicators::algorithm_base> alg, exchange::exchange_vector exchange_list_)
+std::shared_ptr<QDialog> gui_trade_market_maker(std::shared_ptr<indicators::algorithm_base> alg,
+    abstract_exchange::exchange_vector exchange_list_)
 {
   std::shared_ptr<QDialog> algowidget_ = std::make_shared<QDialog>(nullptr);
   algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
@@ -143,7 +144,7 @@ std::shared_ptr<QDialog> gui_trade_market_maker(
   auto tdata1 = set_gui_orderbook(
       indicators::get<order_book_param>(alg->get_params(), 0), 0, ui_->exchange1, ui_->ticker1);
 
-  auto makeLambda = [](ticker_data tdata, auto* obwidget) {
+  auto makeLambda = [](ticker::data tdata, auto* obwidget) {
     return [tdata, obwidget](currency_pair cp) {
       QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
         if (tdata && tdata->orderbook_)
@@ -161,8 +162,8 @@ std::shared_ptr<QDialog> gui_trade_market_maker(
 }
 
 // ----------------------------------------------------------------------------
-std::shared_ptr<QDialog> gui_trade_arbitrage(
-    std::shared_ptr<indicators::algorithm_base> alg, exchange::exchange_vector exchange_list_)
+std::shared_ptr<QDialog> gui_trade_arbitrage(std::shared_ptr<indicators::algorithm_base> alg,
+    abstract_exchange::exchange_vector exchange_list_)
 {
   std::shared_ptr<QDialog> algowidget_ = std::make_shared<QDialog>(nullptr);
   algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
@@ -227,7 +228,7 @@ std::shared_ptr<QDialog> gui_trade_arbitrage(
     }
   };
 
-  auto makeLambda = [arb_lambda](ticker_data tdata, auto* obwidget) {
+  auto makeLambda = [arb_lambda](ticker::data tdata, auto* obwidget) {
     return [tdata, obwidget, arb_lambda](currency_pair cp) {
       QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
         if (tdata && tdata->orderbook_)
@@ -247,8 +248,8 @@ std::shared_ptr<QDialog> gui_trade_arbitrage(
 }
 
 // ----------------------------------------------------------------------------
-std::shared_ptr<QDialog> trade_widget_factory(
-    std::shared_ptr<indicators::algorithm_base> alg, exchange::exchange_vector exchange_list_)
+std::shared_ptr<QDialog> trade_widget_factory(std::shared_ptr<indicators::algorithm_base> alg,
+    abstract_exchange::exchange_vector exchange_list_)
 {
   if (dynamic_pointer_cast<indicators::trade_currency_exchange>(alg))
   {
@@ -266,7 +267,7 @@ std::shared_ptr<QDialog> trade_widget_factory(
 }
 
 // ----------------------------------------------------------------------------
-std::shared_ptr<QDialog> create_trading_widget(exchange::exchange_vector exchange_list_)
+std::shared_ptr<QDialog> create_trading_widget(abstract_exchange::exchange_vector exchange_list_)
 {
   QDialog dlg;
   indicator_widget* widget = new indicator_widget(

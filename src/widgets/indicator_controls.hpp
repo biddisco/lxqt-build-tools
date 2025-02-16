@@ -19,7 +19,7 @@
 //
 #include "config/config.hpp"
 #include "data/ohlc_dataset.hpp"
-#include "exchange/exchange.hpp"
+#include "exchange/abstract_exchange.hpp"
 #include "indicators/indicator_params.hpp"
 #include "util/stringutils.hpp"
 
@@ -99,9 +99,9 @@ QWidget* get_widget(order_book_param const& param)
   widget->setProperty("TSize", QVariant(static_cast<int>(param.tickers_.size())));
 
   // put all the exchanges we know about into the combox box
-  QComboBox* const exchange = new QComboBox(widget);
-  exchange->setObjectName("Exchange");
-  layout->addWidget(exchange);
+  QComboBox* const abstract_exchange = new QComboBox(widget);
+  abstract_exchange->setObjectName("Exchange");
+  layout->addWidget(abstract_exchange);
   QStringList qsl;
 
   std::vector<QComboBox*> qtickers;
@@ -113,10 +113,10 @@ QWidget* get_widget(order_book_param const& param)
     qtickers.push_back(ticker);
   }
 
-  // this lambda will set the ticker combo using the tickers available from the exchange
-  auto set_ticker_strings = [exchange, &qtickers, param](int index) {
-    auto exchange = global_settings.networks_[index];
-    auto tickers = exchange->tickers_subscribed();
+  // this lambda will set the ticker combo using the tickers available from the abstract_exchange
+  auto set_ticker_strings = [abstract_exchange, &qtickers, param](int index) {
+    auto abstract_exchange = global_settings.networks_[index];
+    auto tickers = abstract_exchange->tickers_subscribed();
     for (auto [i, ticker] : qtickers | ranges::views::enumerate)
     {
       QStringList temp;
@@ -127,13 +127,13 @@ QWidget* get_widget(order_book_param const& param)
     }
   };
 
-  QWidget::connect(exchange, &QComboBox::currentIndexChanged, widget,
+  QWidget::connect(abstract_exchange, &QComboBox::currentIndexChanged, widget,
       [=](int index) { set_ticker_strings(index); });
 
-  // trigger the exchange combo to update and fill the tickers combo
+  // trigger the abstract_exchange combo to update and fill the tickers combo
   for (auto const& n : global_settings.networks_) { qsl << to_qstring(n->get_name()); }
-  exchange->addItems(qsl);
-  exchange->setCurrentText(to_qstring(param.exchange_));
+  abstract_exchange->addItems(qsl);
+  abstract_exchange->setCurrentText(to_qstring(param.exchange_));
   //
   return widget;
 }

@@ -31,9 +31,9 @@ public:
 
     // ---------------------------------------
     /// Default constructor
-    trade_arbitrage_2_way(std::string exchange = "Bistamp", currency_pair ticker = {})
+    trade_arbitrage_2_way(std::string abstract_exchange = "Bistamp", currency_pair ticker = {})
       : algorithm_base("Arbitrage 2-way", "Arbitrage 2-way")
-      , exchange_(exchange)
+      , exchange_(abstract_exchange)
       , ticker_(ticker)
     {
     }

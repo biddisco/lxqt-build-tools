@@ -4,8 +4,8 @@ set(grox_exchange_SRCS
     account.hpp
     bitstamp.hpp
     bitstamp.cpp
-    exchange.hpp
-    exchange.cpp
+    abstract_exchange.hpp
+    abstract_exchange.cpp
     order_book_bitstamp.hpp
     order_book_bitstamp.cpp
     order_book_xrpl.hpp
@@ -16,7 +16,7 @@ set(grox_exchange_SRCS
     xrpl_network.cpp
 )
 
-add_library(grox_exchange ${grox_exchange_SRCS})
+add_library(grox_exchange ${grox_exchange_SRCS} ticker_data.hpp)
 target_include_directories(grox_exchange PUBLIC ${GROX_INCLUDE_ROOT})
 
 set_property(TARGET grox_exchange PROPERTY AUTOMOC ON)
@@ -42,7 +42,7 @@ if(GROX_WITH_IWYU)
 endif()
 
 if(BUILD_TESTING)
-  pika_add_pseudo_target(tests.exchange)
-  pika_add_pseudo_dependencies(tests tests.exchange)
+  pika_add_pseudo_target(tests.abstract_exchange)
+  pika_add_pseudo_dependencies(tests tests.abstract_exchange)
   add_subdirectory(test)
 endif()

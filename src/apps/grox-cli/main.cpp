@@ -50,7 +50,7 @@ namespace {
 int request_account_info()
 {
   using namespace grox::debug;
-  test1_dbg<2>.debug(ffmt<s20>("TEST(exchange, request_account_info)"));
+  test1_dbg<2>.debug(ffmt<s20>("TEST(abstract_exchange, request_account_info)"));
   std::atomic<bool> finished{false};
 
   bitstamp_account& acct = bitstamp_exchange->accounts()[0];

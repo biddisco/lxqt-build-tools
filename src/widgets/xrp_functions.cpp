@@ -5,7 +5,7 @@
 #include <xrpl/protocol/TxFlags.h>
 //
 #include "currency/currency.hpp"
-#include "exchange/exchange.hpp"
+#include "exchange/abstract_exchange.hpp"
 #include "exchange/xrpl_network.hpp"
 #include "widgets/check_trades_dialog.hpp"
 #include "widgets/trade_widget.hpp"

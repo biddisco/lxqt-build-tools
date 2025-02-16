@@ -41,7 +41,7 @@ QColor chart_colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QC
 
 // ----------------------------------------------------------------------------
 price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dataset_view> ohlc,
-    std::shared_ptr<exchange> ex, currency_pair cp)
+    std::shared_ptr<abstract_exchange> ex, currency_pair cp)
   : QWidget(parent)
   , ui(new Ui::price_chart_widget)
   , hdf5_ohlc_(ohlc)

@@ -28,6 +28,7 @@
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
 #include "exchange/bitstamp.hpp"
+#include "exchange/ticker_data.hpp"
 #include "exchange/xrpl_network.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
@@ -98,7 +99,7 @@ bitstamp_network::~bitstamp_network() { bitstamp_dbg<0>.debug(ffmt<s20>("destruc
 void bitstamp_network::shut_down()
 {
   bitstamp_dbg<0>.debug(ffmt<s20>("shutdown start"));
-  exchange::shut_down();
+  abstract_exchange::shut_down();
 }
 
 // ----------------------------------------------------------------------------
@@ -113,7 +114,7 @@ bitstamp_account& bitstamp_network::get_account_by_name(std::string_view name)
 // ----------------------------------------------------------------------------
 bitstamp_order_book const& bitstamp_network::get_orderbook(currency_pair const& cp) const
 {
-  ticker_data const tdata = get_subscribed_ticker_data(cp);
+  ticker::data const tdata = get_subscribed_ticker_data(cp);
   return *dynamic_pointer_cast<bitstamp_order_book const>(tdata->orderbook_);
 }
 
@@ -169,6 +170,7 @@ void bitstamp_network::initialize()
           std::lock_guard<std::mutex> l(candlestick_mutex_);
           bitstamp_dbg<0>.error(ffmt<s20>("Bitstamp initilize failed"), what(e));
         });
+  // @TODO - add flag to network_initialized to signal, finished, but errors/other problems
 
   // bitstamp_dbg<0>.debug(ffmt<s20>("SENDER"), grox::debug::print_type<decltype(snd0)>());
   stdexec::start_detached(std::move(web));
@@ -182,21 +184,21 @@ bool bitstamp_network::subscribe_live_trades(currency_pair const& cp, bool enabl
   command["event"] = enable ? "bts:subscribe" : "bts:unsubscribe";
   command["data"]["channel"] = string_join("live_trades_", ticker);
 
-  ticker_data tdata = get_subscribed_ticker_data(cp);
+  ticker::data tdata = get_subscribed_ticker_data(cp);
   bitstamp_dbg<4>.debug(ffmt<s20>("websocket trades"), command["event"],
       string_join("live_trades_", ticker), command.dump(4));
 
   if (enable)
   {
     using namespace std::placeholders;
-    tdata->websockets_[network::streams::live_trades] = net::ws::qwebsocket_session::create(
+    tdata->websockets_[ticker::streams::live_trades] = net::ws::qwebsocket_session::create(
         "bs::Trades " + ticker, bitstamp_websocket_address, bitstamp_websocket_port,
         command.dump(4), std::bind(bitstamp_network::new_live_trade_data_q, this, cp, _1));
   }
   else
   {
-    tdata->websockets_[network::streams::live_trades].reset();
-    tdata->websockets_.erase(network::streams::live_trades);
+    tdata->websockets_[ticker::streams::live_trades].reset();
+    tdata->websockets_.erase(ticker::streams::live_trades);
   }
   return true;
 }
@@ -209,21 +211,21 @@ bool bitstamp_network::subscribe_order_book(currency_pair const& cp, bool enable
   command["event"] = enable ? "bts:subscribe" : "bts:unsubscribe";
   command["data"]["channel"] = string_join("order_book_", ticker);
 
-  ticker_data tdata = get_subscribed_ticker_data(cp);
+  ticker::data tdata = get_subscribed_ticker_data(cp);
   bitstamp_dbg<4>.debug(ffmt<s20>("websocket orders"), command["event"],
       string_join("order_book_", ticker), command.dump(4));
 
   if (enable)
   {
     using namespace std::placeholders;
-    tdata->websockets_[network::streams::order_book] = net::ws::qwebsocket_session::create(
+    tdata->websockets_[ticker::streams::order_book] = net::ws::qwebsocket_session::create(
         "bs::Orders " + ticker, bitstamp_websocket_address, bitstamp_websocket_port,
         command.dump(4), std::bind(&bitstamp_network::new_orderbook_data_q, this, cp, _1));
   }
   else
   {
-    tdata->websockets_[network::streams::order_book].reset();
-    tdata->websockets_.erase(network::streams::order_book);
+    tdata->websockets_[ticker::streams::order_book].reset();
+    tdata->websockets_.erase(ticker::streams::order_book);
   }
   return true;
 }
@@ -237,13 +239,13 @@ bool bitstamp_network::subscribe_my_trades(currency_pair const& cp, bool enable)
   command["data"]["channel"] = string_join("private-my_trades_", ticker) + "-" + websocket_user_id_;
   command["data"]["auth"] = websocket_token_;
 
-  ticker_data tdata = get_subscribed_ticker_data(cp);
+  ticker::data tdata = get_subscribed_ticker_data(cp);
   bitstamp_dbg<3>.debug(ffmt<s20>("websocket mytrades"), command["event"],
       string_join("private-my_trades_", ticker), command.dump(4));
 
   if (enable)
   {
-    tdata->websockets_[network::streams::my_trades] =
+    tdata->websockets_[ticker::streams::my_trades] =
         net::ws::qwebsocket_session::create("bs::MyTrades " + ticker, bitstamp_websocket_address,
             bitstamp_websocket_port, command.dump(4), [](QString const data) {
               //
@@ -252,8 +254,8 @@ bool bitstamp_network::subscribe_my_trades(currency_pair const& cp, bool enable)
   }
   else
   {
-    tdata->websockets_[network::streams::my_trades].reset();
-    tdata->websockets_.erase(network::streams::my_trades);
+    tdata->websockets_[ticker::streams::my_trades].reset();
+    tdata->websockets_.erase(ticker::streams::my_trades);
   }
   return true;
 }
@@ -267,13 +269,13 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
   command["data"]["channel"] = string_join("private-my_orders_", ticker) + "-" + websocket_user_id_;
   command["data"]["auth"] = websocket_token_;
 
-  ticker_data tdata = get_subscribed_ticker_data(cp);
+  ticker::data tdata = get_subscribed_ticker_data(cp);
   bitstamp_dbg<4>.debug(ffmt<s20>("websocket myorders"), command["event"],
       string_join("private-my_orders_", ticker), command.dump(4));
 
   if (enable)
   {
-    tdata->websockets_[network::streams::my_orders] =
+    tdata->websockets_[ticker::streams::my_orders] =
         net::ws::qwebsocket_session::create("bs::MyOrders " + ticker, bitstamp_websocket_address,
             bitstamp_websocket_port, command.dump(4), [this](QString const data) {
               std::string stdstring = data.toStdString();
@@ -293,8 +295,8 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
   else
   {
     // tdata->websocket_->write(command.dump(4));
-    tdata->websockets_[network::streams::my_orders].reset();
-    tdata->websockets_.erase(network::streams::my_orders);
+    tdata->websockets_[ticker::streams::my_orders].reset();
+    tdata->websockets_.erase(ticker::streams::my_orders);
   }
   return true;
 }
@@ -302,7 +304,7 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
 // ----------------------------------------------------------------------------
 // connect to a single stream
 bool bitstamp_network::stream_subscribe(
-    currency_pair const& cp, network::streams const stream, bool enabled, factory_function f)
+    currency_pair const& cp, ticker::streams const stream, bool enabled, factory_function f)
 {
   // always subscribe to a ticker before a stream it owns
   if (!ticker_subscribed(cp)) ticker_subscribe(cp);
@@ -322,11 +324,11 @@ bool bitstamp_network::stream_subscribe(
         bool ok = true;
         switch (stream)
         {
-        case network::streams::my_trades: ok = subscribe_my_trades(cp, enabled); break;
-        case network::streams::my_orders: ok = subscribe_my_orders(cp, enabled); break;
-        case network::streams::live_trades: ok = subscribe_live_trades(cp, enabled); break;
-        case network::streams::order_book: ok = subscribe_order_book(cp, enabled); break;
-        case network::streams::price_data:
+        case ticker::streams::my_trades: ok = subscribe_my_trades(cp, enabled); break;
+        case ticker::streams::my_orders: ok = subscribe_my_orders(cp, enabled); break;
+        case ticker::streams::live_trades: ok = subscribe_live_trades(cp, enabled); break;
+        case ticker::streams::order_book: ok = subscribe_order_book(cp, enabled); break;
+        case ticker::streams::price_data:
           std::cout << "Price data is a fake stream, please fix this for consistency" << std::endl;
           if (enabled)
           {
@@ -351,7 +353,7 @@ bool bitstamp_network::stream_subscribe(
 }
 
 // ----------------------------------------------------------------------------
-bool bitstamp_network::can_send(currency_code const& c, exchange* dest)
+bool bitstamp_network::can_send(currency_code const& c, abstract_exchange* dest)
 {
   auto xrp_net = dynamic_cast<xrpl_network*>(dest);
   if (xrp_net && !xrp_net->testnet())
@@ -364,7 +366,7 @@ bool bitstamp_network::can_send(currency_code const& c, exchange* dest)
 }
 
 // ----------------------------------------------------------------------------
-network::transaction_fees bitstamp_network::get_fees(currency_pair const& cp)
+ticker::transaction_fees bitstamp_network::get_fees(currency_pair const& cp)
 {
   if (transaction_fee_map_.contains(cp))
     return {transaction_fee_map_.at(cp), transaction_fee_map_.at(cp), 0, 0};
@@ -1117,22 +1119,22 @@ net::http::client_ptr bitstamp_network::signed_request(
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::new_orderbook_data_q(
-    bitstamp_network* exchange, currency_pair const cp, QString const data)
+    bitstamp_network* abstract_exchange, currency_pair const cp, QString const data)
 {
   bitstamp_dbg<5>.debug(ffmt<s20>("Orderbook"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<7>.debug(ffmt<s20>("Orderbook data"), data.toStdString());
 
   // if shutdown was started after this data was sent by the remote source
   // then it can be ignored/dropped as we will not handle it anyway
-  std::lock_guard l(exchange->async_mutex_);
-  if (exchange->closing_down_)
+  std::lock_guard l(abstract_exchange->async_mutex_);
+  if (abstract_exchange->closing_down_)
   {
     bitstamp_dbg<0>.error(ffmt<s20>("Orderbook data"), "Shutdown in progress: ignoring data");
     return;
   }
 
-  auto process = [exchange, cp, data]() {
-    ticker_data const tdata = exchange->get_subscribed_ticker_data(cp);
+  auto process = [abstract_exchange, cp, data]() {
+    ticker::data const tdata = abstract_exchange->get_subscribed_ticker_data(cp);
     try
     {
       dynamic_pointer_cast<bitstamp_order_book>(tdata->orderbook_)->accept_json_bitstamp(data);
@@ -1153,28 +1155,29 @@ void bitstamp_network::new_orderbook_data_q(
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::new_live_trade_data_q(
-    bitstamp_network* exchange, currency_pair cp, QString const data)
+    bitstamp_network* abstract_exchange, currency_pair cp, QString const data)
 {
   bitstamp_dbg<4>.debug(ffmt<s20>("Live Trade"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<5>.debug(ffmt<s20>("Trade data"), data.toStdString());
 
   // if shutdown was started after this data was sent by the remote source
   // then it can be ignored/dropped as we will not handle it anyway
-  std::lock_guard l(exchange->async_mutex_);
-  if (exchange->closing_down_)
+  std::lock_guard l(abstract_exchange->async_mutex_);
+  if (abstract_exchange->closing_down_)
   {
     bitstamp_dbg<0>.error(ffmt<s20>("trade data"), "Shutdown in progress: ignoring data");
     return;
   }
   if (!startswith(data, "{\"data\":")) return;
 
-  auto process = [exchange, data, cp]() {
+  auto process = [abstract_exchange, data, cp]() {
     std::string stdstring = data.toStdString();
     nlohmann::json jdata = nlohmann::json::parse(stdstring)["data"];
     bitstamp_dbg<7>.debug(ffmt<s20>("Trade data parsed"), jdata.dump(4));
     live_trade_data trade_data = jdata.get<live_trade_data>();
     //
-    exchange->get_subscribed_ticker_data(cp)->live_trade_subscribers_.publish(cp, trade_data);
+    abstract_exchange->get_subscribed_ticker_data(cp)->live_trade_subscribers_.publish(
+        cp, trade_data);
   };
 
   stdexec::sender auto snd =
@@ -1215,7 +1218,7 @@ std::uint64_t bitstamp_network::handle_price_history(std::string_view data)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::update_ohlc_data(currency_pair cp, ticker_data tdata)
+void bitstamp_network::update_ohlc_data(currency_pair cp, ticker::data tdata)
 {
   // does not matter if ticker already in map, it will be cleaned out when done
   {
@@ -1381,7 +1384,7 @@ void bitstamp_network::place_buy_sell_orders(
 // ----------------------------------------------------------------------------
 stream_set bitstamp_network::ticker_subscribe(currency_pair const& cp)
 {
-  // exit if this exchange has already subscribed to this ticker
+  // exit if this abstract_exchange has already subscribed to this ticker
   std::string cps = currency_pair_string(cp);
   if (ticker_subscribed(cp))
   {
@@ -1394,14 +1397,14 @@ stream_set bitstamp_network::ticker_subscribe(currency_pair const& cp)
   std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("bitstamp", cp);
   std::shared_ptr<bitstamp_order_book> orderbook = std::make_shared<bitstamp_order_book>();
   // add the subscribed ticker/data/plot to our list for tracking
-  ticker_data data =
-      std::make_shared<ticker_subscription>(shared_from_this(), view, orderbook, nullptr);
+  ticker::data data =
+      std::make_shared<ticker::subscription>(shared_from_this(), view, orderbook, nullptr);
   tickers_subscribed_.insert({cp, data});
   return websocket_streams();
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::handle_new_ohlc_data(ticker_data tdata, std::string_view data)
+void bitstamp_network::handle_new_ohlc_data(ticker::data tdata, std::string_view data)
 {
   json jdata;
   try
@@ -1482,9 +1485,9 @@ void bitstamp_network::load_saved_tickers()
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
   // open global settings streams section
   settings.beginGroup("Tickers");
-  // open group for this exchange
+  // open group for this abstract_exchange
   settings.beginGroup(get_name());
-  // get all subscribed tickers on this exchange from ini file
+  // get all subscribed tickers on this abstract_exchange from ini file
   for (auto const& ticker : settings.childKeys())
   {
     bitstamp_dbg<0>.debug(ffmt<s20>("subscription"), ticker.toStdString());

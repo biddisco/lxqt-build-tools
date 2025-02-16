@@ -18,7 +18,7 @@
 #include "config/config.hpp"
 #include "currency/currency.hpp"
 #include "data/order_book.hpp"
-#include "exchange/exchange.hpp"
+#include "exchange/abstract_exchange.hpp"
 #include "network/evp-encrypt.hpp"
 //
 class wallet_widget;
@@ -34,7 +34,7 @@ struct basic_account
   using lock_type = std::unique_lock<std::mutex>;
   //
   std::string name_;
-  std::shared_ptr<exchange> network_;
+  std::shared_ptr<abstract_exchange> network_;
   wallet_widget* widget_;
   std::vector<currency_amount> currencies_;
   std::vector<trade_data> offers_;

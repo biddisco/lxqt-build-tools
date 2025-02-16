@@ -14,7 +14,7 @@ namespace Ui {
 class wallet_widget : public QWidget
 {
   Q_OBJECT
-  std::shared_ptr<exchange> network_;
+  std::shared_ptr<abstract_exchange> network_;
   basic_account* account_;
 
   public:

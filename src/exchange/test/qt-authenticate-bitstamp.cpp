@@ -51,7 +51,7 @@ namespace {
 }    // namespace
 
 // ------------------------------------------------------------------
-TEST(exchange, request_account_info)
+TEST(abstract_exchange, request_account_info)
 {
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
@@ -78,7 +78,7 @@ TEST(exchange, request_account_info)
 }
 
 // ------------------------------------------------------------------
-TEST(exchange, request_all_account_infos)
+TEST(abstract_exchange, request_all_account_infos)
 {
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
@@ -126,14 +126,14 @@ TEST(exchange, request_all_account_infos)
 }
 
 // ----------------------------------------------------------------------------
-TEST(exchange, cancel_order)
+TEST(abstract_exchange, cancel_order)
 {
   trade_data t;
   t.id_ = 1816315536502784;
   t.wallet_ = "Main";
 
   using namespace grox::debug;
-  test1_dbg<2>.debug(ffmt<s20>("TEST(exchange, request_account_info)"));
+  test1_dbg<2>.debug(ffmt<s20>("TEST(abstract_exchange, request_account_info)"));
   std::atomic<bool> finished{false};
   auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())         //
       | ex::let_value([t]() { return bitstamp->request_cancel_order(t); })    // Qt -> pika

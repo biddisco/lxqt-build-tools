@@ -35,7 +35,7 @@ inline constexpr print_threshold<Level, debug_level> obook_dbg("ord-book");
 
 // ----------------------------------------------------------------------------
 // WARNING
-// This ifdef increases the price on the exchange to test our buy/sell algorithm
+// This ifdef increases the price on the abstract_exchange to test our buy/sell algorithm
 // so that arbitrage decisions can be tested.
 // ----------------------------------------------------------------------------
 //#define GROX_ARBITRAGE_TEST_MODE 0.005
@@ -272,7 +272,7 @@ order_book_base::arb_vector order_book_base::compute_arbitrage(order_book_base c
     // How much can we sell at the curent best rates ...
     while (sell_rate > ask_rate && tokens_to_sell > 0)
     {
-      // Assuming we have bought on this exchange, how much can we sell on the other
+      // Assuming we have bought on this abstract_exchange, how much can we sell on the other
       double tokens_sold, funds_received;
       std::tie(tokens_sold, funds_received) =
           sell_nibble(tokens_to_sell, sell_fee.percent, sell_fee.fixed, sell_size, sell_rate);

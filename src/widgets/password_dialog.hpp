@@ -26,7 +26,7 @@ class password_dialog : public QDialog
       std::vector<bitstamp_account> const& bitstamp, std::vector<ledger_wallet> const& wallets);
   ~password_dialog();
 
-  // Bitstamp exchange accounts
+  // Bitstamp abstract_exchange accounts
   std::vector<bitstamp_account> const& geBitstampwallets();
 
   QString getBitstampUser(int index);

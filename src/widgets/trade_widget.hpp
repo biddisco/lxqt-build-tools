@@ -5,7 +5,7 @@
 
 #include "currency/currency.hpp"
 #include "currency/trade_data.hpp"
-#include "exchange/exchange.hpp"
+#include "exchange/abstract_exchange.hpp"
 
 namespace Ui {
   class trade_widget;

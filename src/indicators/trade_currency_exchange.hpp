@@ -27,9 +27,9 @@ public:
 
     // ---------------------------------------
     /// Default constructor
-    trade_currency_exchange(std::string exchange = "Bistamp", currency_pair ticker = {})
+    trade_currency_exchange(std::string abstract_exchange = "Bistamp", currency_pair ticker = {})
       : algorithm_base("Currency-Exchange", "Currency-Exchange using live orderbooks")
-      , exchange_(exchange)
+      , exchange_(abstract_exchange)
       , ticker_(ticker)
     {
     }

@@ -17,91 +17,25 @@
 #include "currency/json_data_types.hpp"
 #include "currency/trade_data.hpp"
 #include "data/ohlc_dataset_view.hpp"
+#include "exchange/ticker_data.hpp"
 #include "network/qwebsocket_client.hpp"
 #include "network/qwebsocket_session.hpp"
 #include "senders/sender_defs.hpp"
 #include "util/pubsub.hpp"
 
 class basic_account;
-class exchange;
 
 // ----------------------------------------------------------------------------
-namespace network {
-  enum streams : int
-  {
-    my_trades = 0,
-    my_orders,
-    live_trades,
-    order_book,
-    price_data,
-    account_changes,
-    invalid,
-  };
-  constexpr auto stream_names = magic_enum::enum_names<network::streams>();
-
-  struct transaction_fees
-  {
-    double maker_percent;
-    double taker_percent;
-    double fixed;
-    double transfer_percent;
-  };
-}    // namespace network
-
-using stream_set = std::set<network::streams>;
-
-// ----------------------------------------------------------------------------
-static std::string stream_to_pretty_text(network::streams stream)
-{
-  std::string txt = std::string(magic_enum::enum_name(stream));
-  // Transform fir char after each break
-  txt[0] = std::toupper(txt[0]);
-  std::for_each(txt.begin() + 1, txt.end(), [](char& c) {
-    if ((*(&c - 1)) == '_') c = std::toupper(c);
-  });
-  std::transform(txt.begin(), txt.end(), txt.begin(), [](char& c) { return (c == '_') ? ' ' : c; });
-  return txt;
-}
-
-static network::streams stream_from_pretty_text(std::string txt)
-{
-  std::transform(txt.begin(), txt.end(), txt.begin(), [](char c) { return std::tolower(c); });
-  auto stream = magic_enum::enum_cast<network::streams>(txt);
-  if (stream.has_value()) { return stream.value(); }
-  return network::streams::invalid;
-}
-
-// ----------------------------------------------------------------------------
-class price_chart_widget;
-class order_book_base;
-
-struct ticker_subscription
-{
-  std::shared_ptr<exchange> exchange_;
-  std::shared_ptr<ohlc_dataset_view> view_;
-  std::shared_ptr<order_book_base> orderbook_;
-  std::shared_ptr<price_chart_widget> chart_widget_;
-  // each ticker may subscribe to multiple streams
-  std::map<network::streams, std::shared_ptr<net::ws::qwebsocket_session>> websockets_;
-  //
-  grox::PublishSubscribe<currency_pair const, grox::live_trade_data const> live_trade_subscribers_;
-  grox::PublishSubscribe<currency_pair const> orderbook_subscribers_;
-  grox::PublishSubscribe<candle_res const> new_ohlc_subscribers_;
-};
-
-using ticker_data = std::shared_ptr<ticker_subscription>;
-
-// ----------------------------------------------------------------------------
-class exchange
+class abstract_exchange
   : public QObject
-  , public std::enable_shared_from_this<exchange>
+  , public std::enable_shared_from_this<abstract_exchange>
 {
   Q_OBJECT
 
   public:
-  using exchange_vector = std::vector<std::shared_ptr<exchange>>;
-  using exchange_map = std::map<currency_pair, ticker_data>;
-  using factory_function = std::function<void(currency_pair, ticker_data, network::streams)>;
+  using exchange_vector = std::vector<std::shared_ptr<abstract_exchange>>;
+  using exchange_map = std::map<currency_pair, ticker::data>;
+  using factory_function = std::function<void(currency_pair, ticker::data, ticker::streams)>;
 
   // websocket streams subscribed to format = ticker/stream_name
   std::map<std::string, bool> enabled_streams_;
@@ -128,14 +62,14 @@ class exchange
 
   public:
   // ---------------------------------------
-  exchange();
+  abstract_exchange();
 
   // ---------------------------------------
   // obligatory virtual destructor
-  virtual ~exchange();
+  virtual ~abstract_exchange();
 
   // ---------------------------------------
-  // concreate exchange instantiations must override the initialization
+  // concreate abstract_exchange instantiations must override the initialization
   // ---------------------------------------
   virtual void initialize() = 0;
 
@@ -154,16 +88,16 @@ class exchange
   // websocket/stream connection management
   // a ticker may provide streams of dat which are subscribed to individually
   // ---------------------------------------
-  // return a list of all streams available at the exchange level
+  // return a list of all streams available at the abstract_exchange level
   virtual stream_set websocket_streams() = 0;
 
   // check if a particular ticker/stream is subscribed to
-  virtual bool is_stream_subscribed(currency_pair cp, network::streams s);
+  virtual bool is_stream_subscribed(currency_pair cp, ticker::streams s);
   // puts an entry into the stream map
-  void mark_stream_subscribed(currency_pair cp, network::streams s, bool enabled);
+  void mark_stream_subscribed(currency_pair cp, ticker::streams s, bool enabled);
   // un/subscribe to an individual ticker stream
   virtual bool stream_subscribe(
-      currency_pair const& cp, network::streams const stream, bool enabled, factory_function f) = 0;
+      currency_pair const& cp, ticker::streams const stream, bool enabled, factory_function f) = 0;
 
   //  virtual bool websocket_connect(net::contexts& io_contexts, stream_set const& streams) = 0;
   //  virtual bool websocket_disconnect(net::contexts& io_contexts, stream_set const& streams) = 0;
@@ -181,7 +115,7 @@ class exchange
   // return list of subscribed tickers
   exchange_map const& tickers_subscribed() const;
   // exchange_map& tickers_subscribed();
-  ticker_data get_subscribed_ticker_data(currency_pair cp) const;
+  ticker::data get_subscribed_ticker_data(currency_pair cp) const;
 
   // ---------------------------------------
   // setup / query tickers
@@ -192,7 +126,7 @@ class exchange
   // ---------------------------------------
   // currency management
   // ---------------------------------------
-  virtual bool can_send(currency_code const& c, exchange* dest) = 0;
+  virtual bool can_send(currency_code const& c, abstract_exchange* dest) = 0;
   virtual bool make_payment(currency_amount const& c, basic_account* src, basic_account* dest) = 0;
   virtual std::string get_name() const { return exchange_name_; }
   virtual any_bytearray_sender request_cancel_order(trade_data const& t) = 0;
@@ -207,7 +141,7 @@ class exchange
   // ---------------------------------------
   // fees
   // ---------------------------------------
-  virtual network::transaction_fees get_fees(currency_pair const& cp) = 0;
+  virtual ticker::transaction_fees get_fees(currency_pair const& cp) = 0;
 
   // ---------------------------------------
   // fees
@@ -217,5 +151,5 @@ class exchange
   Q_SIGNALS:
   // emitted when a transaction might cause a change in data
   void transaction_event();
-  void network_initialized(exchange* ex);
+  void network_initialized(abstract_exchange* ex);
 };

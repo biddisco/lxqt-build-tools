@@ -27,9 +27,9 @@ public:
 
     // ---------------------------------------
     /// Default constructor
-    trade_market_maker(std::string exchange = "Bistamp", currency_pair ticker = {})
+    trade_market_maker(std::string abstract_exchange = "Bistamp", currency_pair ticker = {})
       : algorithm_base("Market-Maker", "Default market maker instance")
-      , exchange_(exchange)
+      , exchange_(abstract_exchange)
       , ticker_(ticker)
     {
     }

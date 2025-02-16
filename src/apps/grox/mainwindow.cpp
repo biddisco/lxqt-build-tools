@@ -76,7 +76,7 @@ using namespace ads;
 
 // ----------------------------------------------------------------------------
 std::shared_ptr<price_chart_widget> create_price_chart_widget(
-    std::shared_ptr<ohlc_dataset_view> view, ticker_data tdata, currency_pair cp)
+    std::shared_ptr<ohlc_dataset_view> view, ticker::data tdata, currency_pair cp)
 {
   // create a new price plot object
   std::shared_ptr<price_chart_widget> chart_widget =
@@ -139,7 +139,7 @@ OrderBookPlot* create_order_book_plot_widget(
 }
 
 // ----------------------------------------------------------------------------
-void create_ticker_price_plot(ticker_data tdata, currency_pair cp)
+void create_ticker_price_plot(ticker::data tdata, currency_pair cp)
 {
   tdata->chart_widget_ = create_price_chart_widget(tdata->view_, tdata, cp);
   // start by displaying 1 day of data
@@ -159,7 +159,7 @@ void create_ticker_price_plot(ticker_data tdata, currency_pair cp)
 }
 
 // ----------------------------------------------------------------------------
-void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
+void create_ticker_orderbook_widgets(ticker::data tdata, currency_pair cp)
 {
   std::string exch_name = std::string(tdata->exchange_->get_name());
   std::string cps = currency_pair_string(cp);
@@ -195,23 +195,23 @@ void create_ticker_orderbook_widgets(ticker_data tdata, currency_pair cp)
 }
 
 // ----------------------------------------------------------------------------
-void ticker_stream_gui_constructor(currency_pair cp, ticker_data tdata, network::streams stream)
+void ticker_stream_gui_constructor(currency_pair cp, ticker::data tdata, ticker::streams stream)
 {
   main_dbg<0>.debug(ffmt<s20>("Stream"), "factory_create");
-  if (stream == network::streams::price_data)
+  if (stream == ticker::streams::price_data)
     create_ticker_price_plot(tdata, cp);
-  else if (stream == network::streams::order_book)
+  else if (stream == ticker::streams::order_book)
     create_ticker_orderbook_widgets(tdata, cp);
   else
     main_dbg<0>.error(
-        ffmt<s20>("Stream"), "factory_create no GUI for stream", network::stream_names[stream]);
+        ffmt<s20>("Stream"), "factory_create no GUI for stream", ticker::stream_names[stream]);
 }
 
 // ----------------------------------------------------------------------------
-void ticker_stream_gui_destructor(currency_pair cp, ticker_data tdata, network::streams stream)
+void ticker_stream_gui_destructor(currency_pair cp, ticker::data tdata, ticker::streams stream)
 {
   main_dbg<0>.debug(ffmt<s20>("Stream"), "factory_destroy");
-  if (stream == network::streams::price_data)
+  if (stream == ticker::streams::price_data)
   {
     tdata->chart_widget_->parentWidget()->deleteLater();
     tdata->chart_widget_.reset();
@@ -220,7 +220,7 @@ void ticker_stream_gui_destructor(currency_pair cp, ticker_data tdata, network::
     main_dbg<0>.error(ffmt<s20>("Stream"), tdata->chart_widget_.use_count());
     main_dbg<0>.error(ffmt<s20>("Stream"), tdata->view_.use_count());
   }
-  else if (stream == network::streams::order_book)
+  else if (stream == ticker::streams::order_book)
   {
     //    tdata->orderbook_->parentWidget()->deleteLater();
     tdata->orderbook_.reset();
@@ -313,7 +313,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
 #ifdef GROX_HAVE_BITSTAMP
   // ----------------------------------
-  // create bitstamp exchange interface
+  // create bitstamp abstract_exchange interface
   bitstamp_network_ = bitstamp_network::get_bitstamp_instance();
   exchange_list_.push_back(bitstamp_network_);
 
@@ -336,9 +336,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
   connect(
       bitstamp_network_.get(), &bitstamp_network::network_initialized, this,
-      [this](exchange* ex) {
+      [this](abstract_exchange* ex) {
         ex->register_factory("ticker_subscribe",
-            [ex](currency_pair cp, ticker_data, network::streams) { ex->ticker_subscribe(cp); });
+            [ex](currency_pair cp, ticker::data, ticker::streams) { ex->ticker_subscribe(cp); });
         ex->register_factory("stream_subscribe", ticker_stream_gui_constructor);
         ex->register_factory("stream_unsubscribe", ticker_stream_gui_destructor);
         // widget with panels for tickers/selected/streams
@@ -377,9 +377,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
   connect(
       xrpl_network_.get(), &xrpl_network::network_initialized, this,
-      [this](exchange* ex) {
+      [this](abstract_exchange* ex) {
         ex->register_factory("ticker_subscribe",
-            [ex](currency_pair cp, ticker_data, network::streams) { ex->ticker_subscribe(cp); });
+            [ex](currency_pair cp, ticker::data, ticker::streams) { ex->ticker_subscribe(cp); });
         ex->register_factory("stream_subscribe", ticker_stream_gui_constructor);
         ex->register_factory("stream_unsubscribe", ticker_stream_gui_destructor);
         // widget with panels for tickers/selected/streams
@@ -392,7 +392,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
   connect(
       xrpl_testnet_.get(), &xrpl_network::network_initialized, this,
-      [this](exchange* ex) {    // widget with panels for tickers/selected/streams
+      [this](abstract_exchange* ex) {    // widget with panels for tickers/selected/streams
         connection_widget* conwidget = new connection_widget(this, ex);
         conwidget->setup_gui();
         net_layout_->addTab(conwidget, to_qstring(ex->get_name()));
@@ -430,7 +430,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   // initialize networks / start websocket connections etc
   for (auto const& e : exchange_list_)
   {
-    main_dbg<0>.debug(ffmt<s20>("Init exchange"), e->get_name());
+    main_dbg<0>.debug(ffmt<s20>("Init abstract_exchange"), e->get_name());
     e->initialize();
   }
 
@@ -726,9 +726,9 @@ void GroxMainWindow::saveConnectionSetups()
   settings.remove("");
   for (auto const& e : exchange_list_)
   {
-    // streams supported by this exchange
+    // streams supported by this abstract_exchange
     auto streams = e->websocket_streams();
-    // begin exchange group
+    // begin abstract_exchange group
     settings.beginGroup(QString::fromStdString(e->get_name()));
 
     // for each ticker we are subscribed to
@@ -751,7 +751,7 @@ void GroxMainWindow::saveConnectionSetups()
       }
       settings.endGroup();    // ticker
     }
-    settings.endGroup();    // exchange
+    settings.endGroup();    // abstract_exchange
   }
   settings.endGroup();    // streams
   main_dbg<0>.debug(ffmt<s20>("Connections saved"), settings.fileName().toStdString());
@@ -767,13 +767,13 @@ void GroxMainWindow::loadConnectionSetups()
   for (auto const& e : exchange_list_)
   {
     e->register_factory("ticker_subscribe",
-      [e](currency_pair cp, ticker_data, network::streams) { e->ticker_subscribe(cp); });
+      [e](currency_pair cp, ticker::data, ticker::streams) { e->ticker_subscribe(cp); });
     e->register_factory("stream_subscribe", ticker_gui_factory);
   }
-  // begin exchange group
+  // begin abstract_exchange group
   settings.beginGroup(QString::fromStdString(e->get_name()));
 
-  // sub groups are tickers on the exchange
+  // sub groups are tickers on the abstract_exchange
   QStringList children = settings.childGroups();
   for (auto const& ticker : children)
   {
@@ -782,7 +782,7 @@ void GroxMainWindow::loadConnectionSetups()
     // subscribe to this ticker and get the streams available back
     stream_set streams_avail = e->ticker_subscribe(cp);
   }
-    settings.endGroup();    // exchange
+    settings.endGroup();    // abstract_exchange
   }
   settings.endGroup();    // streams
 */

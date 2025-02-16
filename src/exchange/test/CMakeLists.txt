@@ -34,6 +34,8 @@ foreach(test ${TEST_SRCS})
     target_link_libraries(${testname} PUBLIC pika::pika)
   endif()
 
-  grox_add_test_and_deps("exchange" ${testname} EXECUTABLE ${testname} ${${testname}_PARAMETERS})
-  set_tests_properties("tests.exchange.${testname}" PROPERTIES TIMEOUT 30)
+  grox_add_test_and_deps(
+    "abstract_exchange" ${testname} EXECUTABLE ${testname} ${${testname}_PARAMETERS}
+  )
+  set_tests_properties("tests.abstract_exchange.${testname}" PROPERTIES TIMEOUT 30)
 endforeach()

@@ -117,7 +117,7 @@ int xrpl_network::jsonrpc_port() const
 }
 
 // ----------------------------------------------------------------------------
-bool xrpl_network::can_send(currency_code const& c, exchange* dest)
+bool xrpl_network::can_send(currency_code const& c, abstract_exchange* dest)
 {
   // yes to anything if the source is also an xrpl wallet
   if (dynamic_cast<xrpl_network*>(dest))
@@ -138,14 +138,14 @@ bool xrpl_network::can_send(currency_code const& c, exchange* dest)
 // ----------------------------------------------------------------------------
 xrpl_order_book const& xrpl_network::get_orderbook(currency_pair const& cp) const
 {
-  ticker_data const tdata = get_subscribed_ticker_data(cp);
+  ticker::data const tdata = get_subscribed_ticker_data(cp);
   return *dynamic_pointer_cast<xrpl_order_book const>(tdata->orderbook_);
 }
 
 // ----------------------------------------------------------------------------
 // connect to a single stream
 bool xrpl_network::stream_subscribe(
-    currency_pair const& cp, network::streams const stream, bool enabled, factory_function f)
+    currency_pair const& cp, ticker::streams const stream, bool enabled, factory_function f)
 {
   // always subscribe to a ticker before a stream it owns
   if (!ticker_subscribed(cp)) ticker_subscribe(cp);
@@ -155,8 +155,8 @@ bool xrpl_network::stream_subscribe(
           bool ok = true;
           switch (stream)
           {
-          case network::streams::account_changes: ok = subscribe_accounts(); break;
-          case network::streams::order_book: ok = subscribe_order_book(cp, enabled); break;
+          case ticker::streams::account_changes: ok = subscribe_accounts(); break;
+          case ticker::streams::order_book: ok = subscribe_order_book(cp, enabled); break;
           default: ok = false; throw std::runtime_error("unknown stream");
           }
           if (ok) mark_stream_subscribed(cp, stream, enabled);
@@ -172,7 +172,7 @@ bool xrpl_network::stream_subscribe(
 // ----------------------------------------------------------------------------
 stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
 {
-  // exit if this exchange has already subscribed to this ticker
+  // exit if this abstract_exchange has already subscribed to this ticker
   std::string cps = currency_pair_string(cp);
   if (ticker_subscribed(cp))
   {
@@ -185,8 +185,8 @@ stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
   // std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("xrpl", c1, c2);
   std::shared_ptr<xrpl_order_book> orderbook = std::make_shared<xrpl_order_book>();
   // add the subscribed ticker/data/plot to our list for tracking
-  ticker_data data =
-      std::make_shared<ticker_subscription>(shared_from_this(), nullptr, orderbook, nullptr);
+  ticker::data data =
+      std::make_shared<ticker::subscription>(shared_from_this(), nullptr, orderbook, nullptr);
   tickers_subscribed_.insert({cp, data});
   return websocket_streams();
 }
@@ -196,7 +196,7 @@ stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
 //  bool ok = true;
 //  for (auto const& s : streams)
 //  {
-//    if (s == network::streams::order_book)
+//    if (s == ticker::streams::order_book)
 //      ok &= subscribe_order_book(io_contexts);
 //  }
 //  return ok;
@@ -209,9 +209,9 @@ stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
 //  bool ok = true;
 //  for (auto const& s : streams)
 //  {
-//    if (s == network::streams::order_book)
+//    if (s == ticker::streams::order_book)
 //      ws_orderbook->shutdown_blocking();
-//    if (s == network::streams::accounts)
+//    if (s == ticker::streams::accounts)
 //      ws_accounts->shutdown_blocking();
 //  }
 //  return ok;
@@ -221,7 +221,7 @@ stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
 void xrpl_network::shut_down()
 {
   xrpnet_dbg<0>.debug(ffmt<s20>("shutdown start"));
-  exchange::shut_down();
+  abstract_exchange::shut_down();
   //
   if (ws_orderbook) { ws_orderbook.reset(); }
   if (ws_accounts) { ws_accounts.reset(); }
@@ -287,22 +287,22 @@ bool xrpl_network::subscribe_accounts()
 
 // ----------------------------------------------------------------------------
 void xrpl_network::new_orderbook_data_q(
-    xrpl_network* exchange, currency_pair const cp, QString data)
+    xrpl_network* abstract_exchange, currency_pair const cp, QString data)
 {
   xrpnet_dbg<5>.debug(ffmt<s20>("Orderbook"), "Ticker", currency_pair_string(cp));
   xrpnet_dbg<9>.debug(ffmt<s20>("Orderbook data"), data.toStdString());
 
   // if shutdown was started after this data was sent by the remote source
   // then it can be ignored/dropped as we will not handle it anyway
-  std::lock_guard l(exchange->async_mutex_);
-  if (exchange->closing_down_)
+  std::lock_guard l(abstract_exchange->async_mutex_);
+  if (abstract_exchange->closing_down_)
   {
     xrpnet_dbg<0>.error(ffmt<s20>("Orderbook data"), "Shutdown in progress: ignoring data");
     return;
   }
 
-  auto process = [exchange, cp, data]() {
-    ticker_data const tdata = exchange->get_subscribed_ticker_data(cp);
+  auto process = [abstract_exchange, cp, data]() {
+    ticker::data const tdata = abstract_exchange->get_subscribed_ticker_data(cp);
     try
     {
       std::string sdata = data.toStdString();
@@ -953,7 +953,7 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
 }
 
 // ----------------------------------------------------------------------------
-network::transaction_fees xrpl_network::get_fees(currency_pair const& cp)
+ticker::transaction_fees xrpl_network::get_fees(currency_pair const& cp)
 {
   return {0, 0, 0, currency_fees_[cp.c1_.issuer_]};
 }

@@ -60,7 +60,7 @@ class GroxMainWindow : public QMainWindow
   QFrame* accounts_frame_;
 
   // network/exchanges
-  exchange::exchange_vector exchange_list_;
+  abstract_exchange::exchange_vector exchange_list_;
   std::shared_ptr<bitstamp_network> bitstamp_network_;
   std::shared_ptr<xrpl_network> xrpl_network_;
   std::shared_ptr<xrpl_network> xrpl_testnet_;

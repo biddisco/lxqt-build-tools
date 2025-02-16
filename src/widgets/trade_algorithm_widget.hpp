@@ -4,6 +4,6 @@
 //
 #include <QDialog>
 //
-#include "exchange/exchange.hpp"
+#include "exchange/abstract_exchange.hpp"
 
-std::shared_ptr<QDialog> create_trading_widget(exchange::exchange_vector exchange_list_);
+std::shared_ptr<QDialog> create_trading_widget(abstract_exchange::exchange_vector exchange_list_);

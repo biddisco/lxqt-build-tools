@@ -9,7 +9,7 @@
 //
 #include "currency/currency.hpp"
 
-class exchange;
+class abstract_exchange;
 
 enum trade_type
 {
@@ -28,7 +28,7 @@ enum order_type
 // trade type : buy = 0, sell = 1
 struct trade_data
 {
-  std::shared_ptr<exchange> network_;
+  std::shared_ptr<abstract_exchange> network_;
   std::string wallet_;
   currency_code taker_payc_;
   currency_code taker_getc_;

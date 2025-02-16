@@ -14,7 +14,7 @@ namespace ads {
   class CDockManager;
 }
 
-class exchange;
+class abstract_exchange;
 class abstract_dataset_manager;
 class QNetworkAccessManager;
 
@@ -33,7 +33,7 @@ struct app_settings
   secure_string grox_password;
   secure_string randomBytes;
   //
-  std::vector<std::shared_ptr<exchange>> networks_;
+  std::vector<std::shared_ptr<abstract_exchange>> networks_;
   //
   std::shared_ptr<ads::CDockManager> dock_manager_;
   QMenu* dockwindows_menu_;

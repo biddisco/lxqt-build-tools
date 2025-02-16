@@ -68,7 +68,7 @@ void bitstamp_order_book::bid_ask_string_to_number(json& jdata, offer_data& data
         std::string s1 = entry[0];
         std::string s2 = entry[1];
 #ifdef GROX_ARBITRAGE_TEST_MODE
-        // increase the price on the exchange to test our buy/sell algorithm
+        // increase the price on the abstract_exchange to test our buy/sell algorithm
         return std::pair<double, double>{std::stod(s1) + GROX_ARBITRAGE_TEST_MODE, std::stod(s2)};
 #else
       return std::pair<double, double>{ std::stod(s1), std::stod(s2) };

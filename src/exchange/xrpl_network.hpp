@@ -13,8 +13,8 @@
 #include <stdexec/execution.hpp>
 //
 #include "data/order_book.hpp"
+#include "exchange/abstract_exchange.hpp"
 #include "exchange/account.hpp"
-#include "exchange/exchange.hpp"
 #include "exchange/order_book_xrpl.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
@@ -26,7 +26,7 @@
 #define GROX_USE_RIPPLE_MAINNET_SERVER
 
 // ----------------------------------------------------------------------------
-class xrpl_network : public exchange
+class xrpl_network : public abstract_exchange
 {
   Q_OBJECT
 
@@ -83,21 +83,21 @@ class xrpl_network : public exchange
   // ---------------------------------------
   // singleton access to network/testnet
   // ---------------------------------------
-  static std::shared_ptr<exchange> xrpl_instance()
+  static std::shared_ptr<abstract_exchange> xrpl_instance()
   {
-    static std::shared_ptr<exchange> xrpl_ptr = nullptr;
+    static std::shared_ptr<abstract_exchange> xrpl_ptr = nullptr;
     if (xrpl_ptr == nullptr) xrpl_ptr = std::make_shared<xrpl_network>(false);
     return xrpl_ptr;
   }
-  static std::shared_ptr<exchange> xrpltestnet_instance()
+  static std::shared_ptr<abstract_exchange> xrpltestnet_instance()
   {
-    static std::shared_ptr<exchange> testnet_ptr = nullptr;
+    static std::shared_ptr<abstract_exchange> testnet_ptr = nullptr;
     if (testnet_ptr == nullptr) testnet_ptr = std::make_shared<xrpl_network>(true);
     return testnet_ptr;
   }
 
   public:
-  static std::shared_ptr<exchange> get_instance(bool testnet)
+  static std::shared_ptr<abstract_exchange> get_instance(bool testnet)
   {
     if (testnet) return xrpltestnet_instance();
     return xrpl_instance();
@@ -124,19 +124,19 @@ class xrpl_network : public exchange
   std::string jsonrpc_address() const;
   int jsonrpc_port() const;
   //
-  bool can_send(currency_code const& /*c*/, exchange* dest) override;
+  bool can_send(currency_code const& /*c*/, abstract_exchange* dest) override;
   //
   xrpl_order_book const& get_orderbook(currency_pair const& cp) const;
   //
   stream_set websocket_streams() override
   {
-    return {network::streams::order_book, network::streams::account_changes};
+    return {ticker::streams::order_book, ticker::streams::account_changes};
   }
 
   stream_set ticker_subscribe(currency_pair const& cp) override;
 
   // connect to an individual stream
-  bool stream_subscribe(currency_pair const& cp, network::streams const stream, bool enabled,
+  bool stream_subscribe(currency_pair const& cp, ticker::streams const stream, bool enabled,
       factory_function f) override;
 
   // connect to (multiple) streams
@@ -197,7 +197,7 @@ class xrpl_network : public exchange
       basic_account* acct, trade_data const& t, bool update_after);
   void place_buy_sell_orders(basic_account* acct, std::vector<trade_data> const& trades) override;
 
-  network::transaction_fees get_fees(currency_pair const& cp) override;
+  ticker::transaction_fees get_fees(currency_pair const& cp) override;
 
   void trustline(
       basic_account* acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags);

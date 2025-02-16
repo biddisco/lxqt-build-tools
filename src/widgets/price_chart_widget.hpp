@@ -11,7 +11,7 @@
 #include <QTableView>
 #include <QWidget>
 //
-#include "exchange/exchange.hpp"
+#include "exchange/abstract_exchange.hpp"
 #include "indicators/indicator_params.hpp"
 #include "indicators/indicator_ptr.hpp"
 #include "indicators/indicator_types.hpp"
@@ -64,15 +64,15 @@ class price_chart_widget : public QWidget
   QPushButton* btn_indicator_;
   //
   std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;
-  std::shared_ptr<exchange> exchange_;
+  std::shared_ptr<abstract_exchange> exchange_;
   std::string ticker_string_;
 
   indicators_model ind_model_;
   QTableView* ind_vis_;
 
   public:
-  price_chart_widget(
-      QWidget*, std::shared_ptr<ohlc_dataset_view>, std::shared_ptr<exchange> ex, currency_pair cp);
+  price_chart_widget(QWidget*, std::shared_ptr<ohlc_dataset_view>,
+      std::shared_ptr<abstract_exchange> ex, currency_pair cp);
   ~price_chart_widget();
 
   void connect_gui();

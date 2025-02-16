@@ -9,7 +9,7 @@
 #include <QWidget>
 //
 #include "currency/currency.hpp"
-#include "exchange/exchange.hpp"
+#include "exchange/abstract_exchange.hpp"
 
 namespace Ui {
   class connection_widget;
@@ -20,7 +20,7 @@ class connection_widget : public QWidget
   Q_OBJECT
 
   public:
-  explicit connection_widget(QWidget* parent, exchange* ex);
+  explicit connection_widget(QWidget* parent, abstract_exchange* ex);
   ~connection_widget();
 
   void setup_gui();
@@ -30,7 +30,7 @@ class connection_widget : public QWidget
 
   private:
   Ui::connection_widget* ui;
-  exchange* exchange_;
+  abstract_exchange* exchange_;
   QStandardItemModel* model_;
   QSortFilterProxyModel* filter_;
 };
