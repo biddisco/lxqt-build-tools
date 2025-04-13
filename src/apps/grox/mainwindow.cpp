@@ -676,7 +676,7 @@ void GroxMainWindow::showEvent(QShowEvent* event)
   if (only_once)
   {
     only_once = false;
-    auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
+    auto snd = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
         | stdexec::then([this]() { loadConnectionSetups(); })                        //
         | stdexec::then([this]() { loadWindowSettings(); });                         //
     stdexec::start_detached(std::move(snd));

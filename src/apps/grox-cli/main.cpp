@@ -54,7 +54,7 @@ int request_account_info()
   std::atomic<bool> finished{false};
 
   bitstamp_account& acct = bitstamp_exchange->accounts()[0];
-  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())    //
+  auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())    //
       | ex::let_value(
             [&acct]() { return bitstamp_exchange->request_account_info(acct); })    // Qt -> pika
       | ex::then([&](QByteArray byteArray) {
@@ -93,7 +93,7 @@ int qt_main(int argc, char* argv[])
   }
 
   int test_result;
-  auto snd = ex::starts_on(grox::senders::default_pool_scheduler(), ex::just())    //
+  auto snd = ex::start_on(grox::senders::default_pool_scheduler(), ex::just())    //
       | ex::then([&test_result]() {
           test_result = request_account_info();
           QCoreApplication::instance()->quit();

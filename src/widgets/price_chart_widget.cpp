@@ -252,13 +252,13 @@ void price_chart_widget::connect_gui()
     if (result == QDialog::Accepted)
     {
       static int colour_count = 0;
-      auto snd = stdexec::starts_on(default_pool_scheduler(), stdexec::just())    //
+      auto snd = stdexec::start_on(default_pool_scheduler(), stdexec::just())    //
           | stdexec::then([this, ind_dialog, widget]() {
               // do this on a pika thread as it executes the algorithm
               indicators::indicator_ptr algp(widget->get_algorithm(), hdf5_ohlc_);
               return algp;
             })                                                      //
-          | stdexec::continues_on(QtStdExec::QThreadScheduler())    //
+          | stdexec::continue_on(QtStdExec::QThreadScheduler())    //
           | stdexec::then([this](indicators::indicator_ptr algp) {
               auto colour = chart_colours[colour_count++ % 10];
               QString name = QString(algp.indicator()->get_name().c_str());
