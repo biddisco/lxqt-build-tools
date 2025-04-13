@@ -16,7 +16,7 @@ QT_USE_NAMESPACE
 template <>
 struct fmt::formatter<QString> : formatter<char const*>
 {
-  auto format(QString const& s, format_context& ctx)
+  auto format(QString const& s, format_context& ctx) const
   {
     return formatter<char const*>::format((char const*) s.toUtf8(), ctx);
   }
@@ -25,7 +25,7 @@ struct fmt::formatter<QString> : formatter<char const*>
 template <>
 struct fmt::formatter<QUrl> : formatter<char const*>
 {
-  auto format(QUrl const& s, format_context& ctx)
+  auto format(QUrl const& s, format_context& ctx) const
   {
     return formatter<char const*>::format((char const*) s.toString().toUtf8(), ctx);
   }
