@@ -307,9 +307,17 @@ get_external_project(
 )
 
 # ------------------------------------------------------------------------------
+# generate config settings header
+# ------------------------------------------------------------------------------
+configure_file(
+  "${PROJECT_SOURCE_DIR}/src/config/config-options.hpp.in"
+  "${PROJECT_BINARY_DIR}/src/grox/config-options.hpp"
+)
+include_directories("${PROJECT_BINARY_DIR}/src")
+
+# ------------------------------------------------------------------------------
 # grox build
 # ------------------------------------------------------------------------------
-
 if(BUILD_TESTING)
   set(PIKA_WITH_PSEUDO_DEPENDENCIES ON CACHE INTERNAL "" FORCE)
   include(grox_add_test)

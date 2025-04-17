@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[21]:
+# In[19]:
 
 
 # activate .venv in grox/python dir : source ~/src/grox/python/.venv/bin/activate
@@ -41,7 +41,7 @@ debug = True
 # 
 # ---
 
-# In[22]:
+# In[20]:
 
 
 # The directory where grox will store new json files downloaded from exchanges
@@ -61,7 +61,7 @@ print(f"grox_ini_file: {grox_ini_file}")
 # 
 # ---
 
-# In[23]:
+# In[21]:
 
 
 # these are officil transaction types as defined by the bitstamp API
@@ -87,7 +87,7 @@ transaction_types_dict = {
 account_names = ['Main', 'Currency', 'Test']
 
 
-# In[24]:
+# In[26]:
 
 
 if 'ipykernel' in sys.modules:
@@ -104,19 +104,22 @@ else:
     parser.add_argument('--grox_json_dir', default=grox_json_dir, type=str, help='grox json dir')
     parser.add_argument('--accounts', default=["Main"], type=str, nargs='+', help='Account names to use in file/json lookups')
     parser.add_argument('--delete_files', action='store_true', help='Delete JSON files after processing')
+    parser.add_argument('--validation_file', default='', type=str, help='Optional filename for validation check')
     args = parser.parse_args()
     grox_data_dir = args.grox_data_dir
     grox_json_dir = args.grox_json_dir
     account_names = args.accounts
     delete_files = args.delete_files
+    validation_file = args.validation_file
     print(f"Using account names: {account_names}")
     print(f"Using grox_data_dir: {grox_data_dir}")
     print(f"Using grox_json_dir: {grox_json_dir}")
-
+    print(f"Using delete_files: {delete_files}")
+    print(f"Using validation_file: {args.validation_file}")
 pd.options.display.float_format = '{:.8f}'.format
 
 
-# In[25]:
+# In[ ]:
 
 
 # we must handle "2021-02-23 08:59:14.652000" and "2021-02-23 08:59:14" and unix timestamps
@@ -140,7 +143,7 @@ def date_formatter(date):
 def convert_to_datetime(df, column_in, column_out):
     # Try converting assuming the column is a Unix timestamp
     df[column_out] = df[column_in].apply(date_formatter)
-    df[column_out] = df[column_out].dt.floor('s')
+    # df[column_out] = df[column_out].dt.floor('s')
     return df
 
 def cleanup_dataframe(df, message, debug=False):
@@ -190,7 +193,7 @@ def cleanup_dataframe(df, message, debug=False):
 # 
 # ---
 
-# In[16]:
+# In[ ]:
 
 
 account_files = {}
@@ -216,7 +219,7 @@ else:
 # 
 # ---
 
-# In[17]:
+# In[ ]:
 
 
 # load previously generated csv files into pandas dataframes
@@ -240,7 +243,7 @@ for account in account_names:
 # 
 # ---
 
-# In[18]:
+# In[ ]:
 
 
 json_files_read = []
@@ -294,7 +297,7 @@ if all(data is None for data in account_data.values()):
     sys.exit(0)
 
 
-# In[19]:
+# In[ ]:
 
 
 if success:
@@ -312,8 +315,8 @@ if success:
         # Save the transactions to csv files
         csv_name = os.path.join(grox_data_dir, f'transactions-user-{account}.csv')
         print(f"Saving user {account} to CSV file {csv_name}")
-        # if 'datetime' in account_data[account].columns:
-        #     account_data[account]['datetime'] = account_data[account]['datetime'].dt.strftime('%Y-%m-%d %H:%M:%S.%f')
+        if 'datetime' in account_data[account].columns:
+            account_data[account]['datetime'] = account_data[account]['datetime'].dt.strftime('%Y-%m-%d %H:%M:%S.%f')
         account_data[account].to_csv(csv_name, index=False)
         #
         last_datetime = account_data[account]['datetime'].iloc[-1]
@@ -331,7 +334,7 @@ if success:
         print(f"Last datetime for user {account}: {last_datetime} -> {grox_ini_file}")
         print(f"Last valid id for user {account}: {last_Id} -> {grox_ini_file}")
         # settings.setValue(f"Datetime_{suffix}_{key}", latest_datetime.strftime('%y-%m-%d %H:%M:%S'))
-        settings.setValue(f"Datetime_user_{account}", last_datetime.strftime('%y-%m-%d %H:%M:%S'))
+        settings.setValue(f"Datetime_user_{account}", last_datetime)
         if pd.notna(last_Id):
             settings.setValue(f"ID_user_{account}", int(last_Id))
     settings.endGroup()
@@ -355,6 +358,11 @@ else:
 # In[ ]:
 
 
+if not validation_file:
+    print("No validation file provided. Skipping validation.")
+    sys.exit(0)
+
+# ---------------------------------------------------------------------
 bitstamp_csv_file = '/home/biddisco/src/grox/transactions/transactions-2025-03-09.csv'
 print(f"Reading Bitstamp CSV files from {bitstamp_csv_file}")
 bitstamp_df = pd.read_csv(bitstamp_csv_file, parse_dates=['Datetime'])

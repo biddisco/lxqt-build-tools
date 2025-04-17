@@ -30,6 +30,7 @@
 #include "exchange/bitstamp.hpp"
 #include "exchange/ticker_data.hpp"
 #include "exchange/xrpl_network.hpp"
+#include "grox/config-options.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "senders/qhttp-post-sender.hpp"
@@ -147,36 +148,33 @@ bool token_valid(std::atomic<std::chrono::time_point<std::chrono::system_clock>>
 // ----------------------------------------------------------------------------
 void bitstamp_network::initialize()
 {
-  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
-  read_transaction_logs(settings);
+  std::string ini_name = global_settings.iniFileName.toStdString();
+  read_transaction_logs(ini_name);
   //
-  auto web = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
-      | stdexec::let_value([this]() { return request_tickers_available(); })      // Qt -> pika
-      | stdexec::then([this](QByteArray byteArray) {                              //
-          std::string_view data(byteArray.constData(), byteArray.length());       //
-          bitstamp_dbg<6>.debug(ffmt<s20>("Initialize"), "Tickers", data);        //
-          handle_tickers_available(data);                                         //
-        })                                                                        //
-      | stdexec::then([this]() { load_subscribed_tickers(); })                    //
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                       // pika -> Qt
-      | stdexec::let_value([this]() { return request_all_account_infos(); })      // Qt -> pika
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                       // pika -> Qt
-      | stdexec::let_value([this]() { return request_all_account_orders(); })     // Qt -> pika
-      // | stdexec::continue_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
-      // | stdexec::let_value([this]() { return request_all_crypto_transactions(); })    // Qt -> pika
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                         // pika -> Qt
-      | stdexec::let_value([this]() { return request_all_user_transactions(); })    // Qt -> pika
-      // | stdexec::continue_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
-      // | stdexec::let_value([this]() { return request_all_market_transactions(); })    // Qt -> pika
-      | stdexec::then([this]() { update_transaction_logs(); })         //
-      | stdexec::then([this]() { emit network_initialized(this); })    //
+  auto web = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())         //
+      | stdexec::let_value([this]() { return request_tickers_available(); })           // Qt -> pika
+      | stdexec::then([this](QByteArray byteArray) {                                   //
+          std::string_view data(byteArray.constData(), byteArray.length());            //
+          bitstamp_dbg<6>.debug(ffmt<s20>("Initialize"), "Tickers", data);             //
+          handle_tickers_available(data);                                              //
+        })                                                                             //
+      | stdexec::then([this]() { load_subscribed_tickers(); })                         //
+      | stdexec::continue_on(QtStdExec::QThreadScheduler())                            // pika -> Qt
+      | stdexec::let_value([this]() { return request_all_account_infos(); })           // Qt -> pika
+      | stdexec::continue_on(QtStdExec::QThreadScheduler())                            // pika -> Qt
+      | stdexec::let_value([this]() { return request_all_account_orders(); })          // Qt -> pika
+      | stdexec::continue_on(QtStdExec::QThreadScheduler())                            // pika -> Qt
+      | stdexec::let_value([this]() { return request_all_account_transactions(); })    // Qt -> pika
+      | stdexec::then([=, this]() { update_transaction_logs(ini_name); })              //
+      | stdexec::then([=, this]() { read_transaction_logs(ini_name); })                //
+      | stdexec::then([this]() { emit network_initialized(this); })                    //
       | stdexec::upon_error([this](std::exception_ptr const& e) {
           std::lock_guard<std::mutex> l(candlestick_mutex_);
           bitstamp_dbg<0>.error(ffmt<s20>("Bitstamp initilize failed"), what(e));
         });
   // @TODO - add flag to network_initialized to signal, finished, but errors/other problems
 
-  // bitstamp_dbg<0>.debug(ffmt<s20>("SENDER"), grox::debug::print_type<decltype(snd0)>());
+  // bitstamp_dbg<0>.debug(ffmt<s20>("SENDER"), "\n", grox::debug::print_type<decltype(snd0)>());
   stdexec::start_detached(std::move(web));
 }
 
@@ -534,8 +532,9 @@ any_void_sender bitstamp_network::request_all_account_orders()
 }
 
 // ----------------------------------------------------------------------------
-any_void_sender bitstamp_network::read_transaction_logs(QSettings& settings)
+any_void_sender bitstamp_network::read_transaction_logs(std::string ini_name)
 {
+  QSettings settings(ini_name.c_str(), QSettings::IniFormat);
   settings.beginGroup("TransactionLogs");
   settings.beginGroup("Bitstamp");
   for (auto suffix : {"crypto", "market", "user"})
@@ -558,40 +557,28 @@ any_void_sender bitstamp_network::read_transaction_logs(QSettings& settings)
 }
 
 // ----------------------------------------------------------------------------
-any_void_sender bitstamp_network::update_transaction_logs()
+any_void_sender bitstamp_network::update_transaction_logs(std::string ini_name)
 {
-  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
-  read_transaction_logs(settings);
-
   // build a list of accounts to pass to python script
   std::string accountnames;
   for (auto& acct : accounts()) accountnames += acct.name_ + " ";
 
-  std::string cmd_str =
-      fmt::format("/home/biddisco/src/grox/python/run-script.sh python3 {} "
-                  "--grox_data_dir={} --grox_json_dir={} --accounts {} ",    // "--delete_files "
-          "/home/biddisco/src/grox/python/transactions/transactions-grox-json.py",
-          global_settings.appDataLocation, global_settings.appDataLocation, accountnames);
+  std::string cmd_str = fmt::format(                         //
+      "{}/python/run-script.sh python3 "                     //
+      "{}/python/transactions/transactions-grox-json.py "    //
+      "--grox_data_dir={} "                                  //
+      "--grox_json_dir={} "                                  //
+      "--accounts {} "                                       //
+      "--delete_files "                                      //
+      ,
+      GROX_SOURCE_DIR, GROX_SOURCE_DIR, global_settings.appDataLocation,
+      global_settings.appDataLocation, accountnames);
   //
   bitstamp_dbg<2>.debug(ffmt<s20>("Execute"), cmd_str);
   std::string result = execute_os_command(cmd_str.c_str(), false);
   bitstamp_dbg<2>.debug(ffmt<s20>("Execute result"), result);
 
   return any_void_sender{stdexec::just()};
-  // settings.beginGroup("TransactionLogs");
-  // settings.beginGroup("Bitstamp");
-  // for (auto suffix : {"crypto", "market", "user"})
-  // {
-  //   for (auto key : {"user"})
-  //   {
-  //     std::int64_t last_orderId =
-  //         settings.value(fmt::format("Order_ID_{}_{}", suffix, key)).toInt();
-  //     bitstamp_dbg<2>.debug(
-  //         ffmt<s20>("last_orderId"), fmt::format("Order_ID_{}_{}", suffix, key), last_orderId);
-  //   }
-  // }
-  // settings.endGroup();
-  // settings.endGroup();
 }
 
 // ----------------------------------------------------------------------------
@@ -736,7 +723,7 @@ any_void_sender bitstamp_network::request_all_market_transactions()
 }
 
 // ----------------------------------------------------------------------------
-any_bytearray_sender bitstamp_network::request_user_transactions(bitstamp_account const& acct)
+any_bytearray_sender bitstamp_network::request_account_transactions(bitstamp_account const& acct)
 {
   // limit          : Limit result to that many transactions (default: 100; maximum: 1000).
   // offset         : Skip that many transactions before returning results (default: 0, maximum: 200000). If you need to export older history contact support OR use combination of limit and since_id parameters.
@@ -754,7 +741,7 @@ any_bytearray_sender bitstamp_network::request_user_transactions(bitstamp_accoun
 }
 
 // ----------------------------------------------------------------------------
-any_void_sender bitstamp_network::request_all_user_transactions()
+any_void_sender bitstamp_network::request_all_account_transactions()
 {
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
@@ -783,9 +770,9 @@ any_void_sender bitstamp_network::request_all_user_transactions()
         else { bitstamp_dbg<0>.debug(ffmt<s20>("Transactions_User"), acct.name_, "Empty"); }
       };
 
-      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())              //
-          | ex::let_value([&, this]() { return request_user_transactions(acct); })    //
-          | ex::then(handle_data);                                                    //
+      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())                 //
+          | ex::let_value([&, this]() { return request_account_transactions(acct); })    //
+          | ex::then(handle_data);                                                       //
 
       scope.spawn(std::move(snd));
     }

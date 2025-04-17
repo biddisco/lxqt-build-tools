@@ -134,8 +134,8 @@ class bitstamp_network : public abstract_exchange
   void shut_down() override;
 
   // ---------------------------------------
-  any_void_sender read_transaction_logs(QSettings& settings);
-  any_void_sender update_transaction_logs();
+  any_void_sender read_transaction_logs(std::string ini_name);
+  any_void_sender update_transaction_logs(std::string ini_name);
 
   // ---------------------------------------
   // https: get currency tickers available
@@ -160,9 +160,9 @@ class bitstamp_network : public abstract_exchange
   any_void_sender request_all_crypto_transactions();
 
   // https: get usertransactions
-  any_bytearray_sender request_user_transactions(bitstamp_account const& acct);
+  any_bytearray_sender request_account_transactions(bitstamp_account const& acct);
   // get all token transactions
-  any_void_sender request_all_user_transactions();
+  any_void_sender request_all_account_transactions();
 
   // https: get usertransactions
   any_bytearray_sender request_market_transactions(
