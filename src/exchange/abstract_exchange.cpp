@@ -6,8 +6,10 @@
 //
 #include <QObject>
 //
+#include "config/config.hpp"
 #include "debug/print.hpp"
 #include "exchange/abstract_exchange.hpp"
+#include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;
@@ -40,6 +42,8 @@ void abstract_exchange::shut_down()
   closing_down_ = true;
   std::lock_guard l(async_mutex_);
   exchange_dbg<0>.debug(ffmt<s20>(get_name().c_str()), "shutdown start");
+  //
+  save_subscribed_tickers();
   //
   for (auto& [ticker, tdata] : tickers_subscribed_)
   {
@@ -113,12 +117,6 @@ abstract_exchange::exchange_map const& abstract_exchange::tickers_subscribed() c
   return tickers_subscribed_;
 }
 
-/*
-abstract_exchange::exchange_map& abstract_exchange::tickers_subscribed()
-{
-  return tickers_subscribed_;
-}
-*/
 // ----------------------------------------------------------------------------
 bool abstract_exchange::ticker_subscribed(currency_pair const& cp)
 {
@@ -149,4 +147,48 @@ bool abstract_exchange::add_currency_pair(currency_pair const& cp)
 {
   tickers_available_.push_back(cp);
   return true;
+}
+
+// ----------------------------------------------------------------------------
+void abstract_exchange::load_subscribed_tickers()
+{
+  // open ini file and get the group subscribed tickers
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
+  // open global settings streams section
+  settings.beginGroup("Tickers");
+  // open group for this abstract_exchange
+  settings.beginGroup(get_name());
+  // get all subscribed tickers on this abstract_exchange from ini file
+  for (auto const& ticker : settings.childKeys())
+  {
+    if (settings.value(ticker).toBool())
+    {
+      exchange_dbg<0>.debug(ffmt<s20>("subscription"), ticker.toStdString());
+      currency_pair cp = string_to_pair(ticker.toStdString(), "-");
+      ticker_subscribe(cp);
+    }
+  }
+  settings.endGroup();
+  settings.endGroup();
+}
+
+// ----------------------------------------------------------------------------
+void abstract_exchange::save_subscribed_tickers()
+{
+  // open ini file and get the group subscribed tickers
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
+  // open global settings streams section
+  settings.beginGroup("Tickers");
+  // open group for this abstract_exchange
+  settings.beginGroup(get_name());
+
+  // for each ticker we are subscribed to
+  for (auto const& ticker : tickers_subscribed())
+  {
+    auto cp = ticker.first;
+    std::string key = currency_pair_string(cp);
+    settings.setValue(to_qstring(key), true);
+  }
+  settings.endGroup();
+  settings.endGroup();
 }

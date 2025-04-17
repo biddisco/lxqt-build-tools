@@ -99,6 +99,9 @@ class abstract_exchange
   virtual bool stream_subscribe(
       currency_pair const& cp, ticker::streams const stream, bool enabled, factory_function f) = 0;
 
+  void load_subscribed_tickers();
+  void save_subscribed_tickers();
+
   //  virtual bool websocket_connect(net::contexts& io_contexts, stream_set const& streams) = 0;
   //  virtual bool websocket_disconnect(net::contexts& io_contexts, stream_set const& streams) = 0;
 
