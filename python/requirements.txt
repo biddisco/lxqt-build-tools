@@ -1,0 +1,10 @@
+ipykernel
+pip-chill
+pyqt6
+seaborn
+tables
+tabulate
+toml
+wxpython
+xrpl-py
+yfinance-cache
