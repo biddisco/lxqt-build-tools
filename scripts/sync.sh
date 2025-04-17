@@ -1,6 +1,6 @@
 #!/bin/bash
 #params="--delete"
-params="--exclude '*.pack'"
+params="--exclude '*.pack' --exclude '.venv'"
 
 machine_on() {
   if nc -z $1 22 2>/dev/null; then
@@ -19,7 +19,7 @@ echo "-----------------------------------"
 if machine_on pi5; then
   $HOME/update-rsync.sh $HOME/src/grox/                            pi5:/home/pi/src/grox $params
   $HOME/update-rsync.sh /home/biddisco/.config/grox.ini            pi5:/home/pi/.config/grox.ini
-  $HOME/update-rsync.sh /home/biddisco/.local/share/grox/grox.hdf5 pi5:/home/pi/.local/share/grox/grox.hdf5
+  $HOME/update-rsync.sh /home/biddisco/.local/share/grox/          pi5:/home/pi/.local/share/grox/
 fi
 
 echo

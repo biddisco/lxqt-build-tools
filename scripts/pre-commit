@@ -66,4 +66,12 @@ if [ ! -z "$full_list" ]; then
     printf "\n# ${red}To commit the corrected files, run\n${normal}\ngit add ${full_list}\n"
 fi
 
+# check jupyter/python notebooks to remove output
+for f in $(git diff --name-only --cached); do
+    case "$f" in
+        *".ipynb") echo "here we clean the notebook" ;;
+#        *".ipynb") jupyter nbconvert --clear-output --ClearMetadataPreprocessor.enabled=True --inplace $f && git add $f ;;
+    esac
+done
+
 exit $returncode

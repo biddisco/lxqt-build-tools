@@ -1,6 +1,7 @@
 .vscode/
 extern/
-transactions/
+python/transactions/bitstamp-data
+python/transactions/grox-data
 CMakeLists.txt.user
 __pycache__
 xrpl-dev-portal
