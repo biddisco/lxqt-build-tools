@@ -150,6 +150,7 @@ struct bitstamp_account : public ledger_wallet
   secure_string API_user;
   secure_string API_key;
   secure_string API_secret;
+  std::uint64_t last_order_ID{0};
   //
   // bitstamp has a different deposit address for IOUs
   virtual std::string_view get_receive_address(currency_code const& c) override

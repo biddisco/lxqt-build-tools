@@ -147,25 +147,29 @@ bool token_valid(std::atomic<std::chrono::time_point<std::chrono::system_clock>>
 // ----------------------------------------------------------------------------
 void bitstamp_network::initialize()
 {
-  auto web = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())       //
-      | stdexec::let_value([this]() { return request_tickers_available(); })          // Qt -> pika
-      | stdexec::then([this](QByteArray byteArray) {                                  //
-          std::string_view data(byteArray.constData(), byteArray.length());           //
-          bitstamp_dbg<6>.debug(ffmt<s20>("Initialize"), "Tickers", data);            //
-          handle_tickers_available(data);                                             //
-        })                                                                            //
-      | stdexec::then([this]() { load_saved_tickers(); })                             //
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                          // pika -> Qt
-      | stdexec::let_value([this]() { return request_all_account_infos(); })          // Qt -> pika
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                          // pika -> Qt
-      | stdexec::let_value([this]() { return request_all_account_orders(); })         // Qt -> pika
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                          // pika -> Qt
-      | stdexec::let_value([this]() { return request_all_crypto_transactions(); })    // Qt -> pika
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                          // pika -> Qt
-      | stdexec::let_value([this]() { return request_all_user_transactions(); })      // Qt -> pika
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                          // pika -> Qt
-      | stdexec::let_value([this]() { return request_all_market_transactions(); })    // Qt -> pika
-      | stdexec::then([this]() { emit network_initialized(this); })                   //
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
+  read_transaction_logs(settings);
+  //
+  auto web = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
+      | stdexec::let_value([this]() { return request_tickers_available(); })      // Qt -> pika
+      | stdexec::then([this](QByteArray byteArray) {                              //
+          std::string_view data(byteArray.constData(), byteArray.length());       //
+          bitstamp_dbg<6>.debug(ffmt<s20>("Initialize"), "Tickers", data);        //
+          handle_tickers_available(data);                                         //
+        })                                                                        //
+      | stdexec::then([this]() { load_subscribed_tickers(); })                    //
+      | stdexec::continue_on(QtStdExec::QThreadScheduler())                       // pika -> Qt
+      | stdexec::let_value([this]() { return request_all_account_infos(); })      // Qt -> pika
+      | stdexec::continue_on(QtStdExec::QThreadScheduler())                       // pika -> Qt
+      | stdexec::let_value([this]() { return request_all_account_orders(); })     // Qt -> pika
+      // | stdexec::continue_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
+      // | stdexec::let_value([this]() { return request_all_crypto_transactions(); })    // Qt -> pika
+      | stdexec::continue_on(QtStdExec::QThreadScheduler())                         // pika -> Qt
+      | stdexec::let_value([this]() { return request_all_user_transactions(); })    // Qt -> pika
+      // | stdexec::continue_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
+      // | stdexec::let_value([this]() { return request_all_market_transactions(); })    // Qt -> pika
+      | stdexec::then([this]() { update_transaction_logs(); })         //
+      | stdexec::then([this]() { emit network_initialized(this); })    //
       | stdexec::upon_error([this](std::exception_ptr const& e) {
           std::lock_guard<std::mutex> l(candlestick_mutex_);
           bitstamp_dbg<0>.error(ffmt<s20>("Bitstamp initilize failed"), what(e));
@@ -310,7 +314,7 @@ bool bitstamp_network::stream_subscribe(
   if (!ticker_subscribed(cp)) ticker_subscribe(cp);
 
   auto snd = stdexec::start_on(QtStdExec::QThreadScheduler(), request_websocket_token())    //
-      | stdexec::then([this](QByteArray byteArray) {                                         // pika
+      | stdexec::then([this](QByteArray byteArray) {                                        // pika
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<6>.debug(ffmt<s20>("Initialize"), "WebsocketToken", data);
           handle_websocket_token(data);
@@ -342,9 +346,9 @@ bool bitstamp_network::stream_subscribe(
         default: ok = false; throw std::runtime_error("unknown stream");
         }
         if (ok) mark_stream_subscribed(cp, stream, enabled);
-      })                                                        //
+      })                                                       //
       | stdexec::continue_on(QtStdExec::QThreadScheduler())    //
-      | stdexec::then([this, cp, stream, f]() {                 //
+      | stdexec::then([this, cp, stream, f]() {                //
           f(cp, get_subscribed_ticker_data(cp), stream);
         });
   stdexec::start_detached(std::move(snd));
@@ -398,7 +402,7 @@ bool bitstamp_network::make_payment(
     //
     auto* client = signed_request(*from, "/api/v2/xrp_withdrawal/", req_string.str());
     auto web = stdexec::start_on(exec::inline_scheduler(), stdexec::just(client))    // Qt
-        | qhttp_post()                                                                // Qt -> pika
+        | qhttp_post()                                                               // Qt -> pika
         | stdexec::then([this](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
             bitstamp_dbg<0>.debug(ffmt<s20>("request CB"), "/api/v2/xrp_withdrawal/", data);
@@ -412,7 +416,7 @@ bool bitstamp_network::make_payment(
     //
     auto* client = signed_request(*from, "/api/v2/ripple_withdrawal/", req_string.str());
     auto web = stdexec::start_on(exec::inline_scheduler(), stdexec::just(client))    // Qt
-        | qhttp_post()                                                                // Qt -> pika
+        | qhttp_post()                                                               // Qt -> pika
         | stdexec::then([this](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
             bitstamp_dbg<0>.debug(ffmt<s20>("request CB"), "/api/v2/ripple_withdrawal/", data);
@@ -449,7 +453,7 @@ any_void_sender bitstamp_network::request_all_account_infos()
         handle_account_info(acct, data);
       };
 
-      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())            // Qt
+      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())             // Qt
           | ex::let_value([this, &acct]() { return request_account_info(acct); })    // -> pika
           | ex::then(handle_data);
 
@@ -462,7 +466,7 @@ any_void_sender bitstamp_network::request_all_account_infos()
   };
 
   // must be on a pika thread if we are using sync_wait
-  auto snd = stdexec::just()                               //
+  auto snd = stdexec::just()                              //
       | stdexec::continue_on(default_pool_scheduler())    //
       | stdexec::then(get_all_account_infos);
 
@@ -509,7 +513,7 @@ any_void_sender bitstamp_network::request_all_account_orders()
         handle_open_orders(acct, data);
       };
 
-      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())              // Qt
+      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())               // Qt
           | ex::let_value([this, &acct]() { return request_account_orders(acct); })    // -> pika
           | ex::then(handle_data);
 
@@ -522,7 +526,7 @@ any_void_sender bitstamp_network::request_all_account_orders()
   };
 
   // must be on a pika thread if we are using sync_wait
-  auto snd = stdexec::just()                               //
+  auto snd = stdexec::just()                              //
       | stdexec::continue_on(default_pool_scheduler())    //
       | stdexec::then(get_all_orders);
 
@@ -530,10 +534,71 @@ any_void_sender bitstamp_network::request_all_account_orders()
 }
 
 // ----------------------------------------------------------------------------
+any_void_sender bitstamp_network::read_transaction_logs(QSettings& settings)
+{
+  settings.beginGroup("TransactionLogs");
+  settings.beginGroup("Bitstamp");
+  for (auto suffix : {"crypto", "market", "user"})
+  {
+    for (auto& acct : accounts_)
+    {
+      std::uint64_t last_orderId =
+          settings.value(fmt::format("ID_{}_{}", suffix, acct.name_)).toULongLong();
+      if (last_orderId > 0)
+      {
+        acct.last_order_ID = std::max(acct.last_order_ID, last_orderId);
+        bitstamp_dbg<2>.debug(ffmt<s20>("TransactionLogs"), "last_Id",
+            fmt::format("ID_{}_{}", suffix, acct.name_), last_orderId);
+      }
+    }
+  }
+  settings.endGroup();
+  settings.endGroup();
+  return any_void_sender{stdexec::just()};
+}
+
+// ----------------------------------------------------------------------------
+any_void_sender bitstamp_network::update_transaction_logs()
+{
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
+  read_transaction_logs(settings);
+
+  // build a list of accounts to pass to python script
+  std::string accountnames;
+  for (auto& acct : accounts()) accountnames += acct.name_ + " ";
+
+  std::string cmd_str =
+      fmt::format("/home/biddisco/src/grox/python/run-script.sh python3 {} "
+                  "--grox_data_dir={} --grox_json_dir={} --accounts {} ",    // "--delete_files "
+          "/home/biddisco/src/grox/python/transactions/transactions-grox-json.py",
+          global_settings.appDataLocation, global_settings.appDataLocation, accountnames);
+  //
+  bitstamp_dbg<2>.debug(ffmt<s20>("Execute"), cmd_str);
+  std::string result = execute_os_command(cmd_str.c_str(), false);
+  bitstamp_dbg<2>.debug(ffmt<s20>("Execute result"), result);
+
+  return any_void_sender{stdexec::just()};
+  // settings.beginGroup("TransactionLogs");
+  // settings.beginGroup("Bitstamp");
+  // for (auto suffix : {"crypto", "market", "user"})
+  // {
+  //   for (auto key : {"user"})
+  //   {
+  //     std::int64_t last_orderId =
+  //         settings.value(fmt::format("Order_ID_{}_{}", suffix, key)).toInt();
+  //     bitstamp_dbg<2>.debug(
+  //         ffmt<s20>("last_orderId"), fmt::format("Order_ID_{}_{}", suffix, key), last_orderId);
+  //   }
+  // }
+  // settings.endGroup();
+  // settings.endGroup();
+}
+
+// ----------------------------------------------------------------------------
 // movement of crypto such as xrp withdrawal/deposit etc
 any_bytearray_sender bitstamp_network::request_crypto_transactions(bitstamp_account const& acct)
 {
-  std::string query = fmt::format("?&limit={}", 1000);
+  std::string query = fmt::format("?&include_ious=true&limit={}", 1000);
   auto* client = signed_request(acct, "/api/v2/crypto-transactions/", query);
   return stdexec::just(client) | qhttp_post();
 }
@@ -544,7 +609,7 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
   using namespace grox::debug;
-  bitstamp_dbg<0>.debug(ffmt<s20>("all_crypto_transactions"));
+  bitstamp_dbg<0>.debug(ffmt<s20>("Transactions_Crypto"));
 
   // we can't block the Qt thread, so put async_scope onto a pika thread
   auto get_all_transactions = [this]() {
@@ -554,7 +619,7 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
     {
       auto handle_data = [this, &acct](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
-        bitstamp_dbg<6>.debug(ffmt<s20>("Transactions"), "Handler", data);
+        bitstamp_dbg<6>.debug(ffmt<s20>("Transactions_Crypto"), "Handler", data);
         nlohmann::json jdata = nlohmann::json::parse(data);
         if (jdata.size() > 0)
         {
@@ -562,25 +627,26 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
               global_settings.appDataLocation, getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
           std::ofstream transactions(name);
           transactions << jdata.dump(4);
-          bitstamp_dbg<0>.debug(ffmt<s20>("Transactions"), "Written", name);
+          bitstamp_dbg<0>.debug(ffmt<s20>("Transactions_Crypto"), "Written", name);
           // handle_open_orders(acct, data);
         }
+        else { bitstamp_dbg<0>.debug(ffmt<s20>("Transactions_Crypto"), "Empty"); }
       };
 
-      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())                   //
+      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())                    //
           | ex::let_value([this, &acct]() { return request_crypto_transactions(acct); })    //
           | ex::then(handle_data);                                                          //
 
       scope.spawn(std::move(snd));
     }
 
-    bitstamp_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope", "all_crypto_transactions");
+    bitstamp_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope", "Transactions_Crypto");
     tt::sync_wait(scope.on_empty());
-    bitstamp_dbg<2>.debug(ffmt<s20>("COMPLETE"), "scope", "all_crypto_transactions");
+    bitstamp_dbg<2>.debug(ffmt<s20>("COMPLETE"), "scope", "Transactions_Crypto");
   };
 
   // must be on a pika thread if we are using sync_wait
-  auto snd = stdexec::just()                               //
+  auto snd = stdexec::just()                              //
       | stdexec::continue_on(default_pool_scheduler())    //
       | stdexec::then(get_all_transactions);
 
@@ -598,7 +664,12 @@ any_bytearray_sender bitstamp_network::request_market_transactions(
   // sort           : Sorting by date and time: asc - ascending; desc - descending (default: desc).
   // until_timestamp: Show only transactions to unix timestamp (for max 30 days old).
   std::string market_symbol = currency_pair_lowercase_string(cp);
-  std::string query = fmt::format("?&limit={}", 1000);
+
+  std::uint64_t timestep = 1510323308;
+  std::uint64_t id = 0;
+  std::string query = fmt::format("?&since_id={}&limit={}", id, 10);
+
+  // std::string query = fmt::format("?&since_id={}&limit={}", acct.last_order_ID, 1000);
   auto* client =
       signed_request(acct, fmt::format("/api/v2/user_transactions/{}/", market_symbol), query);
   return stdexec::just(client) | qhttp_post();
@@ -610,7 +681,7 @@ any_void_sender bitstamp_network::request_all_market_transactions()
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
   using namespace grox::debug;
-  bitstamp_dbg<0>.debug(ffmt<s20>("all_user_transactions"));
+  bitstamp_dbg<5>.debug(ffmt<s20>("Transactions_Market"));
 
   // we can't block the Qt thread, so put async_scope onto a pika thread
   auto get_all_transactions = [this]() {
@@ -621,22 +692,29 @@ any_void_sender bitstamp_network::request_all_market_transactions()
       {
         auto handle_data = [this, cp, &acct](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
-          bitstamp_dbg<6>.debug(ffmt<s20>("Transactions"), "Handler", data);
+          bitstamp_dbg<2>.debug(
+              ffmt<s20>("Transactions_Market"), currency_pair_string(cp), "Handler", data.length());
+          bitstamp_dbg<7>.debug(
+              ffmt<s20>("Transactions_Market"), currency_pair_string(cp), "Handler", data);
           nlohmann::json jdata = nlohmann::json::parse(data);
           if (jdata.size() > 0)
           {
             std::string name =
-                fmt::format("{}/transactions-user-{}-{}.json", global_settings.appDataLocation,
-                    currency_pair_string(cp), getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
+                fmt::format("{}/transactions-market-{}-{}-{}.json", global_settings.appDataLocation,
+                    acct.name_, currency_pair_string(cp), getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
             std::ofstream transactions(name);
             transactions << jdata.dump(4);
-            bitstamp_dbg<0>.debug(ffmt<s20>("Transactions"), "Written", name);
-
-            // handle_open_orders(acct, data);
+            bitstamp_dbg<0>.debug(
+                ffmt<s20>("Transactions_Market"), currency_pair_string(cp), "Written", name);
+          }
+          else
+          {
+            bitstamp_dbg<0>.debug(
+                ffmt<s20>("Transactions_Market"), currency_pair_string(cp), "Empty");
           }
         };
 
-        auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())                   //
+        auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())                    //
             | ex::let_value([&, this]() { return request_market_transactions(acct, cp); })    //
             | ex::then(handle_data);                                                          //
 
@@ -644,13 +722,13 @@ any_void_sender bitstamp_network::request_all_market_transactions()
       }
     }
 
-    bitstamp_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope", "all_user_transactions");
+    bitstamp_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope", "Transactions_Market");
     tt::sync_wait(scope.on_empty());
-    bitstamp_dbg<2>.debug(ffmt<s20>("COMPLETE"), "scope", "all_user_transactions");
+    bitstamp_dbg<2>.debug(ffmt<s20>("COMPLETE"), "scope", "Transactions_Market");
   };
 
   // must be on a pika thread if we are using sync_wait
-  auto snd = stdexec::just()                               //
+  auto snd = stdexec::just()                              //
       | stdexec::continue_on(default_pool_scheduler())    //
       | stdexec::then(get_all_transactions);
 
@@ -666,7 +744,11 @@ any_bytearray_sender bitstamp_network::request_user_transactions(bitstamp_accoun
   // since_timestamp: (Optional) Show only transactions from unix timestamp (for max 30 days old).
   // sort           : Sorting by date and time: asc - ascending; desc - descending (default: desc).
   // until_timestamp: Show only transactions to unix timestamp (for max 30 days old).
-  std::string query = fmt::format("?&limit={}", 1000);
+  //
+  // first valid transaction id for JB is 25729568,
+  std::uint64_t id = acct.last_order_ID + 1;
+  if (id < 10000000) id = 10000000;
+  std::string query = fmt::format("?&since_id={}&limit={}&sort=asc", id, 1000);
   auto* client = signed_request(acct, fmt::format("/api/v2/user_transactions/"), query);
   return stdexec::just(client) | qhttp_post();
 }
@@ -677,46 +759,44 @@ any_void_sender bitstamp_network::request_all_user_transactions()
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
   using namespace grox::debug;
-  bitstamp_dbg<0>.debug(ffmt<s20>("all_user_transactions"));
+  bitstamp_dbg<0>.debug(ffmt<s20>("Transactions_User"), "All");
 
   // we can't block the Qt thread, so put async_scope onto a pika thread
   auto get_all_transactions = [this]() {
     exec::async_scope scope;
-    for (auto& [cp, data] : tickers_subscribed_)
+    for (auto& acct : accounts())
     {
-      for (auto& acct : accounts())
-      {
-        auto handle_data = [this, &acct](QByteArray byteArray) {
-          std::string_view data(byteArray.constData(), byteArray.length());
-          bitstamp_dbg<6>.debug(ffmt<s20>("Transactions"), "Handler", data);
-          nlohmann::json jdata = nlohmann::json::parse(data);
-          if (jdata.size() > 0)
-          {
-            std::string name = fmt::format("{}/transactions-user-{}.json",
-                global_settings.appDataLocation, getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
-            std::ofstream transactions(name);
-            transactions << jdata.dump(4);
-            bitstamp_dbg<0>.debug(ffmt<s20>("Transactions"), "Written", name);
+      auto handle_data = [this, &acct](QByteArray byteArray) {
+        std::string_view data(byteArray.constData(), byteArray.length());
+        bitstamp_dbg<6>.debug(ffmt<s20>("Transactions_User"), acct.name_, "Handler", data);
+        nlohmann::json jdata = nlohmann::json::parse(data);
+        if (jdata.size() > 0)
+        {
+          std::string name = fmt::format("{}/transactions-user-{}-{}.json",
+              global_settings.appDataLocation, acct.name_, getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
+          std::ofstream transactions(name);
+          transactions << jdata.dump(4);
+          bitstamp_dbg<0>.debug(ffmt<s20>("Transactions_User"), acct.name_, "Written", name);
 
-            // handle_open_orders(acct, data);
-          }
-        };
+          // handle_open_orders(acct, data);
+        }
+        else { bitstamp_dbg<0>.debug(ffmt<s20>("Transactions_User"), acct.name_, "Empty"); }
+      };
 
-        auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())             //
-            | ex::let_value([&, this]() { return request_user_transactions(acct); })    //
-            | ex::then(handle_data);                                                    //
+      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())              //
+          | ex::let_value([&, this]() { return request_user_transactions(acct); })    //
+          | ex::then(handle_data);                                                    //
 
-        scope.spawn(std::move(snd));
-      }
+      scope.spawn(std::move(snd));
     }
 
-    bitstamp_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope", "all_user_transactions");
+    bitstamp_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope", "Transactions_User");
     tt::sync_wait(scope.on_empty());
-    bitstamp_dbg<2>.debug(ffmt<s20>("COMPLETE"), "scope", "all_user_transactions");
+    bitstamp_dbg<2>.debug(ffmt<s20>("COMPLETE"), "scope", "Transactions_User");
   };
 
   // must be on a pika thread if we are using sync_wait
-  auto snd = stdexec::just()                               //
+  auto snd = stdexec::just()                              //
       | stdexec::continue_on(default_pool_scheduler())    //
       | stdexec::then(get_all_transactions);
 
@@ -1476,24 +1556,4 @@ void bitstamp_network::candlestick_timer_event()
     bitstamp_dbg<0>.debug(ffmt<s20>("candlestick_timer"), now.toStdString());
     update_ohlc_datasets();
   }
-}
-
-// ----------------------------------------------------------------------------
-void bitstamp_network::load_saved_tickers()
-{
-  // open ini file and get the group subscribed tickers
-  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
-  // open global settings streams section
-  settings.beginGroup("Tickers");
-  // open group for this abstract_exchange
-  settings.beginGroup(get_name());
-  // get all subscribed tickers on this abstract_exchange from ini file
-  for (auto const& ticker : settings.childKeys())
-  {
-    bitstamp_dbg<0>.debug(ffmt<s20>("subscription"), ticker.toStdString());
-    currency_pair cp = string_to_pair(ticker.toStdString(), "-");
-    ticker_subscribe(cp);
-  }
-  settings.endGroup();
-  settings.endGroup();
 }

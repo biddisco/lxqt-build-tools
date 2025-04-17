@@ -134,6 +134,10 @@ class bitstamp_network : public abstract_exchange
   void shut_down() override;
 
   // ---------------------------------------
+  any_void_sender read_transaction_logs(QSettings& settings);
+  any_void_sender update_transaction_logs();
+
+  // ---------------------------------------
   // https: get currency tickers available
   any_bytearray_sender request_tickers_available();
 
@@ -224,8 +228,6 @@ class bitstamp_network : public abstract_exchange
   stream_set ticker_subscribe(currency_pair const& cp) override;
 
   currency_pair split_token_string(std::string utoken) const;
-
-  void load_saved_tickers();
 
   signals:
 

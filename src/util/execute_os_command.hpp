@@ -7,8 +7,12 @@
 #include <exception>
 #include <iostream>
 #include <string>
+//
+#include <boost/process.hpp>
+//
+namespace bp = boost::process;
 
-static std::string execute_os_command(char const* cmd)
+static std::string execute_os_command(char const* cmd, bool trim = true)
 {
   std::array<char, 128> buffer;
   std::string result;
@@ -27,6 +31,6 @@ static std::string execute_os_command(char const* cmd)
               << "failed with code " << rc << std::endl
               << result << std::endl;
   }
-  result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
+  if (trim) result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
   return result;
 }
