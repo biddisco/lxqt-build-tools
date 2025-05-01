@@ -107,9 +107,9 @@ struct ledger_wallet : public basic_account
 {
   secure_string public_;
   secure_string private_;
-  int64_t tag_;
-  int32_t sequence_;
-  bool testnet_;
+  int64_t tag_{0};
+  int32_t sequence_{0};
+  bool testnet_{false};
   //
   virtual ~ledger_wallet() {}
   virtual std::string_view get_receive_address(currency_code const&) { return public_; }
