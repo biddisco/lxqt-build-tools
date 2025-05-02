@@ -638,33 +638,50 @@ void GroxMainWindow::display_offers()
 void GroxMainWindow::closeEvent(QCloseEvent* event)
 {
   main_dbg<0>.debug(ffmt<s20>("closeEvent"));
-  saveWindowSettings();
-  saveTrustlines();
-  saveConnectionSetups();
 
-  for (auto& e : exchange_list_)
+  if (!exchange_list_.empty())
   {
-    auto name = e->get_name();
-    main_dbg<0>.debug(ffmt<s20>("shut down"), name, "start");
-    e->shut_down();
-    e.reset();
-    main_dbg<0>.debug(ffmt<s20>("shut down"), name, "complete");
-  }
-  main_dbg<0>.debug(ffmt<s20>("exchanges"), "shutdown complete");
+    saveTrustlines();
+    saveConnectionSetups();
 
-  // auto map = global_settings.dock_manager_->dockWidgetsMap();
-  // for (auto [key, val] : map.asKeyValueRange())
-  // {
-  //   std::cout << key.toLatin1().toStdString().c_str() << std::endl;
-  //   delete val;
-  // }
-  auto list = global_settings.dock_manager_->floatingWidgets();
-  for (int i = 0; i < list.count(); ++i)
-  {
-    // process items in numerical order by index
-    delete list[i];
+    auto snd = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
+        | stdexec::then([this]() {
+            for (auto& e : exchange_list_)
+            {
+              auto name = e->get_name();
+              main_dbg<0>.debug(ffmt<s20>("shut down"), name, "start");
+              e->shut_down();
+              e.reset();
+              main_dbg<0>.debug(ffmt<s20>("shut down"), name, "complete");
+            }
+            main_dbg<0>.debug(ffmt<s20>("exchanges"), "shutdown complete");
+            exchange_list_.clear();
+          })                                                     //
+        | stdexec::continue_on(QtStdExec::QThreadScheduler())    // pika -> Qt
+        | stdexec::then([this]() {
+            main_dbg<0>.debug(ffmt<s20>("Close"));
+            close();
+          });
+    stdexec::start_detached(std::move(snd));
+    // we need to asynchronously shut down,
+    // close all network connections, these need the application messaging loop
+    // to correctly process everything (because they use Qt Networking/threads),
+    // so we will ignore the close event, and call 'close' on ourselves once shutdown is ready
+    main_dbg<0>.debug(ffmt<s20>("closeEvent"), "Ignore");
+    event->ignore();
   }
-  QMainWindow::closeEvent(event);
+  else
+  {
+    // just shut down since all exchanges are handled
+    saveWindowSettings();
+    // we make a copy of the list so that we can remove items without breaking iterators
+    auto list1 = global_settings.dock_manager_->floatingWidgets();
+    for (auto fdw : list1) { delete fdw; }
+    auto list2 = global_settings.dock_manager_->dockContainers();
+    for (auto dc : list2) { delete dc; }
+
+    QMainWindow::closeEvent(event);
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -677,8 +694,8 @@ void GroxMainWindow::showEvent(QShowEvent* event)
   {
     only_once = false;
     auto snd = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
-        | stdexec::then([this]() { loadConnectionSetups(); })                        //
-        | stdexec::then([this]() { loadWindowSettings(); });                         //
+        | stdexec::then([this]() { loadConnectionSetups(); })                       //
+        | stdexec::then([this]() { loadWindowSettings(); });                        //
     stdexec::start_detached(std::move(snd));
   }
 }
