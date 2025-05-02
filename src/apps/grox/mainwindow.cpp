@@ -78,9 +78,10 @@ using namespace ads;
 std::shared_ptr<price_chart_widget> create_price_chart_widget(
     std::shared_ptr<ohlc_dataset_view> view, ticker::data tdata, currency_pair cp)
 {
-  // create a new price plot object
-  std::shared_ptr<price_chart_widget> chart_widget =
-      std::make_shared<price_chart_widget>(nullptr, view, tdata->exchange_, cp);
+  // create a new price plot object, we don't use std::make_shared because
+  // destruction of widget might use pointer instead of shared_ptr
+  auto* pcw = new price_chart_widget(nullptr, view, tdata->exchange_, cp);
+  std::shared_ptr<price_chart_widget> chart_widget(pcw);
 
   // put the price plot into a dock widget
   using namespace ads;
