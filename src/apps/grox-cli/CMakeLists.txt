@@ -15,27 +15,7 @@ if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
 endif()
 
 if(GROXCLI_WITH_SANITIZER)
-  target_compile_options(
-    grox-cli
-    PRIVATE -fsanitize=address
-            -fsanitize=undefined
-            -fno-sanitize-recover=all
-            -fsanitize=float-divide-by-zero
-            -fsanitize=float-cast-overflow
-            -fno-sanitize=null
-            -fno-sanitize=alignment
-  )
-  target_link_options(
-    grox-cli
-    PRIVATE
-    -fsanitize=address
-    -fsanitize=undefined
-    -fno-sanitize-recover=all
-    -fsanitize=float-divide-by-zero
-    -fsanitize=float-cast-overflow
-    -fno-sanitize=null
-    -fno-sanitize=alignment
-  )
+  target_add_sanitizer_flags(grox-cli)
 endif()
 
 target_compile_definitions(

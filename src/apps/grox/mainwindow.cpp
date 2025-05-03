@@ -256,7 +256,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   CDockManager::setConfigFlag(CDockManager::XmlCompressionEnabled, false);
   CDockManager::setConfigFlag(CDockManager::FocusHighlighting, true);
   CDockManager::setAutoHideConfigFlags(CDockManager::DefaultAutoHideConfig);
-  global_settings.dock_manager_ = std::make_shared<CDockManager>(this);
+  global_settings.dock_manager_ = new CDockManager(this);
 
   // // Set central widget
   // QPlainTextEdit* w = new QPlainTextEdit();
@@ -466,8 +466,8 @@ GroxMainWindow::~GroxMainWindow()
   //
   delete qs_shutdown_;
   delete qs_darkmode_;
-  // release dockmanager
-  global_settings.dock_manager_.reset();
+  // dockmanager is deleted by gui destruction
+  global_settings.dock_manager_ = nullptr;
   // release all networks
   for (auto& n : global_settings.networks_) n.reset();
   // release datamanager

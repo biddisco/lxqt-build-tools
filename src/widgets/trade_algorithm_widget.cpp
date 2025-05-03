@@ -284,7 +284,7 @@ std::shared_ptr<QDialog> create_trading_widget(abstract_exchange::exchange_vecto
     // ----------------------------------
     // Create dockwidget to hold our controls
     CDockWidget* AlgorithmsDockWidget =
-        new CDockWidget(global_settings.dock_manager_.get(), alg->get_name().c_str());
+        new CDockWidget(global_settings.dock_manager_, alg->get_name().c_str());
     AlgorithmsDockWidget->setWidget(algowidget_.get(), CDockWidget::AutoScrollArea);
     // AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
     AlgorithmsDockWidget->setMinimumSize(128, 196);

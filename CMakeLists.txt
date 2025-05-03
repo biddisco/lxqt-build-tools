@@ -275,6 +275,7 @@ get_external_project(
 # -------------------------------------------------------------
 set(PIKA_WITH_CXX_STANDARD ${GROX_CXX_STANDARD})
 set(PIKA_WITH_STDEXEC ON)
+set(PIKA_WITH_SANITIZERS=${GROX_WITH_SANITIZER})
 get_external_project(
   PROJECT_NAME
   "pika"
