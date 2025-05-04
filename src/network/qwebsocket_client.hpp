@@ -10,6 +10,7 @@
 #include <QtCore/QUrl>
 #include <QtNetwork/QAbstractSocket>
 #include <QtNetwork/QSslError>
+#include <QtWebSockets/qwebsocket.h>
 
 class QWebSocket;
 

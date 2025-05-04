@@ -59,12 +59,13 @@ namespace net::ws {
           fmt::format("{:20s}, Client::destructor : websocket delete - out of order", id_));
       delete websocket_;
     }
+    else { qwebsocket_dbg<3>.error("~qwebsocket_client after deletion"); }
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::startConnection()
   {
-    qwebsocket_dbg<3>.debug(fmt::format("{:20s} startConnection", id_, url_));
+    qwebsocket_dbg<2>.debug(fmt::format("{:20s} startConnection", id_, url_));
     //
     websocket_ = new QWebSocket;
     (*websocket_).setPauseMode(QAbstractSocket::PauseNever);    // @todo PauseOnSslErrors
@@ -82,7 +83,8 @@ namespace net::ws {
     // errors
     connect(websocket_, QOverload<QList<QSslError> const&>::of(&QWebSocket::sslErrors), this,
         &qwebsocket_client::onSslErrors, Qt::DirectConnection);
-    connect(websocket_, SIGNAL(error(QAbstractSocket::SocketError)),
+
+    connect(websocket_, SIGNAL(errorOccurred(QAbstractSocket::SocketError)),
         SLOT(onError(QAbstractSocket::SocketError)), Qt::DirectConnection);
 
     // text messages
@@ -113,12 +115,13 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::stopConnection()
   {
-    if (websocket_ != nullptr)
+    if (websocket_)
     {
       qwebsocket_dbg<2>.debug(fmt::format("{:20s} stopConnection : invoking WebSocket close", id_));
       bool result = QMetaObject::invokeMethod(
           websocket_, "close", Qt::QueuedConnection, QWebSocketProtocol::CloseCodeNormal);
     }
+    else { qwebsocket_dbg<3>.error("stopConnection after deletion"); }
   }
 
   // ------------------------------------------------------------------
@@ -133,10 +136,11 @@ namespace net::ws {
   {
     if (websocket_)
     {
-      qwebsocket_dbg<0>.error(fmt::format("{:20s} Disconnected : Unexpected : CloseCode is : {} {}",
+      qwebsocket_dbg<2>.error(fmt::format("{:20s} Disconnected : Unexpected : CloseCode is : {} {}",
           id_, QVariant::fromValue((*websocket_).closeCode()).toString(),
           (*websocket_).errorString()));
     }
+    else { qwebsocket_dbg<3>.error("onDisconnected after deletion"); }
     emit finished();
   }
 
@@ -156,7 +160,7 @@ namespace net::ws {
       if (code != QWebSocketProtocol::CloseCodeNormal)
       {
         auto reason = (*websocket_).closeReason();
-        qwebsocket_dbg<0>.error(fmt::format(
+        qwebsocket_dbg<2>.error(fmt::format(
             "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
             QVariant::fromValue(code).toString(), (*websocket_).errorString()));
       }
@@ -164,12 +168,13 @@ namespace net::ws {
       (*websocket_).deleteLater();
       websocket_ = nullptr;
     }
+    else { qwebsocket_dbg<3>.error("onAboutToClose after deletion"); }
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onSslErrors(QList<QSslError> const& errors)
   {
-    qwebsocket_dbg<0>.error(fmt::format("{:20s} SslErrors", id_));
+    qwebsocket_dbg<2>.error(fmt::format("{:20s} SslErrors", id_));
     Q_UNUSED(errors);
 
     // WARNING: Never ignore SSL errors in production code.
@@ -182,7 +187,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onError(QAbstractSocket::SocketError socketError)
   {
-    qwebsocket_dbg<0>.error(
+    qwebsocket_dbg<2>.error(
         fmt::format("{:20s} SslErrors : Error :{}", id_, (*websocket_).errorString()));
   }
 
@@ -196,7 +201,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onTextMessageReceived(QString message)
   {
-    qwebsocket_dbg<0>.error(
+    qwebsocket_dbg<2>.error(
         fmt::format("{:20s} TextMessageReceived - this should be overriden", id_));
     emit processIncomingMessage(message);
   }
