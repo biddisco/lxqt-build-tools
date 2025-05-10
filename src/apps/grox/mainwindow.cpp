@@ -146,7 +146,7 @@ void create_ticker_price_plot(ticker::data tdata, currency_pair cp)
   // start by displaying 1 day of data
   tdata->chart_widget_->graph_rescale(0);
 
-  auto live_trade_subscription = [tdata](currency_pair cp, grox::live_trade_data t) {
+  auto replot_live_data = [tdata](currency_pair cp, grox::live_trade_data t) {
     auto p = t.price;
     auto v = t.amount;
     ohlctv_sample new_sample(1000.0 * std::atof(t.timestamp.c_str()), p, p, p, p, v);
@@ -156,7 +156,15 @@ void create_ticker_price_plot(ticker::data tdata, currency_pair cp)
       if (tdata && tdata->chart_widget_) tdata->chart_widget_->update_live_data(new_sample);
     });
   };
-  tdata->live_trade_subscribers_.subscribe("price_plot", live_trade_subscription);
+  tdata->live_trade_subscribers_.subscribe("price_plot", replot_live_data);
+
+  auto replot_chart = [tdata](ticker::data source) {
+    assert(tdata.get() == source.get());
+    QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
+      if (tdata->chart_widget_) tdata->chart_widget_->replot();
+    });
+  };
+  tdata->price_data_subscribers_.subscribe("price_plot", replot_chart);
 }
 
 // ----------------------------------------------------------------------------

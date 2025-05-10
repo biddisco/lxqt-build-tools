@@ -22,13 +22,19 @@ namespace ticker {
     std::shared_ptr<ohlc_dataset_view> view_;
     std::shared_ptr<order_book_base> orderbook_;
     std::shared_ptr<price_chart_widget> chart_widget_;
+
     // each ticker may subscribe to multiple streams
     std::map<ticker::streams, std::shared_ptr<net::ws::qwebsocket_session>> websockets_;
-    //
+
+    // data changed events for OHLC views
+    grox::PublishSubscribe<std::shared_ptr<subscription>> price_data_subscribers_;
+
+    // live data (buy/sell) events
     grox::PublishSubscribe<currency_pair const, grox::live_trade_data const>
         live_trade_subscribers_;
+
+    // orderbook changes
     grox::PublishSubscribe<currency_pair const> orderbook_subscribers_;
-    grox::PublishSubscribe<candle_res const> new_ohlc_subscribers_;
   };
 
   using data = std::shared_ptr<subscription>;

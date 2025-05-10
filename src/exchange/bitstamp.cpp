@@ -39,7 +39,6 @@
 #include "util/execute_os_command.hpp"
 #include "util/json_qstring.hpp"
 #include "util/stringutils.hpp"
-#include "widgets/price_chart_widget.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox;
@@ -1463,6 +1462,7 @@ stream_set bitstamp_network::ticker_subscribe(currency_pair const& cp)
   // create a new data view from hdf5
   std::shared_ptr<ohlc_dataset_view> view = std::make_shared<ohlc_dataset_view>("bitstamp", cp);
   std::shared_ptr<bitstamp_order_book> orderbook = std::make_shared<bitstamp_order_book>();
+
   // add the subscribed ticker/data/plot to our list for tracking
   ticker::data data =
       std::make_shared<ticker::subscription>(shared_from_this(), view, orderbook, nullptr);
@@ -1511,10 +1511,9 @@ void bitstamp_network::handle_new_ohlc_data(ticker::data tdata, std::string_view
     bitstamp_dbg<0>.debug(ffmt<s20>("data merged up to"), tdata->view_->get_ticker_string(),
         msecs_unix_to_calendar_time_local(last_time));
     tdata->view_->delete_live_data_up_to(last_time);
-    // replot on a Qt thread
-    QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
-      if (tdata->chart_widget_) tdata->chart_widget_->replot();
-    });
+
+    // allow any listeners to update charts etc
+    tdata->price_data_subscribers_.publish(tdata);
   }
   catch (std::exception& e)
   {
