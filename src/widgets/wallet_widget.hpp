@@ -21,8 +21,7 @@ class wallet_widget : public QWidget
   explicit wallet_widget(QWidget* parent = nullptr);
   ~wallet_widget();
 
-  void set_data(ledger_wallet& w, int decimals = 6);
-  void set_data(bitstamp_account& w);
+  void set_data(ledger_wallet* w);
 
   public slots:
 

@@ -20,8 +20,7 @@
 #include "data/order_book.hpp"
 #include "exchange/abstract_exchange.hpp"
 #include "network/evp-encrypt.hpp"
-//
-class wallet_widget;
+#include "util/pubsub.hpp"
 
 // ----------------------------------------------------------------------------
 std::string currency_to_hex(std::string_view name);
@@ -32,12 +31,15 @@ std::string hex_to_currency(std::string_view name);
 struct basic_account
 {
   using lock_type = std::unique_lock<std::mutex>;
+  using subscriber_ptr = std::shared_ptr<grox::PublishSubscribe<basic_account*>>;
   //
   std::string name_;
   std::shared_ptr<abstract_exchange> network_;
-  wallet_widget* widget_;
   std::vector<currency_amount> currencies_;
   std::vector<trade_data> offers_;
+  // we must store subscribers in a pointer to support copy/move semantics
+  subscriber_ptr account_subscribers_;
+  //
   static inline std::mutex currency_mtx_;
   static inline std::mutex protection_;
   //
@@ -52,16 +54,18 @@ struct basic_account
   void add_currency(currency_amount const& curr)
   {
     std::scoped_lock l(currency_mtx_);
-    //
+    // does this currency already exist in our vector
     auto it =
         ranges::find_if(currencies_, [&curr](currency_amount const& c) { return (c == curr); });
-    if (it == currencies_.end()) { currencies_.push_back(curr); }
+    if (it == currencies_.end())
+    {
+      // new currency, add it
+      currencies_.push_back(curr);
+    }
     else
     {
-      // copy the new currency info, but keep the old widget if it exists
-      auto temp = it->widget_;
-      *it = curr;
-      if (temp != nullptr) { it->widget_ = temp; }
+      // update the status of the existing data
+      throw std::runtime_error("Upgrade currency status handling");
     }
   }
 

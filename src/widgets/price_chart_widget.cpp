@@ -101,6 +101,8 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
 // ----------------------------------------------------------------------------
 price_chart_widget::~price_chart_widget()
 {
+  hdf5_ohlc_.reset();
+  exchange_.reset();
   pplot_dbg<0>.debug(ffmt<s20>("~price_chart_widget"));
   delete ui;
   delete price_plot_;
@@ -257,7 +259,7 @@ void price_chart_widget::connect_gui()
               // do this on a pika thread as it executes the algorithm
               indicators::indicator_ptr algp(widget->get_algorithm(), hdf5_ohlc_);
               return algp;
-            })                                                      //
+            })                                                     //
           | stdexec::continue_on(QtStdExec::QThreadScheduler())    //
           | stdexec::then([this](indicators::indicator_ptr algp) {
               auto colour = chart_colours[colour_count++ % 10];

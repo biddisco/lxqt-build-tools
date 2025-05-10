@@ -151,7 +151,7 @@ bool xrpl_network::stream_subscribe(
   if (!ticker_subscribed(cp)) ticker_subscribe(cp);
 
   auto snd = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
-      | stdexec::then([this, cp, stream, enabled]() {                              //
+      | stdexec::then([this, cp, stream, enabled]() {                             //
           bool ok = true;
           switch (stream)
           {
@@ -542,7 +542,7 @@ void xrpl_network::get_all_account_lines(exec::async_scope& scope)
   {
     auto snd =
         stdexec::start_on(QtStdExec::QThreadScheduler(), get_account_lines(w.public_))    // Qt
-        | stdexec::then([this, &w](QByteArray byteArray) {                                 // pika
+        | stdexec::then([this, &w](QByteArray byteArray) {                                // pika
             std::string_view data(byteArray.constData(), byteArray.length());
             // debug : print the response headers and body
             xrpnet_dbg<8>.debug(ffmt<s20>("Ledger response"), data);
@@ -581,22 +581,22 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
       currency_code const ic = b.currency_;
       if (ic.is_xrp())
       {
-        currency_amount c{ic, b.value_, b.value_, 0, nullptr};
+        currency_amount c{ic, b.value_, b.value_, 0};
         w.add_currency(c);
       }
       else if (ic.issuer_ == currencies::bitstamp_trust)
       {
-        currency_amount c{ic, b.value_, b.value_, 0, nullptr};
+        currency_amount c{ic, b.value_, b.value_, 0};
         w.add_currency(c);
       }
       else if (ic.issuer_ == currencies::gatehub_trust)
       {
-        currency_amount c{ic, b.value_, b.value_, 0, nullptr};
+        currency_amount c{ic, b.value_, b.value_, 0};
         w.add_currency(c);
       }
       else    // must be some other trustline balance
       {
-        currency_amount c{ic, b.value_, b.value_, 0, nullptr};
+        currency_amount c{ic, b.value_, b.value_, 0};
         w.add_currency(c);
         query_iou_fee(ic);
       }
@@ -606,7 +606,7 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
   w.compute_ledger_reserve();
 
   // signal GUI to update
-  emit update_wallet_widget(&w);
+  emit wallet_changed(&w);
 }
 
 // ----------------------------------------------------------------------------
@@ -672,13 +672,13 @@ void xrpl_network::handle_account_info(ledger_wallet& w, std::string_view data)
   double avail = balance;
   double reserved = 0;
   //
-  currency_amount c{{"", "XRP"}, balance, avail, reserved, nullptr};
+  currency_amount c{{"", "XRP"}, balance, avail, reserved};
   w.add_currency(c);
   w.compute_ledger_reserve();
   //
   xrpnet_dbg<5>.debug(ffmt<s20>("sequence"), w.public_, w.sequence_);
   // signal GUI to update
-  emit update_wallet_widget(&w);
+  emit wallet_changed(&w);
 }
 
 // ----------------------------------------------------------------------------
@@ -704,8 +704,7 @@ void xrpl_network::get_all_account_offers(exec::async_scope& scope)
 {
   for (auto& w : subscribed_wallets_)
   {
-    auto snd =
-        stdexec::start_on(QtStdExec::QThreadScheduler(), get_account_offers(w.public_))    //
+    auto snd = stdexec::start_on(QtStdExec::QThreadScheduler(), get_account_offers(w.public_))    //
         | stdexec::then([this, &w](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
             // debug : print the response headers and body
@@ -773,7 +772,7 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
     w.offers_.push_back(t);
   }
   // signal GUI to update
-  emit update_wallet_widget(&w);
+  emit wallet_changed(&w);
 }
 
 // ----------------------------------------------------------------------------

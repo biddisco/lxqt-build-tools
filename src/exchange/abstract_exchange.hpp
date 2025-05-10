@@ -121,6 +121,11 @@ class abstract_exchange
   ticker::data get_subscribed_ticker_data(currency_pair cp) const;
 
   // ---------------------------------------
+  // cosmetic
+  // ---------------------------------------
+  virtual int get_decimals() { return 6; }
+
+  // ---------------------------------------
   // setup / query tickers
   // ---------------------------------------
   virtual bool add_currency_pair(currency_pair const& cp);

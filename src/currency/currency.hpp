@@ -8,18 +8,14 @@
 //
 #include "currency/currency_code.hpp"
 
-class currency_widget;
-
 // ----------------------------------------------------------------------------
 struct currency_amount
 {
-  currency_amount(currency_code curr, double balance, double avail = 0.0, double reserved = 0.0,
-      currency_widget* widget = nullptr)
+  currency_amount(currency_code curr, double balance, double avail = 0.0, double reserved = 0.0)
     : symbol_(curr)
     , balance_(balance)
     , avail_(avail)
     , reserved_(reserved)
-    , widget_(widget)
   {
   }
 
@@ -35,7 +31,6 @@ struct currency_amount
   double balance_;
   double avail_;
   double reserved_;
-  currency_widget* widget_;
 };
 
 // ----------------------------------------------------------------------------

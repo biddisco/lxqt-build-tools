@@ -600,7 +600,7 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
   // we can't block the Qt thread, so put async_scope onto a pika thread
   auto get_all_transactions = [this]() {
     exec::async_scope scope;
-    auto acct = get_account_by_name("Main");
+    auto& acct = get_account_by_name("Main");
     // for (auto& acct : accounts())
     {
       auto handle_data = [this, &acct](QByteArray byteArray) {
@@ -887,12 +887,13 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
         {
           std::string ltoken = mtch[1];
           std::string utoken = uppercase(ltoken);
-          currency_amount cur{{"", utoken},                       //
+          currency_amount cur{
+              {"", utoken},                                       //
               value,                                              //
               std::stod(JCHARP(jdata[ltoken + "_available"])),    //
-              std::stod(JCHARP(jdata[ltoken + "_reserved"])),     //
+              std::stod(JCHARP(jdata[ltoken + "_reserved"]))      //
               // std::stod(JCHARP(jdata[ltoken + "__withdrawal_fee"])),    //
-              nullptr};
+          };
           acct.add_currency(cur);
 
           bitstamp_dbg<5>.debug(ffmt<s20>("account info"), cur);
@@ -924,7 +925,7 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
       }
     }
 
-    emit update_wallet_widget(&acct);
+    emit wallet_changed(&acct);
   }
   catch (std::exception_ptr const& e)
   {
@@ -990,7 +991,7 @@ void bitstamp_network::handle_open_orders(bitstamp_account& acct, std::string_vi
       acct.add_trade(std::move(t), true);
     }
   }
-  emit update_wallet_widget(&acct);
+  emit wallet_changed(&acct);
 }
 
 // ----------------------------------------------------------------------------
@@ -1086,7 +1087,7 @@ void bitstamp_network::process_order(bitstamp_account& acct, json& jdata, std::s
       else { bitstamp_dbg<0>.error(ffmt<s20>("Order created"), ffmt<dec18>(id), "already active"); }
     }
   }
-  emit update_wallet_widget(&acct);
+  emit wallet_changed(&acct);
 }
 
 /* A list of open orders take the form
@@ -1428,7 +1429,7 @@ void bitstamp_network::place_buy_sell_orders(
                     std::stod(JCHARP(jdata["price"])));
               }
               bacct->add_trade(std::move(trade), true);
-              emit update_wallet_widget(bacct);
+              emit wallet_changed(bacct);
             }
           });
     trade_orders.push_back(std::move(snd));
@@ -1450,7 +1451,7 @@ void bitstamp_network::place_buy_sell_orders(
 // ----------------------------------------------------------------------------
 stream_set bitstamp_network::ticker_subscribe(currency_pair const& cp)
 {
-  // exit if this abstract_exchange has already subscribed to this ticker
+  // exit if this exchange has already subscribed to this ticker
   std::string cps = currency_pair_string(cp);
   if (ticker_subscribed(cp))
   {

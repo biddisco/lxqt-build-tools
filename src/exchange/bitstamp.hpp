@@ -99,6 +99,8 @@ class bitstamp_network : public abstract_exchange
   // Is sending this currency to the destination abstract_exchange supported
   bool can_send(currency_code const& c, abstract_exchange* dest) override;
 
+  int get_decimals() override { return 2; }
+
   // ---------------------------------------
   // return the order book for this abstract_exchange
   bitstamp_order_book const& get_orderbook(currency_pair const& cp) const;
@@ -231,8 +233,11 @@ class bitstamp_network : public abstract_exchange
 
   signals:
 
-  // when the wallet widget needs to be updated with new data/currencies
-  void update_wallet_widget(bitstamp_account*);
+  // when the gui needs to be updated with new data/currencies
+  void wallet_changed(ledger_wallet*);
+
+  // when the gui needs to replot chart data
+  void ohlc_data_changed(ledger_wallet*);
 
   // trigger this to restart the timer from a Qt thread
   void restart_candlestick_timer();

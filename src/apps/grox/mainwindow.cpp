@@ -335,13 +335,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       },
       Qt::QueuedConnection);
 
-  connect(
-      bitstamp_network_.get(), &bitstamp_network::update_wallet_widget, this,
-      [this](bitstamp_account* acct) {
-        acct->widget_->set_data(*acct);
-        display_offers();
-      },
-      Qt::QueuedConnection);
+  connect(bitstamp_network_.get(), SIGNAL(wallet_changed(ledger_wallet*)), this,
+      SLOT(wallet_changed(ledger_wallet*)), Qt::QueuedConnection);
 
   connect(
       bitstamp_network_.get(), &bitstamp_network::network_initialized, this,
@@ -367,18 +362,17 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   exchange_list_.push_back(xrpl_network_);
   exchange_list_.push_back(xrpl_testnet_);
 
-  connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency*)), this,
-      SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
-  connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency*)), this,
-      SLOT(update_currency_widget(currency*)), Qt::QueuedConnection);
-  connect(xrpl_network_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this,
-      SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
-  connect(xrpl_testnet_.get(), SIGNAL(update_wallet_widget(ledger_wallet*)), this,
-      SLOT(update_wallet_widget(ledger_wallet*)), Qt::QueuedConnection);
-  //    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
-  //            obp_, SLOT(update_time_and_replot()), Qt::QueuedConnection);
-  //    connect(xrpl_network_.get(), SIGNAL(orderbook_changed()),
-  //            this, SLOT(orderbook_text_update()), Qt::QueuedConnection);
+  // currency updated within a wallet
+  connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency_amount*)), this,
+      SLOT(update_currency_widget(currency_amount*)), Qt::QueuedConnection);
+  connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency_amount*)), this,
+      SLOT(update_currency_widget(currency_amount*)), Qt::QueuedConnection);
+
+  // wallet update
+  connect(xrpl_network_.get(), SIGNAL(wallet_changed(ledger_wallet*)), this,
+      SLOT(wallet_changed(ledger_wallet*)), Qt::QueuedConnection);
+  connect(xrpl_testnet_.get(), SIGNAL(wallet_changed(ledger_wallet*)), this,
+      SLOT(wallet_changed(ledger_wallet*)), Qt::QueuedConnection);
 
   // when a transaction takes place we might need to update wallet/records
   connect(xrpl_network_.get(), SIGNAL(transaction_event()), this, SLOT(transaction_event()),
@@ -416,12 +410,15 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     for (auto w : network->wallets())
     {
       // create a gui widget for the wallet
-      w->widget_ = new wallet_widget(this);
-      w->widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-      if (network->get_name() == "Bitstamp")
-        w->widget_->set_data(*static_cast<bitstamp_account*>(w));
-      if (network->get_name() == "XRPL") w->widget_->set_data(*static_cast<ledger_wallet*>(w));
-      accounts_frame_->layout()->addWidget(w->widget_);
+      auto* widget = new wallet_widget(this);
+      std::string wname = fmt::format("{}/{}", w->network_->get_name(), w->name_);
+      widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+      widget->setObjectName(to_qstring(wname));
+      main_dbg<0>.debug(ffmt<s20>("wallet_widget"), "set_data", wname);
+      if (startswith(network->get_name(), "Bitstamp"))
+        widget->set_data(static_cast<bitstamp_account*>(w));
+      if (startswith(network->get_name(), "XRPL")) widget->set_data(static_cast<ledger_wallet*>(w));
+      accounts_frame_->layout()->addWidget(widget);
     }
   }
   accounts_frame_->layout()->addItem(
@@ -551,16 +548,21 @@ void GroxMainWindow::connect_gui_controls()
 // slot to ensure widget updates on GUI thread
 void GroxMainWindow::update_currency_widget(currency_amount* c)
 {
-  assert(c->widget_);
-  c->widget_->set_data(c);
+  main_dbg<0>.error(ffmt<s20>("update_currency_widget"));
+  // assert(c->widget_);
+  // c->widget_->set_data(c);
 }
 
 // ----------------------------------------------------------------------------
 // slot to ensure widget updates on GUI thread
-void GroxMainWindow::update_wallet_widget(ledger_wallet* w)
+void GroxMainWindow::wallet_changed(ledger_wallet* w)
 {
-  assert(w->widget_);
-  w->widget_->set_data(*w);
+  std::string wname = fmt::format("{}/{}", w->network_->get_name(), w->name_);
+  main_dbg<0>.debug(ffmt<s20>("wallet_changed"), wname);
+  // widgets are added to the layout, but are "owned" by the layout's parent
+  auto* widget = accounts_frame_->findChild<wallet_widget*>(to_qstring(wname));
+  if (widget) { widget->set_data(w); }
+  else { main_dbg<0>.error(ffmt<s20>("wallet_changed"), "Failed to locate", wname); }
   display_offers();
 }
 
@@ -769,11 +771,12 @@ void GroxMainWindow::saveConnectionSetups()
       for (auto const& s : streams)
       {
         auto skey = std::string(magic_enum::enum_name(s));
-        main_dbg<6>.debug(ffmt<s20>("Stream subscribed?"), key, skey);
+        main_dbg<6>.debug(ffmt<s20>("saveConnectionSetups"), "Stream subscribed", key, skey);
         bool subscribed = e->is_stream_subscribed(cp, s);
         settings.setValue(skey.c_str(), subscribed);
         if (subscribed)
-          main_dbg<0>.debug(ffmt<s20>("Stream subscribed"), settings.group().toStdString(), key);
+          main_dbg<0>.debug(ffmt<s20>("saveConnectionSetups"), "Stream subscribed",
+              settings.group().toStdString(), key);
       }
       settings.endGroup();    // ticker
     }

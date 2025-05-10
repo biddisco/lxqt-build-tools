@@ -124,7 +124,7 @@ class GroxMainWindow : public QMainWindow
 
   // to connect to xrpl ledger signals
   void update_currency_widget(currency_amount*);
-  void update_wallet_widget(ledger_wallet*);
+  void wallet_changed(ledger_wallet*);
 
   // ----------------------------------
   //    void transfer_setup_xrp(double);

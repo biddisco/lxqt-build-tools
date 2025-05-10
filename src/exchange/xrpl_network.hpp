@@ -214,7 +214,7 @@ class xrpl_network : public abstract_exchange
   void update_currency_widget(currency_amount*);
 
   // emitted when a wallet is updated with new balances for multiple currencies
-  void update_wallet_widget(ledger_wallet*);
+  void wallet_changed(ledger_wallet*);
 
   // emitted when a wallet is updated with new trade information
   void update_trade_widget(ledger_wallet*);
