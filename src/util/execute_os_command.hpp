@@ -12,6 +12,9 @@
 //
 namespace bp = boost::process;
 
+// executes the command and returns whatever string is output from the command
+// if the command exits with failure, then the return string is empty
+// @TODO : improve this to return a bool for fail/success and use a string by ref
 static std::string execute_os_command(char const* cmd, bool trim = true)
 {
   std::array<char, 128> buffer;

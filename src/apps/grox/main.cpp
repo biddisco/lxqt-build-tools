@@ -161,10 +161,11 @@ void generate_encrypted_ini_data(password_dialog& npw)
 // ----------------------------------------------------------------------------
 int qt_main(pika::program_options::variables_map& vm)
 {
-  // make sure networkmanager is created on this thread
+  // make sure networkmanager is created on *<this thread>*
   QApplication app(argc, argv);
   QNetworkAccessManager networkmanager;
-  //
+
+  // setup resources that Qt uses for pics etc
   Q_INIT_RESOURCE(images);
   QIcon icon(":images/icons/xrp-logo-white-black.svg");
   app.setWindowIcon(icon);
@@ -174,23 +175,25 @@ int qt_main(pika::program_options::variables_map& vm)
   // (especially noticable in debugger terminal)
   app_dbg<0>.eval([]() { std::cout.setf(std::ios::unitbuf); });
 
+  // initialize global settings : @TODO - get rid of this singleton?
   init_settings(&global_settings, &networkmanager);
-  //
+
+  // open the Qt application ini file and start reading state
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
+
   //
   bool authenticated = false;
-  if (!authenticated)
+  std::string commandLine = "pass grox/grox";
+  auto result = execute_os_command(commandLine.c_str());
+  if (result.size() > 0)
   {
-    std::string commandLine = "pass grox/grox";
-    auto result = execute_os_command(commandLine.c_str());
-    if (result.size() > 0)
-    {
-      global_settings.grox_password = result;
-      authenticated = true;
-      app_dbg<5>.debug(ffmt<s20>("authentication"), "pass", "ok");
-    }
-    else { app_dbg<5>.error(ffmt<s20>("Authentication"), "pass", "fail"); }
+    global_settings.grox_password = result;
+    authenticated = true;
+    app_dbg<5>.debug(ffmt<s20>("authentication"), "pass", "ok");
   }
+  else { app_dbg<5>.error(ffmt<s20>("Authentication"), "pass", "fail"); }
+
+  // if pass command failed, then allow user to enter password via dialog box
   if (!authenticated)
   {
     password_dialog npw(true);
@@ -203,8 +206,8 @@ int qt_main(pika::program_options::variables_map& vm)
   }
   if (!authenticated)
   {
-    app_dbg<5>.error(ffmt<s20>("Authentication"), "fail");
-    // return EXIT_FAILURE;
+    app_dbg<5>.error(
+        ffmt<s20>("Authentication"), "fail", "No access to accounts/wallets available");
   }
 
   // we need random data for the encryption block
