@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>269</width>
-    <height>123</height>
+    <height>149</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -68,6 +68,9 @@
          </widget>
         </item>
        </layout>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="algorithms_layout"/>
       </item>
       <item>
        <layout class="QVBoxLayout" name="currencies_layout"/>

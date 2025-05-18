@@ -336,6 +336,7 @@ add_subdirectory(src/indicators)
 add_subdirectory(src/io)
 add_subdirectory(src/network)
 add_subdirectory(src/plot)
+add_subdirectory(src/widgets_control)
 add_subdirectory(src/widgets)
 
 #

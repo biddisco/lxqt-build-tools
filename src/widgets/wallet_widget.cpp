@@ -1,5 +1,7 @@
 #include <utility>
 //
+#include <QPushButton>
+//
 #include "ui_wallet_widget.h"
 #include "util/stringutils.hpp"
 #include "widgets/currency_widget.hpp"
@@ -26,6 +28,17 @@ wallet_widget::wallet_widget(QWidget* parent)
 
 // ----------------------------------------------------------------------------
 wallet_widget::~wallet_widget() { delete ui; }
+
+// ----------------------------------------------------------------------------
+void wallet_widget::add_algorithm(std::string name, std::function<void(void)> f)
+{
+  int col = ui->algorithms_layout->count() % 3;
+  int row = ui->algorithms_layout->count() / 3;
+  auto* button = new QPushButton(to_qstring(name), this);
+  ui->algorithms_layout->addWidget(button, row, col);
+  connect(
+      button, &QToolButton::clicked, this, [f](bool /*checked*/) { f(); }, Qt::QueuedConnection);
+}
 
 // ----------------------------------------------------------------------------
 void wallet_widget::set_data(ledger_wallet* w)
