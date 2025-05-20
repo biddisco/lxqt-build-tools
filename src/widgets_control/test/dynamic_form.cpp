@@ -26,7 +26,7 @@ std::list<control_field_data> get_fields_for_person()
       {"address", "object",      //
           {
               {"street", "string", {}},    //
-              {"zip", "int", {}}           //
+              {"postcode", "int", {}}      //
           }},                              //
       {"gender", "combo", {}},             //
   };
@@ -37,22 +37,22 @@ int main(int argc, char* argv[])
 {
   QApplication app(argc, argv);
 
-  ControlFactory factory;
+  control_factory factory;
   factory.registerBuilder("int", std::make_unique<int_control_builder>());
   factory.registerBuilder("string", std::make_unique<string_control_builder>());
   factory.registerBuilder("combo", std::make_unique<combo_control_builder>());
 
-  NestedControlConfigs defaultConfigs =                         //
-      {                                                         //
-          {"name", {{"placeholder", "Enter full name"}}},       //
-          {"age", {{"min", 0}, {"max", 100}}},                  //
-          {"address.street", {{"placeholder", "Main St"}}},     //
-          {"address.zip", {{"min", 10000}, {"max", 99999}}},    //
+  nested_control_configs defaultConfigs =                            //
+      {                                                              //
+          {"name", {{"placeholder", "Enter full name"}}},            //
+          {"age", {{"min", 0}, {"max", 100}}},                       //
+          {"address.street", {{"placeholder", "Main St"}}},          //
+          {"address.postcode", {{"min", 10000}, {"max", 99999}}},    //
           {"gender",
               {
-                  {"placeholder", "please select one"},                    //
-                  {"entries", QStringList{"number one", "number two"}},    //
-                  {"index", 1}                                             //
+                  {"placeholder", "please select one"},                        //
+                  {"entries", QStringList{"Male", "Female", "Non-binary"}},    //
+                  {"index", 1}                                                 //
               }}};
 
   QWidget* form = build_control(get_fields_for_person(), defaultConfigs, factory);

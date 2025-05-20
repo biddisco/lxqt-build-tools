@@ -9,14 +9,14 @@
 #include <QWidget>
 
 // ----------------------------------------------------------------------------
-using ControlConfig = std::map<QString, QVariant>;
-using NestedControlConfigs = std::map<QString, ControlConfig>;
+using control_config = std::map<QString, QVariant>;
+using nested_control_configs = std::map<QString, control_config>;
 
 // ----------------------------------------------------------------------------
 class control_builder
 {
   public:
-  virtual QWidget* build(QWidget* parent, ControlConfig const& config) = 0;
+  virtual QWidget* build(QWidget* parent, control_config const& config) = 0;
   virtual ~control_builder() = default;
 };
 
@@ -24,19 +24,19 @@ class control_builder
 class int_control_builder : public control_builder
 {
   public:
-  QWidget* build(QWidget* parent, ControlConfig const& config) override;
+  QWidget* build(QWidget* parent, control_config const& config) override;
 };
 
 // ----------------------------------------------------------------------------
 class string_control_builder : public control_builder
 {
   public:
-  QWidget* build(QWidget* parent, ControlConfig const& config) override;
+  QWidget* build(QWidget* parent, control_config const& config) override;
 };
 
 // ----------------------------------------------------------------------------
 class combo_control_builder : public control_builder
 {
   public:
-  QWidget* build(QWidget* parent, ControlConfig const& config) override;
+  QWidget* build(QWidget* parent, control_config const& config) override;
 };

@@ -13,7 +13,7 @@
 #include "widgets_control/control_builder.hpp"
 
 // ----------------------------------------------------------------------------
-QWidget* int_control_builder::build(QWidget* parent, ControlConfig const& config)
+QWidget* int_control_builder::build(QWidget* parent, control_config const& config)
 {
   auto* spin = new QSpinBox(parent);
   if (config.contains("min")) spin->setMinimum(config.at("min").toInt());
@@ -22,7 +22,7 @@ QWidget* int_control_builder::build(QWidget* parent, ControlConfig const& config
 }
 
 // ----------------------------------------------------------------------------
-QWidget* string_control_builder::build(QWidget* parent, ControlConfig const& config)
+QWidget* string_control_builder::build(QWidget* parent, control_config const& config)
 {
   auto* edit = new QLineEdit(parent);
   if (config.contains("placeholder")) edit->setPlaceholderText(config.at("placeholder").toString());
@@ -30,7 +30,7 @@ QWidget* string_control_builder::build(QWidget* parent, ControlConfig const& con
 }
 
 // ----------------------------------------------------------------------------
-QWidget* combo_control_builder::build(QWidget* parent, ControlConfig const& config)
+QWidget* combo_control_builder::build(QWidget* parent, control_config const& config)
 {
   auto* edit = new QComboBox(parent);
   if (config.contains("entries"))

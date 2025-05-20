@@ -20,17 +20,18 @@
 #include "widgets_control/control_field_data.hpp"
 
 // ----------------------------------------------------------------------------
-class ControlFactory
+class control_factory
 {
   public:
-  ControlFactory() {}
+  control_factory() {}
 
   void registerBuilder(QString const& typeName, std::unique_ptr<control_builder> builder)
   {
     builders.insert(std::make_pair(typeName, std::move(builder)));
   }
 
-  QWidget* createControl(QString const& typeName, QWidget* parent, ControlConfig const& config = {})
+  QWidget* createControl(
+      QString const& typeName, QWidget* parent, control_config const& config = {})
   {
     if (builders.contains(typeName)) { return builders[typeName]->build(parent, config); }
     return new QLabel("Unsupported type: " + typeName, parent);
@@ -40,13 +41,13 @@ class ControlFactory
   std::map<QString, std::unique_ptr<control_builder>> builders;
 
   // prevent copy
-  ControlFactory(ControlFactory const&) = delete;
-  ControlFactory& operator=(ControlFactory const&) = delete;
+  control_factory(control_factory const&) = delete;
+  control_factory& operator=(control_factory const&) = delete;
 };
 
 // ----------------------------------------------------------------------------
 QWidget* build_control(std::list<control_field_data> const& fields,
-    NestedControlConfigs const& defaults, ControlFactory& factory, QWidget* parent = nullptr,
+    nested_control_configs const& defaults, control_factory& factory, QWidget* parent = nullptr,
     QString const& prefix = "")
 {
   QWidget* container = new QWidget(parent);
@@ -66,7 +67,7 @@ QWidget* build_control(std::list<control_field_data> const& fields,
     }
     else
     {
-      ControlConfig config = defaults.at(fullName);
+      control_config config = defaults.at(fullName);
       QWidget* control = factory.createControl(field.type, container, config);
       layout->addRow(field.name + ":", control);
     }
