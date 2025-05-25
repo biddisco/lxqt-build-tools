@@ -68,6 +68,18 @@ namespace net::ws {
         },
         Qt::DirectConnection);
 
+    QObject::connect(
+        thread_, &QThread::finished, client_,
+        [this, thread = thread_, client = client_]() {
+          // note that "this" might already have destructed, it is not safe to call members
+          // we copy the thread and client pointers just in case they are invalid
+          qsession_dbg<2>.debug(
+              fmt::format("{:20s} {} {}", client->id(), fmt::ptr(this), "QThread:finished"));
+          delete client;
+          delete thread;
+        },
+        Qt::DirectConnection);
+
     // when websocket client finishes, exit the thread
     QObject::connect(
         client_, &qwebsocket_client::finished, client_,
@@ -92,9 +104,10 @@ namespace net::ws {
   qwebsocket_session::~qwebsocket_session()
   {
     client_->stopConnection();
-    thread_->wait();
-    delete client_;
-    delete thread_;
+    // client and thread will be cleaned up when QThread::finished completes
+    // thread_->wait();
+    // delete client_;
+    // delete thread_;
   }
 
 }    // namespace net::ws
