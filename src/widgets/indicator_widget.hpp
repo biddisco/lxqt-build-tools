@@ -28,6 +28,8 @@ class indicator_widget : public QWidget
 
   void add_to_dialog(QDialog* dlg);
 
+  QVector<QWidget*>& get_param_widgets() { return param_widgets_; }
+
   protected:
   void update_parameters();
 

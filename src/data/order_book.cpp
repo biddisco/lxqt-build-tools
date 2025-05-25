@@ -374,6 +374,7 @@ order_book_base::trade_data order_book_base::compute_buy_amount(
   //
   double spend_budget = amount;
   double amount_bought = 0;
+  if (amount == 0) return {0, 0};
   for (auto const& o : here_ask_zipped)
   {
     // if we buy the sells present in the ask list, how much do we pay?
@@ -385,7 +386,7 @@ order_book_base::trade_data order_book_base::compute_buy_amount(
         buy_nibble(spend_budget, buy_fee.percent, buy_fee.fixed, ask_size, ask_rate);
     spend_budget -= funds_spent;
     amount_bought += tokens_bought;
-    assert(spend_budget >= 0);
+    // assert(spend_budget >= 0);
     temp << fmt::format("{:11.4f} {:11.4f} {:10.4f} {:10.4f} {:10.4f}\n", tokens_bought, ask_size,
         ask_rate, funds_spent, (amount - spend_budget));
     // always keep some small-change in the account

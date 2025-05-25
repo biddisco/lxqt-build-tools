@@ -25,6 +25,14 @@
 
 class basic_account;
 
+enum class supported_trade_actions : int
+{
+  currency_exchange = 1,
+  arbitrage_2way = 2,
+};
+
+using trade_action_list = std::vector<supported_trade_actions>;
+
 // ----------------------------------------------------------------------------
 class abstract_exchange
   : public QObject
@@ -40,7 +48,7 @@ class abstract_exchange
   // websocket streams subscribed to format = ticker/stream_name
   std::map<std::string, bool> enabled_streams_;
 
-  // a place that stores registeered factory functions (callbacks)
+  // a place that stores registered factory functions (callbacks)
   // these are used for subscription/unsubscription
   std::map<std::string, factory_function> factories_;
 
@@ -130,6 +138,8 @@ class abstract_exchange
   // ---------------------------------------
   virtual bool add_currency_pair(currency_pair const& cp);
   virtual currency_pair::list const& get_currency_pairs() const;
+
+  virtual trade_action_list supported_trade_actions() { return trade_action_list{}; }
 
   // ---------------------------------------
   // currency management

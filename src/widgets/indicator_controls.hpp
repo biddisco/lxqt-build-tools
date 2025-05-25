@@ -25,7 +25,7 @@
 
 // ----------------------------------------------------------------------------
 // we must provide one overload for each type in indicators::param_types
-QWidget* get_widget(double const& param)
+static QWidget* get_widget(double const& param)
 {
   QLineEdit* const widget = new QLineEdit();
   widget->setValidator(new QDoubleValidator(-10.0E9, 10.0E9, 6, widget));
@@ -34,7 +34,7 @@ QWidget* get_widget(double const& param)
 }
 
 // ----------------------------------------------------------------------------
-QWidget* get_widget(int const& param)
+static QWidget* get_widget(int const& param)
 {
   QLineEdit* const widget = new QLineEdit();
   widget->setValidator(new QIntValidator(0, 65535, widget));
@@ -43,7 +43,7 @@ QWidget* get_widget(int const& param)
 }
 
 // ----------------------------------------------------------------------------
-QWidget* get_widget(ohlc_modes const& param)
+static QWidget* get_widget(ohlc_modes const& param)
 {
   QStringList mode_list;
   for (auto const& r : ohlc_mode_names) { mode_list << QString::fromStdString(std::string(r)); }
@@ -55,7 +55,7 @@ QWidget* get_widget(ohlc_modes const& param)
 }
 
 // ----------------------------------------------------------------------------
-QWidget* get_widget(bool const& param)
+static QWidget* get_widget(bool const& param)
 {
   QCheckBox* const widget = new QCheckBox();
   widget->setChecked(param);
@@ -63,7 +63,7 @@ QWidget* get_widget(bool const& param)
 }
 
 // ----------------------------------------------------------------------------
-QWidget* get_widget(candle_data const& param)
+static QWidget* get_widget(candle_data const& param)
 {
   QFrame* widget = new QFrame();
   QVBoxLayout* layout = new QVBoxLayout(widget);
@@ -91,10 +91,11 @@ QWidget* get_widget(candle_data const& param)
 }
 
 // ----------------------------------------------------------------------------
-QWidget* get_widget(order_book_param const& param)
+static QWidget* get_widget(order_book_param const& param)
 {
   QFrame* widget = new QFrame();
   QVBoxLayout* layout = new QVBoxLayout(widget);
+  widget->setObjectName("OrderBookWidget");
   widget->setLayout(layout);
   widget->setProperty("TSize", QVariant(static_cast<int>(param.tickers_.size())));
 
@@ -102,7 +103,6 @@ QWidget* get_widget(order_book_param const& param)
   QComboBox* const abstract_exchange = new QComboBox(widget);
   abstract_exchange->setObjectName("Exchange");
   layout->addWidget(abstract_exchange);
-  QStringList qsl;
 
   std::vector<QComboBox*> qtickers;
   for (auto [i, t] : param.tickers_ | ranges::views::enumerate)
@@ -131,36 +131,50 @@ QWidget* get_widget(order_book_param const& param)
       [=](int index) { set_ticker_strings(index); });
 
   // trigger the abstract_exchange combo to update and fill the tickers combo
+  QStringList qsl;
   for (auto const& n : global_settings.networks_) { qsl << to_qstring(n->get_name()); }
   abstract_exchange->addItems(qsl);
   abstract_exchange->setCurrentText(to_qstring(param.exchange_));
   //
   return widget;
 }
+// ----------------------------------------------------------------------------
+static void orderbook_widget_constrain_networks(
+    QWidget* widget, std::vector<std::shared_ptr<abstract_exchange>> networks)
+{
+  QComboBox* const abstract_exchange = widget->findChild<QComboBox*>("Exchange");
+  QStringList qsl;
+  for (auto const& n : networks) { qsl << to_qstring(n->get_name()); }
+  // abstract_exchange->setUpdatesEnabled(false);
+  // abstract_exchange->clear();
+  // abstract_exchange->addItems(qsl);
+  // abstract_exchange->setUpdatesEnabled(true);
+  // abstract_exchange->setCurrentText(to_qstring(networks[0]->get_name()));
+}
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, indicators::param<double>& param)
+static void set_param(QWidget* widget, indicators::param<double>& param)
 {
   QLineEdit* w = dynamic_cast<QLineEdit*>(widget);
   param.put(QLocale().toDouble(w->text(), nullptr));
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, indicators::param<int>& param)
+static void set_param(QWidget* widget, indicators::param<int>& param)
 {
   QLineEdit* w = dynamic_cast<QLineEdit*>(widget);
   param.put(QLocale().toInt(w->text(), nullptr));
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, indicators::param<bool>& param)
+static void set_param(QWidget* widget, indicators::param<bool>& param)
 {
   QCheckBox* w = dynamic_cast<QCheckBox*>(widget);
   param.put(w->isChecked());
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, indicators::param<candle_data>& param)
+static void set_param(QWidget* widget, indicators::param<candle_data>& param)
 {
   QFrame* f = dynamic_cast<QFrame*>(widget);
   QComboBox* c = f->findChild<QComboBox*>("CandleRes");
@@ -174,7 +188,7 @@ void set_param(QWidget* widget, indicators::param<candle_data>& param)
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, indicators::param<ohlc_modes>& param)
+static void set_param(QWidget* widget, indicators::param<ohlc_modes>& param)
 {
   QComboBox* w = dynamic_cast<QComboBox*>(widget);
   int index = w->currentIndex();
@@ -182,7 +196,7 @@ void set_param(QWidget* widget, indicators::param<ohlc_modes>& param)
 }
 
 // ----------------------------------------------------------------------------
-void set_param(QWidget* widget, indicators::param<order_book_param>& param)
+static void set_param(QWidget* widget, indicators::param<order_book_param>& param)
 {
   QFrame* f = dynamic_cast<QFrame*>(widget);
   QComboBox* e = f->findChild<QComboBox*>("Exchange");

@@ -240,14 +240,16 @@ void price_chart_widget::connect_gui()
     }
   });
 
+  static std::size_t available_indicators_index{0};
+
   connect(btn_indicator_, &QPushButton::clicked, this, [this](bool b) {
     pplot_dbg<0>.debug(ffmt<s20>("Indicators"), ticker_string_);
 
     using namespace grox::senders;
 
     QDialog* ind_dialog = new QDialog(this);
-    indicator_widget* widget = new indicator_widget(
-        indicators::available_indicators, indicators::available_indicators_index);
+    indicator_widget* widget =
+        new indicator_widget(indicators::available_indicators, available_indicators_index);
     widget->add_to_dialog(ind_dialog);
 
     auto result = ind_dialog->exec();

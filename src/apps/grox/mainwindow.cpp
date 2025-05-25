@@ -419,8 +419,33 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         widget->set_data(static_cast<bitstamp_account*>(w));
       if (startswith(network->get_name(), "XRPL")) widget->set_data(static_cast<ledger_wallet*>(w));
       accounts_frame_->layout()->addWidget(widget);
+
+      auto callback1 = [this, network]() {
+        auto alg = indicators::indicator_registry::find_by_name("Currency-Exchange");
+        QDialog* widget = create_trading_widget({network}, {alg});
+        trade_widgets_.push_back(widget);
+      };
+      auto callback2 = [this, network]() {
+        auto alg = indicators::indicator_registry::find_by_name("Arbitrage 2-way");
+        QDialog* widget = create_trading_widget({network}, {alg});
+        trade_widgets_.push_back(widget);
+      };
+
+      for (auto algo : network->supported_trade_actions())
+      {
+        switch (algo)
+        {
+        case supported_trade_actions::currency_exchange:
+          widget->add_algorithm("Currency Exchange", callback1);
+          break;
+        case supported_trade_actions::arbitrage_2way:
+          widget->add_algorithm("Arbitrage(2)", callback2);
+          break;
+        }
+      }
     }
   }
+
   accounts_frame_->layout()->addItem(
       new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Preferred));
 
@@ -539,7 +564,7 @@ void GroxMainWindow::connect_gui_controls()
       });
 
   qs_arbitrage_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_M)), this, [this]() {
-    std::shared_ptr<QDialog> widget = create_trading_widget(exchange_list_);
+    QDialog* widget = create_trading_widget(exchange_list_);
     trade_widgets_.push_back(widget);
   });
 }

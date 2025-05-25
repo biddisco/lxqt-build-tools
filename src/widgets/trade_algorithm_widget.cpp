@@ -19,6 +19,7 @@
 #include "indicators/trade_currency_exchange.hpp"
 #include "indicators/trade_market_maker.hpp"
 #include "util/stringutils.hpp"
+#include "widgets/indicator_controls.hpp"
 #include "widgets/indicator_widget.hpp"
 #include "widgets/trade_algorithm_widget.hpp"
 // generated
@@ -29,6 +30,21 @@
 using namespace ads;
 
 // ----------------------------------------------------------------------------
+void setHeight(QPlainTextEdit* ptxt, int nRows)
+{
+  QTextDocument* pdoc = ptxt->document();
+  QFontMetrics fm(pdoc->defaultFont());
+  QMargins margins = ptxt->contentsMargins();
+  int nHeight = ((1 + fm.lineSpacing()) * nRows) +
+      ((pdoc->documentMargin() + ptxt->frameWidth()) * 2) +    //
+      margins.top() + margins.bottom();
+  ptxt->setFixedHeight(nHeight);
+}
+
+// ----------------------------------------------------------------------------
+// convenience function that takes an order book parameter and sets gui labels
+// up with the correct currency/exchange info and returns the ticker data
+// associated with the param
 ticker::data set_gui_orderbook(order_book_param const& p, int index, QLabel* l1, QLabel* l2)
 {
   std::string name = p.exchange_;
@@ -46,20 +62,19 @@ ticker::data set_gui_orderbook(order_book_param const& p, int index, QLabel* l1,
 }
 
 // ----------------------------------------------------------------------------
-std::shared_ptr<QDialog> gui_trade_currency_exchange(
-    std::shared_ptr<indicators::algorithm_base> alg,
+QDialog* gui_trade_currency_exchange(std::shared_ptr<indicators::algorithm_base> alg,
     abstract_exchange::exchange_vector exchange_list_)
 {
-  std::shared_ptr<QDialog> algowidget_ = std::make_shared<QDialog>(nullptr);
+  QDialog* algowidget_ = new QDialog(nullptr);
   algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
 
-  // gui object for/with currency_exchange controls
+  // instantiate the gui object for/with currency_exchange controls
   Ui::trade_algorithm_currency_exchange* ui_ = new Ui::trade_algorithm_currency_exchange();
-  ui_->setupUi(algowidget_.get());
+  ui_->setupUi(algowidget_);
 
-  // fill orderbook text display
+  // setup orderbook text displays (x2 for currency from and to)
   size_t const font_size = 8;
-#ifdef RESIZE_TO_LIMIT
+#ifdef RESIZE_TEXTBOX_TO_LIMIT
   QString txt = "X";
   int char_size = QFontMetrics(ui_->orderbook1->font()).horizontalAdvance(txt);
   int calcWidth = char_size * 85 + 8;
@@ -70,6 +85,7 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
   font.setFamily("Courier");
   ui_->orderbook1->setFont(font);
   ui_->orderbook2->setFont(font);
+  setHeight(ui_->actions_txt, 10);
 
   order_book_param p1 = indicators::get<order_book_param>(alg->get_params(), 0);
   currency_pair c1 = p1.tickers_[0];
@@ -82,23 +98,31 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
   ui_->taker_fee->setValue(tdata1->exchange_->get_fees(c1).taker_percent);
   ui_->maker_fee->setValue(tdata1->exchange_->get_fees(c2).maker_percent);
 
+  // lamda that updates values in the gui whenever orderbook data changes
   auto arb_lambda = [ui_](ticker::data tdata1, ticker::data tdata2, auto* obwidget1,
                         auto* obwidget2) {
     double budget = std::stod(ui_->spend->text().toStdString());
     //
-    fee_data sell_fee{0.12, 0.0};
-    fee_data taker_fee{ui_->taker_fee->value(), 0.01};
-    //
+    fee_data maker_fee{ui_->maker_fee->value(), 0.00};
+    fee_data taker_fee{ui_->taker_fee->value(), 0.00};
+
+    // convert budget in source currency into equivalent xrp using orderbook
     std::string buy_output, sell_output;
     auto buys = tdata1->orderbook_->compute_buy_amount(budget, taker_fee, buy_output);
     obwidget1->setPlainText(to_qstring(buy_output));
+
+    // convert xrp amount into dest currency using orderbook
     auto sells = tdata2->orderbook_->compute_sell_amount(buys.amount, taker_fee, sell_output);
     obwidget2->setPlainText(to_qstring(sell_output));
+
+    // update
     ui_->partial->setText(to_qstring(fmt::format("{:11.4f} ", buys.amount)));
     ui_->receive->setText(to_qstring(fmt::format("{:11.4f} ", sells.amount)));
     ui_->rate->setText(to_qstring(fmt::format("{:11.4f} ", sells.amount / budget)));
   };
 
+  // bind values to previous lambda and return a new lambda with everything setup
+  // to call that lambda on the application thread
   auto makeLambda = [arb_lambda](ticker::data tdata1, ticker::data tdata2, auto* obwidget1,
                         auto* obwidget2) {
     return [tdata1, tdata2, obwidget1, obwidget2, arb_lambda](currency_pair cp) {
@@ -111,23 +135,64 @@ std::shared_ptr<QDialog> gui_trade_currency_exchange(
     };
   };
 
+  // attach gui update lambda to the orderbooks
   tdata1->orderbook_subscribers_.subscribe(
-      "arbitrage1", makeLambda(tdata1, tdata2, ui_->orderbook1, ui_->orderbook2));
-  // tdata2->orderbook_subscribers_.subscribe("arbitrage2", makeLambda(tdata2, ui_->orderbook2));
+      "currency1", makeLambda(tdata1, tdata2, ui_->orderbook1, ui_->orderbook2));
+  tdata2->orderbook_subscribers_.subscribe(
+      "currency2", makeLambda(tdata1, tdata2, ui_->orderbook1, ui_->orderbook2));
+
+  QObject::connect(ui_->execute_btn, &QPushButton::clicked, [=, ui_](bool b) {
+    double budget = std::stod(ui_->spend->text().toStdString());
+    //
+    std::string text = fmt::format("Executing trade {} {}", budget, c1.c2_.code_);
+    ui_->actions_txt->appendPlainText(to_qstring(text));
+    //
+    std::vector<trade_data> trades;
+    //
+    // std::shared_ptr<abstract_exchange> network_;
+    // std::string wallet_;
+    // currency_code taker_payc_;
+    // currency_code taker_getc_;
+    // double taker_pay_;
+    // double taker_get_;
+    // double exchange_rate_;
+    // double fee_percent_;
+    // double fee_fixed_;
+    // std::uint64_t id_;
+    // std::string datetime_;
+    // bool confirmed_;
+
+    // trade_data t{
+    //     tdata1->exchange_,
+    //     account_->name_,
+    //     taker_payc,                 // taker pays this currency
+    //     this->currency_.symbol_,    // taker gets this currency
+    //     taker_pay,                  // taker pays this amount (total)
+    //     taker_get,                  // taker gets this amount (total)
+    //     price,                      // abstract_exchange rate : TODO - check fee settings
+    //     fee_percent,                // abstract_exchange rate : TODO - check fee settings
+    //     fee_percent,                // abstract_exchange rate : TODO - check fee settings
+    //     0,                          // Id
+    //     now.toStdString(),
+    //     false,
+    // };
+    // trades.push_back(t);
+    // tdata1->exchange_->
+  });
 
   return algowidget_;
 }
 
 // ----------------------------------------------------------------------------
-std::shared_ptr<QDialog> gui_trade_market_maker(std::shared_ptr<indicators::algorithm_base> alg,
+QDialog* gui_trade_market_maker(std::shared_ptr<indicators::algorithm_base> alg,
     abstract_exchange::exchange_vector exchange_list_)
 {
-  std::shared_ptr<QDialog> algowidget_ = std::make_shared<QDialog>(nullptr);
+  QDialog* algowidget_ = new QDialog(nullptr);
   algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
 
   // gui object for/with market_maker controls
   Ui::trade_algorithm_market_maker* ui_ = new Ui::trade_algorithm_market_maker();
-  ui_->setupUi(algowidget_.get());
+  ui_->setupUi(algowidget_);
 
   // fill orderbook text display
   size_t const font_size = 8;
@@ -162,15 +227,15 @@ std::shared_ptr<QDialog> gui_trade_market_maker(std::shared_ptr<indicators::algo
 }
 
 // ----------------------------------------------------------------------------
-std::shared_ptr<QDialog> gui_trade_arbitrage(std::shared_ptr<indicators::algorithm_base> alg,
+QDialog* gui_trade_arbitrage(std::shared_ptr<indicators::algorithm_base> alg,
     abstract_exchange::exchange_vector exchange_list_)
 {
-  std::shared_ptr<QDialog> algowidget_ = std::make_shared<QDialog>(nullptr);
+  QDialog* algowidget_ = new QDialog(nullptr);
   algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
 
   // gui object for/with market_maker controls
   Ui::trade_algorithm_arbitrage* ui_ = new Ui::trade_algorithm_arbitrage();
-  ui_->setupUi(algowidget_.get());
+  ui_->setupUi(algowidget_);
 
   // fill orderbook text display
   size_t const font_size = 8;
@@ -248,7 +313,9 @@ std::shared_ptr<QDialog> gui_trade_arbitrage(std::shared_ptr<indicators::algorit
 }
 
 // ----------------------------------------------------------------------------
-std::shared_ptr<QDialog> trade_widget_factory(std::shared_ptr<indicators::algorithm_base> alg,
+// given an algorithm : return a widget that represents it, populated with controls
+// for ticker information and options etc etc
+QDialog* trade_widget_factory(std::shared_ptr<indicators::algorithm_base> alg,
     abstract_exchange::exchange_vector exchange_list_)
 {
   if (dynamic_pointer_cast<indicators::trade_currency_exchange>(alg))
@@ -267,11 +334,47 @@ std::shared_ptr<QDialog> trade_widget_factory(std::shared_ptr<indicators::algori
 }
 
 // ----------------------------------------------------------------------------
-std::shared_ptr<QDialog> create_trading_widget(abstract_exchange::exchange_vector exchange_list_)
+QDialog* dock_trading_widget(QDialog* algowidget, std::string name)
 {
+  // ----------------------------------
+  // Create dockwidget to hold our controls
+  CDockWidget* AlgorithmsDockWidget = new CDockWidget(global_settings.dock_manager_, name.c_str());
+  AlgorithmsDockWidget->setWidget(algowidget, CDockWidget::AutoScrollArea);
+  // AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
+  AlgorithmsDockWidget->setMinimumSize(128, 196);
+  SideBarLocation sidebarloc = algowidget->property("DockPos").value<SideBarLocation>();
+  auto const AlgorithmsautoHideContainer =
+      global_settings.dock_manager_->addAutoHideDockWidget(sidebarloc, AlgorithmsDockWidget);
+  AlgorithmsautoHideContainer->setSize(256);
+  global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
+
+  return algowidget;
+}
+
+// ----------------------------------------------------------------------------
+QDialog* create_trading_widget(
+    abstract_exchange::exchange_vector exchange_list_, indicators::indicator_vector indicator_list)
+{
+  indicator_widget* widget;
+  if (indicator_list.empty())
+  {
+    static std::size_t available_arbitragers_index{0};
+    // use the static lists and indices so that successive calls reuse the selection
+    widget = new indicator_widget(indicators::available_arbitragers, available_arbitragers_index);
+  }
+  else
+  {
+    std::size_t index{0};
+    widget = new indicator_widget(indicator_list, index);
+    for (QWidget* widget : widget->get_param_widgets())
+    {
+      if (widget->objectName() == "OrderBookWidget")
+      {
+        orderbook_widget_constrain_networks(widget, exchange_list_);
+      }
+    }
+  }
   QDialog dlg;
-  indicator_widget* widget = new indicator_widget(
-      indicators::available_arbitragers, indicators::available_arbitragers_index);
   widget->add_to_dialog(&dlg);
 
   auto result = dlg.exec();
@@ -280,21 +383,7 @@ std::shared_ptr<QDialog> create_trading_widget(abstract_exchange::exchange_vecto
     auto ap = widget->get_algorithm();
     auto alg = ap->create(ap.get());
     auto algowidget_ = trade_widget_factory(alg, exchange_list_);
-
-    // ----------------------------------
-    // Create dockwidget to hold our controls
-    CDockWidget* AlgorithmsDockWidget =
-        new CDockWidget(global_settings.dock_manager_, alg->get_name().c_str());
-    AlgorithmsDockWidget->setWidget(algowidget_.get(), CDockWidget::AutoScrollArea);
-    // AlgorithmsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
-    AlgorithmsDockWidget->setMinimumSize(128, 196);
-    SideBarLocation sidebarloc = algowidget_->property("DockPos").value<SideBarLocation>();
-    auto const AlgorithmsautoHideContainer =
-        global_settings.dock_manager_->addAutoHideDockWidget(sidebarloc, AlgorithmsDockWidget);
-    AlgorithmsautoHideContainer->setSize(256);
-    global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
-
-    return algowidget_;
+    return dock_trading_widget(algowidget_, alg->get_name());
   }
   return nullptr;
 }

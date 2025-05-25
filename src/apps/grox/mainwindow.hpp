@@ -78,7 +78,7 @@ class GroxMainWindow : public QMainWindow
   QShortcut* qs_arbitrage_;
   int dark_mode_;
 
-  std::vector<std::shared_ptr<QDialog>> trade_widgets_;
+  std::vector<QDialog*> trade_widgets_;
 
   public:
   explicit GroxMainWindow(QWidget* parent = nullptr);

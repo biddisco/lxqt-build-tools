@@ -102,6 +102,17 @@ class bitstamp_network : public abstract_exchange
   int get_decimals() override { return 2; }
 
   // ---------------------------------------
+  // bitstamp wallets can be used for these trade algorithms
+  // ---------------------------------------
+  virtual trade_action_list supported_trade_actions()
+  {
+    return trade_action_list{
+        supported_trade_actions::currency_exchange,
+        supported_trade_actions::arbitrage_2way,
+    };
+  }
+
+  // ---------------------------------------
   // return the order book for this abstract_exchange
   bitstamp_order_book const& get_orderbook(currency_pair const& cp) const;
 
