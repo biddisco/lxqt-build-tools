@@ -38,5 +38,6 @@ currency_pair reverse_pair(currency_pair const& cp);
 // ----------------------------------------------------------------------------
 std::string currency_pair_string(
     currency_pair const& p, std::string_view sep = "-", bool add_issuer = true);
-QString currency_pair_qstring(currency_pair const& p, std::string_view sep = "-");
+QString currency_pair_qstring(
+    currency_pair const& p, std::string_view sep = "-", bool add_issuer = true);
 std::string currency_pair_lowercase_string(currency_pair const& p);

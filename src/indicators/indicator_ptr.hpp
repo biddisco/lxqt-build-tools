@@ -43,7 +43,7 @@ namespace indicators {
     }
 
     // ----------------------------------------------------------------------------
-    ~indicator_ptr() {}
+    ~indicator_ptr() { std::cout << "~indicator_ptr " << algorithm_->get_name() << std::endl; }
 
     // ----------------------------------------------------------------------------
     algorithm_ptr algorithm_;

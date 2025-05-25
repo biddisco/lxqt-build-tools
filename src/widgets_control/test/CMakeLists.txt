@@ -1,4 +1,4 @@
-set(TEST_SRCS dynamic_form.cpp)
+set(TEST_SRCS dynamic_form.cpp indicator_form.cpp)
 
 foreach(test ${TEST_SRCS})
   cmake_path(GET test STEM testname)

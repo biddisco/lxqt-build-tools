@@ -67,9 +67,14 @@ QWidget* build_control(std::list<control_field_data> const& fields,
     }
     else
     {
-      control_config config = defaults.at(fullName);
+      // fetch the user config for this field
+      control_config config{};
+      if (defaults.contains(fullName)) config = defaults.at(fullName);
       QWidget* control = factory.createControl(field.type, container, config);
-      layout->addRow(field.name + ":", control);
+      if (config.contains("label"))
+        layout->addRow(config.at("label").toString() + ":", control);
+      else
+        layout->addRow(field.name + ":", control);
     }
   }
 

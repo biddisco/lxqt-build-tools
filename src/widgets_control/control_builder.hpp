@@ -21,21 +21,49 @@ class control_builder
 };
 
 // ----------------------------------------------------------------------------
-class int_control_builder : public control_builder
+class control_builder_int : public control_builder
 {
   public:
   QWidget* build(QWidget* parent, control_config const& config) override;
 };
 
 // ----------------------------------------------------------------------------
-class string_control_builder : public control_builder
+class control_builder_bool : public control_builder
 {
   public:
   QWidget* build(QWidget* parent, control_config const& config) override;
 };
 
 // ----------------------------------------------------------------------------
-class combo_control_builder : public control_builder
+class control_builder_double : public control_builder
+{
+  public:
+  QWidget* build(QWidget* parent, control_config const& config) override;
+};
+
+// ----------------------------------------------------------------------------
+class control_builder_string : public control_builder
+{
+  public:
+  QWidget* build(QWidget* parent, control_config const& config) override;
+};
+
+// ----------------------------------------------------------------------------
+class control_builder_combo : public control_builder
+{
+  public:
+  QWidget* build(QWidget* parent, control_config const& config) override;
+};
+
+// ----------------------------------------------------------------------------
+class control_builder_ohlc_mode : public control_builder
+{
+  public:
+  QWidget* build(QWidget* parent, control_config const& config) override;
+};
+
+// ----------------------------------------------------------------------------
+class control_builder_orderbook : public control_builder
 {
   public:
   QWidget* build(QWidget* parent, control_config const& config) override;

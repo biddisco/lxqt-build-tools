@@ -38,9 +38,9 @@ int main(int argc, char* argv[])
   QApplication app(argc, argv);
 
   control_factory factory;
-  factory.registerBuilder("int", std::make_unique<int_control_builder>());
-  factory.registerBuilder("string", std::make_unique<string_control_builder>());
-  factory.registerBuilder("combo", std::make_unique<combo_control_builder>());
+  factory.registerBuilder("int", std::make_unique<control_builder_int>());
+  factory.registerBuilder("string", std::make_unique<control_builder_string>());
+  factory.registerBuilder("combo", std::make_unique<control_builder_combo>());
 
   nested_control_configs defaultConfigs =                            //
       {                                                              //

@@ -29,9 +29,19 @@
 namespace indicators {
 
   indicator_vector available_indicators;
-  std::size_t available_indicators_index{0};
   indicator_vector available_arbitragers;
-  std::size_t available_arbitragers_index{0};
+
+  algorithm_ptr indicator_registry::find_by_name(std::string name)
+  {
+    auto it = std::find_if(available_indicators.begin(), available_indicators.end(),
+        [&](auto it) { return it->get_name() == name; });
+    if (it == available_indicators.end())
+    {
+      it = std::find_if(available_arbitragers.begin(), available_arbitragers.end(),
+          [&](auto it) { return it->get_name() == name; });
+    }
+    return *it;
+  }
 
 }    // namespace indicators
 

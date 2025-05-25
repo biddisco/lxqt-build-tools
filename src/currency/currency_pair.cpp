@@ -39,9 +39,9 @@ std::string currency_pair_string(currency_pair const& p, std::string_view sep, b
 }
 
 // ----------------------------------------------------------------------------
-QString currency_pair_qstring(currency_pair const& p, std::string_view sep)
+QString currency_pair_qstring(currency_pair const& p, std::string_view sep, bool add_issuer)
 {
-  return to_qstring(currency_pair_string(p, sep));
+  return to_qstring(currency_pair_string(p, sep, add_issuer));
 }
 
 // ----------------------------------------------------------------------------
