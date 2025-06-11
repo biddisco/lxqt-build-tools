@@ -31,9 +31,10 @@ namespace indicators {
   template <class... Ts>
   std::ostream& operator<<(std::ostream& os, streamer<std::variant<Ts...>> sv)
   {
-    std::visit([&os](auto const& v) { os << streamer{v}; }, sv.val);
+    std::visit([&os](auto const& v) { os << v.name_.toStdString() << " " << streamer{v}; }, sv.val);
     return os;
   }
+
   static std::string param_string(param_list const& params)
   {
     std::stringstream stream;

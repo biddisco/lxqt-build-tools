@@ -6,6 +6,7 @@
 #include <range/v3/algorithm.hpp>
 #include <range/v3/view.hpp>
 #include <fmt/format.h>
+#include <nlohmann/json.hpp>
 //
 #include <QCheckBox>
 #include <QComboBox>
@@ -18,77 +19,123 @@
 //
 #include "config/config.hpp"
 #include "exchange/abstract_exchange.hpp"
+#include "indicators/indicator_types.hpp"
+#include "util/stringutils.hpp"
 #include "widgets_control/control_builder.hpp"
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_int::build(QWidget* parent, control_config const& config)
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+QWidget* control_builder_int::build(QWidget* parent, nlohmann::json const& defaults)
 {
   auto* spin = new QSpinBox(parent);
-  if (config.contains("min")) spin->setMinimum(config.at("min").toInt());
-  if (config.contains("max")) spin->setMaximum(config.at("max").toInt());
+  if (defaults.contains("min")) spin->setMinimum(defaults["min"].get<int>());
+  if (defaults.contains("max")) spin->setMaximum(defaults["max"].get<int>());
+  if (defaults.contains("value")) spin->setValue(defaults["value"].get<int>());
   return spin;
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_bool::build(QWidget* parent, control_config const& config)
+QWidget* control_builder_bool::build(QWidget* parent, nlohmann::json const& defaults)
 {
   auto* box = new QCheckBox();
-  if (config.contains("checked")) box->setChecked(config.at("checked").toBool());
+  if (defaults.contains("value")) box->setChecked(defaults["value"].get<bool>());
   return box;
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_double::build(QWidget* parent, control_config const& config)
+QWidget* control_builder_double::build(QWidget* parent, nlohmann::json const& defaults)
 {
-  auto* edit = new QLineEdit();
+  auto* edit = new QLineEdit(parent);
   double value = 0;
   double min = -10.0E9;
   double max = 10.0E9;
   int decimals = 6;
-  if (config.contains("min")) min = config.at("min").toDouble();
-  if (config.contains("max")) max = config.at("max").toDouble();
-  if (config.contains("decimals")) decimals = config.at("decimals").toInt();
-  if (config.contains("value")) value = config.at("value").toInt();
+  if (defaults.contains("min")) min = defaults["min"].get<double>();
+  if (defaults.contains("max")) max = defaults["max"].get<double>();
+  if (defaults.contains("decimals")) decimals = defaults["decimals"].get<int>();
+  if (defaults.contains("value")) value = defaults["value"].get<double>();
   edit->setValidator(new QDoubleValidator(min, max, decimals, edit));
   edit->setText(QString::number(value));
   return edit;
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_string::build(QWidget* parent, control_config const& config)
+QWidget* control_builder_string::build(QWidget* parent, nlohmann::json const& defaults)
 {
   auto* edit = new QLineEdit(parent);
-  if (config.contains("placeholder")) edit->setPlaceholderText(config.at("placeholder").toString());
+  if (defaults.contains("placeholder"))
+    edit->setPlaceholderText(to_qstring(defaults["placeholder"].get<std::string>()));
+  if (defaults.contains("value")) edit->setText(to_qstring(defaults["value"].get<std::string>()));
   return edit;
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_combo::build(QWidget* parent, control_config const& config)
+QWidget* control_builder_combo::build(QWidget* parent, nlohmann::json const& defaults)
 {
   auto* combo = new QComboBox(parent);
-  if (config.contains("entries"))
+  if (defaults.contains("entries"))
   {
-    combo->addItems(config.at("entries").toStringList());
-    if (config.contains("index")) { combo->setCurrentIndex(config.at("index").toInt()); }
-    else { combo->setCurrentText(config.at("entries").toStringList()[0]); }
+    combo->addItems(to_qstringlist(defaults["entries"].get<std::vector<std::string>>()));
+    if (defaults.contains("index")) { combo->setCurrentIndex(defaults["index"].get<int>()); }
+    else
+    {
+      combo->setCurrentText(to_qstringlist(defaults["entries"].get<std::vector<std::string>>())[0]);
+    }
   }
-  else if (config.contains("placeholder"))
+  else if (defaults.contains("placeholder"))
   {
-    combo->setPlaceholderText(config.at("placeholder").toString());
+    combo->setPlaceholderText(to_qstring(defaults["placeholder"].get<std::string>()));
   }
   return combo;
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_ohlc_mode::build(QWidget* parent, control_config const& config)
+QWidget* control_builder_ohlc_mode::build(QWidget* parent, nlohmann::json const& defaults)
 {
   // just use a combo box for now
   auto builder = control_builder_combo();
-  return builder.build(parent, config);
+  return builder.build(parent, defaults);
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_orderbook::build(QWidget* parent, control_config const& config)
+QWidget* control_builder_candle_data::build(QWidget* parent, nlohmann::json const& defaults)
+{
+  QFrame* widget = new QFrame(parent);
+  QVBoxLayout* layout = new QVBoxLayout(widget);
+  widget->setLayout(layout);
+
+  // combo box of resolutions to choose from
+  QComboBox* const combo = new QComboBox(widget);
+  QStringList resolutions;
+  if (defaults.contains("resolutions"))
+    resolutions = to_qstringlist(defaults["resolutions"].get<std::vector<std::string>>());
+  else
+    for (auto const& r : ohlc_data_resolutions::available_resolutions()) { resolutions << r.name_; }
+  combo->setObjectName("resolution");
+  combo->addItems(resolutions);
+  if (defaults.contains("resolution"))
+    combo->setCurrentText(to_qstring(defaults["resolution"].get<std::string>()));
+  layout->addWidget(combo);
+
+  // combo box of time ranges to choose from
+  QComboBox* const ticker = new QComboBox(widget);
+  QStringList durations;
+  if (defaults.contains("durations"))
+    durations = to_qstringlist(defaults["durations"].get<std::vector<std::string>>());
+  else
+    for (auto const& s : candle_data::durations) { durations.push_back(s); }
+  ticker->setObjectName("durations");
+  ticker->addItems(durations);
+  if (defaults.contains("duration"))
+    ticker->setCurrentText(to_qstring(defaults["duration"].get<std::string>()));
+  layout->addWidget(ticker);
+  return widget;
+}
+
+// ----------------------------------------------------------------------------
+QWidget* control_builder_orderbook::build(QWidget* parent, nlohmann::json const& defaults)
 {
   QFrame* widget = new QFrame();
   QVBoxLayout* layout = new QVBoxLayout(widget);
@@ -99,49 +146,32 @@ QWidget* control_builder_orderbook::build(QWidget* parent, control_config const&
   QComboBox* const exchanges = new QComboBox(widget);
   exchanges->setObjectName("Exchange");
   layout->addWidget(exchanges);
-  if (config.contains("exchanges"))
+  if (defaults.contains("exchanges"))
   {
-    auto list = config.at("exchanges").toStringList();
+    auto list = to_qstringlist(defaults["exchanges"].get<std::vector<std::string>>());
     exchanges->addItems(list);
-    if (config.contains("exchange_index"))
+    if (defaults.contains("exchange_index"))
     {
-      exchanges->setCurrentIndex(config.at("exchange_index").toInt());
+      exchanges->setCurrentIndex(defaults["exchange_index"].get<int>());
     }
     // if the choice is only limited to 1 item, no need to show it
     if (list.size() == 1) { exchanges->setVisible(false); }
   }
 
+  // create combo for 1st ticker selection
   std::vector<QComboBox*> qtickers;
   QComboBox* ticker1 = new QComboBox(widget);
   ticker1->setObjectName(fmt::format("Ticker_1"));
   layout->addWidget(ticker1);
   qtickers.push_back(ticker1);
-  if (config.contains("tickers1"))
-  {
-    auto tickers = config.at("tickers1").toStringList();
-    widget->setProperty("TSize", QVariant(static_cast<int>(tickers.size())));
-    ticker1->addItems(tickers);
-    if (config.contains("tickers1_index"))
-    {
-      ticker1->setCurrentIndex(config.at("tickers1_index").toInt());
-    }
-  }
 
+  // create combo for 2nd ticker selection
   QComboBox* ticker2 = new QComboBox(widget);
   ticker2->setObjectName(fmt::format("Ticker_2"));
   layout->addWidget(ticker2);
-  qtickers.push_back(ticker1);
-  if (config.contains("tickers2"))
-  {
-    auto tickers = config.at("tickers2").toStringList();
-    widget->setProperty("TSize", QVariant(static_cast<int>(tickers.size())));
-    ticker2->addItems(tickers);
-    if (config.contains("tickers2_index"))
-    {
-      ticker2->setCurrentIndex(config.at("tickers2_index").toInt());
-    }
-  }
+  qtickers.push_back(ticker2);
 
+  // callback triggered when exchange combo is modified
   // this lambda will set the ticker combo using the tickers available from the exchanges
   auto set_ticker_strings = [&](int /*index*/) {
     std::string text = exchanges->currentText().toStdString();
@@ -150,26 +180,46 @@ QWidget* control_builder_orderbook::build(QWidget* parent, control_config const&
     if (ex == global_settings.networks_.end()) return;
     //
     auto tickers = (*ex)->tickers_subscribed();
-    for (auto [i, combo] : qtickers | ranges::views::enumerate)
+    for (auto combo : qtickers)
     {
+      QString currentText = combo->currentText();
       QStringList temp;
       for (auto const [cp, td] : tickers) { temp << currency_pair_qstring(cp); }
       combo->clear();
       combo->addItems(temp);
-      // combo->setCurrentText(currency_pair_qstring(param.tickers_[i]));
+      // try to restore active selection if it is still there
+      if (currentText != "") combo->setCurrentText(currentText);
     }
   };
 
   QWidget::connect(exchanges, &QComboBox::currentIndexChanged, widget,
       [=](int index) { set_ticker_strings(index); });
 
-  set_ticker_strings(0);
+  // fill tickers with user supplied strings
+  if (defaults.contains("tickers1"))
+  {
+    auto tickers = to_qstringlist(defaults["tickers1"].get<std::vector<std::string>>());
+    widget->setProperty("TSize", QVariant(static_cast<int>(tickers.size())));
+    ticker1->addItems(tickers);
+    if (defaults.contains("tickers1_index"))
+    {
+      ticker1->setCurrentIndex(defaults["tickers1_index"].get<int>());
+    }
+  }
 
-  // trigger the exchanges combo to update and fill the tickers combo
-  // QStringList qsl;
-  // for (auto const& n : global_settings.networks_) { qsl << to_qstring(n->get_name()); }
-  // exchanges->addItems(qsl);
-  // exchanges->setCurrentText(to_qstring(param.exchange_));
-  //
+  if (defaults.contains("tickers2"))
+  {
+    auto tickers = to_qstringlist(defaults["tickers2"].get<std::vector<std::string>>());
+    widget->setProperty("TSize", QVariant(static_cast<int>(tickers.size())));
+    ticker2->addItems(tickers);
+    if (defaults.contains("tickers2_index"))
+    {
+      ticker2->setCurrentIndex(defaults["tickers2_index"].get<int>());
+    }
+  }
+
+  // trigger callback to initially setup combo items if user did not supply any
+  if (!defaults.contains("tickers1") && !defaults.contains("tickers2")) set_ticker_strings(0);
+
   return widget;
 }

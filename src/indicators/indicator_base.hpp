@@ -152,7 +152,7 @@ public:
         if (param<candle_data> const* d = std::get_if<param<candle_data>>(&p))
         {
           auto dataset = view->get_dataset(d->get().res_);
-          result.push_back({dataset, d->get().numSamples_});
+          result.push_back({dataset, d->get().duration_});
         }
       }
       return result;

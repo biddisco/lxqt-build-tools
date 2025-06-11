@@ -9,8 +9,6 @@ set(grox_widgets_SRCS
     currency_widget.hpp
     digital_clock.cpp
     digital_clock.hpp
-    indicator_widget.cpp
-    indicator_widget.hpp
     password_dialog.cpp
     password_dialog.hpp
     price_chart_widget.cpp
@@ -32,7 +30,6 @@ set(grox_widgets_SRCS
     trade_algorithm_market_maker.ui
     connection_widget.ui
     currency_widget.ui
-    indicator_widget.ui
     password_dialog.ui
     price_chart_widget.ui
     trade_widget.ui
@@ -61,6 +58,7 @@ target_link_libraries(
          grox_indicators
          grox_plot
          grox_util
+         grox_widgets_control
          qtadvanceddocking-qt${QT_VERSION_MAJOR}
          fmt::fmt
          nlohmann_json::nlohmann_json

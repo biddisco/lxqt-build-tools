@@ -13,23 +13,23 @@
 #include <QVBoxLayout>
 #include <QWidget>
 //
+#include <nlohmann/json.hpp>
+//
 #include "widgets_control/control_builder.hpp"
 #include "widgets_control/control_factory.hpp"
 
 // ----------------------------------------------------------------------------
-std::list<control_field_data> get_fields_for_person()
+nlohmann::ordered_json get_json_for_person()
 {
-  return {
-      //
-      {"name", "string", {}},    //
-      {"age", "int", {}},        //
-      {"address", "object",      //
+  return {                   //
+      {"name", "string"},    //
+      {"age", "int"},
+      {"address",
           {
-              {"street", "string", {}},    //
-              {"postcode", "int", {}}      //
-          }},                              //
-      {"gender", "combo", {}},             //
-  };
+              {"street", "string"},    //
+              {"postcode", "int"}      //
+          }},
+      {"gender", "combo"}};
 }
 
 // ----------------------------------------------------------------------------
@@ -55,9 +55,9 @@ int main(int argc, char* argv[])
                   {"index", 1}                                                 //
               }}};
 
-  QWidget* form = build_control(get_fields_for_person(), defaultConfigs, factory);
-  form->setWindowTitle("Dynamic Person Editor");
-  form->show();
+  // QWidget* form = build_control(get_json_for_person(), defaultConfigs, factory);
+  // form->setWindowTitle("Dynamic Person Editor");
+  // form->show();
 
   return app.exec();
 }

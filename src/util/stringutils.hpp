@@ -8,6 +8,7 @@
 #include <utility>
 //
 #include <QString>
+#include <QStringList>
 //
 #include <range/v3/algorithm.hpp>
 #include <range/v3/all.hpp>
@@ -37,6 +38,14 @@ inline bool startswith(QString str, QString sub) { return str.startsWith(sub); }
 
 // ----------------------------------------------------------------------------
 inline QString to_qstring(std::string const& str) { return QString::fromStdString(str); }
+
+// ----------------------------------------------------------------------------
+inline QStringList to_qstringlist(std::vector<std::string> const& strl)
+{
+  QStringList qsl;
+  for (auto const& s : strl) qsl << to_qstring(s);
+  return qsl;
+}
 
 // ----------------------------------------------------------------------------
 inline std::string string_join(std::string_view s1, std::string_view s2)

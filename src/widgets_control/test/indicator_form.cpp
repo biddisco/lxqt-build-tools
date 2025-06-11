@@ -5,6 +5,7 @@
 //
 #include <QApplication>
 #include <QComboBox>
+#include <QDialog>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QLabel>
@@ -21,42 +22,33 @@
 #include "util/stringutils.hpp"
 #include "widgets_control/control_builder.hpp"
 #include "widgets_control/control_factory.hpp"
+#include "widgets_control/control_field_data.hpp"
+#include "widgets_control/indicator_fields.hpp"
 
 // ----------------------------------------------------------------------------
-std::list<control_field_data> get_fields_for_indicator(indicators::algorithm_ptr alg)
+QWidget* form_for_algorithm(indicators::algorithm_ptr alg, nlohmann::json values = {})
 {
-  std::list<control_field_data> fields;
-  std::string desc = alg->get_description();
+  control_factory& factory = control_factory::getInstance();
+  register_control_factories();
 
-  int nparams = alg->get_params().size();
-  // std::visit([](auto const& obj) { return obj.get_params().size(); }, alg);
-  for (int i = 0; i < nparams; ++i)
-  {
-    // extract info from params
-    std::visit(
-        [&](auto const& v) {
-          std::string type = grox::debug::print_type<typeof(v.val_)>();
-          fields.push_back({v.name(), to_qstring(type), {}});
-        },
-        alg->get_params()[i]);
-  }
-  return fields;
+  nlohmann::ordered_json controls = get_json_layout_indicator(alg);
+  if (values.size() == 0) values = get_json_values_indicator(alg);
+  std::cout << controls.dump(4) << std::endl;
+  std::cout << values.dump(4) << std::endl;
+
+  QWidget* form = build_control(controls, values, factory);
+  form->setWindowTitle(to_qstring(alg->get_name()));
+  return form;
 }
 
 // ----------------------------------------------------------------------------
-std::list<control_field_data> get_fields_for_person()
+void execute_dialog(QWidget* form)
 {
-  return {
-      //
-      {"name", "string", {}},    //
-      {"age", "int", {}},        //
-      {"address", "object",      //
-          {
-              {"street", "string", {}},    //
-              {"postcode", "int", {}}      //
-          }},                              //
-      {"gender", "combo", {}},             //
-  };
+  QDialog dlg;
+  QHBoxLayout* HLayout = new QHBoxLayout(&dlg);
+  HLayout->addWidget(form);
+  dlg.setLayout(HLayout);
+  dlg.exec();
 }
 
 // ----------------------------------------------------------------------------
@@ -82,43 +74,31 @@ int main(int argc, char* argv[])
   global_settings.networks_.push_back(bitstamp);
 #endif
 
-  control_factory factory;
-  factory.registerBuilder("int", std::make_unique<control_builder_int>());
-  factory.registerBuilder("bool", std::make_unique<control_builder_bool>());
-  factory.registerBuilder("double", std::make_unique<control_builder_double>());
-  factory.registerBuilder("string", std::make_unique<control_builder_string>());
-  factory.registerBuilder("combo", std::make_unique<control_builder_combo>());
-  factory.registerBuilder("ohlc_modes", std::make_unique<control_builder_ohlc_mode>());
-  factory.registerBuilder("order_book_param", std::make_unique<control_builder_orderbook>());
+  auto alg_0 = indicators::indicator_registry::find_by_name("Trade: Sliding Stop");
+  execute_dialog(form_for_algorithm(alg_0));
 
-  auto alg = indicators::indicator_registry::find_by_name("Currency-Exchange");
-  std::list<control_field_data> fields = get_fields_for_indicator(alg);
-  std::cout << to_qstring(fields).toStdString();
-
+  auto alg_1 = indicators::indicator_registry::find_by_name("Currency-Exchange");
   currency_pair cp1{{"XRP"}, {"USD"}};
   currency_pair cp2{{"XRP"}, {"EUR"}};
   currency_pair cp3{{"XRP"}, {"GBP"}};
-  nested_control_configs defaultConfigs = {
+  nlohmann::json defaults = {//
       {"Order-Book-1",
           {
               {"label", "Currency pairs"},
-              {"exchanges", QStringList{"Bitstamp"}},
+              {"exchanges", std::vector<std::string>{"Fake Exchange"}},
               {"tickers1",
-                  QStringList{currency_pair_qstring(cp1, "-", false),
-                      currency_pair_qstring(cp2, "-", false),
-                      currency_pair_qstring(cp3, "-", false)}},
+                  std::vector<std::string>{currency_pair_string(cp1, "-", false),
+                      currency_pair_string(cp2, "-", false),
+                      currency_pair_string(cp3, "-", false)}},
               {"tickers1_index", 0},
               {"tickers2",
-                  QStringList{currency_pair_qstring(cp1, "-", false),
-                      currency_pair_qstring(cp2, "-", false),
-                      currency_pair_qstring(cp3, "-", false)}},
+                  std::vector<std::string>{currency_pair_string(cp1, "-", false),
+                      currency_pair_string(cp2, "-", false),
+                      currency_pair_string(cp3, "-", false)}},
               {"tickers2_index", 1},
           }},
       {"Num Spreads", {{"min", 0}, {"max", 100}}}};
-
-  QWidget* form = build_control(fields, defaultConfigs, factory);
-  form->setWindowTitle(to_qstring(alg->get_name()));
-  form->show();
+  execute_dialog(form_for_algorithm(alg_1, defaults));
 
   return app.exec();
 }

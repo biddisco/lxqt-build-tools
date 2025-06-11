@@ -26,8 +26,8 @@
 #include "senders/qtstdexec.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/digital_clock.hpp"
-#include "widgets/indicator_widget.hpp"
 #include "widgets/price_chart_widget.hpp"
+#include "widgets_control/indicator_widget.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug;

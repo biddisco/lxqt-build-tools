@@ -20,8 +20,11 @@
 #include "indicators/trade_market_maker.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/indicator_controls.hpp"
-#include "widgets/indicator_widget.hpp"
 #include "widgets/trade_algorithm_widget.hpp"
+#include "widgets_control/control_builder.hpp"
+#include "widgets_control/control_factory.hpp"
+#include "widgets_control/indicator_fields.hpp"
+#include "widgets_control/indicator_widget.hpp"
 // generated
 #include "ui_trade_algorithm_arbitrage.h"
 #include "ui_trade_algorithm_currency_exchange.h"
@@ -30,6 +33,8 @@
 using namespace ads;
 
 // ----------------------------------------------------------------------------
+// Sets the height of a text widget to be a nice multiple of row height
+// based on the font used and other settings like mergins/borders etc
 void setHeight(QPlainTextEdit* ptxt, int nRows)
 {
   QTextDocument* pdoc = ptxt->document();
@@ -349,6 +354,34 @@ QDialog* dock_trading_widget(QDialog* algowidget, std::string name)
   global_settings.dockwindows_menu_->addAction(AlgorithmsDockWidget->toggleViewAction());
 
   return algowidget;
+}
+
+// ----------------------------------------------------------------------------
+QDialog* create_trade_algorithm_widget(
+    abstract_exchange::exchange_vector exchange_list_, indicators::algorithm_ptr alg)
+{
+  // Take the algorithm and generate gui fields for each parameter
+  nlohmann::json fields = get_json_layout_indicator(alg);
+
+  // build the list of exchange names from the passed in exchange list
+  QStringList qsl;
+  for (auto const& n : exchange_list_) { qsl << to_qstring(n->get_name()); }
+  // set initial parameters for the dialog
+  nlohmann::json defaultConfigs;
+  defaultConfigs["Order-Book-1"]["label"] = "Currency Pairs";
+  auto exchanges =
+      exchange_list_ | ranges::view::transform([](auto const& e) { return e->get_name(); });
+  defaultConfigs["Order-Book-1"]["exchanges"] = exchanges;
+
+  // construct and execute dialog
+  QWidget* form = build_control(fields, defaultConfigs, control_factory::getInstance());
+  QDialog* dlg = new QDialog();
+  QHBoxLayout* HLayout = new QHBoxLayout(dlg);
+  HLayout->addWidget(form);
+  dlg->setLayout(HLayout);
+  auto result = dlg->exec();
+  if (result == QDialog::Accepted) return dlg;
+  return nullptr;
 }
 
 // ----------------------------------------------------------------------------

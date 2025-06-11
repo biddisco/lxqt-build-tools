@@ -15,7 +15,11 @@
 #include "data/ohlc_dataset.hpp"
 #include "indicators/indicator_params.hpp"
 #include "widgets/indicator_controls.hpp"
-#include "widgets/indicator_widget.hpp"
+#include "widgets_control/control_builder.hpp"
+#include "widgets_control/control_factory.hpp"
+#include "widgets_control/control_field_data.hpp"
+#include "widgets_control/indicator_fields.hpp"
+#include "widgets_control/indicator_widget.hpp"
 
 // ----------------------------------------------------------------------------
 indicator_widget::indicator_widget(indicators::indicator_vector const& i, std::size_t& index)
@@ -126,12 +130,23 @@ void indicator_widget::refresh_gui(int index)
   param_widgets_.clear();
   std::array<int, 2> counts = {0, 0};
 
+  // get the currently selected algorithm
   auto alg = indicators_[index];
+
+  // set the desscription field
   std::string desc = alg->get_description();
-  // std::visit([](auto const& obj) { return obj.get_description(); }, alg);
   ui.description->setText(QString(desc.c_str()));
 
+  // main layout for widgets
   QGridLayout* layout = new QGridLayout;
+
+  // from the indicator algorithm, generate the gui controls
+  nlohmann::json fields = get_json_layout_indicator(alg);
+  std::cout << "==========" << std::endl << to_qstring(fields).toStdString() << std::endl;
+  QWidget* form = build_control(fields, {}, control_factory::getInstance());
+  layout->addWidget(form, counts[1], 1 * 2);
+  counts[1]++;
+
   int nparams = alg->get_params().size();
   // std::visit([](auto const& obj) { return obj.get_params().size(); }, alg);
   for (int i = 0; i < nparams; ++i)

@@ -13,19 +13,19 @@ void update_ohlctv_sample(ohlctv_sample& ohlc, ohlctv_sample const& other);
 
 enum class ohlc_modes : int
 {
-  open = 1,
-  close = 2,
-  mid_open_close = 3,
-  high = 4,
-  low = 5,
-  mid_high_low = 6,
-  volume = 7,
-  value = 8
+  open = 0,
+  close,
+  mid_open_close,
+  high,
+  low,
+  mid_high_low,
+  volume,
+  value
 };
 
 constexpr auto ohlc_mode_names = magic_enum::enum_names<ohlc_modes>();
 
-inline double ohlc_mode_extract(const ohlc_modes mode, ohlctv_sample const& ohlc)
+inline double ohlc_mode_extract(ohlc_modes const mode, ohlctv_sample const& ohlc)
 {
   switch (mode)
   {

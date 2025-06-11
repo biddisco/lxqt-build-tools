@@ -30,7 +30,7 @@ public:
     trade_currency_exchange(std::string abstract_exchange = "Bistamp", currency_pair ticker = {})
       : algorithm_base("Currency-Exchange", "Currency-Exchange using live orderbooks")
       , exchange_(abstract_exchange)
-      , ticker_(ticker)
+      , ticker1_(ticker)
     {
     }
 
@@ -41,7 +41,6 @@ public:
       params_ = {
           param<order_book_param>{
               "Order-Book-1", {"Bitstamp", {{{"XRP"}, {"USD"}}, {{"XRP"}, {"EUR"}}}}},    // 0
-          param<int>{"Num Spreads", 5},                                                   // 1
       };
     }
 
@@ -54,7 +53,8 @@ public:
 
 private:
     std::string exchange_;
-    currency_pair ticker_;
+    currency_pair ticker1_;
+    currency_pair ticker2_;
   };
 
 }    // namespace indicators

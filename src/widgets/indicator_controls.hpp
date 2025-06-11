@@ -183,7 +183,7 @@ static void set_param(QWidget* widget, indicators::param<candle_data>& param)
 
   QComboBox* d = f->findChild<QComboBox*>("TimeRange");
   std::string s = d->currentText().toStdString();
-  std::uint64_t samples = candle_data::samples(res, s);
+  std::uint64_t samples = candle_data::duration(res, s);
   param.put({res, samples});
 }
 

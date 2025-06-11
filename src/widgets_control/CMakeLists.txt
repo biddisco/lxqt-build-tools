@@ -1,7 +1,9 @@
-set(grox_widgets_control_SRCS control_builder.hpp control_builder.cpp control_factory.hpp)
+set(grox_widgets_control_SRCS control_builder.hpp control_builder.cpp control_factory.hpp
+                              indicator_widget.cpp indicator_widget.hpp
+)
 
-set(grox_widgets_control_SRCS ${grox_widgets_control_SRCS}
-                              # trade_algorithm_arbitrage.ui
+set(grox_widgets_control_SRCS ${grox_widgets_control_SRCS} indicator_widget.ui
+    # trade_algorithm_arbitrage.ui
 )
 
 add_library(

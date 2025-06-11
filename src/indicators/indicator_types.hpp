@@ -56,9 +56,10 @@ namespace indicators {
     //
     friend std::ostream& operator<<(std::ostream& os, param<T> const& p)
     {
-      os << p.get();
+      os << p.name_.toStdString() << " " << p.get();
       return os;
     }
+    friend nlohmann::json to_json(param<T> const& p);
   };
 
   template <typename T>

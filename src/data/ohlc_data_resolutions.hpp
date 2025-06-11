@@ -98,9 +98,9 @@ struct candle_data
   static constexpr std::array<char const*, 10> durations = {
       "1h", "1d", "1w", "2w", "1m", "6m", "1y", "2y", "4y", "all"};
   candle_res res_;
-  std::uint64_t numSamples_;
+  std::uint64_t duration_;
 
-  static std::uint64_t samples(candle_res res, std::string timestring)
+  static std::uint64_t duration(candle_res res, std::string timestring)
   {
     std::uint64_t samples = 0;
     if (timestring == "1h") { samples = (60 * 60 * 1000ll) / res; }
@@ -118,23 +118,23 @@ struct candle_data
 
   std::string as_string() const
   {
-    if (numSamples_ <= (60 * 60 * 1000ll) / res_)
+    if (duration_ <= (60 * 60 * 1000ll) / res_)
       return "1h";
-    else if (numSamples_ <= (24 * 60 * 60 * 1000ll) / res_)
+    else if (duration_ <= (24 * 60 * 60 * 1000ll) / res_)
       return "1d";
-    else if (numSamples_ <= (7 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration_ <= (7 * 24 * 60 * 60 * 1000ll) / res_)
       return "1w";
-    else if (numSamples_ <= (14 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration_ <= (14 * 24 * 60 * 60 * 1000ll) / res_)
       return "2w";
-    else if (numSamples_ <= (30 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration_ <= (30 * 24 * 60 * 60 * 1000ll) / res_)
       return "1m";
-    else if (numSamples_ <= (182 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration_ <= (182 * 24 * 60 * 60 * 1000ll) / res_)
       return "6m";
-    else if (numSamples_ <= (365 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration_ <= (365 * 24 * 60 * 60 * 1000ll) / res_)
       return "1y";
-    else if (numSamples_ <= (2 * 365 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration_ <= (2 * 365 * 24 * 60 * 60 * 1000ll) / res_)
       return "2y";
-    else if (numSamples_ <= (4 * 365 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration_ <= (4 * 365 * 24 * 60 * 60 * 1000ll) / res_)
       return "4y";
     return "all";
   }

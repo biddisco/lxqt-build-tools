@@ -49,6 +49,7 @@
 #include "widgets/price_chart_widget.hpp"
 #include "widgets/trade_algorithm_widget.hpp"
 #include "widgets/wallet_widget.hpp"
+#include "widgets_control/indicator_fields.hpp"
 
 // Qt Advanced Docking System
 #include "AutoHideDockContainer.h"
@@ -422,7 +423,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
       auto callback1 = [this, network]() {
         auto alg = indicators::indicator_registry::find_by_name("Currency-Exchange");
-        QDialog* widget = create_trading_widget({network}, {alg});
+        QDialog* widget = create_trade_algorithm_widget({network}, {alg});
         trade_widgets_.push_back(widget);
       };
       auto callback2 = [this, network]() {
@@ -487,6 +488,8 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   QPixmap pix(":/images/icons/xrp.jpg");
   // pix = pix.scaled(algo_form_->image_label->size(), Qt::KeepAspectRatio);
   // algo_form_->image_label->setPixmap(pix);
+
+  register_control_factories();
 }
 
 // ----------------------------------------------------------------------------
