@@ -49,7 +49,8 @@
 #include "widgets/price_chart_widget.hpp"
 #include "widgets/trade_algorithm_widget.hpp"
 #include "widgets/wallet_widget.hpp"
-#include "widgets_control/indicator_fields.hpp"
+#include "widgets_control/indicator_json.hpp"
+#include "widgets_control/indicator_widget.hpp"
 
 // Qt Advanced Docking System
 #include "AutoHideDockContainer.h"
@@ -423,8 +424,23 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
 
       auto callback1 = [this, network]() {
         auto alg = indicators::indicator_registry::find_by_name("Currency-Exchange");
-        QDialog* widget = create_trade_algorithm_widget({network}, {alg});
-        trade_widgets_.push_back(widget);
+        nlohmann::json defaults = {//
+            {"Order-Book-1",
+                {
+                    {"label", "Currency pairs"},
+                    {"exchanges", std::vector<std::string>{network->get_name()}},
+                    {"tickers-0_value", currency_pair_string({{"XRP"}, {"USD"}}, "-", false)},
+                    {"tickers-1_value", currency_pair_string({{"XRP"}, {"GBP"}}, "-", false)},
+                }}};
+
+        indicator_widget widget(alg, defaults);
+        auto result = widget.execute_as_dialog();
+        if (result == QDialog::Accepted)
+        {
+          auto alg_copy = alg->create(alg.get());
+          auto algowidget_ = trade_widget_factory(alg_copy, exchange_list_);
+          trade_widgets_.push_back(dock_trading_widget(algowidget_, alg_copy->get_name()));
+        }
       };
       auto callback2 = [this, network]() {
         auto alg = indicators::indicator_registry::find_by_name("Arbitrage 2-way");

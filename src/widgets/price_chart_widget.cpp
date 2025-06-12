@@ -247,17 +247,15 @@ void price_chart_widget::connect_gui()
 
     using namespace grox::senders;
 
-    QDialog* ind_dialog = new QDialog(this);
     indicator_widget* widget =
         new indicator_widget(indicators::available_indicators, available_indicators_index);
-    widget->add_to_dialog(ind_dialog);
+    auto result = widget->execute_as_dialog();
 
-    auto result = ind_dialog->exec();
     if (result == QDialog::Accepted)
     {
       static int colour_count = 0;
       auto snd = stdexec::start_on(default_pool_scheduler(), stdexec::just())    //
-          | stdexec::then([this, ind_dialog, widget]() {
+          | stdexec::then([this, widget]() {
               // do this on a pika thread as it executes the algorithm
               indicators::indicator_ptr algp(widget->get_algorithm(), hdf5_ohlc_);
               return algp;

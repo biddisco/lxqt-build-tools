@@ -20,6 +20,8 @@
 
 // ----------------------------------------------------------------------------
 namespace indicators {
+  class algorithm_base;
+  using shared_algorithm = std::shared_ptr<algorithm_base>;
 
   // ----------------------------------------------------------------------------
   class algorithm_base

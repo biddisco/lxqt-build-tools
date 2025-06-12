@@ -19,9 +19,9 @@
 //
 #include <nlohmann/json.hpp>
 //
+#include "indicators/indicator_types.hpp"
 #include "util/stringutils.hpp"
 #include "widgets_control/control_builder.hpp"
-#include "widgets_control/control_field_data.hpp"
 
 // ----------------------------------------------------------------------------
 class control_factory
@@ -35,16 +35,22 @@ class control_factory
     return instance;
   }
 
-  void registerBuilder(QString const& typeName, std::unique_ptr<control_builder> builder)
+  void register_builder(QString const& typeName, std::unique_ptr<control_builder> builder)
   {
-    builders.insert(std::make_pair(typeName, std::move(builder)));
+    if (!builders.contains(typeName)) builders.insert(std::make_pair(typeName, std::move(builder)));
   }
 
-  QWidget* createControl(
-      QString const& typeName, QWidget* parent, nlohmann::json const& config = {})
+  QWidget* create_control(
+      QString const& typeName, QWidget* parent, QString name, nlohmann::json const& config = {})
   {
-    if (builders.contains(typeName)) { return builders[typeName]->build(parent, config); }
+    if (builders.contains(typeName)) { return builders[typeName]->build(parent, name, config); }
     return new QLabel("Unsupported type: " + typeName, parent);
+  }
+
+  indicators::variant_type get_value_from_control(QString const& typeName, QWidget* widget)
+  {
+    if (builders.contains(typeName)) { return builders[typeName]->get_value(widget); }
+    return {};
   }
 
   private:
@@ -57,21 +63,23 @@ class control_factory
 
 // ----------------------------------------------------------------------------
 static QWidget* build_control(nlohmann::ordered_json const& json, nlohmann::json const& defaults,
-    control_factory& factory, QWidget* parent = nullptr, QString const& prefix = "")
+    control_factory& factory, QWidget* parent = nullptr)
 {
   QWidget* container = new QWidget(parent);
   auto* layout = new QFormLayout(container);
 
+  // for properties, we must use types the Qt metatype system understands, so QVariant
+  QMap<QString, QVariant> param_widgets;
   for (nlohmann::ordered_json::const_iterator it = json.begin(); it != json.end(); ++it)
   {
-    QString name = to_qstring(it.key());
-    QString fullName = prefix.isEmpty() ? name : prefix + "." + name;
+    std::string name = it.key();
+    QString qname = to_qstring(name);
 
     if (it->is_structured())
     {
-      auto config = defaults.contains(it.key()) ? defaults[it.key()] : nlohmann::json{};
-      QWidget* nestedForm = build_control(*it, config, factory, container, fullName);
-      QGroupBox* group = new QGroupBox(name, container);
+      auto config = defaults.contains(name) ? defaults[name] : nlohmann::json{};
+      QWidget* nestedForm = build_control(*it, config, factory, container);
+      QGroupBox* group = new QGroupBox(qname, container);
       auto* groupLayout = new QVBoxLayout(group);
       groupLayout->addWidget(nestedForm);
       layout->addRow(group);
@@ -80,14 +88,15 @@ static QWidget* build_control(nlohmann::ordered_json const& json, nlohmann::json
     {
       QString type = to_qstring(it.value());
       // fetch the user config for this field
-      auto config = defaults.contains(fullName) ? defaults[fullName] : nlohmann::json{};
-      QWidget* control = factory.createControl(type, container, config);
+      auto config = defaults.contains(name) ? defaults[name] : nlohmann::json{};
+      QWidget* control = factory.create_control(type, container, qname, config);
+      param_widgets[qname] = QVariant::fromValue<void*>(control);
       if (config.contains("label"))
         layout->addRow(to_qstring(config["label"].get<std::string>() + ":"), control);
       else
-        layout->addRow(name + ":", control);
+        layout->addRow(qname + ":", control);
     }
   }
-
+  container->setProperty("ParamWidgets", QVariant(param_widgets));
   return container;
 }

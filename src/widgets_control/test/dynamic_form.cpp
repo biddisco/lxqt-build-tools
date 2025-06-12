@@ -17,6 +17,7 @@
 //
 #include "widgets_control/control_builder.hpp"
 #include "widgets_control/control_factory.hpp"
+#include "widgets_control/indicator_json.hpp"
 
 // ----------------------------------------------------------------------------
 nlohmann::ordered_json get_json_for_person()
@@ -37,27 +38,22 @@ int main(int argc, char* argv[])
 {
   QApplication app(argc, argv);
 
-  control_factory factory;
-  factory.registerBuilder("int", std::make_unique<control_builder_int>());
-  factory.registerBuilder("string", std::make_unique<control_builder_string>());
-  factory.registerBuilder("combo", std::make_unique<control_builder_combo>());
+  register_control_factories();
 
-  nested_control_configs defaultConfigs =                            //
-      {                                                              //
-          {"name", {{"placeholder", "Enter full name"}}},            //
-          {"age", {{"min", 0}, {"max", 100}}},                       //
-          {"address.street", {{"placeholder", "Main St"}}},          //
-          {"address.postcode", {{"min", 10000}, {"max", 99999}}},    //
-          {"gender",
-              {
-                  {"placeholder", "please select one"},                        //
-                  {"entries", QStringList{"Male", "Female", "Non-binary"}},    //
-                  {"index", 1}                                                 //
-              }}};
-
-  // QWidget* form = build_control(get_json_for_person(), defaultConfigs, factory);
-  // form->setWindowTitle("Dynamic Person Editor");
-  // form->show();
+  nlohmann::json defaults = {                                                        //
+      {"name", {{"placeholder", "Enter full name"}}},                                //
+      {"age", {{"min", 0}, {"max", 100}, {"value", 35}}},                            //
+      {"address",                                                                    //
+          {{"street", {{"placeholder", "Main St"}}},                                 //
+              {"postcode", {{"min", 10000}, {"max", 99999}, {"value", 12345}}}}},    //
+      {"gender",
+          {{"placeholder", "please select one"},
+              {"entries", std::vector<std::string>{"Male", "Female", "Non-binary"}},
+              {"index", 1}}}};
+  std::cout << get_json_for_person().dump(4) << std::endl << defaults.dump(4) << std::endl;
+  QWidget* widget = build_control(get_json_for_person(), defaults, control_factory::getInstance());
+  widget->setWindowTitle("Dynamic Person Editor");
+  widget->show();
 
   return app.exec();
 }

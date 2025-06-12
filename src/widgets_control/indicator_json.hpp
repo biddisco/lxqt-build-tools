@@ -109,11 +109,10 @@ namespace indicators {
     return json;
   }
 
-  // ----------------------------------------------------------------------------
 }    // namespace indicators
 
 // ----------------------------------------------------------------------------
-static nlohmann::ordered_json get_json_layout_indicator(indicators::algorithm_ptr alg)
+static nlohmann::ordered_json get_json_layout_indicator(indicators::shared_algorithm alg)
 {
   nlohmann::ordered_json json;
   for (auto const& param : alg->get_params())
@@ -130,7 +129,7 @@ static nlohmann::ordered_json get_json_layout_indicator(indicators::algorithm_pt
 }
 
 // ----------------------------------------------------------------------------
-static nlohmann::json get_json_values_indicator(indicators::algorithm_ptr alg)
+static nlohmann::json get_json_values_indicator(indicators::shared_algorithm alg)
 {
   nlohmann::ordered_json json;
   for (auto const& param : alg->get_params())
@@ -143,18 +142,4 @@ static nlohmann::json get_json_values_indicator(indicators::algorithm_ptr alg)
         param);
   }
   return json;
-}
-
-// ----------------------------------------------------------------------------
-static void register_control_factories()
-{
-  control_factory& factory = control_factory::getInstance();
-  factory.registerBuilder("int", std::make_unique<control_builder_int>());
-  factory.registerBuilder("bool", std::make_unique<control_builder_bool>());
-  factory.registerBuilder("double", std::make_unique<control_builder_double>());
-  factory.registerBuilder("string", std::make_unique<control_builder_string>());
-  factory.registerBuilder("combo", std::make_unique<control_builder_combo>());
-  factory.registerBuilder("ohlc_modes", std::make_unique<control_builder_ohlc_mode>());
-  factory.registerBuilder("candle_data", std::make_unique<control_builder_candle_data>());
-  factory.registerBuilder("order_book_param", std::make_unique<control_builder_orderbook>());
 }

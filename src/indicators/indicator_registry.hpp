@@ -13,8 +13,7 @@
 namespace indicators {
 
   // ----------------------------------------------------------------------------
-  using algorithm_ptr = std::shared_ptr<algorithm_base>;
-  using indicator_vector = std::vector<algorithm_ptr>;
+  using indicator_vector = std::vector<shared_algorithm>;
 
   // declaring the indicator vector as extern helps prevent the optimizer removing
   // our initialization routine that insert each indicator type into the vector
@@ -31,10 +30,10 @@ public:
       return instance;
     }
 
-    void register_indicator(algorithm_ptr p) { available_indicators.push_back(p); }
-    void register_arbitrage(algorithm_ptr p) { available_arbitragers.push_back(p); }
+    void register_indicator(shared_algorithm p) { available_indicators.push_back(p); }
+    void register_arbitrage(shared_algorithm p) { available_arbitragers.push_back(p); }
 
-    static algorithm_ptr find_by_name(std::string);
+    static shared_algorithm find_by_name(std::string);
 
 private:
     indicator_registry() = default;

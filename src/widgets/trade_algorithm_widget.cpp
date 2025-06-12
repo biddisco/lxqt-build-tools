@@ -19,11 +19,9 @@
 #include "indicators/trade_currency_exchange.hpp"
 #include "indicators/trade_market_maker.hpp"
 #include "util/stringutils.hpp"
-#include "widgets/indicator_controls.hpp"
 #include "widgets/trade_algorithm_widget.hpp"
 #include "widgets_control/control_builder.hpp"
 #include "widgets_control/control_factory.hpp"
-#include "widgets_control/indicator_fields.hpp"
 #include "widgets_control/indicator_widget.hpp"
 // generated
 #include "ui_trade_algorithm_arbitrage.h"
@@ -67,8 +65,8 @@ ticker::data set_gui_orderbook(order_book_param const& p, int index, QLabel* l1,
 }
 
 // ----------------------------------------------------------------------------
-QDialog* gui_trade_currency_exchange(std::shared_ptr<indicators::algorithm_base> alg,
-    abstract_exchange::exchange_vector exchange_list_)
+QDialog* gui_trade_currency_exchange(
+    indicators::shared_algorithm alg, abstract_exchange::exchange_vector exchange_list_)
 {
   QDialog* algowidget_ = new QDialog(nullptr);
   algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
@@ -146,7 +144,7 @@ QDialog* gui_trade_currency_exchange(std::shared_ptr<indicators::algorithm_base>
   tdata2->orderbook_subscribers_.subscribe(
       "currency2", makeLambda(tdata1, tdata2, ui_->orderbook1, ui_->orderbook2));
 
-  QObject::connect(ui_->execute_btn, &QPushButton::clicked, [=, ui_](bool b) {
+  QObject::connect(ui_->execute_btn, &QPushButton::clicked, [=](bool b) {
     double budget = std::stod(ui_->spend->text().toStdString());
     //
     std::string text = fmt::format("Executing trade {} {}", budget, c1.c2_.code_);
@@ -189,8 +187,8 @@ QDialog* gui_trade_currency_exchange(std::shared_ptr<indicators::algorithm_base>
 }
 
 // ----------------------------------------------------------------------------
-QDialog* gui_trade_market_maker(std::shared_ptr<indicators::algorithm_base> alg,
-    abstract_exchange::exchange_vector exchange_list_)
+QDialog* gui_trade_market_maker(
+    indicators::shared_algorithm alg, abstract_exchange::exchange_vector exchange_list_)
 {
   QDialog* algowidget_ = new QDialog(nullptr);
   algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
@@ -232,8 +230,8 @@ QDialog* gui_trade_market_maker(std::shared_ptr<indicators::algorithm_base> alg,
 }
 
 // ----------------------------------------------------------------------------
-QDialog* gui_trade_arbitrage(std::shared_ptr<indicators::algorithm_base> alg,
-    abstract_exchange::exchange_vector exchange_list_)
+QDialog* gui_trade_arbitrage(
+    indicators::shared_algorithm alg, abstract_exchange::exchange_vector exchange_list_)
 {
   QDialog* algowidget_ = new QDialog(nullptr);
   algowidget_->setProperty("DockPos", QVariant(static_cast<SideBarLocation>(SideBarLeft)));
@@ -320,8 +318,8 @@ QDialog* gui_trade_arbitrage(std::shared_ptr<indicators::algorithm_base> alg,
 // ----------------------------------------------------------------------------
 // given an algorithm : return a widget that represents it, populated with controls
 // for ticker information and options etc etc
-QDialog* trade_widget_factory(std::shared_ptr<indicators::algorithm_base> alg,
-    abstract_exchange::exchange_vector exchange_list_)
+QDialog* trade_widget_factory(
+    indicators::shared_algorithm alg, abstract_exchange::exchange_vector exchange_list_)
 {
   if (dynamic_pointer_cast<indicators::trade_currency_exchange>(alg))
   {
@@ -357,40 +355,14 @@ QDialog* dock_trading_widget(QDialog* algowidget, std::string name)
 }
 
 // ----------------------------------------------------------------------------
-QDialog* create_trade_algorithm_widget(
-    abstract_exchange::exchange_vector exchange_list_, indicators::algorithm_ptr alg)
-{
-  // Take the algorithm and generate gui fields for each parameter
-  nlohmann::json fields = get_json_layout_indicator(alg);
-
-  // build the list of exchange names from the passed in exchange list
-  QStringList qsl;
-  for (auto const& n : exchange_list_) { qsl << to_qstring(n->get_name()); }
-  // set initial parameters for the dialog
-  nlohmann::json defaultConfigs;
-  defaultConfigs["Order-Book-1"]["label"] = "Currency Pairs";
-  auto exchanges =
-      exchange_list_ | ranges::view::transform([](auto const& e) { return e->get_name(); });
-  defaultConfigs["Order-Book-1"]["exchanges"] = exchanges;
-
-  // construct and execute dialog
-  QWidget* form = build_control(fields, defaultConfigs, control_factory::getInstance());
-  QDialog* dlg = new QDialog();
-  QHBoxLayout* HLayout = new QHBoxLayout(dlg);
-  HLayout->addWidget(form);
-  dlg->setLayout(HLayout);
-  auto result = dlg->exec();
-  if (result == QDialog::Accepted) return dlg;
-  return nullptr;
-}
-
-// ----------------------------------------------------------------------------
 QDialog* create_trading_widget(
     abstract_exchange::exchange_vector exchange_list_, indicators::indicator_vector indicator_list)
 {
+  /*
   indicator_widget* widget;
   if (indicator_list.empty())
   {
+    // reuse whichever selection was previously set in the staic var
     static std::size_t available_arbitragers_index{0};
     // use the static lists and indices so that successive calls reuse the selection
     widget = new indicator_widget(indicators::available_arbitragers, available_arbitragers_index);
@@ -408,7 +380,7 @@ QDialog* create_trading_widget(
     }
   }
   QDialog dlg;
-  widget->add_to_dialog(&dlg);
+  widget->add_indicator_to_dialog(&dlg);
 
   auto result = dlg.exec();
   if (result == QDialog::Accepted)
@@ -418,6 +390,7 @@ QDialog* create_trading_widget(
     auto algowidget_ = trade_widget_factory(alg, exchange_list_);
     return dock_trading_widget(algowidget_, alg->get_name());
   }
+*/
   return nullptr;
 }
 

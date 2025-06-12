@@ -22,32 +22,80 @@
 #include "indicators/indicator_types.hpp"
 #include "util/stringutils.hpp"
 #include "widgets_control/control_builder.hpp"
+#include "widgets_control/control_factory.hpp"
 
 // ----------------------------------------------------------------------------
+// function that registers all the default control builders
 // ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-QWidget* control_builder_int::build(QWidget* parent, nlohmann::json const& defaults)
+void register_control_factories()
 {
-  auto* spin = new QSpinBox(parent);
-  if (defaults.contains("min")) spin->setMinimum(defaults["min"].get<int>());
-  if (defaults.contains("max")) spin->setMaximum(defaults["max"].get<int>());
-  if (defaults.contains("value")) spin->setValue(defaults["value"].get<int>());
-  return spin;
+  control_factory& factory = control_factory::getInstance();
+  factory.register_builder("int", std::make_unique<control_builder_int>());
+  factory.register_builder("bool", std::make_unique<control_builder_bool>());
+  factory.register_builder("double", std::make_unique<control_builder_double>());
+  factory.register_builder("string", std::make_unique<control_builder_string>());
+  factory.register_builder("combo", std::make_unique<control_builder_combo>());
+  factory.register_builder("ohlc_modes", std::make_unique<control_builder_ohlc_mode>());
+  factory.register_builder("candle_data", std::make_unique<control_builder_candle_data>());
+  factory.register_builder("order_book_param", std::make_unique<control_builder_orderbook>());
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_bool::build(QWidget* parent, nlohmann::json const& defaults)
+// int
+// ----------------------------------------------------------------------------
+QWidget* control_builder_int::build(QWidget* parent, QString name, nlohmann::json const& defaults)
 {
-  auto* box = new QCheckBox();
+  auto* edit = new QLineEdit(parent);
+  edit->setObjectName(name);
+  int value = 0;
+  int min = 0;
+  int max = 255;
+  // auto* spin = new QSpinBox(parent);
+  if (defaults.contains("min")) min = defaults["min"].get<double>();
+  if (defaults.contains("max")) max = defaults["max"].get<double>();
+  if (defaults.contains("value")) value = defaults["value"].get<double>();
+  edit->setValidator(new QIntValidator(min, max, edit));
+  edit->setText(QString::number(value));
+  return edit;
+}
+
+// ----------------------------------------------------------------------------
+indicators::variant_type control_builder_int::get_value(QWidget* widget)
+{
+  bool ok;
+  QLineEdit* edit = static_cast<QLineEdit*>(widget);
+  int num = edit->text().toInt(&ok);
+  if (!ok) { throw std::runtime_error("Int conversion failed"); }
+  return indicators::param<int>(edit->objectName(), num);
+}
+
+// ----------------------------------------------------------------------------
+// bool
+// ----------------------------------------------------------------------------
+QWidget* control_builder_bool::build(QWidget* parent, QString name, nlohmann::json const& defaults)
+{
+  auto* box = new QCheckBox(parent);
+  box->setObjectName(name);
   if (defaults.contains("value")) box->setChecked(defaults["value"].get<bool>());
   return box;
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_double::build(QWidget* parent, nlohmann::json const& defaults)
+indicators::variant_type control_builder_bool::get_value(QWidget* widget)
+{
+  QCheckBox* box = static_cast<QCheckBox*>(widget);
+  bool checked = box->isChecked();
+  return indicators::param<bool>(box->objectName(), checked);
+}
+
+// ----------------------------------------------------------------------------
+// double
+// ----------------------------------------------------------------------------
+QWidget* control_builder_double::build(
+    QWidget* parent, QString name, nlohmann::json const& defaults)
 {
   auto* edit = new QLineEdit(parent);
+  edit->setObjectName(name);
   double value = 0;
   double min = -10.0E9;
   double max = 10.0E9;
@@ -62,9 +110,23 @@ QWidget* control_builder_double::build(QWidget* parent, nlohmann::json const& de
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_string::build(QWidget* parent, nlohmann::json const& defaults)
+indicators::variant_type control_builder_double::get_value(QWidget* widget)
+{
+  bool ok;
+  QLineEdit* edit = static_cast<QLineEdit*>(widget);
+  double num = edit->text().toDouble(&ok);
+  if (!ok) { throw std::runtime_error("Double conversion failed"); }
+  return indicators::param<double>(edit->objectName(), num);
+}
+
+// ----------------------------------------------------------------------------
+// string
+// ----------------------------------------------------------------------------
+QWidget* control_builder_string::build(
+    QWidget* parent, QString name, nlohmann::json const& defaults)
 {
   auto* edit = new QLineEdit(parent);
+  edit->setObjectName(name);
   if (defaults.contains("placeholder"))
     edit->setPlaceholderText(to_qstring(defaults["placeholder"].get<std::string>()));
   if (defaults.contains("value")) edit->setText(to_qstring(defaults["value"].get<std::string>()));
@@ -72,9 +134,19 @@ QWidget* control_builder_string::build(QWidget* parent, nlohmann::json const& de
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_combo::build(QWidget* parent, nlohmann::json const& defaults)
+indicators::variant_type control_builder_string::get_value(QWidget* widget)
+{
+  QLineEdit* edit = static_cast<QLineEdit*>(widget);
+  return indicators::param<std::string>(edit->objectName(), edit->text().toStdString());
+}
+
+// ----------------------------------------------------------------------------
+// combo
+// ----------------------------------------------------------------------------
+QWidget* control_builder_combo::build(QWidget* parent, QString name, nlohmann::json const& defaults)
 {
   auto* combo = new QComboBox(parent);
+  combo->setObjectName(name);
   if (defaults.contains("entries"))
   {
     combo->addItems(to_qstringlist(defaults["entries"].get<std::vector<std::string>>()));
@@ -92,17 +164,40 @@ QWidget* control_builder_combo::build(QWidget* parent, nlohmann::json const& def
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_ohlc_mode::build(QWidget* parent, nlohmann::json const& defaults)
+indicators::variant_type control_builder_combo::get_value(QWidget* widget)
 {
-  // just use a combo box for now
-  auto builder = control_builder_combo();
-  return builder.build(parent, defaults);
+  QComboBox* combo = static_cast<QComboBox*>(widget);
+  return indicators::param<int>(combo->objectName(), combo->currentIndex());
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_candle_data::build(QWidget* parent, nlohmann::json const& defaults)
+// ohlc_mode
+// ----------------------------------------------------------------------------
+QWidget* control_builder_ohlc_mode::build(
+    QWidget* parent, QString name, nlohmann::json const& defaults)
+{
+  // just use a combo box for now
+  auto builder = control_builder_combo();
+  return builder.build(parent, name, defaults);
+}
+
+// ----------------------------------------------------------------------------
+indicators::variant_type control_builder_ohlc_mode::get_value(QWidget* widget)
+{
+  auto builder = control_builder_combo();
+  int index = std::get<indicators::param<int>>(builder.get_value(widget)).get();
+  return indicators::param<ohlc_modes>(
+      widget->objectName(), magic_enum::enum_value<ohlc_modes>(index));
+}
+
+// ----------------------------------------------------------------------------
+// candle_data
+// ----------------------------------------------------------------------------
+QWidget* control_builder_candle_data::build(
+    QWidget* parent, QString name, nlohmann::json const& defaults)
 {
   QFrame* widget = new QFrame(parent);
+  widget->setObjectName(name);
   QVBoxLayout* layout = new QVBoxLayout(widget);
   widget->setLayout(layout);
 
@@ -120,31 +215,46 @@ QWidget* control_builder_candle_data::build(QWidget* parent, nlohmann::json cons
   layout->addWidget(combo);
 
   // combo box of time ranges to choose from
-  QComboBox* const ticker = new QComboBox(widget);
+  QComboBox* const duration = new QComboBox(widget);
   QStringList durations;
   if (defaults.contains("durations"))
     durations = to_qstringlist(defaults["durations"].get<std::vector<std::string>>());
   else
     for (auto const& s : candle_data::durations) { durations.push_back(s); }
-  ticker->setObjectName("durations");
-  ticker->addItems(durations);
-  if (defaults.contains("duration"))
-    ticker->setCurrentText(to_qstring(defaults["duration"].get<std::string>()));
-  layout->addWidget(ticker);
+  duration->setObjectName("duration");
+  duration->addItems(durations);
+  if (defaults.contains("durations"))
+    duration->setCurrentText(to_qstring(defaults["duration"].get<std::string>()));
+  layout->addWidget(duration);
   return widget;
 }
 
 // ----------------------------------------------------------------------------
-QWidget* control_builder_orderbook::build(QWidget* parent, nlohmann::json const& defaults)
+indicators::variant_type control_builder_candle_data::get_value(QWidget* widget)
 {
-  QFrame* widget = new QFrame();
+  QComboBox* resolution = widget->findChild<QComboBox*>("resolution");
+  candle_res res = ohlc_data_resolutions::available_resolutions()[resolution->currentIndex()];
+
+  QComboBox* duration = widget->findChild<QComboBox*>("duration");
+  std::string s = duration->currentText().toStdString();
+  std::uint64_t samples = candle_data::duration(res, s);
+  return indicators::param<candle_data>(widget->objectName(), {res, samples});
+}
+
+// ----------------------------------------------------------------------------
+// order_book
+// ----------------------------------------------------------------------------
+QWidget* control_builder_orderbook::build(
+    QWidget* parent, QString name, nlohmann::json const& defaults)
+{
+  QFrame* widget = new QFrame(parent);
+  widget->setObjectName(name);
   QVBoxLayout* layout = new QVBoxLayout(widget);
-  widget->setObjectName("OrderBookWidget");
   widget->setLayout(layout);
 
   // put exchange names into the combox box
   QComboBox* const exchanges = new QComboBox(widget);
-  exchanges->setObjectName("Exchange");
+  exchanges->setObjectName("exchange");
   layout->addWidget(exchanges);
   if (defaults.contains("exchanges"))
   {
@@ -160,16 +270,16 @@ QWidget* control_builder_orderbook::build(QWidget* parent, nlohmann::json const&
 
   // create combo for 1st ticker selection
   std::vector<QComboBox*> qtickers;
-  QComboBox* ticker1 = new QComboBox(widget);
-  ticker1->setObjectName(fmt::format("Ticker_1"));
-  layout->addWidget(ticker1);
-  qtickers.push_back(ticker1);
+  QComboBox* ticker0 = new QComboBox(widget);
+  ticker0->setObjectName(fmt::format("ticker-0"));
+  layout->addWidget(ticker0);
+  qtickers.push_back(ticker0);
 
   // create combo for 2nd ticker selection
-  QComboBox* ticker2 = new QComboBox(widget);
-  ticker2->setObjectName(fmt::format("Ticker_2"));
-  layout->addWidget(ticker2);
-  qtickers.push_back(ticker2);
+  QComboBox* ticker1 = new QComboBox(widget);
+  ticker1->setObjectName(fmt::format("ticker-1"));
+  layout->addWidget(ticker1);
+  qtickers.push_back(ticker1);
 
   // callback triggered when exchange combo is modified
   // this lambda will set the ticker combo using the tickers available from the exchanges
@@ -195,31 +305,61 @@ QWidget* control_builder_orderbook::build(QWidget* parent, nlohmann::json const&
   QWidget::connect(exchanges, &QComboBox::currentIndexChanged, widget,
       [=](int index) { set_ticker_strings(index); });
 
-  // fill tickers with user supplied strings
-  if (defaults.contains("tickers1"))
+  // fill tickers with user supplied strings if requested
+  if (defaults.contains("tickers-0"))
   {
-    auto tickers = to_qstringlist(defaults["tickers1"].get<std::vector<std::string>>());
+    auto tickers = to_qstringlist(defaults["tickers-0"].get<std::vector<std::string>>());
+    widget->setProperty("TSize", QVariant(static_cast<int>(tickers.size())));
+    ticker0->addItems(tickers);
+  }
+
+  if (defaults.contains("tickers-1"))
+  {
+    auto tickers = to_qstringlist(defaults["tickers-1"].get<std::vector<std::string>>());
     widget->setProperty("TSize", QVariant(static_cast<int>(tickers.size())));
     ticker1->addItems(tickers);
-    if (defaults.contains("tickers1_index"))
-    {
-      ticker1->setCurrentIndex(defaults["tickers1_index"].get<int>());
-    }
   }
 
-  if (defaults.contains("tickers2"))
-  {
-    auto tickers = to_qstringlist(defaults["tickers2"].get<std::vector<std::string>>());
-    widget->setProperty("TSize", QVariant(static_cast<int>(tickers.size())));
-    ticker2->addItems(tickers);
-    if (defaults.contains("tickers2_index"))
-    {
-      ticker2->setCurrentIndex(defaults["tickers2_index"].get<int>());
-    }
-  }
-
+  // trigger the fill of combo boxes for currency pairs if possible
   // trigger callback to initially setup combo items if user did not supply any
-  if (!defaults.contains("tickers1") && !defaults.contains("tickers2")) set_ticker_strings(0);
+  if (!defaults.contains("tickers-0") && !defaults.contains("tickers-1")) set_ticker_strings(0);
+
+  // if the user has requested initial values, set them up
+  if (defaults.contains("tickers-0_index"))
+    ticker0->setCurrentIndex(defaults["tickers-0_index"].get<int>());
+  if (defaults.contains("tickers-1_index"))
+    ticker1->setCurrentIndex(defaults["tickers-1_index"].get<int>());
+  //
+  if (defaults.contains("tickers-0_value"))
+  {
+    QString value = to_qstring(defaults["tickers-0_value"].get<std::string>());
+    if (ticker0->findText(value) >= 0) ticker0->setCurrentText(value);
+  }
+  if (defaults.contains("tickers-1_value"))
+  {
+    QString value = to_qstring(defaults["tickers-1_value"].get<std::string>());
+    if (ticker1->findText(value) >= 0) ticker1->setCurrentText(value);
+  }
 
   return widget;
+}
+
+// ----------------------------------------------------------------------------
+indicators::variant_type control_builder_orderbook::get_value(QWidget* widget)
+{
+  QFrame* f = dynamic_cast<QFrame*>(widget);
+  QComboBox* e = f->findChild<QComboBox*>("exchange");
+  std::string exch = e->currentText().toStdString();
+  // int num_tickers = f->property("TSize").value<int>();
+  //
+  currency_pair::list tickers;
+  for (int i = 0; i < 2; ++i)
+  {
+    QComboBox* t = f->findChild<QComboBox*>(fmt::format("ticker-{}", i));
+    std::string s = t->currentText().toStdString();
+    currency_pair cp = string_to_pair(s, "-");
+    tickers.push_back(cp);
+  }
+  //
+  return indicators::param<order_book_param>(widget->objectName(), {exch, tickers});
 }

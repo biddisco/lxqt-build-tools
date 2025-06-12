@@ -104,7 +104,7 @@ class bitstamp_network : public abstract_exchange
   // ---------------------------------------
   // bitstamp wallets can be used for these trade algorithms
   // ---------------------------------------
-  virtual trade_action_list supported_trade_actions()
+  trade_action_list supported_trade_actions() override
   {
     return trade_action_list{
         supported_trade_actions::currency_exchange,

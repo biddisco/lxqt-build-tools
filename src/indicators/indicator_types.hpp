@@ -40,7 +40,8 @@ namespace indicators {
   template <typename... Ts>
   struct typelist;
 
-  using supported_types = typelist<double, int, ohlc_modes, bool, candle_data, order_book_param>;
+  using supported_types =
+      typelist<double, int, std::string, ohlc_modes, bool, candle_data, order_book_param>;
 
   // ---------------------------------------
   template <typename T>

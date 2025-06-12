@@ -31,7 +31,7 @@ namespace indicators {
   indicator_vector available_indicators;
   indicator_vector available_arbitragers;
 
-  algorithm_ptr indicator_registry::find_by_name(std::string name)
+  shared_algorithm indicator_registry::find_by_name(std::string name)
   {
     auto it = std::find_if(available_indicators.begin(), available_indicators.end(),
         [&](auto it) { return it->get_name() == name; });

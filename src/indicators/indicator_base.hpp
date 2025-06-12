@@ -19,8 +19,8 @@
 // ----------------------------------------------------------------------------
 #define FACTORY_INDICATOR_CREATE(type, operator_type)                                              \
   public:                                                                                          \
-  std::shared_ptr<indicator_base> create(                                                          \
-      algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc) const override            \
+  shared_indicator create(algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc)       \
+      const override                                                                               \
   {                                                                                                \
     auto result = std::make_shared<type>();                                                        \
     *result = *dynamic_cast<type*>(alg);                                                           \
@@ -41,6 +41,8 @@
 
 // ----------------------------------------------------------------------------
 namespace indicators {
+  class indicator_base;
+  using shared_indicator = std::shared_ptr<indicator_base>;
 
   struct candle_input_data
   {
@@ -97,7 +99,7 @@ public:
 
     // ----------------------------------------------------------------------------
     // factor create function
-    virtual std::shared_ptr<indicator_base> create(
+    virtual shared_indicator create(
         algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc) const = 0;
 
     // ----------------------------------------------------------------------------

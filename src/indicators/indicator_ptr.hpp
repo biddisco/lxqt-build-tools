@@ -29,7 +29,7 @@ namespace indicators {
     indicators::algorithm_base* ptr() const { return algorithm_.get(); }
 
     // ----------------------------------------------------------------------------
-    indicator_ptr(algorithm_ptr ap, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_)
+    indicator_ptr(shared_algorithm ap, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_)
     {
       // if this pointer is an indicator_base type
       indicator_base* ip = dynamic_cast<indicator_base*>(ap.get());
@@ -46,7 +46,7 @@ namespace indicators {
     ~indicator_ptr() { std::cout << "~indicator_ptr " << algorithm_->get_name() << std::endl; }
 
     // ----------------------------------------------------------------------------
-    algorithm_ptr algorithm_;
+    shared_algorithm algorithm_;
     indicator_plot* plot{nullptr};
     std::vector<QwtPlotCurve*> curves;
     bool visibility_{true};

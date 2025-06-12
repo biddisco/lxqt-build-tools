@@ -14,57 +14,92 @@
 // Grox
 #include "data/ohlc_dataset.hpp"
 #include "indicators/indicator_params.hpp"
-#include "widgets/indicator_controls.hpp"
+#include "ui_indicator_widget.h"
 #include "widgets_control/control_builder.hpp"
 #include "widgets_control/control_factory.hpp"
-#include "widgets_control/control_field_data.hpp"
-#include "widgets_control/indicator_fields.hpp"
+#include "widgets_control/indicator_json.hpp"
 #include "widgets_control/indicator_widget.hpp"
 
 // ----------------------------------------------------------------------------
-indicator_widget::indicator_widget(indicators::indicator_vector const& i, std::size_t& index)
-  : QWidget()
-  , indicators_(i)
-  , index_(index)
+// Create a widget with a combo selection for each indicator to choose from
+// when selected, build a control with the paramaters for the indicator
+indicator_widget::indicator_widget(indicators::indicator_vector const& vec, std::size_t& index)
+  : QDialog()
+  , indicators_(vec)
+  , algorithm_{}
+  , indicator_widget_(nullptr)
 {
-  ui.setupUi(this);
+  ui = new Ui::indicator_widget();
+  ui->setupUi(this);
   this->setWindowTitle("Indicator");
 
   // setup algorithms combobox
   for (auto const& a : indicators_)
   {
     QString s = a->get_name().c_str();
-    // std::visit([](auto const& obj) { return obj.get_name(); }, a).c_str();
-    ui.algorithm->addItem(s);
+    ui->algorithm->addItem(s);
   }
   // when algorithm is changed, rebuild gui
   connect(
-      ui.algorithm, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-      [this](int index) {
-        index_ = index;
-        refresh_gui(index);
+      ui->algorithm, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+      [&, this](int i) {
+        index = i;    // make sure the global index is updated for next time the dialog is opened
+        refresh_gui(indicators_[i]);
       },
       Qt::QueuedConnection);
 
   // build gui for first/last used algorithm
-  ui.algorithm->setCurrentIndex(index_);
-  refresh_gui(index_);
+  ui->algorithm->setCurrentIndex(index);
+  refresh_gui(indicators_[index]);
 }
 
 // ----------------------------------------------------------------------------
-indicator_widget::~indicator_widget() {}
+// Create a widget dialog dedicated to only a soiongle algorithm
+indicator_widget::indicator_widget(indicators::shared_algorithm alg, nlohmann::json values)
+  : QDialog()
+  , indicators_{}
+  , algorithm_(alg)
+  , indicator_widget_(nullptr)
+{
+  ui = new Ui::indicator_widget();
+  ui->setupUi(this);
+  this->setWindowTitle("Indicator");
+
+  // hide algorithms combobox
+  ui->algorithm->hide();
+
+  // build gui for first/last used algorithm
+  refresh_gui(alg, values);
+}
+
+// ----------------------------------------------------------------------------
+indicator_widget::~indicator_widget()
+{
+  delete indicator_widget_;
+  delete ui;
+}
 
 // ----------------------------------------------------------------------------
 // return a variant containing a copy of the selected algorithm
 // including all parameters set by the user in the dialog
-indicators::algorithm_ptr indicator_widget::get_algorithm()
+indicators::shared_algorithm indicator_widget::get_algorithm()
 {
-  int index = ui.algorithm->currentIndex();
+  int index = ui->algorithm->currentIndex();
+  if (index == -1) return algorithm_;
   return indicators_[index];
 }
 
 // ----------------------------------------------------------------------------
-void indicator_widget::add_to_dialog(QDialog* dlg)
+int indicator_widget::execute_as_dialog()
+{
+  add_indicator_to_dialog(this);
+  return exec();
+}
+
+// ----------------------------------------------------------------------------
+// Insert the widget created by this class into an existing dialog
+// add ok, cancel reset buttons to the dialog along with the controls
+void indicator_widget::add_indicator_to_dialog(QDialog* dlg)
 {
   // add ok, cancel buttons
   QDialogButtonBox* buttonBox = new QDialogButtonBox(
@@ -86,7 +121,7 @@ void indicator_widget::add_to_dialog(QDialog* dlg)
       dlg->reject();
     }
   });
-  ui.buttons_layout->addWidget(buttonBox);
+  ui->buttons_layout->addWidget(buttonBox);
   //
   QVBoxLayout* VLayout = new QVBoxLayout(dlg);
   VLayout->addWidget(this);
@@ -94,88 +129,40 @@ void indicator_widget::add_to_dialog(QDialog* dlg)
 }
 
 // ----------------------------------------------------------------------------
-void clearLayout(QLayout* layout, bool deleteWidgets = true)
+// from the indicator algorithm, generate the gui controls
+QWidget* create_indicator_control(indicators::shared_algorithm alg, nlohmann::json values = {})
 {
-  while (QLayoutItem* item = layout->takeAt(0))
-  {
-    if (deleteWidgets)
-    {
-      if (QWidget* widget = item->widget()) widget->deleteLater();
-    }
-    if (QLayout* childLayout = item->layout()) clearLayout(childLayout, deleteWidgets);
-    delete item;
-  }
-  delete layout;
+  // @TODO: only need to do this once on startup
+  register_control_factories();
+  //
+  nlohmann::ordered_json controls = get_json_layout_indicator(alg);
+  if (values.size() == 0) values = get_json_values_indicator(alg);
+  //
+  auto widget = build_control(controls, values, control_factory::getInstance());
+  widget->setWindowTitle(to_qstring(alg->get_name()));
+  return widget;
 }
 
 // ----------------------------------------------------------------------------
-template <typename P>
-int get_column(P const& param)
+// populate the widget with controls for the indicator algorithm parameters
+void indicator_widget::refresh_gui(indicators::shared_algorithm alg, nlohmann::json values)
 {
-  return 1;
-}
-
-template <>
-int get_column(indicators::param<candle_res> const& param)
-{
-  return 0;
-}
-
-// ----------------------------------------------------------------------------
-void indicator_widget::refresh_gui(int index)
-{
-  // wipe the contents of the dialog
-  QLayout* oldlayout = ui.algo_params->layout();
-  if (oldlayout) clearLayout(oldlayout, true);
-  param_widgets_.clear();
-  std::array<int, 2> counts = {0, 0};
-
-  // get the currently selected algorithm
-  auto alg = indicators_[index];
-
-  // set the desscription field
+  // set the description field
   std::string desc = alg->get_description();
-  ui.description->setText(QString(desc.c_str()));
+  ui->description->setText(QString(desc.c_str()));
 
-  // main layout for widgets
-  QGridLayout* layout = new QGridLayout;
+  // wipe contents: transfer layout to temp widget and children will be deleted on destruction
+  if (ui->algo_params->layout()) QWidget().setLayout(ui->algo_params->layout());
 
-  // from the indicator algorithm, generate the gui controls
-  nlohmann::json fields = get_json_layout_indicator(alg);
-  std::cout << "==========" << std::endl << to_qstring(fields).toStdString() << std::endl;
-  QWidget* form = build_control(fields, {}, control_factory::getInstance());
-  layout->addWidget(form, counts[1], 1 * 2);
-  counts[1]++;
-
-  int nparams = alg->get_params().size();
-  // std::visit([](auto const& obj) { return obj.get_params().size(); }, alg);
-  for (int i = 0; i < nparams; ++i)
-  {
-    // get the i-th param from the variant algorithm list
-    auto p = alg->get_params()[i];
-
-    // create a widget for the parameter, variant unwrapped to correct Type in v
-    std::visit(
-        [&](auto const& v) {
-          // draw datasets in left column, widgets in right
-          int column = get_column(v);
-
-          // get label for parameter
-          QLabel* const label = new QLabel(v.name());
-          layout->addWidget(label, counts[column], column * 2);
-
-          // get a widget to represent the parameter (based on param type)
-          QWidget* widget = get_widget(v.get());
-          layout->addWidget(widget, counts[column], column * 2 + 1);
-          param_widgets_ << widget;
-          counts[column]++;
-        },
-        p);
-  }
-  ui.algo_params->setLayout(layout);
+  // create a new main layout for algo_params widgets
+  QVBoxLayout* layout = new QVBoxLayout(ui->algo_params);
+  // get the currently selected algorithm
+  indicator_widget_ = create_indicator_control(alg, values);
+  layout->addWidget(indicator_widget_);
   // compute the new best guess size
   adjustSize();
   // "layout takes responsibility to automatically resize when widgets are shown or hidden"
+  // SetFixedSize: The main widget's size is set to sizeHint(); it cannot be resized at all.
   if (parentWidget()) { parentWidget()->layout()->setSizeConstraint(QLayout::SetFixedSize); }
 }
 
@@ -184,21 +171,32 @@ void indicator_widget::refresh_gui(int index)
 // so that they persist and are there again next time the dialog is opened
 void indicator_widget::update_parameters()
 {
-  int index = ui.algorithm->currentIndex();
-  // get a reference to indicator in the global indicators list
-  auto& alg = indicators_[index];
+  auto alg = get_algorithm();
 
   // create a new param list from the gui widget
   indicators::param_list new_params = alg->get_params();
+  QMap<QString, QVariant> widget_map =
+      indicator_widget_->property("ParamWidgets").value<QMap<QString, QVariant>>();
 
+  control_factory& factory = control_factory::getInstance();
   for (int i = 0; i < new_params.size(); ++i)
   {
+    // get the name of the param
+    std::string ptype;
+    QString pname;
+    std::visit(
+        [&](auto const& v) {
+          pname = v.name_;
+          ptype = grox::debug::print_type<typeof(v.val_)>();
+        },
+        new_params[i]);
     // get the widget that represents the param
-    QWidget* widget = param_widgets_[i];
-
-    // update the param value from the widget
-    std::visit([i, widget](auto& p) { set_param(widget, p); }, new_params[i]);
+    QWidget* param_widget = static_cast<QWidget*>(widget_map[pname].value<void*>());
+    new_params[i] = factory.get_value_from_control(to_qstring(ptype), param_widget);
   }
+
+  // update the param value from the widget
+  // std::visit([i, widget](auto& p) { set_param(widget, p); }, new_params[i]);
 
   // overwrite the original params with the new default / updated values
   alg->set_params(new_params);

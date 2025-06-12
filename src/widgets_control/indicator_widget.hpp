@@ -10,36 +10,44 @@
 //
 #include "data/ohlc_data_resolutions.hpp"
 #include "indicators/algorithm_base.hpp"
+#include "indicators/indicator_base.hpp"
 #include "indicators/indicator_params.hpp"
 #include "indicators/indicator_registry.hpp"
-#include "ui_indicator_widget.h"
 
-class indicator_widget : public QWidget
+namespace Ui {
+  class indicator_widget;
+}    // namespace Ui
+
+class indicator_widget : public QDialog
 {
   Q_OBJECT
 
   public:
-  indicator_widget(indicators::indicator_vector const& i, std::size_t& index);
+  // create a dialog that has a selection of algorithms to choose from
+  indicator_widget(indicators::indicator_vector const& vec, std::size_t& index);
+  // create a dialog that only has a single algorithm instantiated
+  indicator_widget(indicators::shared_algorithm alg, nlohmann::json values = {});
+  // do not allow termporary vectors to be passed in
+  indicator_widget(indicators::indicator_vector&& i, std::size_t& index) = delete;
   ~indicator_widget();
 
   // return a variant containing a copy of the selected algorithm
   // including all parameters set by the user in the dialog
-  indicators::algorithm_ptr get_algorithm();
+  indicators::shared_algorithm get_algorithm();
 
-  void add_to_dialog(QDialog* dlg);
-
-  QVector<QWidget*>& get_param_widgets() { return param_widgets_; }
+  int execute_as_dialog();
 
   protected:
   void update_parameters();
+  void add_indicator_to_dialog(QDialog* dlg);
 
   private slots:
-  void refresh_gui(int index);
+  void refresh_gui(indicators::shared_algorithm alg, nlohmann::json values = {});
 
   private:
-  Ui::indicator_widget ui;
+  Ui::indicator_widget* ui;
   //
   indicators::indicator_vector const& indicators_;
-  std::size_t& index_;
-  QVector<QWidget*> param_widgets_;
+  indicators::shared_algorithm algorithm_;
+  QWidget* indicator_widget_;
 };
