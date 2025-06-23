@@ -60,7 +60,10 @@ namespace indicators {
       os << p.name_.toStdString() << " " << p.get();
       return os;
     }
-    friend nlohmann::json to_json(param<T> const& p);
+    // strictly we should have this friend declaration, but it triggers warnings
+    // "declares a non-template function [-Wnon-template-friend]"
+    // since all members are public in the struct, we can omit it for now
+    // friend nlohmann::json to_json(param<T> const& p);
   };
 
   template <typename T>
