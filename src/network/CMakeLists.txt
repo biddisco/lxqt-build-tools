@@ -1,5 +1,7 @@
 find_package(Qt6 REQUIRED COMPONENTS Core WebSockets)
 
+find_package(UUID REQUIRED)
+
 set(grox_network_HDRS evp-encrypt.hpp qwebsocket_client.hpp qhttp-request-client.hpp
                       qwebsocket_session.hpp
 )
