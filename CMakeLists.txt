@@ -179,6 +179,11 @@ find_package(OpenSSL REQUIRED)
 find_package(HDF5 REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
 
 # ------------------------------------------------------------------------------
+# HighFive HDF5 library
+# ------------------------------------------------------------------------------
+find_package(HighFive REQUIRED)
+
+# ------------------------------------------------------------------------------
 # Build/Download qwt
 # ------------------------------------------------------------------------------
 get_external_project(
@@ -226,23 +231,6 @@ get_external_project(
   GIT_TAG
   "master"
   DO_NOT_BUILD
-)
-
-# ------------------------------------------------------------------------------
-# Build/Download HighFive hdf5 c++ library
-# ------------------------------------------------------------------------------
-set(HIGHFIVE_FIND_HDF5 OFF)
-set(HIGHFIVE_UNIT_TESTS OFF CACHE STRING "HighFive unit testing")
-set(HIGHFIVE_BUILD_DOCS OFF CACHE BOOL "Build Docs")
-set(HIGHFIVE_EXAMPLES OFF CACHE BOOL "Compile examples")
-
-get_external_project(
-  PROJECT_NAME
-  "HighFive"
-  GIT_REPO
-  "https://github.com/BlueBrain/HighFive.git"
-  GIT_TAG
-  "master"
 )
 
 # ------------------------------------------------------------------------------
