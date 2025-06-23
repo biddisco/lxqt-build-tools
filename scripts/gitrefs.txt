@@ -1,14 +1,13 @@
 b9815104e787febc7e7483f92d79e0df52468b46 /home/biddisco/src/grox/extern/QuantLib/.git
-0ffe65700c50c8175a80b804e579df7b4ee99da3 /home/biddisco/src/grox/extern/aqtinstall/.git
-47a4a0f326230fa6718c29a68596860f0ef16460 /home/biddisco/src/grox/extern/Qt-Advanced-Docking-System/.git
+b789314264ceb3d2e656d363939a42a952a79ccd /home/biddisco/src/grox/extern/aqtinstall/.git
+3ad8030caf9d914bf6188cc5b3feef720b999676 /home/biddisco/src/grox/extern/Qt-Advanced-Docking-System/.git
 3b3f46801103d0323a52f14746d14eee629cd3a9 /home/biddisco/src/grox/extern/rippled/.git
 15059fe6fac848f89adf9f64ce98c37be65eef77 /home/biddisco/src/grox/extern/qt6-docker/.git
 5c47c089897ed335786f4befcc3d0e7fe04288fb /home/biddisco/src/grox/extern/sean-parent-concept-based-polymorphism/.git
-2c2644a75956894cd4d436be9ec2e52a23b76d7a /home/biddisco/src/grox/extern/HighFive/.git
 1304079edbe62c8c9e528de8ee0cf1a1119724dc /home/biddisco/src/grox/extern/lxqt-build-tools/.git
 a413fcc9c46a020a746907136a384c227f3cd095 /home/biddisco/src/grox/extern/magic_enum/.git
 196177321cb65b4351a4790bd17c6bed6ddfe5c0 /home/biddisco/src/grox/extern/qwt/.git
-1fd5bd0e44cc1a3f14e5e5d3336886c40c070a01 /home/biddisco/src/grox/extern/pika/.git
+13ca4a2968876e44cc9688a7aed7fb3c15044401 /home/biddisco/src/grox/extern/pika/.git
 d31ba8ed7e636c57cb9085ed3a8450d998e6b8a5 /home/biddisco/src/grox/extern/inshpect/.git
 24bcdffe0097cf28bb66ea4dcc44bb3f7cdd8233 /home/biddisco/src/grox/extern/libunifex-with-qt/.git
 8bc7c7f06fe39831dea6852407ebe7f6be8fa9fd /home/biddisco/src/grox/extern/stdexec/.git

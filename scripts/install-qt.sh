@@ -12,7 +12,7 @@ fi
 # https://github.com/miurahr/aqtinstall
 
 export AQT_VERSION="aqtinstall==3.2.0"
-export QT_VERSION=6.8.2
+export QT_VERSION=6.8.3
 export QT_PATH=/opt/Qt
 export QT_GCC=${QT_PATH}/${QT_VERSION}/gcc_64 \
 
