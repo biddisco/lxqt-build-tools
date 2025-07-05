@@ -13,6 +13,7 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 //
+#include <QTimeZone>
 #include <QwtDateScaleDraw>
 #include <QwtDateScaleEngine>
 #include <QwtPlot>
@@ -148,7 +149,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   // find difference between local time and UTC, for 'correct' date/time axis
   QDateTime local(QDateTime::currentDateTime());
   QDateTime UTC(local.toUTC());
-  QDateTime dt(UTC.date(), UTC.time(), Qt::LocalTime);
+  QDateTime dt(UTC.date(), UTC.time(), QTimeZone());    // Qt::LocalTime);
 
   // X axis : setup date/time axis scaling and tick draw
   timescaleDraw_ = new ohlc_date_scaledraw(Qt::TimeSpec::OffsetFromUTC);
