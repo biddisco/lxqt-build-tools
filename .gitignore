@@ -2,6 +2,7 @@
 extern/
 python/transactions/bitstamp-data
 python/transactions/grox-data
+python/analysis
 CMakeLists.txt.user
 __pycache__
 xrpl-dev-portal

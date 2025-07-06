@@ -1,4 +1,6 @@
-# for use when debugging scriptis for parsing json etc
+# for use when debugging scripts for parsing json etc
+# removes all files that are generated or downloaded, 
+# but be sure to have a master copy somewhere of known csv/json transactions 
 
 rm ./transactions/grox-data/*.csv
 rm ./transactions/grox-data/*.pkl

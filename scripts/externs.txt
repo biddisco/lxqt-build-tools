@@ -3,20 +3,11 @@ pushd .
 #
 # record existing git refs in case updates cause breakage
 #
+find . -maxdepth 2 -type d -name .git -exec bash -c 'DIR=$1; SHA=$(git --git-dir $DIR log --format=format:"%H " HEAD -1); echo "$SHA" "$(dirname $DIR)"' _ {} \;
+
 find $HOME/src/grox/extern -maxdepth 2 -type d -name .git -exec git --git-dir {} log --format=format:"%H " HEAD -1 \; -print > $HOME/src/grox/scripts/gitrefs.txt
 
-
-# Build Qt-Creator
-# https://wiki.qt.io/Building_Qt_Creator_from_Git_on_Ubuntu_22.04
-
-# json header only
-# curl https://raw.githubusercontent.com/nlohmann/json/develop/single_include/nlohmann/json.hpp -o ./extern/nlohmann/json.hpp
-
 # update all externs
-printf "\n#---------------------------"
-echo "HighFive"
-cd $HOME/src/grox/extern/HighFive/
-pwd && git branch && git pull
 
 printf "\n#---------------------------"
 echo "QDarkStyleSheet"
