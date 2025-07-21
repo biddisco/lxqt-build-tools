@@ -117,7 +117,7 @@ int64_t ohlc_dataset::validate_ohlc(
 
 // ----------------------------------------------------------------------------
 // downsample from this (res_hi) to res_lo
-ohlc_dataset* ohlc_dataset::downsample(candle_res res_lo)
+ohlc_dataset* ohlc_dataset::downsample(candle_res res_lo) const
 {
   ohlc_dataset* result = new ohlc_dataset(res_lo, ticker_str_);
   result->downsample_update(this);
@@ -126,7 +126,7 @@ ohlc_dataset* ohlc_dataset::downsample(candle_res res_lo)
 
 // ----------------------------------------------------------------------------
 // update this dataset by resampling new candles from another dataset
-ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset* other)
+ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset const* other)
 {
   if (other->data().empty()) return this;
 

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <map>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 //
@@ -39,7 +40,7 @@ class ohlc_dataset_view
 
   void read_from_disk();
 
-  std::vector<double> get_dataset_resolutions();
+  std::vector<double> get_dataset_resolutions() const;
 
   void add_dataset(double resolution, ohlc_dataset* new_data) { candles_[resolution] = new_data; }
 
@@ -57,7 +58,7 @@ class ohlc_dataset_view
     return nullptr;
   }
 
-  ohlc_chart_data* get_samples() { return candles_.begin()->second; }
+  ohlc_chart_data const* get_samples() const { return candles_.begin()->second; }
 
   // Add new downloaded data to an existing dataset
   void merge_data(double res, QVector<ohlctv_sample> const& new_ohlc_samples_);
@@ -85,17 +86,23 @@ class ohlc_dataset_view
   void truncate_from_time(double t);
 
   // Get first/last sample time, value is returned as UTC msecs = unix time stamp * 1000
-  double get_last_sample_time_msec(bool include_live);
-  double get_first_sample_time();
-  double get_time_from_index(std::uint64_t i);
+  double get_last_sample_time_msec(bool include_live) const;
+  double get_first_sample_time() const;
+  double get_time_from_index(std::uint64_t i) const;
 
   // compute the average price for a buy at/after time T
-  ohlctv_sample get_trade_data_by_volume(double volume, double time, double safety = 10);
-  ohlctv_sample get_trade_data_by_value(double dollars, double time, double safety = 10);
-  double get_estimated_sell_price(double volume, double time, double safety = 10);
-  double get_estimated_buy_price(double volume, double time, double safety = 10);
+  ohlctv_sample get_trade_data_by_volume(double volume, double time, double safety = 10) const;
+  ohlctv_sample get_trade_data_by_value(double dollars, double time, double safety = 10) const;
+  double get_estimated_sell_price(double volume, double time, double safety = 10) const;
+  double get_estimated_buy_price(double volume, double time, double safety = 10) const;
 
-  std::string_view const get_ticker_string() { return ticker_string_; }
+  std::string_view const get_ticker_string() const { return ticker_string_; }
 
-  mutable std::mutex live_mutex_;
+  // -------------------
+  // a dataset may be read by multiple threads at a time, but only written by one
+  // so we use a shared lock to protect it from read/write conflicts
+  using mutex_type = std::shared_mutex;
+  std::shared_lock<mutex_type> take_readonly_lock(char const* msg) const;
+  std::unique_lock<mutex_type> take_readwrite_lock(char const* msg) const;
+  mutable mutex_type live_mutex_;
 };

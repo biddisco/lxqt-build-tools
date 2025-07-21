@@ -33,6 +33,6 @@ struct ohlc_dataset : timebased_chart_data<ohlctv_sample>
 
   // DownSample the current dataset to a lower resolution, it is assumed (without checks) that
   // the lower resolution is an exact multiple of the current one giving a simple N:1 downsizing
-  ohlc_dataset* downsample(candle_res res);
-  ohlc_dataset* downsample_update(ohlc_dataset* other);
+  ohlc_dataset* downsample(candle_res res) const;
+  ohlc_dataset* downsample_update(ohlc_dataset const* other);
 };
