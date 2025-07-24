@@ -1260,11 +1260,16 @@ void bitstamp_network::update_ohlc_datasets()
 {
   for (auto& [cp, data] : tickers_subscribed_)
   {
-    if (!candlestick_updates_active_.contains(cp)) { update_ohlc_data(cp, data); }
+    bool present = false;
+    {
+      std::lock_guard<std::mutex> l(candlestick_mutex_);
+      present = candlestick_updates_active_.contains(cp);
+    }
+    if (!present) { update_ohlc_data(cp, data); }
     else
     {
       bitstamp_dbg<0>.warning(ffmt<s20>("ohlc active"), currency_pair_lowercase_string(cp));
-      throw std::runtime_error("candlestick_updates_active_ is it really needed?");
+      // throw std::runtime_error("candlestick_updates_active_ is it really needed?");
     }
   }
 }
@@ -1322,7 +1327,7 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker::data tdata)
           {
             bitstamp_dbg<0>.debug(ffmt<s20>("candlesticks"), tdata->view_->get_ticker_string(),
                 "up to date", secs_unix_to_calendar_time_local(start_t_sec));
-            bitstamp_dbg<0>.debug(ffmt<s20>("OHLC up-to-date"));
+            bitstamp_dbg<0>.debug(ffmt<s20>("OHLC up-to-date"), tdata->view_->get_ticker_string());
             {
               std::lock_guard<std::mutex> l(candlestick_mutex_);
               candlestick_updates_active_.erase(cp);
@@ -1338,8 +1343,14 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker::data tdata)
       | stdexec::then([this, cp, tdata](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<4>.debug(ffmt<s20>("OHLC (lambda)"), tdata->view_->get_ticker_string());
-          handle_new_ohlc_data(tdata, data);
-          update_ohlc_data(cp, tdata);
+          return handle_new_ohlc_data(tdata, data);
+        })    //
+      | stdexec::then([this, cp, tdata](auto proceed) {
+          {
+            std::lock_guard<std::mutex> l(candlestick_mutex_);
+            candlestick_updates_active_.erase(cp);
+          }
+          if (proceed) update_ohlc_data(cp, tdata);
         })    //
       | stdexec::upon_error([this, cp](std::exception_ptr const& e) {
           std::lock_guard<std::mutex> l(candlestick_mutex_);
@@ -1472,7 +1483,7 @@ stream_set bitstamp_network::ticker_subscribe(currency_pair const& cp)
 }
 
 // ----------------------------------------------------------------------------
-void bitstamp_network::handle_new_ohlc_data(ticker::data tdata, std::string_view data)
+bool bitstamp_network::handle_new_ohlc_data(ticker::data tdata, std::string_view data)
 {
   json jdata;
   try
@@ -1484,13 +1495,13 @@ void bitstamp_network::handle_new_ohlc_data(ticker::data tdata, std::string_view
   {
     bitstamp_dbg<0>.error(
         ffmt<s20>("JSON error"), "parsing OHLC data:", e.what(), "\n", data, "\n\n");
-    return;
+    return false;
   }
+  QVector<ohlctv_sample> new_ohlc_samples;
   try
   {
     bitstamp_dbg<0>.debug(ffmt<s20>("OHLC received"), tdata->view_->get_ticker_string(),
         ffmt<dec4>(jdata.size()), "json OHLC samples");
-    QVector<ohlctv_sample> new_ohlc_samples;
     new_ohlc_samples.reserve(jdata.size());
     ohlctv_sample sample;
     for (auto item : jdata)
@@ -1506,22 +1517,25 @@ void bitstamp_network::handle_new_ohlc_data(ticker::data tdata, std::string_view
     //
     bitstamp_dbg<5>.debug(ffmt<s20>("Converted"), tdata->view_->get_ticker_string(),
         new_ohlc_samples.size(), "new OHLC samples");
-    tdata->view_->merge_data(ohlc_data_resolutions::minute, new_ohlc_samples);
-    // what is the last sample we currently have
-    auto last_time = tdata->view_->get_last_sample_time_msec(false);
-    bitstamp_dbg<0>.debug(ffmt<s20>("data merged up to"), tdata->view_->get_ticker_string(),
-        msecs_unix_to_calendar_time_local(last_time));
-    tdata->view_->delete_live_data_up_to(last_time);
-
-    // allow any listeners to update charts etc
-    tdata->price_data_subscribers_.publish(tdata);
   }
   catch (std::exception& e)
   {
     bitstamp_dbg<0>.error(
         ffmt<s20>("JSON error"), "processing OHLC data:", e.what(), "\n", data, "\n\n");
-    std::terminate();
+    return false;
   }
+
+  tdata->view_->merge_data(ohlc_data_resolutions::minute, new_ohlc_samples);
+
+  // what is the last sample we currently have
+  auto last_time = tdata->view_->get_last_sample_time_msec(false);
+  bitstamp_dbg<0>.debug(ffmt<s20>("data merged up to"), tdata->view_->get_ticker_string(),
+      msecs_unix_to_calendar_time_local(last_time));
+  tdata->view_->delete_live_data_up_to(last_time);
+
+  // allow any listeners to update charts etc
+  tdata->price_data_subscribers_.publish(tdata);
+  return true;
 }
 
 // the bitstamp minute candle only updates around

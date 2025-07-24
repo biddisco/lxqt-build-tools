@@ -16,9 +16,14 @@
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
 #include "data/timebased_chart_data.hpp"
+#include "debug/print.hpp"
 
 /// dataset_view provides functions to access the data array holding a dataset
 /// as well as other resampled arrays that hold the same data at lower resolutions.
+
+// ----------------------------------------------------------------------------
+template <int Level>
+inline constexpr grox::debug::detail::print_threshold<Level, 2> view_dbg("DataView");
 
 // ----------------------------------------------------------------------------
 class ohlc_dataset_view
@@ -58,13 +63,13 @@ class ohlc_dataset_view
     return nullptr;
   }
 
-  ohlc_chart_data const* get_samples() const { return candles_.begin()->second; }
-
   // Add new downloaded data to an existing dataset
-  void merge_data(double res, QVector<ohlctv_sample> const& new_ohlc_samples_);
+  void merge_data(double res, QVector<ohlctv_sample> const& new_samples);
+
+  inline ohlc_chart_data const* get_samples() const { return candles_.begin()->second; }
 
   // access the underlying data vector for live samples
-  ohlc_chart_data const* get_live_data(candle_res res) const;
+  inline ohlc_chart_data const* get_live_data(candle_res res = ohlc_data_resolutions::minute) const;
   ohlc_chart_data* get_live_data(candle_res res);
   void delete_live_data_up_to(double msecs);
   // add a new trade sample to build live OHLC candles, returns true when
@@ -102,7 +107,28 @@ class ohlc_dataset_view
   // a dataset may be read by multiple threads at a time, but only written by one
   // so we use a shared lock to protect it from read/write conflicts
   using mutex_type = std::shared_mutex;
-  std::shared_lock<mutex_type> take_readonly_lock(char const* msg) const;
-  std::unique_lock<mutex_type> take_readwrite_lock(char const* msg) const;
+
+  template <typename... Args>
+  std::shared_lock<mutex_type> take_readonly_lock(Args... args) const
+  {
+    view_dbg<4>.debug(
+        ffmt<s20>("take_readonly_lock"), this, "acquire ", exchange_, ticker_string_, args...);
+    std::shared_lock<mutex_type> lock(live_mutex_);
+    view_dbg<4>.debug(
+        ffmt<s20>("take_readonly_lock"), this, "acquired", exchange_, ticker_string_, args...);
+    return lock;
+  }
+
+  template <typename... Args>
+  std::unique_lock<mutex_type> take_readwrite_lock(Args... args) const
+  {
+    view_dbg<4>.debug(
+        ffmt<s20>("take_readwrite_lock"), this, "acquire ", exchange_, ticker_string_, args...);
+    std::unique_lock<mutex_type> lock(live_mutex_);
+    view_dbg<4>.debug(
+        ffmt<s20>("take_readwrite_lock"), this, "acquired", exchange_, ticker_string_, args...);
+    return lock;
+  }
+
   mutable mutex_type live_mutex_;
 };

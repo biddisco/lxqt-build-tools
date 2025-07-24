@@ -13,17 +13,7 @@
 #include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_dataset_view.hpp"
 #include "data/ohlc_utils.hpp"
-#include "debug/print.hpp"
 #include "util/datetime_utils.hpp"
-
-// ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of zero disables messages with a priority>0
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 5;
-//
-template <int Level>
-inline constexpr print_threshold<Level, debug_level> man_dbg("DataView");
 
 // ----------------------------------------------------------------------------
 ohlc_dataset_view::ohlc_dataset_view(std::string abstract_exchange, currency_pair const& cp)
@@ -51,12 +41,10 @@ ohlc_dataset_view::ohlc_dataset_view(std::string abstract_exchange, currency_pai
     if (new_data)
     {
       add_dataset(res, new_data);
-      // man_dbg<5>.debug(ffmt<s20>("subscribing"), new_data->ticker_str_, new_data->get_resolution(),
-      //     "to", origin_data->ticker_str_, origin_data->get_resolution());
       origin_data->new_data_subscribers_.subscribe(
           "dataset_view" + new_data->ticker_str_ + new_data->get_resolution().name_,
           [origin_data, new_data](std::uint64_t N) {
-            man_dbg<5>.debug(ffmt<s20>("dataset_view"), new_data->ticker_str_,
+            view_dbg<5>.debug(ffmt<s20>("dataset_view"), new_data->ticker_str_,
                 new_data->get_resolution(), "received new samples", ffmt<dec4>(N), "updating from",
                 origin_data->ticker_str_, origin_data->get_resolution());
             new_data->downsample_update(origin_data);
@@ -77,33 +65,12 @@ ohlc_dataset_view::~ohlc_dataset_view()
 }
 
 // ----------------------------------------------------------------------------
-std::shared_lock<ohlc_dataset_view::mutex_type> ohlc_dataset_view::take_readonly_lock(
-    char const* msg) const
+void ohlc_dataset_view::merge_data(double const res, QVector<ohlctv_sample> const& new_samples)
 {
-  man_dbg<0>.debug(ffmt<s20>("take_readonly_lock"), this, "acquire", msg);
-  std::shared_lock<mutex_type> lock(live_mutex_);
-  man_dbg<0>.debug(ffmt<s20>("take_readonly_lock"), this, "acquired", msg);
-  return lock;
-}
-
-// ----------------------------------------------------------------------------
-std::unique_lock<ohlc_dataset_view::mutex_type> ohlc_dataset_view::take_readwrite_lock(
-    char const* msg) const
-{
-  man_dbg<0>.debug(ffmt<s20>("take_readwrite_lock"), this, "acquire", msg);
-  std::unique_lock<mutex_type> lock(live_mutex_);
-  man_dbg<0>.debug(ffmt<s20>("take_readwrite_lock"), this, "acquired", msg);
-  return lock;
-}
-
-// ----------------------------------------------------------------------------
-void ohlc_dataset_view::merge_data(
-    double const res, QVector<ohlctv_sample> const& new_ohlc_samples_)
-{
-  auto l = take_readwrite_lock("ohlc_dataset_view::merge_data");
+  auto l = take_readwrite_lock("merge_data", res);
   ohlc_dataset* data = get_dataset(res);
   // returns the number of samples that are 'new'
-  uint64_t update = data->merge_data(new_ohlc_samples_);
+  uint64_t update = data->merge_data(new_samples);
   // write new samples to the main datafile
   global_settings.data_manager_->write_file(
       "bitstamp", ticker_string_, data->data(), update, false);
@@ -121,7 +88,7 @@ void ohlc_dataset_view::read_from_disk()
   {
     // QInputDialog requires int and not int64 unfortunately
     int64_t index = e.index();
-    man_dbg<0>.error(
+    view_dbg<0>.error(
         ffmt<s20>("Data integrity error"), ticker_string_, "at index", ffmt<dec9>(index));
     bool ok = false;
     QString label = "First bad index is :" + QString::number(index);
@@ -143,7 +110,7 @@ void ohlc_dataset_view::truncate_from_time(double t)
     auto samples = k.second;
     auto index = samples->sample_index(t);
     samples->data().resize(index);
-    man_dbg<0>.debug(ffmt<s20>("Truncating"), ticker_string_,
+    view_dbg<0>.debug(ffmt<s20>("Truncating"), ticker_string_,
         ffmt<s3>(ohlc_data_resolutions::get_resolution(res).name_), "at index", ffmt<dec9>(index));
     if (res == ohlc_data_resolutions::minute)
     {
@@ -175,16 +142,12 @@ double ohlc_dataset_view::get_time_from_index(std::uint64_t i) const
 // ----------------------------------------------------------------------------
 double ohlc_dataset_view::get_last_sample_time_msec(bool include_live) const
 {
+  auto l = take_readonly_lock("get_last_sample_time_msec");
   double last = 0;
-  if (!candles_.begin()->second->data().empty())
+  if (!get_samples()->data().empty()) { last = get_samples()->data().back().time; }
+  if (include_live && !get_live_data()->data().empty())
   {
-    last = candles_.begin()->second->data().back().time;
-  }
-  else if (include_live)
-  {
-    auto l = take_readonly_lock("get_last_sample_time_msec");
-    ohlc_chart_data const* live_samples = get_live_data(ohlc_data_resolutions::minute);
-    if (!live_samples->data().empty()) { last = std::max(last, live_samples->data().back().time); }
+    last = std::max(last, get_live_data()->data().back().time);
   }
   return last;
 }
@@ -276,7 +239,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(
     result.min_volume_ = 0;
     result.max_volume_ = 1;
   }
-  man_dbg<8>.debug(ffmt<s20>("min_max"), ohlc_data_resolutions::get_resolution(res).name_,
+  view_dbg<8>.debug(ffmt<s20>("min_max"), ohlc_data_resolutions::get_resolution(res).name_,
       msecs_unix_to_calendar_time_local(start_time), "->",
       msecs_unix_to_calendar_time_local(end_time), "(", result.min_price_, ",", result.max_price_,
       ")");

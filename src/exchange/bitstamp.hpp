@@ -215,15 +215,18 @@ class bitstamp_network : public abstract_exchange
   // OHLC candlestick updating
   // ----------------------------------------------------------------------------
   // triggers an update for all subscribed tickers
-  // typically called once per minute by the application to update data
-  // regularly
+  // typically called once per minute by the application to update data regularly
   void update_ohlc_datasets();
+
   // triggers an update for a single ticker
   void update_ohlc_data(currency_pair cp, ticker::data data);
+
   // http : generate a request for candlestick data for a single ticker
   any_bytearray_sender request_new_ohlc_data(currency_pair cp, uint64_t start_t, uint64_t samples);
-  // handler for an http request containing new data
-  void handle_new_ohlc_data(ticker::data, std::string_view);
+
+  // handler for an http request containing new data,
+  // returns true unless there is a problemm that should stopfurther updates
+  bool handle_new_ohlc_data(ticker::data, std::string_view);
   //
   any_bytearray_sender request_price_history(currency_pair cp);
   std::uint64_t handle_price_history(std::string_view data);
