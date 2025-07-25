@@ -7,14 +7,21 @@
 #include <utility>
 #include <vector>
 //
+#include <stdexec/execution.hpp>
+//
 #include <pika/concurrency/spinlock.hpp>
+#include <pika/execution/algorithms/just.hpp>
+#include <pika/execution/algorithms/transfer_just.hpp>
+#include <pika/execution_base/any_sender.hpp>
+//
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
+#include "senders/pika_stdexec.hpp"
 
 // ----------------------------------------------------------------------------
 using namespace grox::debug::detail;
 template <int Level>
-inline constexpr print_threshold<Level, 2> pubsub_dbg("PubSub  ");
+inline constexpr print_threshold<Level, 2> pubsub_dbg("Pub__Sub");
 
 // ----------------------------------------------------------------------------
 namespace grox {
@@ -42,7 +49,11 @@ namespace grox {
         for (auto& subscriber : subscriptions)
         {
           pubsub_dbg<6>.debug(ffmt<s20>("publish"), subscriber.first, print_type<Signature>());
-          subscriber.second(message...);
+
+          stdexec::sender auto snd =
+              stdexec::start_on(grox::senders::default_pool_scheduler(), stdexec::just()) |
+              stdexec::then([=]() { subscriber.second(message...); });
+          stdexec::start_detached(std::move(snd));
         }
       }
     }
