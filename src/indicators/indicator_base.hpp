@@ -46,6 +46,7 @@ namespace indicators {
 
   struct candle_input_data
   {
+    std::shared_ptr<ohlc_dataset_view> view_;
     ohlc_dataset* dataset_;
     std::uint64_t samples_;
   };
@@ -154,7 +155,7 @@ public:
         if (param<candle_data> const* d = std::get_if<param<candle_data>>(&p))
         {
           auto dataset = view->get_dataset(d->get().res_);
-          result.push_back({dataset, d->get().duration_});
+          result.push_back({view, dataset, d->get().duration_});
         }
       }
       return result;
@@ -217,37 +218,111 @@ public:
       }
     }
 
+    template <typename Container>
+    struct block_partitioner
+    {
+      using Iterator = Container::const_iterator;
+
+      struct extent
+      {
+        Iterator begin;
+        Iterator end;
+      };
+
+      block_partitioner(Container const& input, std::uint64_t start, std::uint64_t chunksize)
+      {
+        chunksize_ = chunksize;
+        num_partitions_ = std::ceil(static_cast<double>(input.size() - start) / chunksize);
+        // set extent from begin of partition 0, the end of data
+        origin_.begin = std::next(input.begin(), start);
+        origin_.end = input.end();
+        indicator_dbg<5>.debug(ffmt<s20>("Partition create"), ffmt<dec3>(num_partitions_),
+            static_cast<void const*>(&*input.begin()), static_cast<void const*>(&*input.end()),
+            ffmt<dec8>(input.size()));
+      }
+
+      extent get_partition(int piece) const
+      {
+        Iterator begin = std::next(origin_.begin, piece * chunksize_);
+        Iterator end = std::min(std::next(origin_.begin, (piece + 1) * chunksize_), origin_.end);
+        indicator_dbg<5>.debug(ffmt<s20>("Partition get"), ffmt<dec3>(piece),
+            fmt::format(
+                "{},{}", static_cast<void const*>(&*begin), static_cast<void const*>(&*end)),
+            begin - origin_.begin, end - origin_.begin);
+        return {begin, end};
+      }
+      //
+      std::uint64_t chunksize_;
+      std::uint64_t num_partitions_;
+      extent origin_;
+    };
+
     // ----------------------------------------------------------------------------
+    // The N parameter requests the last N samples to be processed, so we compute
+    // the indices from the end, not the start. We must be careful because
+    // if new data is added to the input during processing, all iterators/indices
+    // we be invalided and we must carefully track our position.
+    // We iterate in chunks (locking and unlocking to allow other threads to make progress)
+    // and if anything changes during processing, we recompute partitions/iterators
+    // and resume.
+    // Note we can accept new data appended to the input, but we cannot handle deletion
+    // which will trigger an abort
     void call_operator_buy_sell(
         std::uint64_t N, std::function<buy_sell_point(ohlctv_sample const&)> fn)
     {
+      std::uint64_t const chunksize = 10000;
       auto const input = get_input(0).dataset_;
+      auto origin_size = input->size();
       auto outputs = get_outputs();
       //
-      auto i1 = (N == 0) ? input->data().begin() : std::prev(input->data().end(), N);
-      for (auto it = i1; it != input->data().end(); ++it)
       {
-        auto const& ohlc = *it;
-        auto vals = fn(ohlc);
-        QPointF xyval(ohlc.time, vals.price_);
-        if (vals.event_type_ == buy_sell_event_type::buy)
+        // take the lock on the data before getting any pointers during initialization
+        auto l = get_input(0).view_->take_readonly_lock(name_, "operator_buy_sell", "start");
+        indicator_dbg<5>.debug(ffmt<s20>("operator_buy_sell"), "iterations", N);
+        std::uint64_t start_index = (input->size() - N);
+        auto partitioner = block_partitioner(input->data(), start_index, chunksize);
+        // we have extracted pointers, we can now unlock
+        l.unlock();
+
+        // iterate over the data in chunks, taking and releasing the lock on each chunk
+        // and recomputing the partition  at the start of each chunk, in case the input data changed
+        for (std::uint64_t p = 0; p < partitioner.num_partitions_; p++)
         {
-          outputs[0]->data().push_back(xyval);
-          outputs[2]->data().push_back(xyval);
-        }
-        else if (vals.event_type_ == buy_sell_event_type::sell)
-        {
-          outputs[1]->data().push_back(xyval);
-          outputs[2]->data().push_back(xyval);
-        }
-        else if (vals.event_type_ == buy_sell_event_type::value)
-        {
-          outputs[2]->data().push_back(xyval);
-        }
-        else { outputs[2]->data().push_back(xyval); }
-        {
-          QPointF trade(ohlc.time, vals.value_);
-          outputs[3]->data().push_back(trade);
+          auto l = get_input(0).view_->take_readonly_lock(name_, "operator_buy_sell", p);
+          if (input->size() < origin_size)
+          {
+            indicator_dbg<5>.debug(ffmt<s20>("operator_buy_sell"), "Data reduced", "Aborting", p);
+            break;
+          }
+          // recompute partitions, just in case input data grew in size
+          partitioner = block_partitioner(input->data(), start_index, chunksize);
+          auto extent = partitioner.get_partition(p);
+          for (auto it = extent.begin; it != extent.end; ++it)
+          {
+            auto const& ohlc = *it;
+            auto vals = fn(ohlc);
+            QPointF xyval(ohlc.time, vals.price_);
+            if (vals.event_type_ == buy_sell_event_type::buy)
+            {
+              outputs[0]->data().push_back(xyval);
+              outputs[2]->data().push_back(xyval);
+            }
+            else if (vals.event_type_ == buy_sell_event_type::sell)
+            {
+              outputs[1]->data().push_back(xyval);
+              outputs[2]->data().push_back(xyval);
+            }
+            else if (vals.event_type_ == buy_sell_event_type::value)
+            {
+              outputs[2]->data().push_back(xyval);
+            }
+            else { outputs[2]->data().push_back(xyval); }
+            {
+              outputs[3]->data().push_back({ohlc.time, vals.value_});
+              // outputs[4]->data().push_back({ohlc.time, vals.tokens_});
+            }
+          }
+          indicator_dbg<2>.debug(ffmt<s20>("operator_buy_sell"), "partition complete", p);
         }
       }
     }

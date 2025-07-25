@@ -11,7 +11,7 @@
 #include "indicators/indicator_types.hpp"
 #include "indicators/kernels/gradient.hpp"
 #include "indicators/kernels/sliding_stop.hpp"
-#include "indicators/moving_average_exponential_volume_weighted.hpp"
+#include "indicators/moving_average_volume_weighted.hpp"
 #include "indicators/stochastic_relative_strength_indicator.hpp"
 
 namespace indicators {
@@ -39,10 +39,11 @@ public:
         double ugap = 0.0035, double lgap = 0.0035)
       : indicator_base("Trade: Sliding Stop", "Trade: Sliding Stop",
             {
-                overlay_type::buy_sell,        //
-                overlay_type::buy_sell,        //
-                overlay_type::buy_sell,        //
-                overlay_type::relative_gain    //
+                overlay_type::buy_sell,         //
+                overlay_type::buy_sell,         //
+                overlay_type::buy_sell,         //
+                overlay_type::relative_gain,    //
+                overlay_type::relative_gain     //
             })
       , mode_(mode)
       , average_{}
@@ -98,7 +99,7 @@ public:
       //
       buffer1_ = boost::circular_buffer<float>(window_size_);
       srsi_ = stochastic_relative_strength_indicator();
-      average_ = moving_average_exponential_volume_weighted(window_size_, mode_);
+      average_ = moving_average_volume_weighted(window_size_, mode_);
       upper_stop_ = kernels::sliding_limit(kernels::sliding_limit::up, gap_upper_);
       lower_stop_ = kernels::sliding_limit(kernels::sliding_limit::down, gap_lower_);
       //
@@ -115,6 +116,8 @@ public:
       indicator_base::create_outputs(view);
       auto d1 = get_input(0);
       set_time_resolution(d1.dataset_->get_resolution());
+      indicator_dbg<0>.debug(
+          ffmt<s20>("set_time_resolution"), get_name(), d1.dataset_->get_resolution());
     }
 
     // ---------------------------------------
@@ -127,8 +130,11 @@ public:
       xrp_total_ = taker_pay / p.open;
       cash_total_ = 0;
       // pay the high price, value by low price
-      last_result_ = {buy_sell_event_type::buy, p.open, (p.open * xrp_total_) + cash_total_,
-          xrp_total_, cash_total_};
+      last_result_ = {.event_type_ = buy_sell_event_type::buy,
+          .price_ = p.open,
+          .value_ = (p.open * xrp_total_) + cash_total_,
+          .tokens_ = xrp_total_,
+          .cash_ = cash_total_};
     }
 
     // ---------------------------------------
@@ -141,8 +147,11 @@ public:
       cash_total_ = maker_pay * p;
       xrp_total_ = 0;
       // note we output the actual sell price and not the current running average
-      last_result_ = {
-          buy_sell_event_type::sell, p, (p * xrp_total_) + cash_total_, xrp_total_, cash_total_};
+      last_result_ = {.event_type_ = buy_sell_event_type::sell,
+          .price_ = p,
+          .value_ = (p * xrp_total_) + cash_total_,
+          .tokens_ = xrp_total_,
+          .cash_ = cash_total_};
     }
 
     // ---------------------------------------
@@ -164,7 +173,7 @@ public:
         rsi_gradient_(rsi, val.time);
       }
 
-      // set default output to value with current price
+      // set default output to value computed with current price (low for conservative est)
       last_result_ = {buy_sell_event_type::value, current_average_,
           (val.low * xrp_total_) + cash_total_, xrp_total_, cash_total_};
 
@@ -212,7 +221,7 @@ public:
 
 private:
     ohlc_modes mode_;
-    moving_average_exponential_volume_weighted average_;
+    moving_average_volume_weighted average_;
     stochastic_relative_strength_indicator srsi_;
     boost::circular_buffer<float> buffer1_;
     //
