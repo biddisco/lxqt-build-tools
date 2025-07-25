@@ -52,11 +52,11 @@ namespace net::ws {
   // ------------------------------------------------------------------
   qwebsocket_client::~qwebsocket_client()
   {
-    qwebsocket_dbg<2>.debug(fmt::format("{:20s} Destructor", id_));
+    qwebsocket_dbg<2>.debug(ffmt<s20>(id_), "Destructor");
     if (websocket_)
     {
       qwebsocket_dbg<1>.error(
-          fmt::format("{:20s}, Client::destructor : websocket delete - out of order", id_));
+          ffmt<s20>(id_), "Client::destructor : websocket delete - out of order");
       delete websocket_;
     }
     else { qwebsocket_dbg<3>.error("~qwebsocket_client after deletion"); }

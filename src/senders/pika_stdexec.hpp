@@ -9,7 +9,6 @@
 #include <pika/modules/executors.hpp>
 #include <pika/modules/resource_partitioner.hpp>
 #include <pika/modules/runtime.hpp>
-#include <pika/modules/schedulers.hpp>
 
 // -----------------------------------------------------------------
 // return a scheduler on the default pool with added priority if requested
