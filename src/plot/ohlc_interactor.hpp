@@ -42,7 +42,7 @@ class QWT_EXPORT ohlc_interactor : public QObject
   void getAbortKey(int& key, Qt::KeyboardModifiers&) const;
 
   void setCursor(QCursor const&);
-  const QCursor cursor() const;
+  QCursor const cursor() const;
 
   void setOrientations(Qt::Orientations);
   Qt::Orientations orientations() const;
@@ -78,6 +78,7 @@ class QWT_EXPORT ohlc_interactor : public QObject
   void repair_pressed(QPointF pos);
 
   protected:
+  virtual void widgetMouseWheelEvent(QWheelEvent*);
   virtual void widgetMousePressEvent(QMouseEvent*);
   virtual void widgetMouseReleaseEvent(QMouseEvent*);
   virtual void widgetMouseMoveEvent(QMouseEvent*);

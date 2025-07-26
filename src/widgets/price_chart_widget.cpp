@@ -135,6 +135,7 @@ void price_chart_widget::connect_gui()
       ui->gt_a, &QAbstractButton::clicked, this, [this]() { graph_rescale(4); },
       Qt::QueuedConnection);
 
+  // change candle resolution combo
   connect(
       ui->candle_res, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
       [this](int index) {
@@ -149,6 +150,7 @@ void price_chart_widget::connect_gui()
       },
       Qt::QueuedConnection);
 
+  // Heikin-Ashi candle type checkbox
   connect(
       ui->heikin, QOverload<Qt::CheckState>::of(&QCheckBox::checkStateChanged), this,
       [this](Qt::CheckState state) {
@@ -157,6 +159,7 @@ void price_chart_widget::connect_gui()
       },
       Qt::QueuedConnection);
 
+  // Delete data using R keypress
   connect(
       price_plot_->get_interactor(), &ohlc_interactor::repair_pressed, this,
       [this](QPointF p) {
@@ -179,6 +182,7 @@ void price_chart_widget::connect_gui()
       },
       Qt::QueuedConnection);
 
+  // underlying data plot time axis changed
   connect(
       price_plot_, &ohlc_price_plot::timeAxisChanged, this,
       [this](double t1, double t2) {
@@ -186,6 +190,7 @@ void price_chart_widget::connect_gui()
       },
       Qt::QueuedConnection);
 
+  // crosshairs moving - replot indicators etc
   connect(
       price_plot_->get_crosshairs(), &ohlc_picker::moved, this,
       [this](QPointF const& pos) {

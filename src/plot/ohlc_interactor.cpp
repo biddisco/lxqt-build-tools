@@ -31,6 +31,7 @@ class ohlc_interactor::PrivateData
     , abortKey(Qt::Key_Escape)
     , abortKeyModifiers(Qt::NoModifier)
     , isEnabled(false)
+    , mouse_down(false)
     , plot(nullptr)
   {
     for (int axis = 0; axis < QwtAxis::AxisPositions; axis++) isAxisEnabled[axis] = true;
@@ -50,6 +51,7 @@ class ohlc_interactor::PrivateData
   QPoint pos;
 
   bool isEnabled;
+  bool mouse_down;
 
   timebased_chart_plot* plot;
 };
@@ -188,30 +190,26 @@ bool ohlc_interactor::eventFilter(QObject* object, QEvent* event)
   // 2 finger trackpad movements appear as scroll events
   case QEvent::Wheel:
   {
-    QWheelEvent* we = static_cast<QWheelEvent*>(event);
-    m_data->initialPos = m_data->pos = we->position().toPoint();
-    auto d = we->angleDelta();
-    // sideways swipe
-    if (std::abs(d.x()) >= std::abs(d.y())) { Q_EMIT panned(d.x() / 2, d.y() / 2); }
-    // vertical swipe
-    else { Q_EMIT zoomed(d.x() / 2, d.y() / 2); }
+    QWheelEvent* m_event = static_cast<QWheelEvent*>(event);
+    widgetMouseWheelEvent(m_event);
     break;
   }
   case QEvent::MouseButtonPress:
   {
-    widgetMousePressEvent(static_cast<QMouseEvent*>(event));
+    QMouseEvent* m_event = static_cast<QMouseEvent*>(event);
+    widgetMousePressEvent(m_event);
     break;
   }
   case QEvent::MouseMove:
   {
-    QMouseEvent* evr = static_cast<QMouseEvent*>(event);
-    widgetMouseMoveEvent(evr);
+    QMouseEvent* m_event = static_cast<QMouseEvent*>(event);
+    widgetMouseMoveEvent(m_event);
     break;
   }
   case QEvent::MouseButtonRelease:
   {
-    QMouseEvent* evr = static_cast<QMouseEvent*>(event);
-    widgetMouseReleaseEvent(evr);
+    QMouseEvent* m_event = static_cast<QMouseEvent*>(event);
+    widgetMouseReleaseEvent(m_event);
     break;
   }
   case QEvent::KeyPress:
@@ -312,6 +310,31 @@ void ohlc_interactor::setEnabled(bool on)
  */
 bool ohlc_interactor::isEnabled() const { return m_data->isEnabled; }
 
+// ----------------------------------------------------------------------------
+/*!
+   Handle a mouse press event for the observed widget.
+
+   \param mouseEvent Mouse event
+   \sa eventFilter(), widgetMouseReleaseEvent(),
+      widgetMouseMoveEvent(),
+ */
+void ohlc_interactor::widgetMouseWheelEvent(QWheelEvent* mouseEvent)
+{
+  m_data->initialPos = m_data->pos = mouseEvent->position().toPoint();
+  auto d = mouseEvent->angleDelta();
+  if (std::abs(d.x()) >= std::abs(d.y()))
+  {
+    // sideways swipe
+    Q_EMIT panned(d.x() / 2, d.y() / 2);
+  }
+  else
+  {
+    // vertical swipe
+    Q_EMIT zoomed(d.x() / 2, d.y() / 2);
+  }
+}
+
+// ----------------------------------------------------------------------------
 /*!
    Handle a mouse press event for the observed widget.
 
@@ -322,8 +345,10 @@ bool ohlc_interactor::isEnabled() const { return m_data->isEnabled; }
 void ohlc_interactor::widgetMousePressEvent(QMouseEvent* mouseEvent)
 {
   m_data->initialPos = m_data->pos = mouseEvent->pos();
+  m_data->mouse_down = true;
 }
 
+// ----------------------------------------------------------------------------
 /*!
    Handle a mouse move event for the observed widget.
 
@@ -332,17 +357,29 @@ void ohlc_interactor::widgetMousePressEvent(QMouseEvent* mouseEvent)
  */
 void ohlc_interactor::widgetMouseMoveEvent(QMouseEvent* mouseEvent)
 {
-  if (!parentWidget()->isVisible()) return;
+  if (!parentWidget()->isVisible() || !m_data->mouse_down) return;
 
   QPoint pos = mouseEvent->pos();
   if (pos != m_data->pos)
   {
     m_data->pos = pos;
-    Q_EMIT moved(
-        m_data->pos.x() - m_data->initialPos.x(), m_data->pos.y() - m_data->initialPos.y());
+    auto d = m_data->pos - m_data->initialPos;
+    if (std::abs(d.x()) >= std::abs(d.y()))
+    {
+      // sideways drag
+      Q_EMIT panned(d.x(), 0);
+    }
+    else
+    {
+      // vertical drag
+      Q_EMIT zoomed(0, 5 * d.y());
+    }
+    m_data->initialPos = m_data->pos;
+    // Q_EMIT moved(d.x(), d.y());
   }
 }
 
+// ----------------------------------------------------------------------------
 /*!
    Handle a mouse release event for the observed widget.
 
@@ -355,13 +392,14 @@ void ohlc_interactor::widgetMouseReleaseEvent(QMouseEvent* mouseEvent)
   if (parentWidget()->isVisible())
   {
     QPoint pos = mouseEvent->pos();
-
     m_data->pos = pos;
-
     if (m_data->pos != m_data->initialPos) {}
+    //
+    m_data->mouse_down = false;
   }
 }
 
+// ----------------------------------------------------------------------------
 /*!
    Handle a key press event for the observed widget.
 
@@ -372,6 +410,7 @@ void ohlc_interactor::widgetKeyPressEvent(QKeyEvent* keyEvent)
 {
   if ((keyEvent->key() == m_data->abortKey) && (keyEvent->modifiers() == m_data->abortKeyModifiers))
   {
+    // placeholder for future stuff
   }
   if (keyEvent->key() == Qt::Key_R)
   {
@@ -390,6 +429,7 @@ void ohlc_interactor::widgetKeyPressEvent(QKeyEvent* keyEvent)
   }
 }
 
+// ----------------------------------------------------------------------------
 /*!
    Handle a key release event for the observed widget.
 
