@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <sstream>
@@ -20,7 +21,9 @@
 #include "indicators/moving_average_volume_weighted.hpp"
 #include "io/hdf5_ohlc_manager.hpp"
 
-std::string data_dir = "/home/biddisco/.local/share/grox";
+// default : "/home/biddisco/.local/share/grox"
+// XDG set : "/home/biddisco/.local/x86_64/share/grox"
+std::string data_dir = std::filesystem::path(std::getenv("XDG_DATA_HOME")) / "grox";
 std::string filename = "grox.hdf5";
 
 using namespace HighFive;
