@@ -18,7 +18,7 @@
 
 // ----------------------------------------------------------------------------
 template <int Level>
-inline constexpr grox::debug::detail::print_threshold<Level, 5> indicator_dbg("Indicate");
+inline constexpr grox::debug::detail::print_threshold<Level, 2> indicator_dbg("Indicate");
 
 // ----------------------------------------------------------------------------
 struct order_book_param

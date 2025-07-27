@@ -13,6 +13,7 @@
 #include "data/timebased_chart_data.hpp"
 #include "debug/print.hpp"
 #include "indicators/algorithm_base.hpp"
+#include "indicators/indicator_partitioner.hpp"
 #include "indicators/indicator_registry.hpp"
 #include "indicators/indicator_types.hpp"
 
@@ -30,8 +31,18 @@
     result->register_callbacks();                                                                  \
     return result;                                                                                 \
   }                                                                                                \
-  void execute(std::uint64_t N) override                                                           \
+  void execute_from(std::uint64_t N) override                                                      \
   {                                                                                                \
+    if ((N == std::numeric_limits<std::uint64_t>::max()) || (N > get_input(0).dataset_->size()))   \
+    {                                                                                              \
+      N = 0;                                                                                       \
+    }                                                                                              \
+    call_helper<operator_type> helper;                                                             \
+    helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });      \
+  }                                                                                                \
+  void execute_continue() override                                                                 \
+  {                                                                                                \
+    std::uint64_t N = 1;                                                                           \
     if ((N == std::numeric_limits<std::uint64_t>::max()) || (N > get_input(0).dataset_->size()))   \
       N = 0;                                                                                       \
     call_helper<operator_type> helper;                                                             \
@@ -75,6 +86,11 @@ protected:
     std::vector<input_type> in_datasets_;
     std::vector<output_type*> out_datasets_;
     std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;
+    // once the algorithm begins executing, the valid index stores the
+    // next(input) index for which an output needs to be generated
+    // (if 100 values are computed, {0..99} valid index will be 100, the next start point)
+    std::uint64_t valid_index_;
+    bool executing_;
 
 public:
     using algorithm_base::initialize;
@@ -83,6 +99,8 @@ public:
     indicator_base(std::string const& name, std::string const& desc, overlay_vector const& overlay)
       : algorithm_base(name, desc)
       , overlay_(overlay)
+      , valid_index_{std::numeric_limits<std::uint64_t>::max()}
+      , executing_{false}
     {
     }
 
@@ -174,13 +192,19 @@ public:
         d.dataset_->new_data_subscribers_.subscribe(id, [this](std::uint64_t N) {
           indicator_dbg<0>.debug(ffmt<s20>(get_name().c_str()), "new samples", ffmt<dec4>(N));
           // todo - only call if all inputs are updated
-          execute(N);
+          execute_continue();
         });
       }
     }
 
     // ----------------------------------------------------------------------------
-    virtual void execute(std::uint64_t N) = 0;
+    // execute the algorithm from a start point N samples back from the end
+    // this should only be used when starting an algorithm for the first time
+    virtual void execute_from(std::uint64_t N) = 0;
+
+    // execute the algorithm from wherever it last completed, until the end
+    // (mmeaning if N new samples have been added to the input, execute them)
+    virtual void execute_continue() = 0;
 
     // ----------------------------------------------------------------------------
     void call_operator_ohlc_1(std::uint64_t N, std::function<double(ohlctv_sample const&)> fn)
@@ -218,45 +242,6 @@ public:
       }
     }
 
-    template <typename Container>
-    struct block_partitioner
-    {
-      using Iterator = Container::const_iterator;
-
-      struct extent
-      {
-        Iterator begin;
-        Iterator end;
-      };
-
-      block_partitioner(Container const& input, std::uint64_t start, std::uint64_t chunksize)
-      {
-        chunksize_ = chunksize;
-        num_partitions_ = std::ceil(static_cast<double>(input.size() - start) / chunksize);
-        // set extent from begin of partition 0, the end of data
-        origin_.begin = std::next(input.begin(), start);
-        origin_.end = input.end();
-        indicator_dbg<5>.debug(ffmt<s20>("Partition create"), ffmt<dec3>(num_partitions_),
-            static_cast<void const*>(&*input.begin()), static_cast<void const*>(&*input.end()),
-            ffmt<dec8>(input.size()));
-      }
-
-      extent get_partition(int piece) const
-      {
-        Iterator begin = std::next(origin_.begin, piece * chunksize_);
-        Iterator end = std::min(std::next(origin_.begin, (piece + 1) * chunksize_), origin_.end);
-        indicator_dbg<5>.debug(ffmt<s20>("Partition get"), ffmt<dec3>(piece),
-            fmt::format(
-                "{},{}", static_cast<void const*>(&*begin), static_cast<void const*>(&*end)),
-            begin - origin_.begin, end - origin_.begin);
-        return {begin, end};
-      }
-      //
-      std::uint64_t chunksize_;
-      std::uint64_t num_partitions_;
-      extent origin_;
-    };
-
     // ----------------------------------------------------------------------------
     // The N parameter requests the last N samples to be processed, so we compute
     // the indices from the end, not the start. We must be careful because
@@ -278,8 +263,22 @@ public:
       {
         // take the lock on the data before getting any pointers during initialization
         auto l = get_input(0).view_->take_readonly_lock(name_, "operator_buy_sell", "start");
-        indicator_dbg<5>.debug(ffmt<s20>("operator_buy_sell"), "iterations", N);
-        std::uint64_t start_index = (input->size() - N);
+        if (executing_) return;
+        executing_ = true;
+        std::uint64_t start_index;
+        // Are we executing from some particular start point, or continuing a previous one
+        if (valid_index_ == std::numeric_limits<std::uint64_t>::max())
+        {
+          // this is the first execution, compute the start point
+          start_index = (input->size() - N);
+          valid_index_ = start_index;
+        }
+        else
+        {
+          // resume from previous position
+          start_index = valid_index_;
+        }
+        indicator_dbg<5>.debug(ffmt<s20>("operator_buy_sell"), "start_index", start_index);
         auto partitioner = block_partitioner(input->data(), start_index, chunksize);
         // we have extracted pointers, we can now unlock
         l.unlock();
@@ -321,10 +320,12 @@ public:
               outputs[3]->data().push_back({ohlc.time, vals.value_});
               // outputs[4]->data().push_back({ohlc.time, vals.tokens_});
             }
+            valid_index_++;
           }
           indicator_dbg<2>.debug(ffmt<s20>("operator_buy_sell"), "partition complete", p);
         }
       }
+      executing_ = false;
     }
   };
 

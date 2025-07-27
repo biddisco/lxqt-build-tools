@@ -6,6 +6,7 @@ set(grox_indicators_SRCS
     indicator_base.hpp
     indicator_params.hpp
     indicator_ptr.hpp
+    indicator_partitioner.hpp
     indicator_registry.hpp
     indicator_registry.cpp
     indicator_types.hpp

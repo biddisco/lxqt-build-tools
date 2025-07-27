@@ -37,7 +37,7 @@ namespace indicators {
       {
         algorithm_ = ip->create(ip, hdf5_ohlc_);
         std::uint64_t N = indicator()->get_input(0).samples_;
-        indicator()->execute(N);
+        indicator()->execute_from(N);
       }
       else { algorithm_ = ap->create(ap.get()); }
     }
