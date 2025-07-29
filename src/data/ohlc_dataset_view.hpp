@@ -52,21 +52,21 @@ class ohlc_dataset_view
   // access the underlying data vector
   ohlc_dataset* get_dataset(double resolution) const
   {
-    if (candles_.find(resolution) != candles_.end()) return candles_.at(resolution);
+    if (candles_.find(resolution) != candles_.cend()) return candles_.at(resolution);
     return nullptr;
   }
 
   // access the underlying data vector
   ohlc_dataset* get_live_dataset(double resolution) const
   {
-    if (live_samples_.find(resolution) != candles_.end()) return live_samples_.at(resolution);
+    if (live_samples_.find(resolution) != candles_.cend()) return live_samples_.at(resolution);
     return nullptr;
   }
 
   // Add new downloaded data to an existing dataset
   void merge_data(double res, QVector<ohlctv_sample> const& new_samples);
 
-  inline ohlc_chart_data const* get_samples() const { return candles_.begin()->second; }
+  inline ohlc_chart_data const* get_samples() const { return candles_.cbegin()->second; }
 
   // access the underlying data vector for live samples
   inline ohlc_chart_data const* get_live_data(candle_res res = ohlc_data_resolutions::minute) const;
@@ -75,6 +75,9 @@ class ohlc_dataset_view
   // add a new trade sample to build live OHLC candles, returns true when
   // a new candle is started, false when one is (only) updated
   void add_live_data(ohlctv_sample new_sample);
+
+  // can be used to repair data by deleting items after date, (then redownloading them)
+  void truncate_from_time(double t);
 
   // Get the min/max OHLC values for a given time range
   // Returns the lowest of the lows, and highest of the highs in the OHLC samples
@@ -87,12 +90,9 @@ class ohlc_dataset_view
   ohlcv_minmax get_min_max_window(
       double res, double start_time, double end_time, double percent) const;
 
-  // can be used to repair data by deleting items after date, (then redownloading them)
-  void truncate_from_time(double t);
-
   // Get first/last sample time, value is returned as UTC msecs = unix time stamp * 1000
   double get_last_sample_time_msec(bool include_live) const;
-  double get_first_sample_time() const;
+  double get_first_sample_time_msec() const;
   double get_time_from_index(std::uint64_t i) const;
 
   // compute the average price for a buy at/after time T

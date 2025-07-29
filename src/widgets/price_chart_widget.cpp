@@ -331,7 +331,7 @@ void price_chart_widget::graph_rescale(int range)
   else if (range == 3) { t1 = last_time - 365 * ohlc_data_resolutions::day; }
   // special case, to extend current view with new data
   else if (range == 100) { t1 = last_time - 365 * ohlc_data_resolutions::day; }
-  else { t1 = hdf5_ohlc_->get_first_sample_time(); }
+  else { t1 = hdf5_ohlc_->get_first_sample_time_msec(); }
   price_plot_->update_time_axis(t1, t2, true);
 }
 

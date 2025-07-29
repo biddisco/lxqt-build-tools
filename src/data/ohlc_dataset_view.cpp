@@ -56,10 +56,10 @@ ohlc_dataset_view::ohlc_dataset_view(std::string abstract_exchange, currency_pai
 // ----------------------------------------------------------------------------
 ohlc_dataset_view::~ohlc_dataset_view()
 {
-  for (auto d : candles_)
+  for (auto const [res, samples] : candles_)
   {
-    d.second->new_data_subscribers_.clear();
-    delete d.second;
+    samples->new_data_subscribers_.clear();
+    delete samples;
   }
   candles_.clear();
 }
@@ -79,10 +79,11 @@ void ohlc_dataset_view::merge_data(double const res, QVector<ohlctv_sample> cons
 // ----------------------------------------------------------------------------
 void ohlc_dataset_view::read_from_disk()
 {
+  auto l = take_readwrite_lock("read_from_disk");
   try
   {
     global_settings.data_manager_->read_file(
-        exchange_, ticker_string_, candles_.begin()->second->data());
+        exchange_, ticker_string_, candles_.cbegin()->second->data());
   }
   catch (ohlc_data_exception& e)
   {
@@ -104,10 +105,9 @@ void ohlc_dataset_view::read_from_disk()
 // ----------------------------------------------------------------------------
 void ohlc_dataset_view::truncate_from_time(double t)
 {
-  for (auto k : candles_)
+  auto l = take_readwrite_lock("truncate_from_time");
+  for (auto const [res, samples] : candles_)
   {
-    auto res = k.first;
-    auto samples = k.second;
     auto index = samples->sample_index(t);
     samples->data().resize(index);
     view_dbg<0>.debug(ffmt<s20>("Truncating"), ticker_string_,
@@ -135,7 +135,7 @@ void ohlc_dataset_view::delete_live_data_up_to(double msecs)
 double ohlc_dataset_view::get_time_from_index(std::uint64_t i) const
 {
   double t = 0;
-  if (!candles_.begin()->second->data().empty()) { t = candles_.begin()->second->sample_time(i); }
+  if (!get_samples()->data().empty()) { t = get_samples()->sample_time(i); }
   return t;
 }
 
@@ -153,14 +153,11 @@ double ohlc_dataset_view::get_last_sample_time_msec(bool include_live) const
 }
 
 // ----------------------------------------------------------------------------
-double ohlc_dataset_view::get_first_sample_time() const
+double ohlc_dataset_view::get_first_sample_time_msec() const
 {
-  double first = 0;
-  if (!candles_.begin()->second->data().empty())
-  {
-    first = candles_.begin()->second->data().front().time;
-  }
   auto l = take_readonly_lock("get_first_sample_time");
+  double first = 0;
+  if (!get_samples()->data().empty()) { first = get_samples()->data().front().time; }
   ohlc_chart_data const* live_samples = get_live_data(ohlc_data_resolutions::minute);
   if (!live_samples->data().empty()) { first = std::min(first, live_samples->data().front().time); }
   return first;

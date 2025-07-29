@@ -164,7 +164,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
   setAxisLabelAlignment(QwtPlot::xBottom, Qt::AlignCenter | Qt::AlignBottom);
 
   ohlcv_minmax minmax = data->get_min_max(ohlc_data_resolutions::minute,
-      data->get_first_sample_time(), data->get_last_sample_time_msec(false));
+      data->get_first_sample_time_msec(), data->get_last_sample_time_msec(false));
 
   // Y axis : setup price axis scaling and tick draw
   // NB : We do not need to explicitly set a left Y axis (volume)
@@ -378,7 +378,6 @@ void ohlc_price_plot::update_time_axis(double t1, double t2, bool emit_signal)
 
   // we need the min/max price for the new time range
   ohlcv_minmax minmax;
-  bool candles_changed = false;
 
   // if the mapping has changed a lot, we might need to change candle sizes
   // scale change might trigger a candle resolution update
