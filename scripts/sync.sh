@@ -18,8 +18,8 @@ echo "Updating to Raspberry Pi"
 echo "-----------------------------------"
 if machine_on pi5; then
   $HOME/update-rsync.sh $HOME/src/grox/                            pi5:/home/pi/src/grox $params
-  $HOME/update-rsync.sh /home/biddisco/.config/grox.ini            pi5:/home/pi/.config/grox.ini
-  $HOME/update-rsync.sh /home/biddisco/.local/share/grox/          pi5:/home/pi/.local/share/grox/
+  $HOME/update-rsync.sh $XDG_CONFIG_HOME/grox.ini                  pi5:/home/pi/.local/aarch64/config/grox.ini
+  $HOME/update-rsync.sh $XDG_DATA_HOME/grox/                       pi5:/home/pi/.local/aarch64/share/grox/
 fi
 
 echo
