@@ -303,12 +303,12 @@ public:
             QPointF xyval(ohlc.time, vals.price_);
             if (vals.event_type_ == buy_sell_event_type::buy)
             {
-              outputs[0]->data().push_back(xyval);
+              outputs[0]->data().push_back({ohlc.time, vals.event_price_});
               outputs[2]->data().push_back(xyval);
             }
             else if (vals.event_type_ == buy_sell_event_type::sell)
             {
-              outputs[1]->data().push_back(xyval);
+              outputs[1]->data().push_back({ohlc.time, vals.event_price_});
               outputs[2]->data().push_back(xyval);
             }
             else if (vals.event_type_ == buy_sell_event_type::value)

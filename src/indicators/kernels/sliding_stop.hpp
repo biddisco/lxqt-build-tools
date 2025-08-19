@@ -14,16 +14,16 @@ namespace indicators::kernels {
     };
     //
     double minmax_;
-    double limit_diff_;
+    double limit_percent;
     bool prev_active_;
     bool active_;
     direction dir_;
 
     //--------------------------------------
     // init/reset the minmax limiter
-    sliding_limit(direction updown, double limit)
+    sliding_limit(direction updown, double limit_percent)
       : dir_(updown)
-      , limit_diff_(limit)
+      , limit_percent(limit_percent)
       , active_(false)
     {
       minmax_ =
@@ -56,8 +56,9 @@ namespace indicators::kernels {
           minmax_ = std::min(minmax_, val);
           diff = (val - minmax_);
         }
-        // if we drop outside of the allowed range, return fail
-        return (diff < limit_diff_);
+        double diff_percent = (100.0 * diff) / minmax_;
+        // if percentage diff if less than threshold, all ok
+        return (diff_percent < limit_percent);
       }
       return active_;
     }

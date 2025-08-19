@@ -32,7 +32,6 @@
 // Grox
 #include "currency/json_data_types.hpp"
 #include "currency/ohlctv_sample.hpp"
-#include "data/ohlc_heikin_ashi.hpp"
 #include "debug/demangle_helper.hpp"
 #include "debug/print.hpp"
 #include "exchange/xrpl.hpp"

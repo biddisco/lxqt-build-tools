@@ -10,8 +10,9 @@
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/kernels/gradient.hpp"
+#include "indicators/kernels/heikin_ashi.hpp"
 #include "indicators/kernels/sliding_stop.hpp"
-#include "indicators/moving_average_volume_weighted.hpp"
+#include "indicators/moving_average_exponential_volume_weighted.hpp"
 #include "indicators/stochastic_relative_strength_indicator.hpp"
 
 namespace indicators {
@@ -54,6 +55,7 @@ public:
       , fee_percent_sell_(0.2)
       , upper_stop_(kernels::sliding_limit::up, ugap)
       , lower_stop_(kernels::sliding_limit::down, lgap)
+      , rsi_multiplier_(1.0)
       , gradient_(0, 0)
       , rsi_gradient_(0, 0)
       , time_res_{0}
@@ -73,10 +75,11 @@ public:
           param<ohlc_modes>{"mode", ohlc_modes::mid_high_low},                    // 2
           param<double>{"Percentage fee Buy", 0.2},                               // 3
           param<double>{"Percentage fee Sell", 0.2},                              // 4
-          param<double>{"Sliding Gap Upper", 0.15 / 100},                         // 5
-          param<double>{"Gradient Threshold Upper", 0.0},                         // 6
-          param<double>{"Sliding Gap Lower", 0.1 / 100},                          // 7
-          param<double>{"Gradient Threshold Lower", 0.1},                         // 8
+          param<double>{"Sliding Gap Upper %", 1.0},                              // 5
+          param<double>{"Sliding Gap Lower %", 1.0},                              // 6
+          param<double>("RSI length multiplier", 1.0),                            // 7
+          param<double>{"Gradient Threshold Upper", 0.0},                         // 8
+          param<double>{"Gradient Threshold Lower", 0.1},                         // 9
       };
     }
 
@@ -89,9 +92,10 @@ public:
       fee_percent_buy_ = get<double>(params_, 3);
       fee_percent_sell_ = get<double>(params_, 4);
       double gap_upper_ = get<double>(params_, 5);
-      gradient_upper_ = get<double>(params_, 6);
-      double gap_lower_ = get<double>(params_, 7);
-      gradient_lower_ = get<double>(params_, 8);
+      double gap_lower_ = get<double>(params_, 6);
+      rsi_multiplier_ = get<double>(params_, 7);
+      gradient_upper_ = get<double>(params_, 8);
+      gradient_lower_ = get<double>(params_, 9);
       //
       first_ = true;
       xrp_total_ = 1;
@@ -99,14 +103,14 @@ public:
       //
       buffer1_ = boost::circular_buffer<float>(window_size_);
       srsi_ = stochastic_relative_strength_indicator();
-      average_ = moving_average_volume_weighted(window_size_, mode_);
+      average_ = moving_average_exponential_volume_weighted(window_size_, mode_);
       upper_stop_ = kernels::sliding_limit(kernels::sliding_limit::up, gap_upper_);
       lower_stop_ = kernels::sliding_limit(kernels::sliding_limit::down, gap_lower_);
       //
-      param_list rsi_params_ = {                                 //
-          params_[0],                                            // 0
-          param<int>{"Window size", /*window_size_ * 4*/ 15},    // 1
-          params_[2]};                                           // 2
+      param_list rsi_params_ = {                                        //
+          params_[0],                                                   // 0
+          param<int>{"Window size", window_size_ * rsi_multiplier_},    // 1
+          params_[2]};                                                  // 2
       srsi_.algorithm_base::initialize(rsi_params_);
     }
 
@@ -129,9 +133,11 @@ public:
       auto p = hdf5_ohlc_->get_trade_data_by_value(taker_pay, time + time_res_, 2.0);
       xrp_total_ = taker_pay / p.open;
       cash_total_ = 0;
-      // pay the high price, value by low price
-      last_result_ = {.event_type_ = buy_sell_event_type::buy,
-          .price_ = p.open,
+      // pay the open price, (value by low price?)
+      last_result_ = {//
+          .event_type_ = buy_sell_event_type::buy,
+          .price_ = last_result_.price_,
+          .event_price_ = p.open,
           .value_ = (p.open * xrp_total_) + cash_total_,
           .tokens_ = xrp_total_,
           .cash_ = cash_total_};
@@ -147,8 +153,10 @@ public:
       cash_total_ = maker_pay * p;
       xrp_total_ = 0;
       // note we output the actual sell price and not the current running average
-      last_result_ = {.event_type_ = buy_sell_event_type::sell,
-          .price_ = p,
+      last_result_ = {//
+          .event_type_ = buy_sell_event_type::sell,
+          .price_ = last_result_.price_,
+          .event_price_ = p,
           .value_ = (p * xrp_total_) + cash_total_,
           .tokens_ = xrp_total_,
           .cash_ = cash_total_};
@@ -160,6 +168,8 @@ public:
       // update the moving average filter
       double current_average_ = average_(val);
       double rsi = srsi_(val);
+
+      auto ha_event = ha_transition_(val);
 
       if (first_)
       {
@@ -174,12 +184,18 @@ public:
       }
 
       // set default output to value computed with current price (low for conservative est)
-      last_result_ = {buy_sell_event_type::value, current_average_,
+      last_result_ = {buy_sell_event_type::value, current_average_, 0.0,
           (val.low * xrp_total_) + cash_total_, xrp_total_, cash_total_};
-
-      if (upper_stop_.active_)
+#if 0
+      if (!upper_stop_.active_ && !lower_stop_.active_)
       {
-        if (!upper_stop_(current_average_) && (rsi > 0.5) && (rsi_gradient_.value() <= 0.0))
+        if (cash_total_ > 0) { lower_stop_.restart(current_average_); }
+        if (xrp_total_ > 0) { upper_stop_.restart(current_average_); }
+      }
+
+      if (upper_stop_.active_ && !upper_stop_(current_average_))
+      {
+        if ((rsi > 0.6) && (rsi_gradient_.value() <= 0.0))
         {
           // fallen out of the upper stop range
           upper_stop_.stop();
@@ -187,30 +203,41 @@ public:
           lower_stop_.restart(current_average_);
         }
       }
-      // else if (lower_stop_.active_)
-      // {
-      //   if (!lower_stop_(current_average_) && (rsi < 0.4) && (rsi_gradient_.value() > 0.0))
-      //   {
-      //     // fallen out of the lower stop range
-      //     lower_stop_.stop();
-      //     buy(val.time);
-      //     upper_stop_.restart(current_average_);
-      //   }
-      // }
-
-      else if ((cash_total_ > 0) && (rsi_gradient_.value() >= 0.0) && (gradient_.value() > 0.05) &&
-          (rsi < 0.4))
+      else if (lower_stop_.active_ && !lower_stop_(current_average_))
       {
+        if ((rsi < 0.2) && (rsi_gradient_.value() > 0.0))
+        {
+          // fallen out of the lower stop range
+          lower_stop_.stop();
+          buy(val.time);
+          upper_stop_.restart(current_average_);
+        }
+      }
+#else
+      using namespace indicators::kernels;
+      if (ha_event == heikin_ashi_transition::buy_sell_type::buy_event && (cash_total_ > 0))
+      {    //
         buy(val.time);
-        upper_stop_.restart(current_average_);
       }
-      else if ((xrp_total_ > 0) && (rsi_gradient_.value() < 0.0) && (rsi > 0.6))
-      {
+      else if (ha_event == heikin_ashi_transition::buy_sell_type::sell_event && (xrp_total_ > 0))
+      {    //
         sell(val.time);
-        lower_stop_.restart(current_average_);
       }
-      // last_result_.value_ = rsi;
+#endif
       last_result_.price_ = current_average_;
+
+      // else if ((cash_total_ > 0) && (rsi_gradient_.value() >= 0.0) && (gradient_.value() > 0.05) &&
+      //     (rsi < 0.4))
+      // {
+      //   buy(val.time);
+      //   upper_stop_.restart(current_average_);
+      // }
+      // else if ((xrp_total_ > 0) && (rsi_gradient_.value() < 0.0) && (rsi > 0.6))
+      // {
+      //   sell(val.time);
+      //   lower_stop_.restart(current_average_);
+      // }
+      // last_result_.value_ = rsi;
       return last_result_;
     }
 
@@ -221,7 +248,7 @@ public:
 
 private:
     ohlc_modes mode_;
-    moving_average_volume_weighted average_;
+    moving_average_exponential_volume_weighted average_;
     stochastic_relative_strength_indicator srsi_;
     boost::circular_buffer<float> buffer1_;
     //
@@ -229,9 +256,11 @@ private:
     kernels::sliding_limit lower_stop_;
     kernels::gradient gradient_;
     kernels::gradient rsi_gradient_;
+    kernels::heikin_ashi_transition ha_transition_;
     //
     double gradient_upper_;
     double gradient_lower_;
+    double rsi_multiplier_;
     double fee_percent_buy_;
     double fee_percent_sell_;
     int window_size_;

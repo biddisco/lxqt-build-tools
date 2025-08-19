@@ -135,7 +135,7 @@ void ohlc_chart_curve::drawSymbols(QPainter* painter, QwtScaleMap const& xMap,
 
     if (symbolStyleCopy == ohlc_chart_curve::HeikinAshi)
     {
-      ohlctv_sample const ha = heikin_ashi(s).value();
+      ohlctv_sample const ha = heikin_ashi(s);
 
       brushIndex =
           (ha.open < ha.close) ? QwtPlotTradingCurve::Increasing : QwtPlotTradingCurve::Decreasing;
