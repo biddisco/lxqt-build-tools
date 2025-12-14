@@ -29,6 +29,7 @@ enum class supported_trade_actions : int
 {
   currency_exchange = 1,
   arbitrage_2way = 2,
+  market_maker = 3,
 };
 
 using trade_action_list = std::vector<supported_trade_actions>;

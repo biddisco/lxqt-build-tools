@@ -41,6 +41,7 @@ class bitstamp_network : public abstract_exchange
   std::vector<bitstamp_account> accounts_;
 
   // map of fees for trading of currency pairs
+  // @TODO add read/write lock for these maps
   std::map<currency_pair, double> transaction_fee_map_;
   std::map<currency_code, double> withdrawal_fee_map_;
 
@@ -109,6 +110,7 @@ class bitstamp_network : public abstract_exchange
     return trade_action_list{
         supported_trade_actions::currency_exchange,
         supported_trade_actions::arbitrage_2way,
+        supported_trade_actions::market_maker,
     };
   }
 

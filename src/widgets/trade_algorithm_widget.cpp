@@ -59,7 +59,15 @@ ticker::data set_gui_orderbook(order_book_param const& p, int index, QLabel* l1,
   //
   auto it = std::find_if(global_settings.networks_.begin(), global_settings.networks_.end(),
       [name](auto n) { return n->get_name() == name; });
-  auto tdata = (*it)->get_subscribed_ticker_data(cp);
+  ticker::data tdata;
+  try
+  {
+    tdata = (*it)->get_subscribed_ticker_data(cp);
+  }
+  catch (...)
+  {
+    //SPDLOG_ERROR("Unable to create orderbook due to unsubscribed ticker");
+  }
   //
   return tdata;
 }
@@ -309,9 +317,12 @@ QDialog* gui_trade_arbitrage(
     };
   };
 
-  tdata1->orderbook_subscribers_.subscribe("arbitrage1", makeLambda(tdata1, ui_->orderbook1));
-  tdata2->orderbook_subscribers_.subscribe("arbitrage2", makeLambda(tdata2, ui_->orderbook2));
-
+  if (tdata1 && tdata2)
+  {
+    tdata1->orderbook_subscribers_.subscribe("arbitrage1", makeLambda(tdata1, ui_->orderbook1));
+    tdata2->orderbook_subscribers_.subscribe("arbitrage2", makeLambda(tdata2, ui_->orderbook2));
+  }
+  else {}
   return algowidget_;
 }
 
