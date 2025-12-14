@@ -20,11 +20,6 @@ cd $HOME/src/grox/extern/Qt-Advanced-Docking-System/
 pwd && git branch && git fetch --all && git pull --rebase origin master
 
 printf "\n#---------------------------"
-echo "magic_enum"
-cd $HOME/src/grox/extern/magic_enum/
-pwd && git branch && git pull
-
-printf "\n#---------------------------"
 echo "Qwt"
 cd $HOME/src/grox/extern/qwt
 pwd ; git branch ; git fetch --all && git pull --rebase origin develop
