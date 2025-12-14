@@ -111,41 +111,23 @@ if(GROX_WITH_IWYU)
 endif()
 
 # ------------------------------------------------------------------------------
-# Find Qt, first 6, then 5 if not found
+# Find Qt6
 # ------------------------------------------------------------------------------
 # this line to force correct var so that Qt-AdvancedDocking uses Qt6 by default
 find_package(QT NAMES Qt6 COMPONENTS Core REQUIRED)
 #
-find_package(Qt6 COMPONENTS Core)
-if(NOT Qt6_FOUND)
-  find_package(Qt5 5.15 REQUIRED COMPONENTS Core)
-endif()
-message(STATUS "Grox Using Qt${QT_DEFAULT_MAJOR_VERSION}")
+set(qtcomponents
+    Core
+    Widgets
+    Gui
+    OpenGL
+    OpenGLWidgets
+    PrintSupport
+    Svg
+    Concurrent
+)
 
-if(${QT_DEFAULT_MAJOR_VERSION} EQUAL 6)
-  set(qtcomponents
-      Core
-      Widgets
-      Gui
-      OpenGL
-      OpenGLWidgets
-      PrintSupport
-      Svg
-      Concurrent
-  )
-else()
-  set(qtcomponents
-      Core
-      Widgets
-      Gui
-      OpenGL
-      PrintSupport
-      Svg
-      Concurrent
-  )
-endif()
-
-find_package(Qt${QT_DEFAULT_MAJOR_VERSION} REQUIRED COMPONENTS ${qtcomponents})
+find_package(Qt6 REQUIRED COMPONENTS ${qtcomponents})
 
 # ------------------------------------------------------------------------------
 # Boost
@@ -154,19 +136,24 @@ set(Boost_NO_WARN_NEW_VERSIONS 1)
 find_package(Boost NO_MODULE REQUIRED system unit_test_framework)
 
 # ------------------------------------------------------------------------------
+# c++26 std::execution
+# ------------------------------------------------------------------------------
+find_package(stdexec REQUIRED)
+
+# ------------------------------------------------------------------------------
 # range-v3 library
 # ------------------------------------------------------------------------------
-find_package(range-v3)
+find_package(range-v3 REQUIRED)
 
 # ------------------------------------------------------------------------------
 # fmt formatting library
 # ------------------------------------------------------------------------------
-find_package(fmt)
+find_package(fmt REQUIRED)
 
 # ------------------------------------------------------------------------------
-# fmt formatting library
+# system thread libs
 # ------------------------------------------------------------------------------
-find_package(Threads QUIET)
+find_package(Threads REQUIRED)
 
 # ------------------------------------------------------------------------------
 # OpenSSL
@@ -184,6 +171,16 @@ find_package(HDF5 REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
 find_package(HighFive REQUIRED)
 
 # ------------------------------------------------------------------------------
+# magic_enum
+# ------------------------------------------------------------------------------
+find_package(magic_enum REQUIRED)
+
+# ------------------------------------------------------------------------------
+# Find nlohmann-json
+# ------------------------------------------------------------------------------
+find_package(nlohmann_json 3.11.3 REQUIRED)
+
+# ------------------------------------------------------------------------------
 # Build/Download qwt
 # ------------------------------------------------------------------------------
 get_external_project(
@@ -196,14 +193,9 @@ get_external_project(
 )
 
 # ------------------------------------------------------------------------------
-# Build/Download stdexec std execution senders library
-# ------------------------------------------------------------------------------
-find_package(stdexec REQUIRED)
-
-# ------------------------------------------------------------------------------
 # Build/Download Qt-Advanced-Docking-System
 # ------------------------------------------------------------------------------
-set(BUILD_EXAMPLES OFF)
+set(BUILD_EXAMPLES ON)
 get_external_project(
   PROJECT_NAME
   "QtADS"
@@ -214,11 +206,6 @@ get_external_project(
   GIT_TAG
   "master"
 )
-
-# ------------------------------------------------------------------------------
-# Find nlohmann-json
-# ------------------------------------------------------------------------------
-find_package(nlohmann_json 3.11.3 REQUIRED)
 
 # ------------------------------------------------------------------------------
 # Build/Download QDarkStyleSheet
