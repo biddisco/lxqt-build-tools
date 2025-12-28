@@ -24,7 +24,7 @@
 namespace indicators {
   // ----------------------------------------------------------------------------
   template <typename T>
-  nlohmann::ordered_json to_json(indicators::param<T> const& p)
+  inline nlohmann::ordered_json to_json(indicators::param<T> const& p)
   {
     nlohmann::ordered_json json;
     auto name = p.name_.toStdString();
@@ -34,7 +34,7 @@ namespace indicators {
 
   // ----------------------------------------------------------------------------
   template <>
-  nlohmann::ordered_json to_json(indicators::param<bool> const& p)
+  inline nlohmann::ordered_json to_json(indicators::param<bool> const& p)
   {
     nlohmann::ordered_json json;
     auto name = p.name_.toStdString();
@@ -44,7 +44,7 @@ namespace indicators {
 
   // ----------------------------------------------------------------------------
   template <>
-  nlohmann::ordered_json to_json(indicators::param<int> const& p)
+  inline nlohmann::ordered_json to_json(indicators::param<int> const& p)
   {
     nlohmann::ordered_json json;
     auto name = p.name_.toStdString();
@@ -56,7 +56,7 @@ namespace indicators {
 
   // ----------------------------------------------------------------------------
   template <>
-  nlohmann::ordered_json to_json(indicators::param<double> const& p)
+  inline nlohmann::ordered_json to_json(indicators::param<double> const& p)
   {
     nlohmann::ordered_json json;
     auto name = p.name_.toStdString();
@@ -68,7 +68,7 @@ namespace indicators {
 
   // ----------------------------------------------------------------------------
   template <>
-  nlohmann::ordered_json to_json(indicators::param<ohlc_modes> const& p)
+  inline nlohmann::ordered_json to_json(indicators::param<ohlc_modes> const& p)
   {
     nlohmann::ordered_json json;
     auto name = p.name_.toStdString();
@@ -79,7 +79,7 @@ namespace indicators {
 
   // ----------------------------------------------------------------------------
   template <>
-  nlohmann::ordered_json to_json(indicators::param<candle_data> const& p)
+  inline nlohmann::ordered_json to_json(indicators::param<candle_data> const& p)
   {
     nlohmann::ordered_json json;
     auto name = p.name_.toStdString();
@@ -97,7 +97,7 @@ namespace indicators {
 
   // ----------------------------------------------------------------------------
   template <>
-  nlohmann::ordered_json to_json(indicators::param<order_book_param> const& p)
+  inline nlohmann::ordered_json to_json(indicators::param<order_book_param> const& p)
   {
     nlohmann::ordered_json json;
     auto name = p.name_.toStdString();
