@@ -133,7 +133,7 @@ find_package(Qt6 REQUIRED COMPONENTS ${qtcomponents})
 # Boost
 # ------------------------------------------------------------------------------
 set(Boost_NO_WARN_NEW_VERSIONS 1)
-find_package(Boost NO_MODULE REQUIRED system unit_test_framework)
+find_package(Boost NO_MODULE REQUIRED unit_test_framework)
 
 # ------------------------------------------------------------------------------
 # c++26 std::execution
@@ -164,6 +164,7 @@ find_package(OpenSSL REQUIRED)
 # HDF5
 # ------------------------------------------------------------------------------
 find_package(HDF5 REQUIRED COMPONENTS C) # needs mpi if compiled with parallel
+add_library(HDF5::HDF5 ALIAS hdf5-shared)
 
 # ------------------------------------------------------------------------------
 # HighFive HDF5 library
