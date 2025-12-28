@@ -15,12 +15,14 @@ fi
 # python in the expected way
 # ---------------
 
+unset PYTHONPATH
+
 # activate python env
 source $SCRIPT_DIR/.venv/bin/activate
 
 unset SESSION_MANAGER
 export LC_ALL=C.UTF-8
-export QT_VER=6.8.2
+export QT_VER=6.8.3
 export LD_LIBRARY_PATH=/opt/Qt/$QT_VER/gcc_64/lib:$LD_LIBRARY_PATH
 export QT_PLUGIN_PATH=/opt/Qt/$QT_VER/gcc_64/plugins
 export QML2_IMPORT_PATH=/opt/Qt/$QT_VER/gcc_64//qml
