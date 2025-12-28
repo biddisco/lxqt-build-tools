@@ -37,10 +37,10 @@ echo "-----------------------------------"
 if machine_on pop; then
   $HOME/update-rsync.sh $HOME/src/grox/  pop:/home/biddisco/src/grox $params
   if [[ "$(hostname)" == "elf" ]]; then
-    $HOME/update-rsync.sh /home/biddisco/.config/grox.ini            pop:/home/biddisco/.config/grox.ini
-    $HOME/update-rsync.sh /home/biddisco/.local/share/grox/grox.hdf5 pop:/home/biddisco/.local/share/grox/grox.hdf5
+    $HOME/update-rsync.sh $XDG_CONFIG_HOME/grox.ini     pop:$XDG_CONFIG_HOME/grox.ini
+    $HOME/update-rsync.sh $XDG_DATA_HOME/grox/grox.hdf5 pop:$XDG_DATA_HOME/grox/grox.hdf5
   else
-    $HOME/update-rsync.sh /home/biddisco/.config/grox.ini            elf:/home/biddisco/.config/grox.ini
-    $HOME/update-rsync.sh /home/biddisco/.local/share/grox/grox.hdf5 elf:/home/biddisco/.local/share/grox/grox.hdf5
+    $HOME/update-rsync.sh $XDG_CONFIG_HOME/grox.ini     elf:$XDG_CONFIG_HOME/grox.ini
+    $HOME/update-rsync.sh $XDG_DATA_HOME/grox/grox.hdf5 elf:$XDG_DATA_HOME/grox/grox.hdf5
   fi
 fi
