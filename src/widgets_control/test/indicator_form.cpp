@@ -76,13 +76,13 @@ int main(int argc, char* argv[])
   // execute sliding stop algorithm dialog once
   auto alg_0 = indicators::indicator_registry::find_by_name("Trade: Sliding Stop");
   indicators::indicator_vector indicator_vec = {alg_0};
-  indicator_widget widget1(indicator_vec, index);
+  indicator_widget widget1(&indicator_vec, index);
   auto result = widget1.execute_as_dialog();
 
   // execute a second time tom see if params are persisted
   alg_0 = indicators::indicator_registry::find_by_name("Trade: Sliding Stop");
   indicator_vec = {alg_0};
-  indicator_widget widget2 = indicator_widget(indicator_vec, index);
+  indicator_widget widget2 = indicator_widget(&indicator_vec, index);
   result = widget2.execute_as_dialog();
 
   // execute_dialog(form_for_algorithm(alg_0));

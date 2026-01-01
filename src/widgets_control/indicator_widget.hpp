@@ -24,7 +24,7 @@ class indicator_widget : public QDialog
 
   public:
   // create a dialog that has a selection of algorithms to choose from
-  indicator_widget(indicators::indicator_vector const& vec, std::size_t& index);
+  indicator_widget(indicators::indicator_vector const* vec, std::size_t& index);
   // create a dialog that only has a single algorithm instantiated
   indicator_widget(indicators::shared_algorithm alg, nlohmann::json values = {});
   // do not allow termporary vectors to be passed in
@@ -47,7 +47,7 @@ class indicator_widget : public QDialog
   private:
   Ui::indicator_widget* ui;
   //
-  indicators::indicator_vector const& indicators_;
+  indicators::indicator_vector const* indicators_;
   indicators::shared_algorithm algorithm_;
   QWidget* indicator_widget_;
 };

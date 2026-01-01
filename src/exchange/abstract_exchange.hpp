@@ -23,7 +23,7 @@
 #include "senders/sender_defs.hpp"
 #include "util/pubsub.hpp"
 
-class basic_account;
+struct basic_account;
 
 enum class supported_trade_actions : int
 {

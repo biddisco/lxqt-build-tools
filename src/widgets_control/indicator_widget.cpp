@@ -23,7 +23,7 @@
 // ----------------------------------------------------------------------------
 // Create a widget with a combo selection for each indicator to choose from
 // when selected, build a control with the paramaters for the indicator
-indicator_widget::indicator_widget(indicators::indicator_vector const& vec, std::size_t& index)
+indicator_widget::indicator_widget(indicators::indicator_vector const* vec, std::size_t& index)
   : QDialog()
   , indicators_(vec)
   , algorithm_{}
@@ -34,7 +34,7 @@ indicator_widget::indicator_widget(indicators::indicator_vector const& vec, std:
   this->setWindowTitle("Indicator");
 
   // setup algorithms combobox
-  for (auto const& a : indicators_)
+  for (auto const& a : *indicators_)
   {
     QString s = a->get_name().c_str();
     ui->algorithm->addItem(s);
@@ -44,20 +44,20 @@ indicator_widget::indicator_widget(indicators::indicator_vector const& vec, std:
       ui->algorithm, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
       [&, this](int i) {
         index = i;    // make sure the global index is updated for next time the dialog is opened
-        refresh_gui(indicators_[i]);
+        refresh_gui(indicators_->operator[](i));
       },
       Qt::QueuedConnection);
 
   // build gui for first/last used algorithm
   ui->algorithm->setCurrentIndex(index);
-  refresh_gui(indicators_[index]);
+  refresh_gui(indicators_->operator[](index));
 }
 
 // ----------------------------------------------------------------------------
-// Create a widget dialog dedicated to only a soiongle algorithm
+// Create a widget dialog dedicated to only a single algorithm
 indicator_widget::indicator_widget(indicators::shared_algorithm alg, nlohmann::json values)
   : QDialog()
-  , indicators_{}
+  , indicators_{nullptr}
   , algorithm_(alg)
   , indicator_widget_(nullptr)
 {
@@ -86,7 +86,7 @@ indicators::shared_algorithm indicator_widget::get_algorithm()
 {
   int index = ui->algorithm->currentIndex();
   if (index == -1) return algorithm_;
-  return indicators_[index];
+  return (indicators_->operator[](index));
 }
 
 // ----------------------------------------------------------------------------

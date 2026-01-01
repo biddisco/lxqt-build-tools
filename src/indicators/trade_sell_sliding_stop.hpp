@@ -107,10 +107,10 @@ public:
       upper_stop_ = kernels::sliding_limit(kernels::sliding_limit::up, gap_upper_);
       lower_stop_ = kernels::sliding_limit(kernels::sliding_limit::down, gap_lower_);
       //
-      param_list rsi_params_ = {                                        //
-          params_[0],                                                   // 0
-          param<int>{"Window size", window_size_ * rsi_multiplier_},    // 1
-          params_[2]};                                                  // 2
+      param_list rsi_params_ = {                                                          //
+          params_[0],                                                                     // 0
+          param<int>{"Window size", static_cast<int>(window_size_ * rsi_multiplier_)},    // 1
+          params_[2]};                                                                    // 2
       srsi_.algorithm_base::initialize(rsi_params_);
     }
 
