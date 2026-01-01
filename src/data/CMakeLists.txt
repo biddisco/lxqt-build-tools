@@ -25,7 +25,6 @@ target_link_libraries(
          grox_debug
          nlohmann_json::nlohmann_json
          magic_enum::magic_enum
-         ${Boost_LIBRARIES}
          range-v3
 )
 

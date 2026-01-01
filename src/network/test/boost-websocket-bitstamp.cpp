@@ -23,7 +23,10 @@
 #include <boost/beast/websocket/ssl.hpp>
 //
 #include "network/test/websocket-ssl.hpp"
+//
+#include "test-options.hpp"
 
+//------------------------------------------------------------------------------
 net::contexts io_contexts_;
 std::vector<std::thread> ioc_threads_;
 std::atomic<int> counter{0};
@@ -58,29 +61,19 @@ void start_io_threads(int nthreads)
 
 int main(int argc, char** argv)
 {
-  // Check command line arguments.
-  if (argc != 4 && argc != 5)
-  {
-    std::cerr << "Usage  : bin/test-websocket <host> <port> <target> "
-                 "[<HTTP version: 1.0 or 1.1(default)>]\n"
-              << "Example:\n"
-              << "bin/test-websocket ws.bitstamp.net 443 \"{\\\"event\\\": "
-                 "\\\"bts:subscribe\\\",\\\"data\\\": {\\\"channel\\\": "
-                 "\\\"live_trades_xrpusd\\\"}}\" \n";
-    return EXIT_FAILURE;
-  }
+  auto vm = set_program_options(argc, argv,
+      {{"url", "www.bitstamp.net"}, {"port", "443"},
+          {"target", "/api/v2/ohlc/xrpusd/?step=60&limit=10"}});
+  std::string url = vm["url"].as<std::string>();
+  std::string port = vm["port"].as<std::string>();
+  std::string target = vm["target"].as<std::string>();
 
   start_io_threads(2);
-
-  auto const host = argv[1];
-  auto const port = argv[2];
-  auto const channel = argv[3];
-  std::cout << "Connecting : " << host << ":" << port << " " << channel << "\n";
-  int version = argc == 5 && !std::strcmp("1.0", argv[4]) ? 10 : 11;
+  std::cout << "Connecting : " << url << ":" << port << " " << target << "\n";
 
   using namespace std::placeholders;
   auto ws_orderbook = net::ws::create_session(
-      io_contexts_.ioc, io_contexts_.ctx, argv[1], argv[2], channel, new_trade_data);
+      io_contexts_.ioc, io_contexts_.ctx, url, port, target, new_trade_data);
 
   int completed = 0;
   int const sec = 8;

@@ -48,9 +48,11 @@ int main(int argc, char** argv)
 
   //
   api_user = execute_os_command("pass bitstamp/user");
-  api_key = execute_os_command("pass bitstamp/api_key");
-  api_secret = execute_os_command("pass bitstamp/secret");
-  if (api_key.empty() || api_secret.empty())
+  api_key = execute_os_command("pass bitstamp/account_key_main");
+  api_secret = execute_os_command("pass bitstamp/account_sec_main");
+  if ((api_user.find("Error") != std::string::npos) ||
+      (api_key.find("Error") != std::string::npos) ||
+      (api_secret.find("Error") != std::string::npos))
   {
     std::cout << "Set ENV vars for API_KEY and API_SEC " << std::endl;
     return EXIT_FAILURE;

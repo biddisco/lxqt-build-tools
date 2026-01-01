@@ -57,7 +57,6 @@ target_link_libraries(
          Qt::Widgets
          Qt::OpenGLWidgets
          qtadvanceddocking-qt${QT_VERSION_MAJOR}
-         ${Boost_LIBRARIES}
          nlohmann_json::nlohmann_json
          STDEXEC::stdexec
          fmt::fmt

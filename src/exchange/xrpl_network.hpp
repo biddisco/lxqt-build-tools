@@ -22,7 +22,7 @@
 #include "senders/sender_defs.hpp"
 
 // ----------------------------------------------------------------------------
-// #define GROX_USE_LOCAL_SERVER
+#define GROX_USE_LOCAL_SERVER
 #define GROX_USE_RIPPLE_MAINNET_SERVER
 
 // ----------------------------------------------------------------------------
@@ -45,13 +45,13 @@ class xrpl_network : public abstract_exchange
   // MainNet : rippled server
   // ---------------------------------------
 #if defined(GROX_USE_LOCAL_SERVER)
-  // note that we use 6005 instead of 443 on local server to avoid
-  // requiring sudo permissions to run rippled
-  static inline std::string const ripple_websocket_address = "192.168.1.10";
-  static inline int const ripple_websocket_port = 6005;
+// for ssl certificates, we must use oryx, rather thaan 192.168.1.10
+# define LOCAL_SERVER "oryx"
+  static inline std::string const ripple_websocket_address = LOCAL_SERVER;
+  static inline int const ripple_websocket_port = 6006;
 
-  static inline std::string const ripple_jsonrpc_address = "192.168.1.10";
-  static inline int const ripple_jsonrpc_port = 51234;
+  static inline std::string const ripple_jsonrpc_address = LOCAL_SERVER;
+  static inline int const ripple_jsonrpc_port = 5005;
 
 #elif defined(GROX_USE_RIPPLE_MAINNET_SERVER)
   static inline std::string const ripple_websocket_address = "s1.ripple.com";

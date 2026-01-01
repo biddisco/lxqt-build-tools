@@ -41,7 +41,6 @@ target_link_libraries(
          grox_io
          Qt::Core
          fmt::fmt
-         ${Boost_LIBRARIES}
 )
 
 if(BUILD_TESTING)

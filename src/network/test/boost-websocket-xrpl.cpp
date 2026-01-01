@@ -6,15 +6,20 @@
 #include <string>
 #include <vector>
 //
+#include <boost/program_options.hpp>
 #include <nlohmann/json.hpp>
 //
 #include "currency/currency.hpp"
 #include "currency/currency_pair.hpp"
 #include "network/test/websocket-ssl.hpp"
+//
+#include "test-options.hpp"
 
 net::contexts io_contexts_;
 std::vector<std::thread> ioc_threads_;
 std::atomic<int> counter{0};
+std::string websocket_url;
+std::string websocket_port;
 
 // ----------------------------------------------------------------------------
 static void new_orderbook_data(void* nw, currency_pair const cp, std::string_view data)
@@ -66,8 +71,11 @@ void websocket_subscribe_offers()
   std::string subscription = command.dump();
 
   using namespace std::placeholders;
-  auto ws_orderbook = net::ws::create_session(io_contexts_.ioc, io_contexts_.ctx, "s1.ripple.com",
-      "443", subscription, std::bind(new_orderbook_data, nullptr, currency_pair{{}, {}}, _1));
+  auto ws_orderbook =
+      net::ws::create_session(io_contexts_.ioc, io_contexts_.ctx, websocket_url, websocket_port,
+          subscription, std::bind(new_orderbook_data, nullptr, currency_pair{{}, {}}, _1));
+  // auto ws_orderbook = net::ws::create_session(io_contexts_.ioc, io_contexts_.ctx, "s1.ripple.com",
+  //     "443", subscription, std::bind(new_orderbook_data, nullptr, currency_pair{{}, {}}, _1));
 
   int completed = 0;
   int const sec = 8;
@@ -86,6 +94,10 @@ void websocket_subscribe_offers()
 
 int main(int argc, char* argv[])
 {
+  auto vm = set_program_options(argc, argv, {{"url", "s1.ripple.com"}, {"port", "443"}});
+  websocket_url = vm["url"].as<std::string>();
+  websocket_port = vm["port"].as<std::string>();
+  //
   start_io_threads(2);
   websocket_subscribe_offers();
   //

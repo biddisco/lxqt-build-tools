@@ -174,8 +174,12 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onSslErrors(QList<QSslError> const& errors)
   {
-    qwebsocket_dbg<2>.error(fmt::format("{:20s} SslErrors", id_));
-    Q_UNUSED(errors);
+    for (auto const& err : errors)
+    {
+      qwebsocket_dbg<2>.error(fmt::format("{:20s} SslError : {}", id_, err.errorString()));
+    }
+    // qwebsocket_dbg<2>.error(fmt::format("{:20s} SslErrors", id_));
+    // Q_UNUSED(errors);
 
     // WARNING: Never ignore SSL errors in production code.
     // The proper way to handle self-signed certificates is to add a custom root

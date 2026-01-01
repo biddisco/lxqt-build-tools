@@ -35,7 +35,6 @@ target_link_libraries(
          grox_plot
          grox_util
          Qt::Core
-         ${Boost_LIBRARIES}
          nlohmann_json::nlohmann_json
          STDEXEC::stdexec
          fmt::fmt

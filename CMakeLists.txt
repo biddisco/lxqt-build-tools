@@ -130,12 +130,6 @@ set(qtcomponents
 find_package(Qt6 REQUIRED COMPONENTS ${qtcomponents})
 
 # ------------------------------------------------------------------------------
-# Boost
-# ------------------------------------------------------------------------------
-set(Boost_NO_WARN_NEW_VERSIONS 1)
-find_package(Boost NO_MODULE REQUIRED unit_test_framework)
-
-# ------------------------------------------------------------------------------
 # c++26 std::execution
 # ------------------------------------------------------------------------------
 find_package(stdexec REQUIRED)
@@ -149,6 +143,11 @@ find_package(range-v3 REQUIRED)
 # fmt formatting library
 # ------------------------------------------------------------------------------
 find_package(fmt REQUIRED)
+
+# ------------------------------------------------------------------------------
+# Boost
+# ------------------------------------------------------------------------------
+find_package(Boost NO_MODULE REQUIRED COMPONENTS headers program_options)
 
 # ------------------------------------------------------------------------------
 # system thread libs

@@ -23,9 +23,10 @@
 #include <openssl/ssl.h>
 //
 #include "network/test/https-async.hpp"
+#include "test-options.hpp"
 
 std::atomic<int> counter{0};
-
+//------------------------------------------------------------------------------
 //
 // Creates a session using https and fetches data from bitstamp
 //
@@ -49,28 +50,21 @@ void new_data(std::string&& data)
 
 int main(int argc, char** argv)
 {
-  // Check command line arguments.
-  if (argc != 4 && argc != 5)
-  {
-    std::cerr << "Usage  : bin/test-https <host> <port> <target> [<HTTP "
-                 "version: 1.0 or 1.1(default)>]\n"
-              << "Example:\n"
-              << "bin/test-https www.bitstamp.net 443 "
-                 "\"/api/v2/ohlc/xrpusd/?step=60&limit=10\" \n";
-    return EXIT_FAILURE;
-  }
+  auto vm = set_program_options(argc, argv,
+      {{"url", "www.bitstamp.net"}, {"port", "443"},
+          {"target", "/api/v2/ohlc/xrpusd/?step=60&limit=10"}});
+  std::string url = vm["url"].as<std::string>();
+  std::string port = vm["port"].as<std::string>();
+  std::string target = vm["target"].as<std::string>();
 
-  auto const host = argv[1];
-  auto const port = argv[2];
-  auto const target = argv[3];
-  std::cout << "Connecting : " << host << ":" << port << " " << target << "\n";
+  std::cout << "Connecting : " << url << ":" << port << " " << target << "\n";
   int version = argc == 5 && !std::strcmp("1.0", argv[4]) ? 10 : 11;
 
   // The io_context is required for all I/O
   net::contexts contexts;
 
   std::shared_ptr<net::https::session> session =
-      net::https::create_session(contexts.ioc, contexts.ctx, host, port, new_data);
+      net::https::create_session(contexts.ioc, contexts.ctx, url, port, new_data);
 
   // Run the I/O service on a thread.
   std::thread io_thread([&]() {

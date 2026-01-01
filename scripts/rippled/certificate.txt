@@ -1,0 +1,30 @@
+# generate an ssl certificate for the rippled server running locally on machine oryx
+
+MACHINE=oryx
+
+openssl req -x509 -nodes -days 3650 \
+  -newkey rsa:2048 \
+  -keyout /etc/opt/ripple/rippled-$MACHINE.key \
+  -out    /etc/opt/ripple/rippled-$MACHINE.crt \
+  -subj   "/CN=$MACHINE" \
+  -addext "subjectAltName=DNS:$MACHINE,IP:192.168.1.10"
+
+echo "Put the keys somewhere like ... /etc/opt/ripple/"
+
+# Add to rippled.cfg in /etc/opt/ripple/rippled.cfg
+[ssl_key]
+/etc/opt/ripple/rippled-$MACHINE.key
+
+[ssl_cert]
+/etc/opt/ripple/rippled-$MACHINE.crt
+
+# Trust the certificate on the client machine (copy certificate locally)
+# Make sure: 
+# The file ends in .crt (not .pem or .cer)
+# Owned by root
+# Readable (chmod 644 is fine)
+
+sudo scp biddisco@$MACHINE:/etc/opt/ripple/rippled-$MACHINE.crt /usr/local/share/ca-certificates/rippled-$MACHINE.crt 
+# trust it
+sudo update-ca-certificates
+
