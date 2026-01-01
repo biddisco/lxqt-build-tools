@@ -359,7 +359,7 @@ bool bitstamp_network::can_send(currency_code const& c, abstract_exchange* dest)
   auto xrp_net = dynamic_cast<xrpl_network*>(dest);
   if (xrp_net && !xrp_net->testnet())
   {
-    if (c.is_xrp() && (c.issuer_ == currencies::bitstamp_trust) &&
+    if (c.is_xrp() && (c.issuer_ == currency_code::bitstamp_trust) &&
         ((c.code_ == "USD") || (c.code_ == "EUR")))
       return true;
   }
@@ -847,7 +847,7 @@ currency_code add_fiat_issuer(currency_code const& c)
   static std::vector<std::string> fiat{"USD", "EUR", "GBP"};
   for (auto const& f : fiat)
   {
-    if ((c.code_ == f)) return {currencies::bitstamp_trust, c.code_};
+    if ((c.code_ == f)) return {currency_code::bitstamp_trust, c.code_};
   }
   return c;
 }

@@ -45,7 +45,7 @@ public:
       params_ = {
           param<order_book_param>{"Order-Book-1", {"Bitstamp", {{{"XRP"}, {"USD"}}}}},    // 0
           param<order_book_param>{"Order-Book-2",                                         //
-              {"XRPL Mainnet", {{{"XRP"}, {currencies::bitstamp_trust, "USD"}}}}},        // 1
+              {"XRPL Mainnet", {{{"XRP"}, {currency_code::bitstamp_trust, "USD"}}}}},     // 1
           param<int>{"Window size", 14},                                                  // 2
           param<ohlc_modes>{"mode", ohlc_modes::mid_open_close},                          // 3
       };

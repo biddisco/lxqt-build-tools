@@ -12,7 +12,11 @@ currency_code::currency_code(std::string_view s)
   {
     auto e1 = e0 + 1;
     code_ = s.substr(0, e0);
-    issuer_ = s.substr(e1, s.back());
+    std::string issuer = std::string(s.substr(e1, s.back()));
+    if (name_to_issuer.find(issuer) != name_to_issuer.end())
+      issuer_ = name_to_issuer.at(issuer);
+    else
+      issuer_ = issuer;
   }
   else
   {
@@ -27,12 +31,9 @@ std::ostream& operator<<(std::ostream& os, currency_code const& c)
   if (c.is_fiat()) { os << c.code_; }
   else
   {
-    if (c.issuer_ == currencies::bitstamp_trust)
-      os << c.code_ << ".bitstamp";
-    else if (c.issuer_ == currencies::gatehub_trust)
-      os << c.code_ << ".gatehub";
-    else if (c.issuer_ == currencies::ripple_trust)
-      os << c.code_ << ".ripple";
+    auto name = currency_code::issuer_to_name.find(c.issuer_);
+    if (name != currency_code::issuer_to_name.end())
+      os << c.code_ << "." << name->second;
     else
       os << c.code_ << "." << c.issuer_;
   }

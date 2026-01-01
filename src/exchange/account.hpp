@@ -160,8 +160,10 @@ struct bitstamp_account : public ledger_wallet
   virtual std::string_view get_receive_address(currency_code const& c) override
   {
     if (c.is_xrp()) return public_;
-    if (c == currency_code{currencies::bitstamp_trust, "USD"}) return currencies::bitstamp_trust;
-    if (c == currency_code{currencies::bitstamp_trust, "EUR"}) return currencies::bitstamp_trust;
+    if (c == currency_code{currency_code::bitstamp_trust, "USD"})
+      return currency_code::bitstamp_trust;
+    if (c == currency_code{currency_code::bitstamp_trust, "EUR"})
+      return currency_code::bitstamp_trust;
     return "";
   }
 };

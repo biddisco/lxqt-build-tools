@@ -58,13 +58,14 @@ void wallet_widget::set_data(ledger_wallet* w)
   auto l = w->lock_currencies();
   for (auto& c : w->currencies_)
   {
-    wwidg_dbg<0>.debug(ffmt<s20>("assign currencies"), c.symbol_.to_stringrep());
+    wwidg_dbg<0>.debug(ffmt<s20>("assign currencies"), c.symbol_.to_stringrep(true, true));
     // widgets are added to the layout, but become children of the layout's parent
-    auto* widget = ui->wallet_groupbox->findChild<currency_widget*>(c.symbol_.to_stringrep());
+    auto* widget =
+        ui->wallet_groupbox->findChild<currency_widget*>(c.symbol_.to_stringrep(true, true));
     if (widget == nullptr)
     {
       widget = new currency_widget(decimals, this);
-      widget->setObjectName(to_qstring(c.symbol_.to_stringrep()));
+      widget->setObjectName(to_qstring(c.symbol_.to_stringrep(true, true)));
       widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
       ui->currencies_layout->addWidget(widget);
     }

@@ -112,7 +112,7 @@ void xrpl_order_book::ledger_map_to_order_book()
     if (acc_bids_.size() > 0)
     {
       std::sort(acc_bids_.begin(), acc_bids_.end(), std::greater<xrpl_offer>{});
-      clamp_offers_to_funds(acc_bids_, {currencies::bitstamp_trust, "USD"});
+      clamp_offers_to_funds(acc_bids_, {currency_code::bitstamp_trust, "USD"});
     }
     double tiny_offers = 0;
     for (auto const& o : acc_bids_)

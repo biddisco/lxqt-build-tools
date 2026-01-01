@@ -40,15 +40,23 @@ void bitstamp_order_book::accept_json_bitstamp(QString const data)
   auto l = take_bid_ask_lock();
 
   // convert orders into a layout we can visualize nicely
-  std::string stdstring = data.toStdString();
-  json jdata = json::parse(stdstring)["data"];
-  bid_ask_string_to_number(jdata["bids"], bids_);
-  bid_ask_string_to_number(jdata["asks"], asks_);
-  std::partial_sum(bids_.size.begin(), bids_.size.end(), bids_.total.begin());
-  std::partial_sum(asks_.size.begin(), asks_.size.end(), asks_.total.begin());
-  //
-  order_text = make_order_book_string();
-  order_book_base::update_graph_limits(true);
+  try
+  {
+    std::string stdstring = data.toStdString();
+    json jdata = json::parse(stdstring)["data"];
+    bid_ask_string_to_number(jdata["bids"], bids_);
+    bid_ask_string_to_number(jdata["asks"], asks_);
+    std::partial_sum(bids_.size.begin(), bids_.size.end(), bids_.total.begin());
+    std::partial_sum(asks_.size.begin(), asks_.size.end(), asks_.total.begin());
+    //
+    order_text = make_order_book_string();
+    order_book_base::update_graph_limits(true);
+  }
+  catch (json::exception& e)
+  {
+    bobook_dbg<0>.error(ffmt<s20>("accept_json_bitstamp"), "JSON parse error:", e.what(),
+        "data:", data.toStdString());
+  }
 }
 
 // ----------------------------------------------------------------------------

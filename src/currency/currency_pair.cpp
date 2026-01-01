@@ -33,8 +33,8 @@ currency_pair string_to_pair(std::string_view s, std::string_view delim)
 // ----------------------------------------------------------------------------
 std::string currency_pair_string(currency_pair const& p, std::string_view sep, bool add_issuer)
 {
-  std::string s0 = p.c1_.to_stringrep(add_issuer);
-  std::string s1 = p.c2_.to_stringrep(add_issuer);
+  std::string s0 = p.c1_.to_stringrep(add_issuer, true);
+  std::string s1 = p.c2_.to_stringrep(add_issuer, true);
   return s0 + std::string(sep) + s1;
 }
 

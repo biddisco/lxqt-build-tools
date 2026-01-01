@@ -65,10 +65,10 @@ void xrpl_network::initialize()
 {
   if (!testnet())
   {
-    add_currency_pair({{currencies::bitstamp_trust, "USD"}, currency_code{"", "XRP"}});
-    add_currency_pair({{currencies::bitstamp_trust, "EUR"}, currency_code{"", "XRP"}});
-    add_currency_pair({{currencies::gatehub_trust, "USD"}, currency_code{"", "XRP"}});
-    add_currency_pair({{currencies::gatehub_trust, "EUR"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currency_code::bitstamp_trust, "USD"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currency_code::bitstamp_trust, "EUR"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currency_code::gatehub_trust, "USD"}, currency_code{"", "XRP"}});
+    add_currency_pair({{currency_code::gatehub_trust, "EUR"}, currency_code{"", "XRP"}});
   }
 
   // spawn a task that performs init functions, we must do this on a pika thread because
@@ -127,7 +127,8 @@ bool xrpl_network::can_send(currency_code const& c, abstract_exchange* dest)
   else if (!testnet() && dynamic_cast<bitstamp_network*>(dest))
   {
     if (c.is_xrp() ||
-        ((c.issuer_ == currencies::bitstamp_trust) && ((c.code_ == "USD") || (c.code_ == "EUR"))))
+        ((c.issuer_ == currency_code::bitstamp_trust) &&
+            ((c.code_ == "USD") || (c.code_ == "EUR"))))
     {
       return true;
     }
@@ -584,12 +585,12 @@ void xrpl_network::handle_account_lines(ledger_wallet& w, std::string_view data)
         currency_amount c{ic, b.value_, b.value_, 0};
         w.add_currency(c);
       }
-      else if (ic.issuer_ == currencies::bitstamp_trust)
+      else if (ic.issuer_ == currency_code::bitstamp_trust)
       {
         currency_amount c{ic, b.value_, b.value_, 0};
         w.add_currency(c);
       }
-      else if (ic.issuer_ == currencies::gatehub_trust)
+      else if (ic.issuer_ == currency_code::gatehub_trust)
       {
         currency_amount c{ic, b.value_, b.value_, 0};
         w.add_currency(c);

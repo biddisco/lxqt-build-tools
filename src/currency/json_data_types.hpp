@@ -120,10 +120,10 @@ namespace grox {
     bool grox_compatible() const
     {
       bool ok = TakerGets.currency_.is_xrp() &&
-          (TakerPays.currency_ == currency_code{currencies::bitstamp_trust, "USD"});
+          (TakerPays.currency_ == currency_code{currency_code::bitstamp_trust, "USD"});
       ok = ok ||
           (TakerPays.currency_.is_xrp() &&
-              (TakerGets.currency_ == currency_code{currencies::bitstamp_trust, "USD"}));
+              (TakerGets.currency_ == currency_code{currency_code::bitstamp_trust, "USD"}));
       return ok;
     }
   };
