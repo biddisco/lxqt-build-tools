@@ -43,6 +43,7 @@
 #include "util/datetime_utils.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/check_trades_dialog.hpp"
+#include "widgets/connection_widget.hpp"
 #include "widgets/currency_widget.hpp"
 #include "widgets/password_dialog.hpp"
 #include "widgets/price_chart_widget.hpp"
@@ -327,6 +328,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   bitstamp_network_ = bitstamp_network::get_bitstamp_instance();
   exchange_list_.push_back(bitstamp_network_);
 
+  // @TODO - this should be moved into accounts frame
   // when a transaction takes place we might need to update wallet/records
   connect(
       bitstamp_network_.get(), &bitstamp_network::transaction_event, this,
@@ -362,12 +364,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   xrpl_testnet_ = xrpl_network::get_xrpl_instance(true);
   exchange_list_.push_back(xrpl_network_);
   exchange_list_.push_back(xrpl_testnet_);
-
-  // currency updated within a wallet
-  connect(xrpl_network_.get(), SIGNAL(update_currency_widget(currency_amount*)), this,
-      SLOT(update_currency_widget(currency_amount*)), Qt::QueuedConnection);
-  connect(xrpl_testnet_.get(), SIGNAL(update_currency_widget(currency_amount*)), this,
-      SLOT(update_currency_widget(currency_amount*)), Qt::QueuedConnection);
 
   // wallet update
   connect(xrpl_network_.get(), SIGNAL(wallet_changed(ledger_wallet*)), this,
@@ -405,6 +401,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       Qt::QueuedConnection);
 #endif
 
+  // @TODO move this into account frame
   // for each wallet on each network
   for (auto network : global_settings.networks_)
   {
@@ -457,7 +454,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       };
 
       // ------------------------------------------------------------
-      // create a callback that constructs a mrket-maker widget
+      // create a callback that constructs a market-maker widget
       auto callback3 = [this, network]() {
         auto alg = indicators::indicator_registry::find_by_name("Market-Maker");
         // QDialog* widget = create_trading_widget({network}, {alg});
@@ -505,29 +502,6 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
     e->initialize();
   }
 
-  // @TODO get rid of this
-  // ----------------------------------
-  // Resize order book to fit monospace text (add 1 chars - scrollbars/etc)
-  //
-  // QString txt = "X";
-  // int char_size = QFontMetrics(algo_form_->order_book_xrpl->font()).horizontalAdvance(txt);
-  // int calcWidth = char_size * 85 + 8;
-  // //std::cout << "width", algo_form_->order_book_xrpl->verticalScrollBar()->geometry().width() << std::endl;
-  // algo_form_->order_book_xrpl->setMinimumWidth(calcWidth);
-  // algo_form_->order_book_xrpl->setMaximumWidth(calcWidth);
-  // //algo_form_->order_book_bitstamp->setMaximumWidth(calcWidth);
-  // //
-  // calcWidth = char_size * 140 + 8;
-  // algo_form_->arbitrage_orders->setMinimumWidth(calcWidth);
-  // algo_form_->arbitrage_orders->setMaximumWidth(calcWidth);
-
-  // ----------------------------------
-  // just an experiment to display an image
-  // scale pixmap to fit in label's size and keep ratio of pixmap
-  QPixmap pix(":/images/icons/xrp.jpg");
-  // pix = pix.scaled(algo_form_->image_label->size(), Qt::KeepAspectRatio);
-  // algo_form_->image_label->setPixmap(pix);
-
   register_control_factories();
 }
 
@@ -547,18 +521,6 @@ GroxMainWindow::~GroxMainWindow()
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::progress_events(int ms)
-{
-  using namespace std::chrono;
-  // process messages to unblock startup waits
-  for (auto start = system_clock::now(), now = start; now < start + milliseconds{ms};
-       now = system_clock::now())
-  {
-    QCoreApplication::processEvents();
-  }
-}
-
-// ----------------------------------------------------------------------------
 void GroxMainWindow::appExitCleanupHandler()
 {
   main_dbg<0>.debug(ffmt<s20>("appExitCleanupHandler"));
@@ -573,9 +535,6 @@ bool GroxMainWindow::eventFilter(QObject* obj, QEvent* event)
 // ----------------------------------------------------------------------------
 void GroxMainWindow::connect_gui_controls()
 {
-  // action for quit (@TODO)
-  // connect(actionQuit, SIGNAL(triggered()), this, SLOT(close()));
-
   // button-click : fetch latest account balance data
   // connect(algo_form_->account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
@@ -612,15 +571,7 @@ void GroxMainWindow::connect_gui_controls()
 }
 
 // ----------------------------------------------------------------------------
-// slot to ensure widget updates on GUI thread
-void GroxMainWindow::update_currency_widget(currency_amount* c)
-{
-  main_dbg<0>.error(ffmt<s20>("update_currency_widget"));
-  // assert(c->widget_);
-  // c->widget_->set_data(c);
-}
-
-// ----------------------------------------------------------------------------
+// @TODO - this should be moved into accounts frame/widget
 // slot to ensure widget updates on GUI thread
 void GroxMainWindow::wallet_changed(ledger_wallet* w)
 {
@@ -634,55 +585,13 @@ void GroxMainWindow::wallet_changed(ledger_wallet* w)
 }
 
 // ----------------------------------------------------------------------------
-void GroxMainWindow::execute_xrp()
-{
-  QMessageBox::StandardButton reply;
-  reply = QMessageBox::question(
-      this, "Confirm", "Execute transaction?", QMessageBox::Yes | QMessageBox::No);
-  if (reply == QMessageBox::Yes)
-  {
-    main_dbg<0>.debug(ffmt<s20>("Yes clicked"));
-    //        std::uint32_t tag = bitstamp_network_->account().tag_;
-    //        bool test = make_xrp_payment(ripple::KeyType::secp256k1,
-    //                global_settings.xrpl_wallets[    global_settings.active_wallet].private_,
-    //                global_settings.xrpl_wallets[    global_settings.active_wallet].public_,
-    //            bitstamp_network_->account().public_, tag, 10);
-
-    QApplication::quit();
-  }
-  else { main_dbg<0>.debug(ffmt<s20>("Yes *not* clicked")); }
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::execute_usd()
-{
-  QMessageBox::StandardButton reply;
-  reply = QMessageBox::question(
-      this, "Confirm", "Execute transaction?", QMessageBox::Yes | QMessageBox::No);
-  if (reply == QMessageBox::Yes)
-  {
-    main_dbg<0>.debug(ffmt<s20>("Yes clicked"));
-    QApplication::quit();
-  }
-  else { main_dbg<0>.debug(ffmt<s20>("Yes *not* clicked")); }
-}
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::capture_image()
-{
-  return;
-  //    auto image = algo_form_->tabWidget->grab();
-  //    algo_form_->imagelabel->setPixmap(image);
-  //    algo_form_->imagelabel->setScaledContents(true);
-}
-
-// ----------------------------------------------------------------------------
 void GroxMainWindow::transaction_event()
 {
   main_dbg<5>.debug("transaction_event : update balances?");
 }
 
 // ----------------------------------------------------------------------------
+// @TODO - this should be moved into accounts frame
 void GroxMainWindow::display_offers()
 {
   // Delete previous space in offer window
@@ -857,32 +766,8 @@ void GroxMainWindow::saveConnectionSetups()
 void GroxMainWindow::loadConnectionSetups()
 {
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
-  /*
-  // ------------------------------------
-  settings.beginGroup("Streams");
-  for (auto const& e : exchange_list_)
-  {
-    e->register_factory("ticker_subscribe",
-      [e](currency_pair cp, ticker::data, ticker::streams) { e->ticker_subscribe(cp); });
-    e->register_factory("stream_subscribe", ticker_gui_factory);
-  }
-  // begin abstract_exchange group
-  settings.beginGroup(QString::fromStdString(e->get_name()));
 
-  // sub groups are tickers on the abstract_exchange
-  QStringList children = settings.childGroups();
-  for (auto const& ticker : children)
-  {
-    std::string cps = ticker.toStdString();
-    currency_pair cp = string_to_pair(cps, "-");
-    // subscribe to this ticker and get the streams available back
-    stream_set streams_avail = e->ticker_subscribe(cp);
-  }
-    settings.endGroup();    // abstract_exchange
-  }
-  settings.endGroup();    // streams
-*/
-  main_dbg<0>.debug(ffmt<s20>("Connections loaded"), settings.fileName().toStdString());
+  main_dbg<0>.error(ffmt<s20>("Fix connect init"), settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -937,239 +822,6 @@ void GroxMainWindow::loadWindowSettings()
 
   main_dbg<0>.debug(ffmt<s20>("Settings loaded"), settings.fileName().toStdString());
 }
-
-// ----------------------------------------------------------------------------
-void GroxMainWindow::stream_process(ohlctv_sample const& ohlc)
-{
-  main_dbg<0>.debug(ffmt<s20>("New data"), msecs_unix_to_calendar_time_local(ohlc.time), ohlc);
-  //    df_.process(ohlc);
-}
-
-// ----------------------------------------------------------------------------
-QColor colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QColor("darkRed"),
-    QColor("darkCyan"), QColor("darkMagenta"), QColor("green"), QColor("darkGreen"),
-    QColor("yellow"), QColor("blue")};
-/*
-// ----------------------------------------------------------------------------
-void GroxMainWindow::execute_filter()
-{
-    static int col = 0;
-
-    trade_algorithm ta_dialog = trade_algorithm();
-    auto result = ta_dialog.exec();
-    if (result == QDialog::Rejected)
-        return;
-    if (result != QDialog::Accepted) {
-        col = 0;
-        price_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
-
-        filters_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
-        filters_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
-
-        assets_plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
-        assets_plot_->setAxisScale(QwtAxis::YRight, 0, 1);
-        return;
-    }
-
-    bool all_resolutions = false;
-    int algorithm = ta_dialog.algorithm();
-
-    std::vector<candle_res> resolutions = ohlc_data_resolutions::available_resolutions();
-    candle_res base_resolution = ohlc_data_resolutions::minute;
-    // get the highest resolution used by the algorithm
-    if (!all_resolutions) {
-        resolutions.clear();
-        base_resolution = ta_dialog.resolution(0);
-        resolutions.push_back(base_resolution);
-    }
-    // for each dataset required, get the GCD to use as a base resolution
-    for (int i=1; i<ta_dialog.num_datasets(); ++i) {
-        candle_res res = ta_dialog.resolution(i);
-        base_resolution = ohlc_chart_data::gcd(base_resolution, res);
-    }
-
-//    base_resolution = ohlc_data_resolutions::minute;
-
-    auto dataset =     global_settings.data_manager_->get_dataset(base_resolution);
-    auto data = dataset->ohlc_samples_;
-
-    // NB. Inputs need to be used by reference, with the original object
-    // kept alive so that they can be updated continuously.
-    // Other filter objects are copied during pipeline construction
-
-    // initialize an ohlc input object with the first dataset value
-    input_value"data/ohlctv_sample.hpp" ohlc_in(data->data().front());
-    pipeline::input<ohlctv_sample const&> ohlc_input = std::ref(ohlc_in);
-
-    // initialize a time input object
-    input_value<double> time_in(data->data().front().time);
-    pipeline::input<double> time_input = std::ref(time_in);
-
-    struct funds {
-        double xrp;
-        double usd;
-    };
-
-    std::vector<price_type> price_pipelines;
-    std::vector<price_type> filter_pipelines;
-    std::vector<event_type> event_pipelines;
-    std::vector<funds> funding;
-
-    for (const candle_res &res : resolutions) {
-        int N = res.res_ / base_resolution;
-        if (algorithm==0)
-            make_heikin_ashi_pipeline(ohlc_input, time_input, res, event_pipelines, price_pipelines);
-        else if (algorithm==1)
-            make_moving_average_gradient(ohlc_input, time_input, N, event_pipelines, price_pipelines);
-        else if (algorithm==2) {
-            candle_res res2 = ta_dialog.resolution(1);
-            int M = res2.res_ / base_resolution;
-            make_moving_average_cross(ohlc_input, time_input, N, M, event_pipelines, price_pipelines);
-        }
-        else if (algorithm==3) {
-            make_MACD(ohlc_input, time_input, 12, 26, 12*9, event_pipelines, price_pipelines, filter_pipelines);
-        }
-        funding.push_back({50000,0});
-    }
-
-    using plot_array = QVector<QPointF>;
-    plot_array buys, sells, assets;
-    std::vector<plot_array> priceplots;
-    std::vector<plot_array> filterplots;
-    buys.reserve(5000);
-    sells.reserve(5000);
-    assets.reserve(5000);
-    for (const auto &p : price_pipelines) {
-        plot_array &temp = priceplots.emplace_back();
-        temp.reserve(5000);
-    }
-    for (const auto &p : filter_pipelines) {
-        plot_array &temp = filterplots.emplace_back();
-        temp.reserve(5000);
-    }
-
-    auto start = QDateTime( QDate(2020, 10, 1), QTime(0,0,0), QTimeZone::utc());
-    //start = algo_form_->repair_date->dateTime();
-    //
-    double msecs = start.toMSecsSinceEpoch();
-    uint64_t start_index = data->sample_index(msecs);
-    uint64_t i = 0;
-    //
-    double fee_estimate = 0.998;
-
-    for (auto const &ohlc : data->data()) {
-        if (i++<start_index)
-            continue;
-
-        ohlc_in.set(ohlc);
-        time_in.set(ohlc.time + base_resolution.res_); + ohlc_data_resolutions::minute);
-
-        for (uint i=0; i<price_pipelines.size(); ++i) {
-            auto &pipe = price_pipelines[i];
-            auto &data = priceplots[i];
-            double p = pipe.operator()();
-            QPointF trade2(ohlc.time, p);
-            data.push_back(trade2);
-        }
-
-        for (uint i=0; i<filter_pipelines.size(); ++i) {
-            auto &pipe = filter_pipelines[i];
-            auto &data = filterplots[i];
-            double p = pipe.operator()();
-            QPointF trade2(ohlc.time, p*10);
-            data.push_back(trade2);
-        }
-
-        auto &pipe = event_pipelines[0];
-        trade_event e = pipe.operator()();
-        if (e.type_ == buy_sell_type::buy_event) {
-            if (funding[0].usd>0) {
-                double p =     global_settings.data_manager_->get_estimated_buy_price(funding[0].usd, e.time_, 2.0);
-                if (p==0) break;
-
-                // plot buy price
-                QPointF trade(e.time_, p);
-                buys.push_back(trade);
-
-                funding[0].xrp = fee_estimate*funding[0].usd/p;
-                funding[0].usd = 0;
-                std::cout << "Buy  :" << msecs_unix_to_calendar_time(e.time_) << " "
-                          << "Res " << ffmt<s6>(base_resolution.name_)
-                          << "xrp (" << fp<2,11>(funding[0].xrp) << ") "
-                          << "usd (" << fp<2,11>(funding[0].usd) << ") "
-                          << "\n";
-                // plot current assets
-                QPointF trade2(e.time_, funding[0].xrp);
-                assets.push_back(trade2);
-            }
-        }
-        else if (e.type_ == buy_sell_type::sell_event) {
-            if (funding[0].xrp>0) {
-                double p =     global_settings.data_manager_->get_estimated_sell_price(funding[0].xrp, e.time_, 2.0);
-                if (p==0) break;
-
-                // plot sell price
-                QPointF trade2(e.time_, p);
-                sells.push_back(trade2);
-
-                // plot current assets (before resetting xrp to zero)
-                QPointF trade3(e.time_, funding[0].xrp);
-                assets.push_back(trade3);
-
-                funding[0].usd = fee_estimate*funding[0].xrp*p;
-                funding[0].xrp = 0;
-                std::cout << "Sell :" << msecs_unix_to_calendar_time(e.time_) << " "
-                          << "Res " << ffmt<s6>(base_resolution.name_)
-                          << "xrp (" << fp<2,11>(funding[0].xrp) << ") "
-                          << "usd (" << fp<2,11>(funding[0].usd) << ") "
-                          << "\n";
-            }
-        }
-//            static auto algo_deb =
-//                mainwin_debug.make_timer(60, ffmt<s20>("Algorithm"));
-
-//            mainwin_debug.timed(algo_deb, "time",
-//                ffmt<s20>(msecs_unix_to_calendar_time(e.time_).c_str())
-//                , lambda(
-//                    [&](){
-//                        int res_i = 0;
-//                        std::stringstream temp;
-//                        temp << "\n";
-//                        for (const candle_res &res : resolutions) {
-//                            temp << "res "  << str<5>(res.name_), ""
-//                                 << "xrp (" << fp<2,9>(funding[0].xrp) << ") "
-//                                 << "usd (" << fp<2,9>(funding[0].usd) << ") "
-//                                 << "\n";
-//                            res_i++;
-//                        }
-//                        return temp.str();
-//                    })
-//            );
-    }
-
-    for (uint i=0; i<price_pipelines.size(); ++i) {
-        auto &data = priceplots[i];
-        price_plot_->add_price_curve("MA", data, colours[col++]);
-    }
-    price_plot_->add_buy_sell_curve("Buy",  buys,  Qt::green);
-    price_plot_->add_buy_sell_curve("Sell", sells, Qt::red);
-    //
-    assets_plot_->add_asset_curve("Value", assets, Qt::red);
-    for (uint i=0; i<filter_pipelines.size(); ++i) {
-        auto &data = filterplots[i];
-        filters_plot_->add_asset_curve("MA", data, colours[col++]);
-    }
-
-    int res_i = 0;
-    for (const candle_res &res : resolutions) {
-        std::cout << "res : " << res.name_ << " "
-                  << "xrp (" << fp<2,9>(funding[0].xrp) << ") "
-                  << "usd (" << fp<2,9>(funding[0].usd) << ") "
-                  << "\n";
-        res_i++;
-    }
-}
-*/
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::createPerspectives_Ui()
