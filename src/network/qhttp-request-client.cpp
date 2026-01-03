@@ -112,8 +112,9 @@ namespace net::http {
 
       QObject::connect(
           reply, &QNetworkReply::errorOccurred, this,
-          [this](QNetworkReply::NetworkError err) {
-            http_dbg<0>.error(ffmt<s20>("handler"), this, QVariant(err).toString().toStdString());
+          [this, reply](QNetworkReply::NetworkError err) {
+            http_dbg<0>.error(ffmt<s20>("handler"), this, QVariant(err).toString().toStdString(),
+                reply->errorString().toStdString());
           },
           Qt::DirectConnection);
 
