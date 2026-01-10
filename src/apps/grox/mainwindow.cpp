@@ -736,7 +736,8 @@ void GroxMainWindow::saveConnectionSetups()
     settings.beginGroup(QString::fromStdString(e->get_name()));
 
     // for each ticker we are subscribed to
-    for (auto const& ticker : e->tickers_subscribed())
+    abstract_exchange::subscription_lock_type l;
+    for (auto const& ticker : e->tickers_subscribed(l))
     {
       // begin ticker group
       auto cp = ticker.first;

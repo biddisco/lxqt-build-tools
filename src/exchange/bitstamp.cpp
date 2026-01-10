@@ -672,7 +672,8 @@ any_void_sender bitstamp_network::request_all_market_transactions()
   // we can't block the Qt thread, so put async_scope onto a pika thread
   auto get_all_transactions = [this]() {
     exec::async_scope scope;
-    for (auto& [cp, data] : tickers_subscribed_)
+    subscription_lock_type l;
+    for (auto const& [cp, data] : tickers_subscribed(l))
     {
       for (auto& acct : accounts())
       {
@@ -1258,7 +1259,8 @@ void bitstamp_network::new_live_trade_data_q(
 // typically called once per minute by the application to update data regularly
 void bitstamp_network::update_ohlc_datasets()
 {
-  for (auto& [cp, data] : tickers_subscribed_)
+  subscription_lock_type l;
+  for (auto const& [cp, data] : tickers_subscribed(l))
   {
     bool present = false;
     {
@@ -1478,7 +1480,7 @@ stream_set bitstamp_network::ticker_subscribe(currency_pair const& cp)
   // add the subscribed ticker/data/plot to our list for tracking
   ticker::data data =
       std::make_shared<ticker::subscription>(shared_from_this(), view, orderbook, nullptr);
-  tickers_subscribed_.insert({cp, data});
+  add_subscribed_ticker(cp, data);
   return websocket_streams();
 }
 

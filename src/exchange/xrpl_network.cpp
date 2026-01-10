@@ -188,7 +188,7 @@ stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
   // add the subscribed ticker/data/plot to our list for tracking
   ticker::data data =
       std::make_shared<ticker::subscription>(shared_from_this(), nullptr, orderbook, nullptr);
-  tickers_subscribed_.insert({cp, data});
+  add_subscribed_ticker(cp, data);
   return websocket_streams();
 }
 //// ----------------------------------------------------------------------------

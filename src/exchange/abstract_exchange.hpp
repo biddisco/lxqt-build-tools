@@ -46,6 +46,13 @@ class abstract_exchange
   using exchange_map = std::map<currency_pair, ticker::data>;
   using factory_function = std::function<void(currency_pair, ticker::data, ticker::streams)>;
 
+  // ---------------------------------------
+  // protect access to stream subscriptions with a mutex as async access
+  // at startup when new subscriptions are being created can cause problems
+  using mutex_type = std::shared_mutex;
+  mutable mutex_type subscription_mutex_;
+  using subscription_lock_type = std::shared_lock<mutex_type>;
+
   // websocket streams subscribed to format = ticker/stream_name
   std::map<std::string, bool> enabled_streams_;
 
@@ -104,6 +111,8 @@ class abstract_exchange
   virtual bool is_stream_subscribed(currency_pair cp, ticker::streams s);
   // puts an entry into the stream map
   void mark_stream_subscribed(currency_pair cp, ticker::streams s, bool enabled);
+  // insert a ticker into the subscribed list if not already present
+  void add_subscribed_ticker(currency_pair const& cp, ticker::data const data);
   // un/subscribe to an individual ticker stream
   virtual bool stream_subscribe(
       currency_pair const& cp, ticker::streams const stream, bool enabled, factory_function f) = 0;
@@ -125,7 +134,7 @@ class abstract_exchange
   virtual stream_set ticker_subscribe(currency_pair const& cp);
   virtual void ticker_unsubscribe(currency_pair const& cp);
   // return list of subscribed tickers
-  exchange_map const& tickers_subscribed() const;
+  exchange_map const& tickers_subscribed(subscription_lock_type& l) const;
   // exchange_map& tickers_subscribed();
   ticker::data get_subscribed_ticker_data(currency_pair cp) const;
 
@@ -166,6 +175,31 @@ class abstract_exchange
   // fees
   // ---------------------------------------
   virtual void custom_functions(basic_account* acct) = 0;
+
+  // ---------------------------------------
+  // protect access to stream subscriptions with a mutex as async access
+  // at startup when new subscriptions are being created can cause problems
+  template <typename... Args>
+  std::shared_lock<mutex_type> take_readonly_lock(Args... args) const
+  {
+    // view_dbg<4>.debug(
+    //     ffmt<s20>("take_readonly_lock"), this, "acquire ", exchange_, ticker_string_, args...);
+    std::shared_lock<mutex_type> lock(subscription_mutex_);
+    // view_dbg<4>.debug(
+    //     ffmt<s20>("take_readonly_lock"), this, "acquired", exchange_, ticker_string_, args...);
+    return lock;
+  }
+
+  template <typename... Args>
+  std::unique_lock<mutex_type> take_readwrite_lock(Args... args) const
+  {
+    // view_dbg<4>.debug(
+    //     ffmt<s20>("take_readwrite_lock"), this, "acquire ", exchange_, ticker_string_, args...);
+    std::unique_lock<mutex_type> lock(subscription_mutex_);
+    // view_dbg<4>.debug(
+    //     ffmt<s20>("take_readwrite_lock"), this, "acquired", exchange_, ticker_string_, args...);
+    return lock;
+  }
 
   Q_SIGNALS:
   // emitted when a transaction might cause a change in data

@@ -83,6 +83,12 @@ abstract_exchange::factory_function abstract_exchange::get_factory(std::string n
 }
 
 // ----------------------------------------------------------------------------
+void abstract_exchange::add_subscribed_ticker(currency_pair const& cp, ticker::data const data)
+{
+  tickers_subscribed_.insert({cp, data});
+}
+
+// ----------------------------------------------------------------------------
 bool abstract_exchange::is_stream_subscribed(currency_pair cp, ticker::streams s)
 {
   std::string key = currency_pair_string(cp) + "/" + std::string(magic_enum::enum_name(s));
@@ -100,6 +106,7 @@ void abstract_exchange::mark_stream_subscribed(currency_pair cp, ticker::streams
 // ----------------------------------------------------------------------------
 ticker::data abstract_exchange::get_subscribed_ticker_data(currency_pair cp) const
 {
+  auto l = take_readonly_lock();
   if (tickers_subscribed_.contains(cp)) { return tickers_subscribed_.at(cp); }
   else
   {
@@ -112,14 +119,17 @@ ticker::data abstract_exchange::get_subscribed_ticker_data(currency_pair cp) con
 }
 
 // ----------------------------------------------------------------------------
-abstract_exchange::exchange_map const& abstract_exchange::tickers_subscribed() const
+abstract_exchange::exchange_map const& abstract_exchange::tickers_subscribed(
+    subscription_lock_type& l) const
 {
+  l = take_readonly_lock();
   return tickers_subscribed_;
 }
 
 // ----------------------------------------------------------------------------
 bool abstract_exchange::ticker_subscribed(currency_pair const& cp)
 {
+  auto l = take_readonly_lock();
   auto present = (tickers_subscribed_.contains(cp));
   return present;
 }
@@ -133,6 +143,7 @@ stream_set abstract_exchange::ticker_subscribe(currency_pair const& cp)
 // ----------------------------------------------------------------------------
 void abstract_exchange::ticker_unsubscribe(currency_pair const& cp)
 {
+  auto l = take_readwrite_lock();
   if (ticker_subscribed(cp)) { tickers_subscribed_.erase(cp); }
 }
 
@@ -183,7 +194,8 @@ void abstract_exchange::save_subscribed_tickers()
   settings.beginGroup(get_name());
 
   // for each ticker we are subscribed to
-  for (auto const& ticker : tickers_subscribed())
+  auto l = take_readonly_lock();
+  for (auto const& ticker : tickers_subscribed_)
   {
     auto cp = ticker.first;
     std::string key = currency_pair_string(cp);

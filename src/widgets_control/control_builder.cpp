@@ -289,12 +289,13 @@ QWidget* control_builder_orderbook::build(
         ranges::find_if(global_settings.networks_, [&](auto e) { return (e->get_name() == text); });
     if (ex == global_settings.networks_.end()) return;
     //
-    auto tickers = (*ex)->tickers_subscribed();
+    abstract_exchange::subscription_lock_type l;
+    auto tickers = (*ex)->tickers_subscribed(l);
     for (auto combo : qtickers)
     {
       QString currentText = combo->currentText();
       QStringList temp;
-      for (auto const [cp, td] : tickers) { temp << currency_pair_qstring(cp); }
+      for (auto const& [cp, td] : tickers) { temp << currency_pair_qstring(cp); }
       combo->clear();
       combo->addItems(temp);
       // try to restore active selection if it is still there
