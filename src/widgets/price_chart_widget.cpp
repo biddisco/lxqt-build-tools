@@ -101,6 +101,7 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
 // ----------------------------------------------------------------------------
 price_chart_widget::~price_chart_widget()
 {
+  ind_model_.indicators_.clear();
   hdf5_ohlc_.reset();
   exchange_.reset();
   pplot_dbg<0>.debug(ffmt<s20>("~price_chart_widget"));
