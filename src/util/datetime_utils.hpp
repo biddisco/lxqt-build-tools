@@ -44,7 +44,7 @@ static std::string msecs_unix_to_calendar_time_local(uint64_t unixmsecs)
 {
   // Convert milliseconds to seconds and nanoseconds
   auto seconds = unixmsecs / 1000;
-  auto remaining_milliseconds = unixmsecs % 1000;
+  //auto remaining_milliseconds = unixmsecs % 1000;
 
   // Convert seconds since epoch to time_t
   std::time_t time = static_cast<std::time_t>(seconds);

@@ -51,7 +51,7 @@ namespace grox {
           pubsub_dbg<6>.debug(ffmt<s20>("publish"), subscriber.first, print_type<Signature>());
 
           stdexec::sender auto snd =
-              stdexec::start_on(grox::senders::default_pool_scheduler(), stdexec::just()) |
+              stdexec::starts_on(grox::senders::default_pool_scheduler(), stdexec::just()) |
               stdexec::then([=]() { subscriber.second(message...); });
           stdexec::start_detached(std::move(snd));
         }

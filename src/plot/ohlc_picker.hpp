@@ -37,7 +37,7 @@ class ohlc_picker : public QwtPlotPicker
     , date_label_(new QwtTextLabel(canvas->parentWidget()))
     , date_label_enabled_(true)
   {
-    timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas->parentWidget());
+    //timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas->parentWidget());
 
     setTrackerMode(QwtPlotPicker::ActiveOnly);
     setRubberBand(
@@ -66,7 +66,7 @@ class ohlc_picker : public QwtPlotPicker
     timebased_chart_plot* plot_ = dynamic_cast<timebased_chart_plot*>(canvas()->parentWidget());
     if (!plot_) return pos;
     //
-    const QwtScaleMap map = plot_->canvasMap(QwtAxis::XBottom);
+    QwtScaleMap const map = plot_->canvasMap(QwtAxis::XBottom);
     double p1 = map.invTransform(pos.x());
     p1 = plot_->quantize_x_coord(p1);
     p1 = map.transform(p1);
@@ -110,7 +110,7 @@ class ohlc_picker : public QwtPlotPicker
     auto yawg = yaw->geometry();
 
     // Right Y axis scaling mapper
-    const QwtScaleMap ymap = plot_->canvasMap(QwtAxis::YRight);
+    QwtScaleMap const ymap = plot_->canvasMap(QwtAxis::YRight);
     // plot coords -> pixel coords
     auto y = ymap.transform(last_coord_.y());
 
@@ -144,7 +144,7 @@ class ohlc_picker : public QwtPlotPicker
     auto xawg = xaw->geometry();
 
     // Bottom X axis scaling mapper
-    const QwtScaleMap xmap = plot_->canvasMap(QwtAxis::XBottom);
+    QwtScaleMap const xmap = plot_->canvasMap(QwtAxis::XBottom);
     double px = quantize_x_coord(last_coord_.x());
     auto x = xmap.transform(px);
 
@@ -152,7 +152,7 @@ class ohlc_picker : public QwtPlotPicker
     // display date inside date axis
     //
     QwtScaleDraw const* xdraw = plot_->axisScaleDraw(QwtAxis::XBottom);
-    const QDateTime dt = QDateTime::fromMSecsSinceEpoch(px);
+    QDateTime const dt = QDateTime::fromMSecsSinceEpoch(px);
     QString str2 = QLocale().toString(dt, "dd-MM-yy hh:mm");
     QwtText date_text(str2);
     date_text.setColor(Qt::white);
@@ -209,7 +209,7 @@ class ohlc_picker : public QwtPlotPicker
     QLineF line;
     if (curve->dataSize() >= 2)
     {
-      const QRectF br = curve->boundingRect();
+      QRectF const br = curve->boundingRect();
       if ((br.width() > 0) && (x >= br.left()) && (x <= br.right()))
       {
         // binary search for point at given X

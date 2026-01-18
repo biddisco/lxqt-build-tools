@@ -30,6 +30,7 @@ endif()
 
 if(GROX_WITH_SANITIZER)
   target_add_sanitizer_flags(grox)
+  message("Do not forget to use \necho 0 | sudo tee /proc/sys/kernel/randomize_va_space")
 endif()
 
 target_compile_definitions(
