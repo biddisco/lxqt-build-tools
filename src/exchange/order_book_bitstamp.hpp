@@ -28,5 +28,5 @@ class bitstamp_order_book : public order_book_base
   // ----------------------------------------------------------------------------
   // bitstamp data arrives as strings instead of numbers
   // these must be converted to numeric arrays
-  void bid_ask_string_to_number(nlohmann::json& json, offer_data& data);
+  void bid_ask_string_to_number(nlohmann::json const& json, offer_data& data);
 };

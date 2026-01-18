@@ -36,7 +36,7 @@ inline constexpr print_threshold<Level, 6> xbook_dbg("xrplbook");
 // a snapshot is included initially with the current state
 // This function converts the json data into our order book form
 // This function should only be executed once : when connecting to stream
-void xrpl_order_book::accept_json_ledger_snapshot(nlohmann::json joffers)
+void xrpl_order_book::accept_json_ledger_snapshot(nlohmann::json const& joffers)
 {
   xbook_dbg<9>.debug(ffmt<s20>("snapshot"), joffers.dump(4));
   //
@@ -178,7 +178,7 @@ void xrpl_order_book::ledger_map_to_order_book()
 }
 
 // ----------------------------------------------------------------------------
-void xrpl_order_book::accept_json_ledger_transaction(nlohmann::json jdata)
+void xrpl_order_book::accept_json_ledger_transaction(nlohmann::json const& jdata)
 {
   std::string success = jdata.at("engine_result").get<std::string>();
   if (success != "tesSUCCESS") return;

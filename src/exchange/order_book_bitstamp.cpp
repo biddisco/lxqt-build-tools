@@ -62,7 +62,7 @@ void bitstamp_order_book::accept_json_bitstamp(QString const data)
 // ----------------------------------------------------------------------------
 // bitstamp data arrives as strings instead of numbers
 // these must be converted to numeric arrays
-void bitstamp_order_book::bid_ask_string_to_number(json& jdata, offer_data& data)
+void bitstamp_order_book::bid_ask_string_to_number(json const& jdata, offer_data& data)
 {
   bobook_dbg<5>.debug(ffmt<s20>("bid_ask_string_to_number"), jdata.size());
   //
