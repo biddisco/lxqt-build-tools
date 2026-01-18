@@ -7,6 +7,25 @@
 #include <vector>
 
 // ----------------------------------------------------------------------------
+namespace currency_issuers {
+  //
+  static inline std::string const bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
+  static inline std::string const gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
+  static inline std::string const ripple_trust = "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De";
+
+  static inline std::map<std::string, std::string> issuer_to_name = {
+      {bitstamp_trust, "bitstamp"}, {gatehub_trust, "gatehub"}, {ripple_trust, "ripple"}};
+  static inline std::map<std::string, std::string> name_to_issuer = {
+      {"bitstamp", bitstamp_trust}, {"gatehub", gatehub_trust}, {"ripple", ripple_trust}};
+
+  //        {"rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg", "ELS"},
+  //        {"rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz", "SOLO"},
+  //        {"raEQc5krJ2rUXyi6fgmUAf63oAXmF7p6jp", "ALV"},
+  //        {"rM7zpZQBfz9y2jEkDrKcXiYPitJx9YTS1J", "DKP"},
+  //        {"rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY", "PASA"},
+}    // namespace currency_issuers
+
+// ----------------------------------------------------------------------------
 struct currency_code
 {
   using list = std::vector<currency_code>;
@@ -47,8 +66,8 @@ struct currency_code
 
   std::string issuer_name() const
   {
-    auto name = currency_code::issuer_to_name.find(issuer_);
-    if (name != currency_code::issuer_to_name.end())
+    auto name = currency_issuers::issuer_to_name.find(issuer_);
+    if (name != currency_issuers::issuer_to_name.end())
       return name->second;
     else
       return issuer_;
@@ -65,22 +84,6 @@ struct currency_code
     }
     return code_;
   }
-
-  //
-  static inline std::string const bitstamp_trust = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B";
-  static inline std::string const gatehub_trust = "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq";
-  static inline std::string const ripple_trust = "rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De";
-
-  static inline std::map<std::string, std::string> issuer_to_name = {
-      {bitstamp_trust, "bitstamp"}, {gatehub_trust, "gatehub"}, {ripple_trust, "ripple"}};
-  static inline std::map<std::string, std::string> name_to_issuer = {
-      {"bitstamp", bitstamp_trust}, {"gatehub", gatehub_trust}, {"ripple", ripple_trust}};
-
-  //        {"rHXuEaRYnnJHbDeuBH5w8yPh5uwNVh5zAg", "ELS"},
-  //        {"rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz", "SOLO"},
-  //        {"raEQc5krJ2rUXyi6fgmUAf63oAXmF7p6jp", "ALV"},
-  //        {"rM7zpZQBfz9y2jEkDrKcXiYPitJx9YTS1J", "DKP"},
-  //        {"rBPtuMc4HBR1SuZyZv8hs7WBVxLBYrzxbY", "PASA"},
 };
 
 // ----------------------------------------------------------------------------

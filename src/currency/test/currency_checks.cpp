@@ -77,7 +77,7 @@ TEST(currency, currency_code)
 {
   {
     currency_code c1{"", "USD"};
-    currency_code c2{currency_code::bitstamp_trust, "USD"};
+    currency_code c2{currency_issuers::bitstamp_trust, "USD"};
     std::stringstream s1;
     s1 << c1;
     EXPECT_TRUE(compare(s1.str(), "USD"));
@@ -91,27 +91,27 @@ TEST(currency, currency_code)
     EXPECT_TRUE(c1 == c2);
   }
   {
-    currency_code c1{currency_code::bitstamp_trust, "USD"};
-    currency_code c2{currency_code::bitstamp_trust, "USD"};
+    currency_code c1{currency_issuers::bitstamp_trust, "USD"};
+    currency_code c2{currency_issuers::bitstamp_trust, "USD"};
     EXPECT_TRUE(c1 == c2);
   }
   {
     currency_code c1{"", "USD"};
-    currency_code c2{currency_code::bitstamp_trust, "USD"};
+    currency_code c2{currency_issuers::bitstamp_trust, "USD"};
     currency_code c3{"", "XRP"};
     EXPECT_TRUE(c1.is_fiat());
     EXPECT_FALSE(c2.is_fiat());
     EXPECT_TRUE(c3.is_xrp());
   }
   {
-    currency_code c1{currency_code::bitstamp_trust, "USD"};
+    currency_code c1{currency_issuers::bitstamp_trust, "USD"};
     EXPECT_TRUE(compare(c1.to_stringrep(true, false), "USD.rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"));
     EXPECT_TRUE(compare(c1.to_stringrep(false, false), "USD"));
     EXPECT_FALSE(compare(c1.to_stringrep(true, false), "USD"));
     EXPECT_FALSE(compare(c1.to_stringrep(false, false), "USD.rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"));
   }
   {
-    currency_code c1{currency_code::bitstamp_trust, "USD"};
+    currency_code c1{currency_issuers::bitstamp_trust, "USD"};
     EXPECT_TRUE(compare(c1.to_stringrep(true, false), "USD.rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"));
     EXPECT_TRUE(compare(c1.to_stringrep(false, false), "USD"));
     EXPECT_FALSE(compare(c1.to_stringrep(true, false), "USD"));
@@ -119,7 +119,7 @@ TEST(currency, currency_code)
   }
   {
     currency_code c1{"", "USD"};
-    currency_code c2{currency_code::bitstamp_trust, "USD"};
+    currency_code c2{currency_issuers::bitstamp_trust, "USD"};
     currency_code c3{"", "XRP"};
     EXPECT_TRUE(c1.is_fiat());
     EXPECT_FALSE(c2.is_fiat());
@@ -130,7 +130,7 @@ TEST(currency, currency_code)
     std::string str1 = currency_precision(534.123456, c1);
     EXPECT_TRUE(compare(str1, "534.12"));
     //
-    currency_code c2{currency_code::bitstamp_trust, "USD"};
+    currency_code c2{currency_issuers::bitstamp_trust, "USD"};
     std::string str2 = currency_precision(534.123456, c2);
     EXPECT_TRUE(compare(str2, "534.123456"));
   }
@@ -145,8 +145,8 @@ TEST(currency, currency_amount)
     EXPECT_TRUE(c1 == c2);
   }
   {
-    currency_amount c1{{currency_code::bitstamp_trust, "USD"}, 0.0};
-    currency_amount c2{{currency_code::bitstamp_trust, "USD"}, 0.0};
+    currency_amount c1{{currency_issuers::bitstamp_trust, "USD"}, 0.0};
+    currency_amount c2{{currency_issuers::bitstamp_trust, "USD"}, 0.0};
     EXPECT_TRUE(c1 == c2);
   }
   {
@@ -156,7 +156,7 @@ TEST(currency, currency_amount)
   }
   {
     currency_amount c1{{"", "USD"}, 0.0};
-    currency_amount c2{{currency_code::bitstamp_trust, "USD"}, 0.0};
+    currency_amount c2{{currency_issuers::bitstamp_trust, "USD"}, 0.0};
     //
     std::stringstream s1;
     s1 << c1;
@@ -172,24 +172,25 @@ TEST(currency, currency_amount)
 TEST(currency, currency_pair)
 {
   {
-    currency_code c1{currency_code::bitstamp_trust, "USD"};
-    currency_code c2{currency_code::bitstamp_trust, "XRP"};
+    currency_code c1{currency_issuers::bitstamp_trust, "USD"};
+    currency_code c2{currency_issuers::bitstamp_trust, "XRP"};
     currency_pair cp1{c1, c2};
     currency_pair cp2{c1, c2};
     EXPECT_TRUE(cp1 == cp2);
   }
   {
     currency_pair cp1{
-        {currency_code::bitstamp_trust, "USD"}, {currency_code::bitstamp_trust, "XRP"}};
+        {currency_issuers::bitstamp_trust, "USD"}, {currency_issuers::bitstamp_trust, "XRP"}};
     currency_pair cp2{
-        {currency_code::bitstamp_trust, "EUR"}, {currency_code::bitstamp_trust, "XRP"}};
+        {currency_issuers::bitstamp_trust, "EUR"}, {currency_issuers::bitstamp_trust, "XRP"}};
     EXPECT_TRUE(cp2 < cp1);
     EXPECT_FALSE(cp2 > cp1);
   }
   {
     currency_pair cp1{{"", "USD"}, {"", "XRP"}};
-    currency_pair cp2{{currency_code::bitstamp_trust, "USD"}, {"", "XRP"}};
-    currency_pair cp3{{currency_code::bitstamp_trust, "EUR"}, {currency_code::ripple_trust, "USD"}};
+    currency_pair cp2{{currency_issuers::bitstamp_trust, "USD"}, {"", "XRP"}};
+    currency_pair cp3{
+        {currency_issuers::bitstamp_trust, "EUR"}, {currency_issuers::ripple_trust, "USD"}};
     //
     std::string str1 = currency_pair_string(cp1, "/");
     EXPECT_TRUE(str1 == "USD/XRP");
@@ -202,8 +203,9 @@ TEST(currency, currency_pair)
   }
   {
     currency_pair cp1{{"", "USD"}, {"", "XRP"}};
-    currency_pair cp2{{currency_code::bitstamp_trust, "USD"}, {"", "XRP"}};
-    currency_pair cp3{{currency_code::bitstamp_trust, "EUR"}, {currency_code::ripple_trust, "USD"}};
+    currency_pair cp2{{currency_issuers::bitstamp_trust, "USD"}, {"", "XRP"}};
+    currency_pair cp3{
+        {currency_issuers::bitstamp_trust, "EUR"}, {currency_issuers::ripple_trust, "USD"}};
     //
     std::string str1 = currency_pair_string(cp1, "/");
     currency_pair cp11 = string_to_pair(str1, "/");
@@ -218,13 +220,16 @@ TEST(currency, currency_pair)
     EXPECT_TRUE(cp31 == cp3);
   }
   {
-    currency_pair cp1{{currency_code::bitstamp_trust, "EUR"}, {currency_code::ripple_trust, "USD"}};
-    currency_pair cp2{{currency_code::ripple_trust, "USD"}, {currency_code::bitstamp_trust, "EUR"}};
+    currency_pair cp1{
+        {currency_issuers::bitstamp_trust, "EUR"}, {currency_issuers::ripple_trust, "USD"}};
+    currency_pair cp2{
+        {currency_issuers::ripple_trust, "USD"}, {currency_issuers::bitstamp_trust, "EUR"}};
     currency_pair cp3 = reverse_pair(cp1);
     EXPECT_TRUE(cp2 == cp3);
   }
   {
-    currency_pair cp1{{currency_code::bitstamp_trust, "EUR"}, {currency_code::ripple_trust, "USD"}};
+    currency_pair cp1{
+        {currency_issuers::bitstamp_trust, "EUR"}, {currency_issuers::ripple_trust, "USD"}};
     QString qstr1 = currency_pair_qstring(cp1, "-");
     std::string s1 = qstr1.toStdString();
     EXPECT_TRUE(compare("EUR.bitstamp-USD.ripple", s1));
@@ -236,7 +241,8 @@ TEST(currency, currency_pair)
     EXPECT_TRUE(compare("EUR.bitstamp-USD.ripple", s1));
   }
   {
-    currency_pair cp1{{currency_code::bitstamp_trust, "EUR"}, {currency_code::ripple_trust, "USD"}};
+    currency_pair cp1{
+        {currency_issuers::bitstamp_trust, "EUR"}, {currency_issuers::ripple_trust, "USD"}};
     std::string s1 = currency_pair_lowercase_string(cp1);
     EXPECT_TRUE(compare("eurusd", s1));
   }
@@ -257,16 +263,16 @@ TEST(currency, formatting)
 TEST(currency, map)
 {
   currency_pair::list pairs{
-      {{"", "USD"}, {"", "XRP"}},                                                        //
-      {{"", "USD"}, {"", "BTC"}},                                                        //
-      {{"", "USD"}, {"", "EUR"}},                                                        //
-      {{"", "USD"}, {"", "GBP"}},                                                        //
-      {{"", "EUR"}, {currency_code::ripple_trust, "USD"}},                               //
-      {{"", "GBP"}, {currency_code::ripple_trust, "USD"}},                               //
-      {{"", "BTC"}, {currency_code::ripple_trust, "USD"}},                               //
-      {{currency_code::bitstamp_trust, "GBP"}, {currency_code::ripple_trust, "USD"}},    //
-      {{currency_code::bitstamp_trust, "EUR"}, {currency_code::ripple_trust, "USD"}},    //
-      {{currency_code::ripple_trust, "USD"}, {currency_code::gatehub_trust, "EUR"}}      //
+      {{"", "USD"}, {"", "XRP"}},                                                              //
+      {{"", "USD"}, {"", "BTC"}},                                                              //
+      {{"", "USD"}, {"", "EUR"}},                                                              //
+      {{"", "USD"}, {"", "GBP"}},                                                              //
+      {{"", "EUR"}, {currency_issuers::ripple_trust, "USD"}},                                  //
+      {{"", "GBP"}, {currency_issuers::ripple_trust, "USD"}},                                  //
+      {{"", "BTC"}, {currency_issuers::ripple_trust, "USD"}},                                  //
+      {{currency_issuers::bitstamp_trust, "GBP"}, {currency_issuers::ripple_trust, "USD"}},    //
+      {{currency_issuers::bitstamp_trust, "EUR"}, {currency_issuers::ripple_trust, "USD"}},    //
+      {{currency_issuers::ripple_trust, "USD"}, {currency_issuers::gatehub_trust, "EUR"}}      //
   };
   {
     // insert all pairs into map, also add reversed pairs for extra testing

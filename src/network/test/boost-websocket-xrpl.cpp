@@ -58,13 +58,13 @@ void websocket_subscribe_offers()
   nlohmann::json buy_xrp;
   buy_xrp["taker_gets"]["currency"] = "XRP";
   buy_xrp["taker_pays"]["currency"] = "USD";
-  buy_xrp["taker_pays"]["issuer"] = currency_code::bitstamp_trust;
+  buy_xrp["taker_pays"]["issuer"] = currency_issuers::bitstamp_trust;
   buy_xrp["snapshot"] = true;
   // selling xrp
   nlohmann::json sell_xrp;
   sell_xrp["taker_pays"]["currency"] = "XRP";
   sell_xrp["taker_gets"]["currency"] = "USD";
-  sell_xrp["taker_gets"]["issuer"] = currency_code::bitstamp_trust;
+  sell_xrp["taker_gets"]["issuer"] = currency_issuers::bitstamp_trust;
   sell_xrp["snapshot"] = true;
   // subscribe to 2 books
   command["books"] = nlohmann::json::array({buy_xrp, sell_xrp});
