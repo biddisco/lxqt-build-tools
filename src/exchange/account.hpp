@@ -72,7 +72,7 @@ struct basic_account
   lock_type lock_currencies()
   {
     lock_type l(currency_mtx_);
-    return std::move(l);
+    return l;
   }
   //
   void unlock_currencies(lock_type&& l) { l.unlock(); }
