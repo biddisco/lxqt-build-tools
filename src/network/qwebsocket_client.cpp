@@ -58,6 +58,7 @@ namespace net::ws {
       qwebsocket_dbg<1>.error(
           ffmt<s20>(id_), "Client::destructor : websocket delete - out of order");
       delete websocket_;
+      websocket_ = nullptr;
     }
     else { qwebsocket_dbg<3>.error("~qwebsocket_client after deletion"); }
   }
