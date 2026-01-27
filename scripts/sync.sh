@@ -38,9 +38,9 @@ if machine_on pop; then
   $HOME/update-rsync.sh $HOME/src/grox/  pop:/home/biddisco/src/grox $params
   if [[ "$(hostname)" == "elf" ]]; then
     $HOME/update-rsync.sh $XDG_CONFIG_HOME/grox.ini     pop:$XDG_CONFIG_HOME/grox.ini
-    $HOME/update-rsync.sh $XDG_DATA_HOME/grox/grox.hdf5 pop:$XDG_DATA_HOME/grox/grox.hdf5
+#    $HOME/update-rsync.sh $XDG_DATA_HOME/grox/grox.hdf5 pop:$XDG_DATA_HOME/grox/grox.hdf5
   else
     $HOME/update-rsync.sh $XDG_CONFIG_HOME/grox.ini     elf:$XDG_CONFIG_HOME/grox.ini
-    $HOME/update-rsync.sh $XDG_DATA_HOME/grox/grox.hdf5 elf:$XDG_DATA_HOME/grox/grox.hdf5
+#    $HOME/update-rsync.sh $XDG_DATA_HOME/grox/grox.hdf5 elf:$XDG_DATA_HOME/grox/grox.hdf5
   fi
 fi

@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# ---------------
+# This script should not be needed when calling *.py from inside a venv
+# but is needed when executed from some application that has not initialized
+# python in the expected way.
+# It exists here to allow grox to call python scripts from a shell and collect output
+# ---------------
+
 # this is the directory of the script, regardless of where it's called from
 if [[ $0 != $BASH_SOURCE ]]; then
   # this script was sourced from somewhere, expend name if a symlink
@@ -8,12 +15,6 @@ else
   # this was executed directly
   SCRIPT_DIR="$(readlink -f $(dirname $0))"
 fi
-
-# ---------------
-# This script should not be needed when calling *.py from inside a venv
-# but is needed when executed from some application that has not initialized 
-# python in the expected way
-# ---------------
 
 unset PYTHONPATH
 
