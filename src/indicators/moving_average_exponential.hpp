@@ -9,6 +9,10 @@ namespace indicators {
   //----------------------------------------------------------------------------
   class moving_average_exponential : public indicator_base
   {
+    // Window Mapping (Approximation):
+    // To convert an EMA to a linear moving average, align the time frames using the relation
+    // alpha = 2/(N+1), where N is the number of periods in a simple moving average.
+
 public:
     // ---------------------------------------
     FACTORY_INDICATOR_CREATE(moving_average_exponential, operator_type);

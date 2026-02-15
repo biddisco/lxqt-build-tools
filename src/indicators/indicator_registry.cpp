@@ -14,6 +14,7 @@
 #include "indicators/moving_average.hpp"
 #include "indicators/moving_average_exponential.hpp"
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
+#include "indicators/moving_average_hull.hpp"
 #include "indicators/moving_average_volume_weighted.hpp"
 #include "indicators/relative_strength_indicator.hpp"
 #include "indicators/stochastic_oscillator.hpp"
