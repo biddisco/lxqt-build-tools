@@ -44,6 +44,8 @@ class bitstamp_network : public abstract_exchange
   // @TODO add read/write lock for these maps
   std::map<currency_pair, double> transaction_fee_map_;
   std::map<currency_code, double> withdrawal_fee_map_;
+  using mutex_type = std::shared_mutex;
+  mutable mutex_type fee_mutex_;
 
   std::mutex candlestick_mutex_;
   std::set<currency_pair> candlestick_updates_active_;
@@ -55,6 +57,24 @@ class bitstamp_network : public abstract_exchange
   //
   static inline std::string const bitstamp_websocket_address = "ws.bitstamp.net";
   static inline int const bitstamp_websocket_port = 443;
+
+  template <typename... Args>
+  std::shared_lock<mutex_type> take_readonly_lock(Args... args) const
+  {
+    view_dbg<4>.debug(ffmt<s20>("take_readonly_lock"), this, "acquire ", "fee map", args...);
+    std::shared_lock<mutex_type> lock(fee_mutex_);
+    view_dbg<4>.debug(ffmt<s20>("take_readonly_lock"), this, "acquired", "fee map", args...);
+    return lock;
+  }
+
+  template <typename... Args>
+  std::unique_lock<mutex_type> take_readwrite_lock(Args... args) const
+  {
+    view_dbg<4>.debug(ffmt<s20>("take_readwrite_lock"), this, "acquire ", "fee map", args...);
+    std::unique_lock<mutex_type> lock(fee_mutex_);
+    view_dbg<4>.debug(ffmt<s20>("take_readwrite_lock"), this, "acquired", "fee map", args...);
+    return lock;
+  }
 
   public:
   // ---------------------------------------
@@ -239,7 +259,7 @@ class bitstamp_network : public abstract_exchange
   // function called from websocket subscription to live orderbook data
   static void new_orderbook_data_q(bitstamp_network*, currency_pair const cp, QString const);
 
-  ticker::transaction_fees get_fees(currency_pair const& cp) override;
+  ticker::transaction_fees get_fees(currency_pair const& cp) const override;
 
   void custom_functions(basic_account* /*acct*/) override {};
 

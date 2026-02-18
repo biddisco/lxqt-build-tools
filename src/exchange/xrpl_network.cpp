@@ -953,9 +953,9 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
 }
 
 // ----------------------------------------------------------------------------
-ticker::transaction_fees xrpl_network::get_fees(currency_pair const& cp)
+ticker::transaction_fees xrpl_network::get_fees(currency_pair const& cp) const
 {
-  return {0, 0, 0, currency_fees_[cp.c1_.issuer_]};
+  return {0, 0, 0, currency_fees_.at(cp.c1_.issuer_)};
 }
 
 // ----------------------------------------------------------------------------

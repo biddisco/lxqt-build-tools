@@ -197,7 +197,7 @@ class xrpl_network : public abstract_exchange
       basic_account* acct, trade_data const& t, bool update_after);
   void place_buy_sell_orders(basic_account* acct, std::vector<trade_data> const& trades) override;
 
-  ticker::transaction_fees get_fees(currency_pair const& cp) override;
+  ticker::transaction_fees get_fees(currency_pair const& cp) const override;
 
   void trustline(
       basic_account* acct, std::string addr, std::string code, uint64_t limit, std::uint32_t flags);

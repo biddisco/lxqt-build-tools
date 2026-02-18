@@ -169,7 +169,7 @@ class abstract_exchange
   // ---------------------------------------
   // fees
   // ---------------------------------------
-  virtual ticker::transaction_fees get_fees(currency_pair const& cp) = 0;
+  virtual ticker::transaction_fees get_fees(currency_pair const& cp) const = 0;
 
   // ---------------------------------------
   // fees

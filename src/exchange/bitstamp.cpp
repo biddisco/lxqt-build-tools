@@ -367,8 +367,9 @@ bool bitstamp_network::can_send(currency_code const& c, abstract_exchange* dest)
 }
 
 // ----------------------------------------------------------------------------
-ticker::transaction_fees bitstamp_network::get_fees(currency_pair const& cp)
+ticker::transaction_fees bitstamp_network::get_fees(currency_pair const& cp) const
 {
+  take_readonly_lock();
   if (transaction_fee_map_.contains(cp))
     return {transaction_fee_map_.at(cp), transaction_fee_map_.at(cp), 0, 0};
   currency_pair cp2 = reverse_pair(cp);
@@ -908,6 +909,7 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
         {
           // @todo - this needs to be checked to correctly handle non 3 letter codes
           std::string utoken = uppercase(mtch[1]);
+          take_readwrite_lock();
           withdrawal_fee_map_[{"", utoken}] = value;
           bitstamp_dbg<5>.debug(ffmt<s20>("account info"), "withdrawal fee", utoken, value);
         }
@@ -919,6 +921,7 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
           // bitstamp (so far) always quotes fees as token_fiat not fiat_token
           std::string utoken = uppercase(mtch[1]);
           currency_pair cp = split_token_string(utoken);
+          take_readwrite_lock();
           transaction_fee_map_[cp] = value;
           bitstamp_dbg<5>.debug(
               ffmt<s20>("account info"), "transaction fee", cp.c1_, cp.c2_, value);
