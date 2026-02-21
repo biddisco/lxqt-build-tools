@@ -28,6 +28,7 @@ set(grox_indicators_SRCS
     trade_currency_exchange.hpp
     trade_market_maker.hpp
     trade_sell_sliding_stop.hpp
+    trade_rebalance_funds.hpp
 )
 
 add_library(grox_indicators ${grox_indicators_SRCS})

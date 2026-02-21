@@ -368,7 +368,7 @@ double ohlc_dataset_view::get_estimated_buy_price(double dollars, double time, d
   // return a price based on the traded data we accumulated
   if (ohlc.isValid())
   {
-    double price = (25.0 * ohlc.high + 75.0 * ohlc.low) / 100.0;
+    double price = (75.0 * ohlc.high + 25.0 * ohlc.low) / 100.0;
     return price;
   }
   return 0;
