@@ -27,8 +27,6 @@
 #include <pika/execution/algorithms/just.hpp>
 #include <pika/execution/algorithms/transfer_just.hpp>
 //
-#include "data/order_book.hpp"
-#include "debug/print.hpp"
 #include "exchange/bitstamp.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
@@ -706,6 +704,21 @@ void xrpl_network::get_all_account_offers(exec::async_scope& scope)
   for (auto& w : subscribed_wallets_)
   {
     auto snd = stdexec::start_on(QtStdExec::QThreadScheduler(), get_account_offers(w.public_))    //
+        | stdexec::upon_error([this](std::exception_ptr ep) {
+            try
+            {
+              std::rethrow_exception(ep);
+            }
+            catch (std::exception const& e)
+            {
+              xrpnet_dbg<0>.error(ffmt<s20>("account offers error"), e.what());
+            }
+            catch (...)
+            {
+              xrpnet_dbg<0>.error(ffmt<s20>("account offers error"), "unknown error");
+            }
+            return QByteArray();
+          })    //
         | stdexec::then([this, &w](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
             // debug : print the response headers and body
@@ -713,7 +726,7 @@ void xrpl_network::get_all_account_offers(exec::async_scope& scope)
             this->handle_account_offers(w, data);
           });
     scope.spawn(std::move(snd));
-  };
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -738,7 +751,20 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
   xrpnet_dbg<8>.debug(ffmt<s20>("account offers"), jdata.dump(4));
   //
   if (jdata.is_null()) return;
-  assert(w.public_ == jdata.at("account").get<std::string>());
+  try
+  {
+    assert(w.public_ == jdata.at("account").get<std::string>());
+  }
+  catch (std::exception const& e)
+  {
+    xrpnet_dbg<0>.error(ffmt<s20>("account offers error"), e.what(), data.data());
+    return;
+  }
+  catch (...)
+  {
+    xrpnet_dbg<0>.error(ffmt<s20>("account offers error"), "unknown error");
+    return;
+  }
   auto offers = jdata["offers"];
   if (offers.size() == 0) return;
   //
