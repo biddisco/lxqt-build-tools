@@ -9,7 +9,6 @@
 #include <QThread>
 #include <QtCore/QCoreApplication>
 //
-#include "network/qwebsocket_client.hpp"
 #include "network/qwebsocket_session.hpp"
 
 std::atomic<int> counter{0};

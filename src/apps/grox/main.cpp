@@ -3,7 +3,6 @@
 #include <iostream>
 #include <memory>
 #include <ostream>
-#include <regex>
 #include <string>
 #include <utility>
 //
@@ -24,7 +23,6 @@
 #include <pika/modules/thread_manager.hpp>
 #include <pika/program_options.hpp>
 //
-#include "debug/print.hpp"
 #include "network/evp-encrypt.hpp"
 #include "util/execute_os_command.hpp"
 #include "util/stringutils.hpp"

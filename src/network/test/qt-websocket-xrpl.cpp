@@ -11,7 +11,6 @@
 //
 #include "currency/currency.hpp"
 #include "currency/currency_pair.hpp"
-#include "network/qwebsocket_client.hpp"
 #include "network/qwebsocket_session.hpp"
 //
 #include "test-options.hpp"

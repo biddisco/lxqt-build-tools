@@ -18,7 +18,6 @@
 #include "currency/trade_data.hpp"
 #include "data/ohlc_dataset_view.hpp"
 #include "exchange/ticker_data.hpp"
-#include "network/qwebsocket_client.hpp"
 #include "network/qwebsocket_session.hpp"
 #include "senders/sender_defs.hpp"
 #include "util/pubsub.hpp"
