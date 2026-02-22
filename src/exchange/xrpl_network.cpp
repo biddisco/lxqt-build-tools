@@ -30,7 +30,6 @@
 #include "exchange/bitstamp.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
-#include "network/evp-encrypt.hpp"
 #include "senders/qhttp-post-sender.hpp"
 #include "senders/qtstdexec.hpp"
 #include "util/stringutils.hpp"
