@@ -8,17 +8,21 @@
 #ifndef QTHREADSENDER_H
 # define QTHREADSENDER_H
 
+# include <QAbstractEventDispatcher>
+# include <QCoreApplication>
+# include <QEventLoop>
+# include <QMetaObject>
+# include <QObject>
+# include <QThread>
+# include <QTimer>
 # include <exception>
+# include <exec/async_scope.hpp>
+# include <exec/materialize.hpp>
+# include <exec/start_now.hpp>
 # include <stdexec/concepts.hpp>
 # include <stdexec/execution.hpp>
 # include <tuple>
 # include <type_traits>
-# include <utility>
-//
-# include <QAbstractEventDispatcher>
-# include <QMetaObject>
-# include <QObject>
-# include <QThread>
 
 namespace QtStdExec {
 
@@ -51,7 +55,7 @@ public:
     class QThreadSender
     {
   public:
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t(),
           stdexec::set_error_t(std::exception_ptr)>;
 
@@ -67,10 +71,9 @@ public:
       }
 
       template <class Recv>
-      friend inline QThreadOperationState<Recv>
-      tag_invoke(stdexec::connect_t, QThreadSender sender, Recv&& receiver)
+      QThreadOperationState<Recv> connect(Recv&& receiver)
       {
-        return QThreadOperationState<Recv>(std::move(receiver), sender.thread());
+        return QThreadOperationState<Recv>(std::move(receiver), thread());
       }
 
   private:
@@ -102,6 +105,7 @@ private:
   class QThreadOperationState
   {
 public:
+    using operation_state_concept = stdexec::operation_state_t;
     QThreadOperationState(Recv&& receiver, QThread* thread)
       : m_receiver(std::move(receiver))
       , m_thread(thread)
@@ -112,11 +116,6 @@ public:
       QMetaObject::invokeMethod(
           m_thread->eventDispatcher(), [this]() { stdexec::set_value(std::move(m_receiver)); },
           Qt::QueuedConnection);
-    }
-    friend void tag_invoke(
-        stdexec::tag_t<stdexec::start>, QThreadOperationState& oper_state) noexcept
-    {
-      oper_state.start();
     }
 
 private:
@@ -147,9 +146,9 @@ private:
     }
 
 public:
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t(Args...),
-        stdexec::set_error_t(std::exception_ptr)>;
+        stdexec::set_error_t(std::exception_ptr), stdexec::set_stopped_t()>;
 
     using m_ptr_type = Ret (QObj::*)(Args...);
     QObjectSender(QObj* obj, m_ptr_type ptr)
@@ -160,11 +159,9 @@ public:
     QObj* object() { return m_obj; }
     m_ptr_type member_ptr() { return m_ptr; }
     template <class Recv>
-    friend inline QObjectOperationState<Recv, QObj, Ret, Args...>
-    tag_invoke(stdexec::tag_t<stdexec::connect>, QObjectSender sender, Recv&& receiver)
+    QObjectOperationState<Recv, QObj, Ret, Args...> connect(Recv&& receiver)
     {
-      return QObjectOperationState<Recv, QObj, Ret, Args...>(
-          std::move(receiver), sender.m_obj, sender.m_ptr);
+      return QObjectOperationState<Recv, QObj, Ret, Args...>(std::move(receiver), m_obj, m_ptr);
     }
 
 private:
@@ -176,6 +173,7 @@ private:
   class QObjectOperationState
   {
 public:
+    using operation_state_concept = stdexec::operation_state_t;
     using m_ptr_type = Ret (QObj::*)(Args...);
     QObjectOperationState(Recv&& receiver, QObj* obj, m_ptr_type ptr)
       : m_receiver(std::move(receiver))
@@ -183,21 +181,61 @@ public:
       , m_ptr(ptr)
     {
     }
-    friend void tag_invoke(
-        stdexec::tag_t<stdexec::start>, QObjectOperationState& oper_state) noexcept
+
+private:
+    struct stop_callback_t
     {
-      oper_state.connection =
-          QObject::connect(oper_state.m_obj, oper_state.m_ptr, [&oper_state](Args... args) {
-            stdexec::set_value(std::move(oper_state.m_receiver), std::forward<Args>(args)...);
-          });
+      QObjectOperationState* self;
+
+      void operator()() const noexcept
+      {
+        self->m_stop_callback.reset();
+        QObject::disconnect(self->m_connection);
+        if (!self->m_completed.test_and_set(std::memory_order_acq_rel))
+        {
+          QMetaObject::invokeMethod(
+              self->m_obj->thread()->eventDispatcher(),
+              [this]() { stdexec::set_stopped(std::move(self->m_receiver)); },
+              Qt::QueuedConnection);
+        }
+      }
+    };
+
+private:
+    using stop_token_type = stdexec::stop_token_of_t<stdexec::env_of_t<Recv>>;
+    using stop_callback_type = typename stop_token_type::template callback_type<stop_callback_t>;
+
+public:
+    void start() noexcept
+    {
+      m_stop_callback.emplace(
+          stdexec::get_stop_token(stdexec::get_env(m_receiver)), stop_callback_t{this});
+      m_connection = QObject::connect(
+          m_obj, m_ptr, m_obj,
+          [this](Args... args) {
+            QObject::disconnect(m_connection);
+            m_stop_callback.reset();
+            if (!m_completed.test_and_set(std::memory_order_acq_rel))
+            {
+              QMetaObject::invokeMethod(
+                  m_obj,
+                  [this, &args...] {
+                    stdexec::set_value(std::move(m_receiver), std::forward<Args>(args)...);
+                  },
+                  Qt::QueuedConnection);
+            }
+          },
+          Qt::SingleShotConnection);
     }
-    ~QObjectOperationState() { QObject::disconnect(connection); }
+    ~QObjectOperationState() {}
 
 private:
     Recv m_receiver;
     QObj* m_obj;
     m_ptr_type m_ptr;
-    QMetaObject::Connection connection;
+    QMetaObject::Connection m_connection;
+    std::atomic_flag m_completed{false};
+    std::optional<stop_callback_type> m_stop_callback;
   };
 
   template <class QObj, class Ret, class... Args>
@@ -213,6 +251,54 @@ private:
       return std::tuple<std::remove_reference_t<Args>...>(std::move(args)...);
     });
   }
+
+  struct QEventLoopWaitReceiver
+  {
+    using receiver_concept = stdexec::receiver_t;
+    void set_value(auto&&...) noexcept {}
+    void set_error(auto&&) noexcept {}
+    void set_stopped() noexcept {}
+  };
+
+  template <class Sender>
+  auto qEventLoopWait(Sender&& sender)
+  {
+    QEventLoop nested_loop;
+    QTimer loop_end_timer{&nested_loop};
+    loop_end_timer.setSingleShot(true);
+    QObject::connect(&loop_end_timer, &QTimer::timeout, [&] { nested_loop.quit(); });
+    auto wrapped_sender = std::forward<Sender>(sender) | exec::materialize();
+    using result = stdexec::value_types_of_t<decltype(wrapped_sender)>;
+    std::optional<result> res;
+    auto result_sender = std::move(wrapped_sender) |
+        stdexec::then([&res](auto tag, auto&&... args) {
+          res.emplace(result(std::tuple(tag, std::forward<decltype(args)>(args)...)));
+        }) |
+        stdexec::continues_on(qThreadAsScheduler(QCoreApplication::instance()->thread())) |
+        stdexec::then([&loop_end_timer](auto&&...) { loop_end_timer.start(); });
+    auto opstate = stdexec::connect(std::move(result_sender), QEventLoopWaitReceiver());
+    stdexec::start(opstate);
+    nested_loop.exec();
+    return res;
+  }
+
+  class QAsyncScopeGuard
+  {
+private:
+    exec::async_scope& m_scope;
+
+public:
+    QAsyncScopeGuard(exec::async_scope& scope)
+      : m_scope(scope)
+    {
+    }
+    ~QAsyncScopeGuard()
+    {
+      auto cleanupSender = m_scope.on_empty();
+      m_scope.request_stop();
+      qEventLoopWait(cleanupSender);
+    }
+  };
 
 }    // namespace QtStdExec
 
