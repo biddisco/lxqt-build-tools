@@ -99,7 +99,7 @@ trade_widget::~trade_widget() { delete ui; }
 void trade_widget::connect_events()
 {
   connect(ui->cancel, &QToolButton::clicked, this, [this]() {
-    auto web = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())    // Qt
+    auto web = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())    // Qt
         | stdexec::let_value(                                                        //
               [this]() { return trade_.network_->request_cancel_order(trade_); })    // Qt -> pika
         | stdexec::then([this](QByteArray byteArray) {                               // pika

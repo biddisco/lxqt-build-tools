@@ -631,7 +631,7 @@ void GroxMainWindow::closeEvent(QCloseEvent* event)
     saveTrustlines();
     saveConnectionSetups();
 
-    auto snd = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
+    auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
         | stdexec::then([this]() {
             for (auto& e : exchange_list_)
             {
@@ -643,8 +643,8 @@ void GroxMainWindow::closeEvent(QCloseEvent* event)
             }
             main_dbg<0>.debug(ffmt<s20>("exchanges"), "shutdown complete");
             exchange_list_.clear();
-          })                                                     //
-        | stdexec::continue_on(QtStdExec::QThreadScheduler())    // pika -> Qt
+          })                                                      //
+        | stdexec::continues_on(QtStdExec::QThreadScheduler())    // pika -> Qt
         | stdexec::then([this]() {
             main_dbg<0>.debug(ffmt<s20>("Close"));
             close();
@@ -680,9 +680,9 @@ void GroxMainWindow::showEvent(QShowEvent* event)
   if (only_once)
   {
     only_once = false;
-    auto snd = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
-        | stdexec::then([this]() { loadConnectionSetups(); })                       //
-        | stdexec::then([this]() { loadWindowSettings(); });                        //
+    auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
+        | stdexec::then([this]() { loadConnectionSetups(); })                        //
+        | stdexec::then([this]() { loadWindowSettings(); });                         //
     stdexec::start_detached(std::move(snd));
   }
 }

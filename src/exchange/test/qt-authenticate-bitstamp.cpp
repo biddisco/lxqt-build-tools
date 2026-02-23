@@ -60,7 +60,7 @@ TEST(abstract_exchange, request_account_info)
   test1_dbg<2>.debug(ffmt<s20>("TEST"), "request_account_info");
   std::atomic<bool> finished{false};
   bitstamp_account& acct = bitstamp->accounts()[0];
-  auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())                //
+  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                //
       | ex::let_value([&acct]() { return bitstamp->request_account_info(acct); })    // Qt -> pika
       | ex::then([&acct, &finished](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
@@ -102,7 +102,7 @@ TEST(abstract_exchange, request_all_account_infos)
             ffmt<s20>("handle_account_info"), "complete", acct.name_, finished.load());
       };
 
-      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())                // Qt
+      auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                // Qt
           | ex::let_value([&acct]() { return bitstamp->request_account_info(acct); })    // -> pika
           | ex::then(handle_account_info);
 
@@ -116,7 +116,7 @@ TEST(abstract_exchange, request_all_account_infos)
   };
 
   stdexec::sender auto snd =
-      stdexec::start_on(grox::senders::default_pool_scheduler(), stdexec::just())    //
+      stdexec::starts_on(grox::senders::default_pool_scheduler(), stdexec::just())    //
       | stdexec::then(get_all_account_infos);
 
   test1_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope");
@@ -135,7 +135,7 @@ TEST(abstract_exchange, cancel_order)
   using namespace grox::debug;
   test1_dbg<2>.debug(ffmt<s20>("TEST(abstract_exchange, request_account_info)"));
   std::atomic<bool> finished{false};
-  auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())         //
+  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())         //
       | ex::let_value([t]() { return bitstamp->request_cancel_order(t); })    // Qt -> pika
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
@@ -172,7 +172,7 @@ int qt_main(int argc, char* argv[])
     }
   }
   int test_result;
-  auto snd = ex::start_on(grox::senders::default_pool_scheduler(), ex::just())    //
+  auto snd = ex::starts_on(grox::senders::default_pool_scheduler(), ex::just())    //
       | ex::then([&test_result]() {
           test_result = RUN_ALL_TESTS();
           QCoreApplication::instance()->quit();

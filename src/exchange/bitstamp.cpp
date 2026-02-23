@@ -150,7 +150,7 @@ void bitstamp_network::initialize()
   std::string ini_name = global_settings.iniFileName.toStdString();
   read_transaction_logs(ini_name);
   //
-  auto web = stdexec::start_on(QtStdExec::QThreadScheduler(), stdexec::just())         //
+  auto web = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())        //
       | stdexec::let_value([this]() { return request_tickers_available(); })           // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                                   //
           std::string_view data(byteArray.constData(), byteArray.length());            //
@@ -158,11 +158,11 @@ void bitstamp_network::initialize()
           handle_tickers_available(data);                                              //
         })                                                                             //
       | stdexec::then([this]() { load_subscribed_tickers(); })                         //
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                            // pika -> Qt
+      | stdexec::continues_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
       | stdexec::let_value([this]() { return request_all_account_infos(); })           // Qt -> pika
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                            // pika -> Qt
+      | stdexec::continues_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
       | stdexec::let_value([this]() { return request_all_account_orders(); })          // Qt -> pika
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())                            // pika -> Qt
+      | stdexec::continues_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
       | stdexec::let_value([this]() { return request_all_account_transactions(); })    // Qt -> pika
       | stdexec::then([=, this]() { update_transaction_logs(ini_name); })              //
       | stdexec::then([=, this]() { read_transaction_logs(ini_name); })                //
@@ -310,8 +310,8 @@ bool bitstamp_network::stream_subscribe(
   // always subscribe to a ticker before a stream it owns
   if (!ticker_subscribed(cp)) ticker_subscribe(cp);
 
-  auto snd = stdexec::start_on(QtStdExec::QThreadScheduler(), request_websocket_token())    //
-      | stdexec::then([this](QByteArray byteArray) {                                        // pika
+  auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), request_websocket_token())    //
+      | stdexec::then([this](QByteArray byteArray) {                                         // pika
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<6>.debug(ffmt<s20>("Initialize"), "WebsocketToken", data);
           handle_websocket_token(data);
@@ -343,9 +343,9 @@ bool bitstamp_network::stream_subscribe(
         default: ok = false; throw std::runtime_error("unknown stream");
         }
         if (ok) mark_stream_subscribed(cp, stream, enabled);
-      })                                                       //
-      | stdexec::continue_on(QtStdExec::QThreadScheduler())    //
-      | stdexec::then([this, cp, stream, f]() {                //
+      })                                                        //
+      | stdexec::continues_on(QtStdExec::QThreadScheduler())    //
+      | stdexec::then([this, cp, stream, f]() {                 //
           f(cp, get_subscribed_ticker_data(cp), stream);
         });
   stdexec::start_detached(std::move(snd));
@@ -399,8 +399,8 @@ bool bitstamp_network::make_payment(
                << "PUT SOMETHING IN HERE";
     //
     auto* client = signed_request(*from, "/api/v2/xrp_withdrawal/", req_string.str());
-    auto web = stdexec::start_on(exec::inline_scheduler(), stdexec::just(client))    // Qt
-        | qhttp_post()                                                               // Qt -> pika
+    auto web = stdexec::starts_on(exec::inline_scheduler(), stdexec::just(client))    // Qt
+        | qhttp_post()                                                                // Qt -> pika
         | stdexec::then([this](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
             bitstamp_dbg<0>.debug(ffmt<s20>("request CB"), "/api/v2/xrp_withdrawal/", data);
@@ -413,8 +413,8 @@ bool bitstamp_network::make_payment(
     req_string << "&currency= this is wrong" << c.symbol_.issuer_;
     //
     auto* client = signed_request(*from, "/api/v2/ripple_withdrawal/", req_string.str());
-    auto web = stdexec::start_on(exec::inline_scheduler(), stdexec::just(client))    // Qt
-        | qhttp_post()                                                               // Qt -> pika
+    auto web = stdexec::starts_on(exec::inline_scheduler(), stdexec::just(client))    // Qt
+        | qhttp_post()                                                                // Qt -> pika
         | stdexec::then([this](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
             bitstamp_dbg<0>.debug(ffmt<s20>("request CB"), "/api/v2/ripple_withdrawal/", data);
@@ -451,7 +451,7 @@ any_void_sender bitstamp_network::request_all_account_infos()
         handle_account_info(acct, data);
       };
 
-      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())             // Qt
+      auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())            // Qt
           | ex::let_value([this, &acct]() { return request_account_info(acct); })    // -> pika
           | ex::then(handle_data);
 
@@ -464,8 +464,8 @@ any_void_sender bitstamp_network::request_all_account_infos()
   };
 
   // must be on a pika thread if we are using sync_wait
-  auto snd = stdexec::just()                              //
-      | stdexec::continue_on(default_pool_scheduler())    //
+  auto snd = stdexec::just()                               //
+      | stdexec::continues_on(default_pool_scheduler())    //
       | stdexec::then(get_all_account_infos);
 
   return any_void_sender{std::move(snd)};
@@ -511,7 +511,7 @@ any_void_sender bitstamp_network::request_all_account_orders()
         handle_open_orders(acct, data);
       };
 
-      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())               // Qt
+      auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())              // Qt
           | ex::let_value([this, &acct]() { return request_account_orders(acct); })    // -> pika
           | ex::then(handle_data);
 
@@ -524,8 +524,8 @@ any_void_sender bitstamp_network::request_all_account_orders()
   };
 
   // must be on a pika thread if we are using sync_wait
-  auto snd = stdexec::just()                              //
-      | stdexec::continue_on(default_pool_scheduler())    //
+  auto snd = stdexec::just()                               //
+      | stdexec::continues_on(default_pool_scheduler())    //
       | stdexec::then(get_all_orders);
 
   return any_void_sender{std::move(snd)};
@@ -620,7 +620,7 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
         else { bitstamp_dbg<0>.debug(ffmt<s20>("Transactions_Crypto"), "Empty"); }
       };
 
-      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())                    //
+      auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                   //
           | ex::let_value([this, &acct]() { return request_crypto_transactions(acct); })    //
           | ex::then(handle_data);                                                          //
 
@@ -633,8 +633,8 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
   };
 
   // must be on a pika thread if we are using sync_wait
-  auto snd = stdexec::just()                              //
-      | stdexec::continue_on(default_pool_scheduler())    //
+  auto snd = stdexec::just()                               //
+      | stdexec::continues_on(default_pool_scheduler())    //
       | stdexec::then(get_all_transactions);
 
   return any_void_sender{std::move(snd)};
@@ -702,7 +702,7 @@ any_void_sender bitstamp_network::request_all_market_transactions()
           }
         };
 
-        auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())                    //
+        auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                   //
             | ex::let_value([&, this]() { return request_market_transactions(acct, cp); })    //
             | ex::then(handle_data);                                                          //
 
@@ -716,8 +716,8 @@ any_void_sender bitstamp_network::request_all_market_transactions()
   };
 
   // must be on a pika thread if we are using sync_wait
-  auto snd = stdexec::just()                              //
-      | stdexec::continue_on(default_pool_scheduler())    //
+  auto snd = stdexec::just()                               //
+      | stdexec::continues_on(default_pool_scheduler())    //
       | stdexec::then(get_all_transactions);
 
   return any_void_sender{std::move(snd)};
@@ -771,7 +771,7 @@ any_void_sender bitstamp_network::request_all_account_transactions()
         else { bitstamp_dbg<0>.debug(ffmt<s20>("Transactions_User"), acct.name_, "Empty"); }
       };
 
-      auto snd = ex::start_on(QtStdExec::QThreadScheduler(), ex::just())                 //
+      auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                //
           | ex::let_value([&, this]() { return request_account_transactions(acct); })    //
           | ex::then(handle_data);                                                       //
 
@@ -784,8 +784,8 @@ any_void_sender bitstamp_network::request_all_account_transactions()
   };
 
   // must be on a pika thread if we are using sync_wait
-  auto snd = stdexec::just()                              //
-      | stdexec::continue_on(default_pool_scheduler())    //
+  auto snd = stdexec::just()                               //
+      | stdexec::continues_on(default_pool_scheduler())    //
       | stdexec::then(get_all_transactions);
 
   return any_void_sender{std::move(snd)};
@@ -1220,7 +1220,7 @@ void bitstamp_network::new_orderbook_data_q(
   };
 
   stdexec::sender auto snd =
-      stdexec::start_on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
+      stdexec::starts_on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
   stdexec::start_detached(std::move(snd));
 }
 
@@ -1252,7 +1252,7 @@ void bitstamp_network::new_live_trade_data_q(
   };
 
   stdexec::sender auto snd =
-      stdexec::start_on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
+      stdexec::starts_on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
   stdexec::start_detached(std::move(snd));
 }
 
@@ -1320,10 +1320,10 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker::data tdata)
                 ffmt<s20>("price history"), tdata->view_->get_ticker_string(), data);
             return handle_price_history(data);
           })    //
-        | stdexec::continue_on(QtStdExec::QThreadScheduler())};
+        | stdexec::continues_on(QtStdExec::QThreadScheduler())};
   }
 
-  auto snd2 = stdexec::start_on(QtStdExec::QThreadScheduler(), std::move(snd))    //
+  auto snd2 = stdexec::starts_on(QtStdExec::QThreadScheduler(), std::move(snd))    //
       | stdexec::let_value([this, cp, tdata](std::uint64_t start_t_sec) {
           // we do not want a candle for the current minute, round to prev 60s
           std::uint64_t unixtime_secs = QDateTime::currentDateTimeUtc().toSecsSinceEpoch();

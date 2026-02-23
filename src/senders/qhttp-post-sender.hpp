@@ -118,7 +118,7 @@ namespace grox::senders {
                                        QByteArray data) {
                       // pass the result onto a new pika task and invoke the continuation
                       auto snd0 = ex::just(std::move(data)) |
-                          ex::continue_on(default_pool_scheduler()) |
+                          ex::continues_on(default_pool_scheduler()) |
                           ex::then([receiver = std::move(receiver)](QByteArray byteArray) mutable {
                             std::string_view strv(byteArray.constData(), byteArray.length());
                             PIKA_DETAIL_DP(qt_trig<5>,
@@ -144,8 +144,7 @@ namespace grox::senders {
                 });
           }
 
-          friend constexpr ex::empty_env tag_invoke(
-              ex::get_env_t, qhttp_post_receiver const&) noexcept
+          friend constexpr ex::env<> tag_invoke(ex::get_env_t, qhttp_post_receiver const&) noexcept
           {
             return {};
           }
