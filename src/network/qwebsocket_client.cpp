@@ -53,12 +53,13 @@ namespace net::ws {
   qwebsocket_client::~qwebsocket_client()
   {
     qwebsocket_dbg<2>.debug(ffmt<s20>(id_), "Destructor");
-    if (websocket_)
+    auto ws = websocket_.load();
+    if (ws)
     {
       qwebsocket_dbg<1>.error(
           ffmt<s20>(id_), "Client::destructor : websocket delete - out of order");
-      delete websocket_;
-      websocket_ = nullptr;
+      delete ws;
+      websocket_.store(nullptr);
     }
     else { qwebsocket_dbg<3>.error("~qwebsocket_client after deletion"); }
   }
@@ -68,59 +69,63 @@ namespace net::ws {
   {
     qwebsocket_dbg<2>.debug(fmt::format("{:20s} startConnection", id_, url_));
     //
-    websocket_ = new QWebSocket;
-    (*websocket_).setPauseMode(QAbstractSocket::PauseNever);    // @todo PauseOnSslErrors
+    auto ws = new QWebSocket;
+    ws->setPauseMode(QAbstractSocket::PauseNever);    // @todo PauseOnSslErrors
+
+    websocket_.store(ws);
 
     // connection state
-    connect(websocket_, &QWebSocket::connected, this, &qwebsocket_client::onConnected,
+    connect(
+        ws, &QWebSocket::connected, this, &qwebsocket_client::onConnected, Qt::DirectConnection);
+    connect(ws, &QWebSocket::disconnected, this, &qwebsocket_client::onDisconnected,
         Qt::DirectConnection);
-    connect(websocket_, &QWebSocket::disconnected, this, &qwebsocket_client::onDisconnected),
-        Qt::DirectConnection;
-    connect(websocket_, &QWebSocket::stateChanged, this, &qwebsocket_client::onStateChanged,
+    connect(ws, &QWebSocket::stateChanged, this, &qwebsocket_client::onStateChanged,
         Qt::DirectConnection);
-    connect(websocket_, &QWebSocket::aboutToClose, this, &qwebsocket_client::onAboutToClose,
+    connect(ws, &QWebSocket::aboutToClose, this, &qwebsocket_client::onAboutToClose,
         Qt::DirectConnection);
 
     // errors
-    connect(websocket_, QOverload<QList<QSslError> const&>::of(&QWebSocket::sslErrors), this,
+    connect(ws, QOverload<QList<QSslError> const&>::of(&QWebSocket::sslErrors), this,
         &qwebsocket_client::onSslErrors, Qt::DirectConnection);
 
-    connect(websocket_, SIGNAL(errorOccurred(QAbstractSocket::SocketError)),
+    connect(ws, SIGNAL(errorOccurred(QAbstractSocket::SocketError)),
         SLOT(onError(QAbstractSocket::SocketError)), Qt::DirectConnection);
 
     // text messages
-    connect(websocket_, &QWebSocket::textFrameReceived, this,
-        &qwebsocket_client::onTextFrameReceived, Qt::DirectConnection);
-    // connect(websocket_, &QWebSocket::textMessageReceived, this,
+    connect(ws, &QWebSocket::textFrameReceived, this, &qwebsocket_client::onTextFrameReceived,
+        Qt::DirectConnection);
+    // connect(ws, &QWebSocket::textMessageReceived, this,
     //   &qwebsocket_client::onTextMessageReceived, Qt::DirectConnection);
-    connect(websocket_, &QWebSocket::textMessageReceived, this, rx_handler_, Qt::DirectConnection);
+    connect(ws, &QWebSocket::textMessageReceived, this, rx_handler_, Qt::DirectConnection);
 
     // binary messages
-    connect(websocket_, &QWebSocket::binaryFrameReceived, this,
-        &qwebsocket_client::onBinaryFrameReceived, Qt::DirectConnection);
-    connect(websocket_, &QWebSocket::binaryMessageReceived, this,
+    connect(ws, &QWebSocket::binaryFrameReceived, this, &qwebsocket_client::onBinaryFrameReceived,
+        Qt::DirectConnection);
+    connect(ws, &QWebSocket::binaryMessageReceived, this,
         &qwebsocket_client::onBinaryMessageReceived, Qt::DirectConnection);
 
     // others
-    connect(websocket_, &QWebSocket::readChannelFinished, this,
-        &qwebsocket_client::onReadChannelFinished, Qt::DirectConnection);
-    connect(websocket_, &QWebSocket::pong, this, &qwebsocket_client::onPong, Qt::DirectConnection);
-    connect(websocket_, &QWebSocket::bytesWritten, this, &qwebsocket_client::onBytesWritten,
+    connect(ws, &QWebSocket::readChannelFinished, this, &qwebsocket_client::onReadChannelFinished,
+        Qt::DirectConnection);
+    connect(ws, &QWebSocket::pong, this, &qwebsocket_client::onPong, Qt::DirectConnection);
+    connect(ws, &QWebSocket::bytesWritten, this, &qwebsocket_client::onBytesWritten,
         Qt::DirectConnection);
 
     qwebsocket_dbg<2>.debug(fmt::format("{:20s} openConnection {}", id_, url_));
     QNetworkRequest request = QNetworkRequest(QUrl(url_));
-    (*websocket_).open(request);
+    ws->open(request);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::stopConnection()
   {
-    if (websocket_)
+    auto ws = websocket_.load();
+    if (ws)
     {
       qwebsocket_dbg<2>.debug(fmt::format("{:20s} stopConnection : invoking WebSocket close", id_));
+      // Use QueuedConnection to ensure close happens on the websocket thread
       bool result = QMetaObject::invokeMethod(
-          websocket_, "close", Qt::QueuedConnection, QWebSocketProtocol::CloseCodeNormal);
+          ws, "close", Qt::QueuedConnection, QWebSocketProtocol::CloseCodeNormal);
     }
     else { qwebsocket_dbg<3>.error("stopConnection after deletion"); }
   }
@@ -128,18 +133,23 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onConnected()
   {
-    qwebsocket_dbg<3>.debug(fmt::format("{:20s} Connected : sending subscribe", id_));
-    (*websocket_).sendTextMessage(subscribe_);
+    auto ws = websocket_.load();
+    if (ws)
+    {
+      qwebsocket_dbg<3>.debug(fmt::format("{:20s} Connected : sending subscribe", id_));
+      ws->sendTextMessage(subscribe_);
+    }
+    else { qwebsocket_dbg<3>.error("onConnected after deletion"); }
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onDisconnected()
   {
-    if (websocket_)
+    auto ws = websocket_.load();
+    if (ws)
     {
       qwebsocket_dbg<2>.error(fmt::format("{:20s} Disconnected : Unexpected : CloseCode is : {} {}",
-          id_, QVariant::fromValue((*websocket_).closeCode()).toString(),
-          (*websocket_).errorString()));
+          id_, QVariant::fromValue(ws->closeCode()).toString(), ws->errorString()));
     }
     else { qwebsocket_dbg<3>.error("onDisconnected after deletion"); }
     emit finished();
@@ -155,19 +165,20 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onAboutToClose()
   {
-    if (websocket_)
+    auto ws = websocket_.load();
+    if (ws)
     {
-      auto code = (*websocket_).closeCode();
+      auto code = ws->closeCode();
       if (code != QWebSocketProtocol::CloseCodeNormal)
       {
-        auto reason = (*websocket_).closeReason();
+        auto reason = ws->closeReason();
         qwebsocket_dbg<2>.error(fmt::format(
             "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
-            QVariant::fromValue(code).toString(), (*websocket_).errorString()));
+            QVariant::fromValue(code).toString(), ws->errorString()));
       }
       else { qwebsocket_dbg<3>.debug(fmt::format("{:20s} AboutToClose : CloseCode Normal", id_)); }
-      (*websocket_).deleteLater();
-      websocket_ = nullptr;
+      ws->deleteLater();
+      websocket_.store(nullptr);
     }
     else { qwebsocket_dbg<3>.error("onAboutToClose after deletion"); }
   }
@@ -186,14 +197,18 @@ namespace net::ws {
     // The proper way to handle self-signed certificates is to add a custom root
     // to the CA store.
 
-    (*websocket_).ignoreSslErrors();
+    auto ws = websocket_.load();
+    if (ws) { ws->ignoreSslErrors(); }
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onError(QAbstractSocket::SocketError socketError)
   {
-    qwebsocket_dbg<2>.error(
-        fmt::format("{:20s} SslErrors : Error :{}", id_, (*websocket_).errorString()));
+    auto ws = websocket_.load();
+    if (ws)
+    {
+      qwebsocket_dbg<2>.error(fmt::format("{:20s} SslErrors : Error :{}", id_, ws->errorString()));
+    }
   }
 
   // ------------------------------------------------------------------

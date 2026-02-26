@@ -219,10 +219,22 @@ stream_set xrpl_network::ticker_subscribe(currency_pair const& cp)
 void xrpl_network::shut_down()
 {
   xrpnet_dbg<0>.debug(ffmt<s20>("shutdown start"));
+  // Call parent shutdown which:
+  // 1. Sets closing_down_ = true (atomically)
+  // 2. Acquires async_mutex_ lock
+  // Any message handlers will now either:
+  // - See closing_down_ = true on their first check and exit immediately
+  // - Or block on async_mutex_ if they haven't checked yet
   abstract_exchange::shut_down();
-  //
+
+  // At this point we hold async_mutex_, so no new handlers can acquire it
+  // Now safely reset the websockets
+  xrpnet_dbg<0>.debug(ffmt<s20>("shutdown"), "Resetting ws_orderbook");
   if (ws_orderbook) { ws_orderbook.reset(); }
+
+  xrpnet_dbg<0>.debug(ffmt<s20>("shutdown"), "Resetting ws_accounts");
   if (ws_accounts) { ws_accounts.reset(); }
+  // async_mutex_ is unlocked here when lock_guard goes out of scope
 }
 
 // ----------------------------------------------------------------------------
@@ -290,12 +302,22 @@ void xrpl_network::new_orderbook_data_q(
   xrpnet_dbg<5>.debug(ffmt<s20>("Orderbook"), "Ticker", currency_pair_string(cp));
   xrpnet_dbg<9>.debug(ffmt<s20>("Orderbook data"), data.toStdString());
 
-  // if shutdown was started after this data was sent by the remote source
-  // then it can be ignored/dropped as we will not handle it anyway
-  std::lock_guard l(abstract_exchange->async_mutex_);
-  if (abstract_exchange->closing_down_)
+  // Quick check if shutdown flag is set WITHOUT holding the lock
+  // This is safe since atomic read doesn't require the mutex
+  if (abstract_exchange->closing_down_.load())
   {
     xrpnet_dbg<0>.error(ffmt<s20>("Orderbook data"), "Shutdown in progress: ignoring data");
+    return;
+  }
+
+  // Acquire lock and check again - this ensures that if closing_down_ becomes true
+  // after our first check, we either hold the lock (preventing object deletion) or
+  // we detect it here and exit early
+  std::lock_guard l(abstract_exchange->async_mutex_);
+  if (abstract_exchange->closing_down_.load())
+  {
+    xrpnet_dbg<0>.error(
+        ffmt<s20>("Orderbook data"), "Shutdown in progress (after lock): ignoring data");
     return;
   }
 
@@ -343,6 +365,14 @@ void xrpl_network::new_account_data_q(xrpl_network* nw, QString qdata)
 {
   std::string data = qdata.toStdString();
   xrpnet_dbg<0>.debug(ffmt<s20>("Account changes"), data);
+
+  // Check if shutdown is in progress - don't process new data
+  if (nw->closing_down_.load())
+  {
+    xrpnet_dbg<0>.error(ffmt<s20>("Account data"), "Shutdown in progress: ignoring data");
+    return;
+  }
+
   if (startswith(data, "{\"result\":"))
   {
     // ignore this, just a subscription ok

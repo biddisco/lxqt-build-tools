@@ -103,11 +103,24 @@ namespace net::ws {
   // ----------------------------------------------------------------------------
   qwebsocket_session::~qwebsocket_session()
   {
+    qsession_dbg<0>.debug(
+        fmt::format("{:20s} {} Destructor starting", client_->id(), fmt::ptr(this)));
+    // Stop the connection (queued on the thread)
     client_->stopConnection();
-    // client and thread will be cleaned up when QThread::finished completes
-    // thread_->wait();
-    // delete client_;
-    // delete thread_;
+    // Wait for thread to finish cleanly - this ensures the QThread::finished
+    // signal has been processed and the cleanup lambda has run
+    if (!thread_->wait(5000))
+    {
+      qsession_dbg<1>.error(fmt::format(
+          "{:20s} {} Destructor: thread_->wait() TIMEOUT!", client_->id(), fmt::ptr(this)));
+    }
+    else
+    {
+      qsession_dbg<0>.debug(fmt::format(
+          "{:20s} {} Destructor: thread_->wait() completed", client_->id(), fmt::ptr(this)));
+    }
+    // DO NOT delete client_ or thread_ here - the QThread::finished signal
+    // lambda handles cleanup to avoid double-delete
   }
 
 }    // namespace net::ws
