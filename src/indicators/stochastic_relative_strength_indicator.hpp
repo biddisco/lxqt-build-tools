@@ -5,6 +5,7 @@
 #include <boost/accumulators/statistics/rolling_mean.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
 #include <boost/circular_buffer.hpp>
+#include <cmath>
 //
 #include "data/ohlc_data_resolutions.hpp"
 #include "indicators/indicator_base.hpp"
@@ -72,7 +73,8 @@ public:
       double rsi = rsi_.operator()(val);
       double stoch_rsi_K_unsmoothed = osc_.operator()(rsi);
       mov_av_k_(stoch_rsi_K_unsmoothed);
-      stoch_rsi_K = ba::rolling_mean(mov_av_k_);
+      stoch_rsi_K = std::round(ba::rolling_mean(mov_av_k_) * 1E6) / 1E6;
+      assert(stoch_rsi_K >= 0.0 && stoch_rsi_K <= 1.0);
       return stoch_rsi_K;
     }
 

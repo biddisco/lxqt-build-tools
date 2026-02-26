@@ -98,8 +98,11 @@ class ohlc_dataset_view
   // compute the average price for a buy at/after time T
   ohlctv_sample get_trade_data_by_volume(double volume, double time, double safety = 10) const;
   ohlctv_sample get_trade_data_by_value(double dollars, double time, double safety = 10) const;
-  double get_estimated_sell_price(double volume, double time, double safety = 10) const;
-  double get_estimated_buy_price(double volume, double time, double safety = 10) const;
+  // compute the average price for a sell at/after time T
+  double get_estimated_buy_price_volume(double volume, double time, double safety = 10) const;
+  double get_estimated_sell_price_volume(double volume, double time, double safety = 10) const;
+  double get_estimated_buy_price_value(double dollars, double time, double safety = 10) const;
+  double get_estimated_sell_price_value(double dollars, double time, double safety = 10) const;
 
   std::string_view const get_ticker_string() const { return ticker_string_; }
 

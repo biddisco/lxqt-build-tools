@@ -347,28 +347,64 @@ ohlctv_sample ohlc_dataset_view::get_trade_data_by_value(
 }
 
 // ----------------------------------------------------------------------------
-double ohlc_dataset_view::get_estimated_sell_price(double volume, double time, double safety) const
+double ohlc_dataset_view::get_estimated_buy_price_volume(
+    double volume, double time, double safety) const
 {
   ohlctv_sample ohlc = get_trade_data_by_volume(volume, time, safety);
   // we have created a candle with enough data to sell the volume requested (+safety factor)
   // return a price based on the traded data we accumulated
   if (ohlc.isValid())
   {
-    double price = (25.0 * ohlc.high + 75.0 * ohlc.low) / 100.0;
+    assert(ohlc.low <= ohlc.high);
+    double price = (0.75 * ohlc.high) + (0.25 * ohlc.low);
     return price;
   }
   return 0;
 }
 
 // ----------------------------------------------------------------------------
-double ohlc_dataset_view::get_estimated_buy_price(double dollars, double time, double safety) const
+double ohlc_dataset_view::get_estimated_sell_price_volume(
+    double volume, double time, double safety) const
+{
+  ohlctv_sample ohlc = get_trade_data_by_volume(volume, time, safety);
+  // we have created a candle with enough data to sell the volume requested (+safety factor)
+  // return a price based on the traded data we accumulated
+  if (ohlc.isValid())
+  {
+    assert(ohlc.low <= ohlc.high);
+    double price = (0.25 * ohlc.high) + (0.75 * ohlc.low);
+    return price;
+  }
+  return 0;
+}
+
+// ----------------------------------------------------------------------------
+double ohlc_dataset_view::get_estimated_buy_price_value(
+    double dollars, double time, double safety) const
 {
   ohlctv_sample ohlc = get_trade_data_by_value(dollars, time, safety);
   // we have created a candle with enough data to sell the volume requested (+safety factor)
   // return a price based on the traded data we accumulated
   if (ohlc.isValid())
   {
-    double price = (75.0 * ohlc.high + 25.0 * ohlc.low) / 100.0;
+    assert(ohlc.low <= ohlc.high);
+    double price = (0.75 * ohlc.high) + (0.25 * ohlc.low);
+    return price;
+  }
+  return 0;
+}
+
+// ----------------------------------------------------------------------------
+double ohlc_dataset_view::get_estimated_sell_price_value(
+    double dollars, double time, double safety) const
+{
+  ohlctv_sample ohlc = get_trade_data_by_value(dollars, time, safety);
+  // we have created a candle with enough data to sell the volume requested (+safety factor)
+  // return a price based on the traded data we accumulated
+  if (ohlc.isValid())
+  {
+    assert(ohlc.low <= ohlc.high);
+    double price = (0.25 * ohlc.high) + (0.75 * ohlc.low);
     return price;
   }
   return 0;

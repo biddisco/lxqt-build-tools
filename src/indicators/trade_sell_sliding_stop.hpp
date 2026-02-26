@@ -149,7 +149,7 @@ public:
       double fee = 0.01 * fee_percent_sell_ * xrp_total_;
       double maker_pay = xrp_total_ - fee;
       //
-      double p = hdf5_ohlc_->get_estimated_sell_price(maker_pay, time + time_res_, 2.0);
+      double p = hdf5_ohlc_->get_estimated_sell_price_value(maker_pay, time + time_res_, 2.0);
       cash_total_ = maker_pay * p;
       xrp_total_ = 0;
       // note we output the actual sell price and not the current running average

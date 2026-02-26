@@ -127,17 +127,23 @@ public:
       double fee = 0.01 * fee_percent_buy_ * cash_amount;
       double taker_pay = cash_amount - fee;
       //
-      auto p = hdf5_ohlc_->get_trade_data_by_value(taker_pay, time + time_res_, 2.0);
-      xrp_total_ += taker_pay / p.open;
+      // auto p = hdf5_ohlc_->get_trade_data_by_value(taker_pay, time + time_res_, 2.0);
+      double p = hdf5_ohlc_->get_estimated_buy_price_volume(taker_pay, time + time_res_, 2.0);
+      double initial_value = (p * xrp_total_) + cash_total_;
+      xrp_total_ += taker_pay / p;
       cash_total_ -= cash_amount;
       // pay the open price, (value by low price?)
       last_result_ = {//
           .event_type_ = buy_sell_event_type::buy,
           .price_ = last_result_.price_,
-          .event_price_ = p.open,
-          .value_ = (p.open * xrp_total_) + cash_total_,
+          .event_price_ = p,
+          .value_ = (p * xrp_total_) + cash_total_,
           .tokens_ = xrp_total_,
           .cash_ = cash_total_};
+      //
+      assert(xrp_total_ >= 0);
+      assert(cash_total_ >= 0);
+      assert(initial_value >= last_result_.value_);
     }
 
     // ---------------------------------------
@@ -147,7 +153,12 @@ public:
       double fee = 0.01 * fee_percent_sell_ * xrp_amount;
       double maker_pay = xrp_amount - fee;
       //
-      double p = hdf5_ohlc_->get_estimated_sell_price(maker_pay, time + time_res_, 2.0);
+      double p = hdf5_ohlc_->get_estimated_sell_price_volume(maker_pay, time + time_res_, 2.0);
+      double initial_value = (p * xrp_total_) + cash_total_;
+
+      indicator_dbg<0>.debug(ffmt<s20>("sell"), "initial_value", initial_value, "cash_total_",
+          cash_total_, "xrp_total", xrp_total_, "sell_amount", xrp_amount, "price", p);
+
       cash_total_ += maker_pay * p;
       xrp_total_ -= xrp_amount;
       // note we output the actual sell price and not the current running average
@@ -158,39 +169,59 @@ public:
           .value_ = (p * xrp_total_) + cash_total_,
           .tokens_ = xrp_total_,
           .cash_ = cash_total_};
+      //
+      indicator_dbg<0>.debug(ffmt<s20>("sell"), "final_value", last_result_.value_, "cash_total_",
+          cash_total_, "xrp_total", xrp_total_, "sell_amount", xrp_amount, "price", p);
+      assert(xrp_total_ >= 0);
+      assert(cash_total_ >= 0);
+      assert(initial_value >= last_result_.value_);
+    }
+
+    double round_n(double value, int n)
+    {
+      double factor = std::pow(10.0, n);
+      return std::round(value * factor) / factor;
     }
 
     // ---------------------------------------
     void rebalance(double time, double cash_fraction)
     {
-      double sell_price = hdf5_ohlc_->get_estimated_sell_price(xrp_total_, time + time_res_, 1.0);
-      double buy_price = hdf5_ohlc_->get_estimated_buy_price(xrp_total_, time + time_res_, 1.0);
+      double xrp_total_initial = xrp_total_;
+      double cash_total_initial = cash_total_;
+      double sell_price_est =
+          hdf5_ohlc_->get_estimated_sell_price_volume(xrp_total_initial, time + time_res_, 1.0);
+      double buy_price_est =
+          hdf5_ohlc_->get_estimated_buy_price_volume(xrp_total_initial, time + time_res_, 1.0);
+      assert(sell_price_est <= buy_price_est);
       //
-      double xrp_value_sell = (sell_price * xrp_total_);
-      double initial_value_total = xrp_value_sell + cash_total_;
-
-      if (cash_total_ < (cash_fraction * initial_value_total))
+      double xrp_value_sell = (sell_price_est * xrp_total_initial);
+      double initial_value_est = xrp_value_sell + cash_total_initial;
+      //
+      if (cash_total_ < (cash_fraction * initial_value_est))
       {
         // rebalance by selling some XRP
-        double excess_cash = (cash_fraction * initial_value_total) - cash_total_;
-        double excess_xrp_est = excess_cash / xrp_value_sell;
+        double excess_cash = (cash_fraction * initial_value_est) - cash_total_;
+        double excess_xrp_est = excess_cash / sell_price_est;
         indicator_dbg<0>.debug(
-            ffmt<s20>("rebalance-sell"), time, initial_value_total, cash_total_, excess_xrp_est);
+            ffmt<s20>("rebalance-sell"), time, initial_value_est, cash_total_, excess_xrp_est);
         sell(time, excess_xrp_est);
+        if (last_result_.event_price_ < sell_price_est) sell_price_est = last_result_.event_price_;
       }
-      else if (cash_total_ > cash_fraction * initial_value_total)
+      else if (cash_total_ > cash_fraction * initial_value_est)
       {
         // rebalance by buying some XRP
-        double target_cash = cash_fraction * initial_value_total;
+        double target_cash = cash_fraction * initial_value_est;
         double excess_cash = cash_total_ - target_cash;
         indicator_dbg<0>.debug(
-            ffmt<s20>("rebalance-buy"), time, initial_value_total, cash_total_, excess_cash);
+            ffmt<s20>("rebalance-buy"), time, initial_value_est, cash_total_, excess_cash);
         buy(time, excess_cash);
+        if (last_result_.event_price_ > buy_price_est) buy_price_est = last_result_.event_price_;
       }
       //
-      double final_value_total = (xrp_value_sell * xrp_total_) + cash_total_;
-      indicator_dbg<0>.debug(ffmt<s20>("rebalance-value"), initial_value_total, final_value_total);
-      assert(final_value_total <= initial_value_total);
+      initial_value_est = round_n((sell_price_est * xrp_total_initial + cash_total_initial), 6);
+      double final_value_total = round_n((sell_price_est * xrp_total_) + cash_total_, 6);
+      indicator_dbg<0>.debug(ffmt<s20>("rebalance-value"), initial_value_est, final_value_total);
+      assert(final_value_total <= initial_value_est);
     }
 
     // ---------------------------------------
