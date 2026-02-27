@@ -307,21 +307,26 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
 bool bitstamp_network::stream_subscribe(
     currency_pair const& cp, ticker::streams const stream, bool enabled, factory_function f)
 {
+  if (closing_down_.load()) return false;
   // always subscribe to a ticker before a stream it owns
   if (!ticker_subscribed(cp)) ticker_subscribe(cp);
 
+  auto keepalive = shared_from_this();
   auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), request_websocket_token())    //
-      | stdexec::then([this](QByteArray byteArray) {                                         // pika
+      | stdexec::then([this, keepalive](QByteArray byteArray) {                              // pika
+          if (closing_down_.load()) return;
           std::string_view data(byteArray.constData(), byteArray.length());
           bitstamp_dbg<6>.debug(ffmt<s20>("Initialize"), "WebsocketToken", data);
           handle_websocket_token(data);
         })    //
-      | stdexec::let_stopped([this]() {
+      | stdexec::let_stopped([this, keepalive]() {
+          if (closing_down_.load()) return stdexec::just();
           bitstamp_dbg<0>.debug(ffmt<s20>("Stopped"), "WebsocketToken already up-to-date");
           return stdexec::just();
         })    //
       |
-      stdexec::then([this, cp, stream, enabled]() {    //
+      stdexec::then([this, keepalive, cp, stream, enabled]() {    //
+        if (closing_down_.load()) return;
         bool ok = true;
         switch (stream)
         {
@@ -345,7 +350,8 @@ bool bitstamp_network::stream_subscribe(
         if (ok) mark_stream_subscribed(cp, stream, enabled);
       })                                                        //
       | stdexec::continues_on(QtStdExec::QThreadScheduler())    //
-      | stdexec::then([this, cp, stream, f]() {                 //
+      | stdexec::then([this, keepalive, cp, stream, f]() {      //
+          if (closing_down_.load()) return;
           f(cp, get_subscribed_ticker_data(cp), stream);
         });
   stdexec::start_detached(std::move(snd));
@@ -1195,16 +1201,25 @@ void bitstamp_network::new_orderbook_data_q(
   bitstamp_dbg<5>.debug(ffmt<s20>("Orderbook"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<7>.debug(ffmt<s20>("Orderbook data"), data.toStdString());
 
+  if (abstract_exchange->closing_down_.load())
+  {
+    bitstamp_dbg<0>.error(ffmt<s20>("Orderbook data"), "Shutdown in progress: ignoring data");
+    return;
+  }
+
   // if shutdown was started after this data was sent by the remote source
   // then it can be ignored/dropped as we will not handle it anyway
   std::lock_guard l(abstract_exchange->async_mutex_);
-  if (abstract_exchange->closing_down_)
+  if (abstract_exchange->closing_down_.load())
   {
     bitstamp_dbg<0>.error(ffmt<s20>("Orderbook data"), "Shutdown in progress: ignoring data");
     return;
   }
 
   auto process = [abstract_exchange, cp, data]() {
+    if (abstract_exchange->closing_down_.load()) return;
+    std::lock_guard l(abstract_exchange->async_mutex_);
+    if (abstract_exchange->closing_down_.load()) return;
     ticker::data const tdata = abstract_exchange->get_subscribed_ticker_data(cp);
     try
     {
@@ -1231,10 +1246,16 @@ void bitstamp_network::new_live_trade_data_q(
   bitstamp_dbg<4>.debug(ffmt<s20>("Live Trade"), "Ticker", currency_pair_string(cp));
   bitstamp_dbg<5>.debug(ffmt<s20>("Trade data"), data.toStdString());
 
+  if (abstract_exchange->closing_down_.load())
+  {
+    bitstamp_dbg<0>.error(ffmt<s20>("trade data"), "Shutdown in progress: ignoring data");
+    return;
+  }
+
   // if shutdown was started after this data was sent by the remote source
   // then it can be ignored/dropped as we will not handle it anyway
   std::lock_guard l(abstract_exchange->async_mutex_);
-  if (abstract_exchange->closing_down_)
+  if (abstract_exchange->closing_down_.load())
   {
     bitstamp_dbg<0>.error(ffmt<s20>("trade data"), "Shutdown in progress: ignoring data");
     return;
@@ -1242,6 +1263,9 @@ void bitstamp_network::new_live_trade_data_q(
   if (!startswith(data, "{\"data\":")) return;
 
   auto process = [abstract_exchange, data, cp]() {
+    if (abstract_exchange->closing_down_.load()) return;
+    std::lock_guard l(abstract_exchange->async_mutex_);
+    if (abstract_exchange->closing_down_.load()) return;
     std::string stdstring = data.toStdString();
     nlohmann::json jdata = nlohmann::json::parse(stdstring)["data"];
     bitstamp_dbg<7>.debug(ffmt<s20>("Trade data parsed"), jdata.dump(4));
