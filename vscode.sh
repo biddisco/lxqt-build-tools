@@ -24,6 +24,10 @@ echo checking for opal environment
   spack env activate --prompt opal
 #fi
 
+if [[ $1 == "python" ]]; then
+  SCRIPT_DIR=$SCRIPT_DIR/python
+fi
+
 echo Launching vscode in $SCRIPT_DIR
 # launch vscode in our dir
 code $SCRIPT_DIR
