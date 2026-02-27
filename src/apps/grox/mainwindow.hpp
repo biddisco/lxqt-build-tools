@@ -20,6 +20,12 @@
 #include "exchange/bitstamp.hpp"
 #include "exchange/xrpl_network.hpp"
 
+// Forward declarations
+class QTermWidget;
+namespace ads {
+  class CDockWidget;
+}
+
 class AdjustingScrollArea : public QScrollArea
 {
   bool eventFilter(QObject* obj, QEvent* ev) override
@@ -56,6 +62,8 @@ class GroxMainWindow : public QMainWindow
   // widgets
   QFrame* orders_frame_;
   QFrame* accounts_frame_;
+  QTermWidget* terminal_widget_;
+  ads::CDockWidget* terminal_dock_widget_;
 
   // network/exchanges
   abstract_exchange::exchange_vector exchange_list_;
@@ -73,6 +81,7 @@ class GroxMainWindow : public QMainWindow
   QShortcut* qs_shutdown_;
   QShortcut* qs_darkmode_;
   QShortcut* qs_password_;
+  QShortcut* qs_terminal_;
   QShortcut* qs_arbitrage_;
   int dark_mode_;
 

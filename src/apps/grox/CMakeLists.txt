@@ -35,7 +35,7 @@ endif()
 
 target_compile_definitions(
   grox PRIVATE # needed for UUID generation in web requests
-               GROX_HAVE_UUID_ENCODING
+               GROX_HAVE_UUID_ENCODING GROX_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 
 target_link_libraries(
@@ -58,6 +58,7 @@ target_link_libraries(
          Qt::Widgets
          Qt::OpenGLWidgets
          qtadvanceddocking-qt${QT_VERSION_MAJOR}
+         qtermwidget6
          nlohmann_json::nlohmann_json
          STDEXEC::stdexec
          fmt::fmt

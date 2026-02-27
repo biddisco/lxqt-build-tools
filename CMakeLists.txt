@@ -208,6 +208,38 @@ get_external_project(
 )
 
 # ------------------------------------------------------------------------------
+# Build lxqt-build-tools (required by qtermwidget)
+# ------------------------------------------------------------------------------
+get_external_project(
+  PROJECT_NAME
+  "lxqt2-build-tools"
+  FOLDER_NAME
+  "lxqt-build-tools"
+  GIT_REPO
+  "https://github.com/lxqt/lxqt-build-tools"
+  GIT_TAG
+  "master"
+)
+set(lxqt2-build-tools_DIR "${lxqt2-build-tools_BINARY_DIR}/install")
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" "${CMAKE_BINARY_DIR}")
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" "${lxqt2-build-tools_DIR}")
+message("lxqt2-build-tools_DIR ${lxqt2-build-tools_DIR}")
+
+# ------------------------------------------------------------------------------
+# Build qtermwidget
+# ------------------------------------------------------------------------------
+set(BUILD_EXAMPLE OFF CACHE BOOL "Don't build qtermwidget example")
+set(UPDATE_TRANSLATIONS OFF CACHE BOOL "Don't update translations")
+get_external_project(
+  PROJECT_NAME
+  "qtermwidget"
+  GIT_REPO
+  "https://github.com/lxqt/qtermwidget.git"
+  GIT_TAG
+  "master"
+)
+
+# ------------------------------------------------------------------------------
 # Build/Download QDarkStyleSheet
 # ------------------------------------------------------------------------------
 get_external_project(

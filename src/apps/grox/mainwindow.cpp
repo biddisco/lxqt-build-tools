@@ -14,7 +14,10 @@
 #include <QAction>
 #include <QApplication>
 #include <QCheckBox>
+#include <QCoreApplication>
 #include <QDateTime>
+#include <QDebug>
+#include <QDir>
 #include <QDockWidget>
 #include <QFrame>
 #include <QInputDialog>
@@ -58,8 +61,11 @@
 #include "DockAreaTitleBar.h"
 #include "DockAreaWidget.h"
 #include "DockComponentsFactory.h"
+
+// qtermwidget
 #include "DockManager.h"
 #include "FloatingDockContainer.h"
+#include "qtermwidget.h"
 
 #define GROX_HAVE_BITSTAMP
 #define GROX_HAVE_XRPL
@@ -75,6 +81,70 @@ template <int Level>
 inline constexpr print_threshold<Level, 2> main_dbg("Main-win");
 
 using namespace ads;
+
+namespace {
+  QStringList terminal_color_scheme_dirs;
+
+  void ensure_terminal_color_schemes()
+  {
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
+    terminal_color_scheme_dirs.clear();
+
+    QString const app_dir = QCoreApplication::applicationDirPath();
+    QStringList const candidates = {QDir::cleanPath(app_dir + "/color-schemes"),
+        QDir::cleanPath(app_dir + "/../color-schemes"),
+        QDir::cleanPath(app_dir + "/../share/qtermwidget6/color-schemes"),
+        QDir::cleanPath(app_dir + "/../../share/qtermwidget6/color-schemes"),
+        QDir::cleanPath(app_dir + "/../../../share/qtermwidget6/color-schemes"),
+        QDir::cleanPath(QStringLiteral(GROX_SOURCE_DIR) + "/extern/qtermwidget/lib/color-schemes")};
+
+    for (QString const& dir : candidates)
+    {
+      if (QDir(dir).exists())
+      {
+        QTermWidget::addCustomColorSchemeDir(dir);
+        terminal_color_scheme_dirs.append(dir);
+      }
+    }
+  }
+
+  void apply_terminal_theme(QTermWidget* terminal, int dark_mode)
+  {
+    if (!terminal) return;
+    ensure_terminal_color_schemes();
+    QString const desired_dark = "WhiteOnBlack";
+    QString const desired_light = "Linux";
+    QStringList const schemes = QTermWidget::availableColorSchemes();
+    QString chosen = (dark_mode == 1) ? desired_dark : desired_light;
+    if (!schemes.contains(chosen))
+    {
+      if (schemes.contains(desired_dark)) { chosen = desired_dark; }
+      else if (schemes.contains(desired_light)) { chosen = desired_light; }
+    }
+    terminal->setColorScheme(chosen);
+#ifdef QT_DEBUG
+    static bool logged_dirs_once = false;
+    if (!logged_dirs_once)
+    {
+      qDebug() << "qtermwidget color-scheme dirs:" << terminal_color_scheme_dirs;
+      qDebug() << "qtermwidget available schemes:" << schemes;
+      logged_dirs_once = true;
+    }
+    qDebug() << "qtermwidget applied scheme:" << chosen << "for dark_mode=" << dark_mode;
+#endif
+  }
+
+  QTermWidget* create_terminal_widget(int dark_mode)
+  {
+    auto* terminal = new QTermWidget(1);    // 1 = start shell immediately
+    terminal->setTerminalFont(QFont("Monospace", 10));
+    terminal->setScrollBarPosition(QTermWidget::ScrollBarRight);
+    apply_terminal_theme(terminal, dark_mode);
+    return terminal;
+  }
+}    // namespace
 
 // ----------------------------------------------------------------------------
 std::shared_ptr<price_chart_widget> create_price_chart_widget(
@@ -243,8 +313,17 @@ void ticker_stream_gui_destructor(currency_pair cp, ticker::data tdata, ticker::
 // ----------------------------------------------------------------------------
 GroxMainWindow::GroxMainWindow(QWidget* parent)
   : QMainWindow(parent)
+  , orders_frame_(nullptr)
+  , accounts_frame_(nullptr)
+  , terminal_widget_(nullptr)
+  , terminal_dock_widget_(nullptr)
   , net_layout_(nullptr)
   , perspectives_menu_(nullptr)
+  , qs_shutdown_(nullptr)
+  , qs_darkmode_(nullptr)
+  , qs_password_(nullptr)
+  , qs_terminal_(nullptr)
+  , qs_arbitrage_(nullptr)
   , dark_mode_(0)
 {
   ui.setupUi(this);
@@ -321,6 +400,17 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       SideBarLocation::SideBarRight, OrdersDockWidget);
   OrdersautoHideContainer->setSize(256);
   global_settings.dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
+
+  // ----------------------------------
+  // create a dock widget for terminal
+  terminal_widget_ = create_terminal_widget(dark_mode_);
+  terminal_dock_widget_ = new CDockWidget("Terminal");
+  terminal_dock_widget_->setWidget(terminal_widget_);
+  terminal_dock_widget_->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
+  terminal_dock_widget_->setMinimumSize(400, 300);
+  global_settings.dock_manager_->addDockWidget(
+      DockWidgetArea::BottomDockWidgetArea, terminal_dock_widget_);
+  global_settings.dockwindows_menu_->addAction(terminal_dock_widget_->toggleViewAction());
 
 #ifdef GROX_HAVE_BITSTAMP
   // ----------------------------------
@@ -512,6 +602,9 @@ GroxMainWindow::~GroxMainWindow()
   //
   delete qs_shutdown_;
   delete qs_darkmode_;
+  delete qs_password_;
+  delete qs_arbitrage_;
+  delete qs_terminal_;
   // dockmanager is deleted by gui destruction
   global_settings.dock_manager_ = nullptr;
   // release all networks
@@ -539,10 +632,11 @@ void GroxMainWindow::connect_gui_controls()
   // connect(algo_form_->account_update, SIGNAL(clicked()), this, SLOT(update_account_balances()));
 
   qs_shutdown_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_Q)), this, SLOT(close()));
-  qs_darkmode_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_D)), this, [this]() {
-    dark_mode_ = (dark_mode_ + 1) % 3;
-    LoadStyleSheet(dark_mode_);
-  });
+  qs_darkmode_ =
+      new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_D)), this, [this]() {
+        dark_mode_ = (dark_mode_ + 1) % 3;
+        LoadStyleSheet(dark_mode_);
+      });
 
   qs_password_ =
       new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_P)), this, [this]() {
@@ -568,6 +662,34 @@ void GroxMainWindow::connect_gui_controls()
     QDialog* widget = create_trading_widget(exchange_list_);
     trade_widgets_.push_back(widget);
   });
+
+  qs_terminal_ =
+      new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_T)), this, [this]() {
+        if (!terminal_dock_widget_) return;
+
+        bool terminal_needs_recreate = (terminal_widget_ == nullptr);
+        if (!terminal_needs_recreate)
+        {
+          int const shell_pid = terminal_widget_->getShellPID();
+          terminal_needs_recreate = shell_pid <= 0;
+        }
+
+        if (terminal_needs_recreate)
+        {
+          if (terminal_widget_)
+          {
+            terminal_widget_->deleteLater();
+            terminal_widget_ = nullptr;
+          }
+          terminal_widget_ = create_terminal_widget(dark_mode_);
+          terminal_dock_widget_->setWidget(terminal_widget_);
+        }
+
+        auto* toggle = terminal_dock_widget_->toggleViewAction();
+        if (toggle && !toggle->isChecked()) { toggle->trigger(); }
+        terminal_dock_widget_->show();
+        terminal_dock_widget_->raise();
+      });
 }
 
 // ----------------------------------------------------------------------------
@@ -895,6 +1017,7 @@ void GroxMainWindow::LoadStyleSheet(int dark)
   {
     global_settings.dock_manager_->setStyleSheet("");
     qApp->setStyleSheet("");
+    apply_terminal_theme(terminal_widget_, dark);
     return;
   }
   else if (dark == 1) { name = ":qdarkstyle/dark/darkstyle.qss"; }
@@ -911,4 +1034,5 @@ void GroxMainWindow::LoadStyleSheet(int dark)
     global_settings.dock_manager_->setStyleSheet("");
     qApp->setStyleSheet(ts.readAll());
   }
+  apply_terminal_theme(terminal_widget_, dark);
 }
