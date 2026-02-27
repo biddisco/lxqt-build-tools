@@ -23,6 +23,7 @@
 #include <pika/modules/thread_manager.hpp>
 #include <pika/program_options.hpp>
 //
+#include "indicators/indicator_registry.hpp"
 #include "network/evp-encrypt.hpp"
 #include "util/execute_os_command.hpp"
 #include "util/stringutils.hpp"
@@ -320,6 +321,36 @@ int qt_main(pika::program_options::variables_map& vm)
     return EXIT_SUCCESS;
   }
 #endif
+
+  // ------------------------------------------------------------------------
+  // Load indicator plugins from standard plugin directory
+  // ------------------------------------------------------------------------
+  app_dbg<1>.debug("Loading indicator plugins...");
+  auto& registry = indicators::indicator_registry::getInstance();
+
+  // Try multiple possible plugin locations:
+  // 1. Current build directory (development builds)
+  // 2. Relative to build/bin
+  // 3. Standard install location
+  std::vector<std::string> plugin_dirs = {
+      "./lib/grox/plugins",             // Build directory root
+      "../lib/grox/plugins",            // From build/bin directory
+      "./plugins",                      // Same directory as executable
+      "/usr/local/lib/grox/plugins",    // Standard install location
+  };
+
+  std::size_t plugins_loaded = 0;
+  for (auto const& dir : plugin_dirs)
+  {
+    app_dbg<2>.debug(fmt::format("Trying plugin directory: {}", dir));
+    plugins_loaded += registry.load_plugins_from_directory(dir);
+  }
+
+  app_dbg<1>.debug(fmt::format("Loaded {} indicator plugin(s)", plugins_loaded));
+
+  // ------------------------------------------------------------------------
+  // Create main window
+  // ------------------------------------------------------------------------
   GroxMainWindow mainWindow;
 
   // QObject::connect(&app, SIGNAL(aboutToQuit()), &mainWindow, SLOT(appExitCleanupHandler()));

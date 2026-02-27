@@ -8,10 +8,9 @@
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 
-// ----------------------------------------------------------------------------
-#define FACTORY_ARBITRAGE_CREATE(type)                                                             \
-  FACTORY_ALGORITHM_CREATE(type)                                                                   \
-  static inline arbitrage_type_inserter<type> inserter{};
+// Macro for arbitrage algorithm factory creation
+// Note: Registration is handled by plugins, not via static initializers
+#define FACTORY_ARBITRAGE_CREATE(type) FACTORY_ALGORITHM_CREATE(type)
 
 // ----------------------------------------------------------------------------
 namespace indicators {

@@ -18,6 +18,8 @@
 #include "indicators/indicator_types.hpp"
 
 // ----------------------------------------------------------------------------
+// Macro to implement factory methods for indicator creation and execution
+// Note: Registration is handled by plugins, not via static initializers
 #define FACTORY_INDICATOR_CREATE(type, operator_type)                                              \
   public:                                                                                          \
   shared_indicator create(algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc)       \
@@ -47,8 +49,7 @@
       N = 0;                                                                                       \
     call_helper<operator_type> helper;                                                             \
     helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });      \
-  }                                                                                                \
-  static inline indicator_type_inserter<type> inserter{};
+  }
 
 // ----------------------------------------------------------------------------
 namespace indicators {

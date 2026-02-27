@@ -2,25 +2,27 @@
 
 #include <cstddef>
 #include <memory>
+#include <string>
 #include <vector>
 //
-#include "debug/demangle_helper.hpp"
-#include "debug/print.hpp"
 #include "indicators/algorithm_base.hpp"
 #include "indicators/indicator_types.hpp"
 
 // ----------------------------------------------------------------------------
 namespace indicators {
 
+  // Forward declaration
+  class plugin_loader;
+
   // ----------------------------------------------------------------------------
   using indicator_vector = std::vector<shared_algorithm>;
 
-  // declaring the indicator vector as extern helps prevent the optimizer removing
-  // our initialization routine that insert each indicator type into the vector
+  // Global vectors for registered indicators
   extern indicator_vector available_indicators;
   extern indicator_vector available_arbitragers;
 
-  // Singleton registry
+  // Singleton registry for managing indicators and plugins
+  // All indicators are loaded dynamically as plugins at runtime
   class indicator_registry
   {
 public:
@@ -30,43 +32,26 @@ public:
       return instance;
     }
 
+    // Register an indicator (called by plugins during initialization)
     void register_indicator(shared_algorithm p) { available_indicators.push_back(p); }
+
+    // Register a trading algorithm (called by plugins during initialization)
     void register_arbitrage(shared_algorithm p) { available_arbitragers.push_back(p); }
 
+    // Find an indicator by name
     static shared_algorithm find_by_name(std::string);
 
+    // Plugin loading support - load all plugins from a directory
+    std::size_t load_plugins_from_directory(std::string const& directory);
+
+    // Access plugin loader for advanced operations
+    plugin_loader* get_plugin_loader() { return plugin_loader_.get(); }
+
 private:
-    indicator_registry() = default;
-  };
+    indicator_registry();
+    ~indicator_registry();
 
-  using namespace grox::debug::detail;
-  using namespace grox::debug;
-
-  // ----------------------------------------------------------------------------
-  // Helper class to insert values into the vector, we use the redundat registry as a way of
-  // preventing the optimizer from removing our insertions to a vector that appears unused
-  template <typename type>
-  struct indicator_type_inserter
-  {
-    indicator_type_inserter()
-    {
-      indicator_dbg<0>.debug(ffmt<s20>("indicator inserter"), print_type<type>());
-      auto p = std::make_shared<type>();
-      p->init_params();
-      indicator_registry::getInstance().register_indicator(p);
-    }
-  };
-
-  template <typename type>
-  struct arbitrage_type_inserter
-  {
-    arbitrage_type_inserter()
-    {
-      indicator_dbg<0>.debug(ffmt<s20>("arbitrage inserter"), print_type<type>());
-      auto p = std::make_shared<type>();
-      p->init_params();
-      indicator_registry::getInstance().register_arbitrage(p);
-    }
+    std::unique_ptr<plugin_loader> plugin_loader_;
   };
 
 }    // namespace indicators

@@ -1,5 +1,6 @@
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
+# Core indicator library (static) Contains only base classes and plugin infrastructure
 set(grox_indicators_SRCS
     # basic definitions
     algorithm_base.hpp
@@ -10,25 +11,10 @@ set(grox_indicators_SRCS
     indicator_registry.hpp
     indicator_registry.cpp
     indicator_types.hpp
-    # moving averages
-    moving_average_exponential.hpp
-    moving_average_exponential_volume_weighted.hpp
-    moving_average.hpp
-    moving_average_volume_weighted.hpp
-    # others
-    relative_strength_indicator.hpp
-    stochastic_oscillator.hpp
-    stochastic_relative_strength_indicator.hpp
-    # volatility estimators
-    volatility_bollinger_bands.hpp
-    volatility_garman_klass.hpp
-    volatility_rogers_satchell.hpp
-    # trading
-    trade_arbitrage_2_way.hpp
-    trade_currency_exchange.hpp
-    trade_market_maker.hpp
-    trade_sell_sliding_stop.hpp
-    trade_rebalance_funds.hpp
+    # Plugin support
+    plugin_api.hpp
+    plugin_loader.hpp
+    plugin_loader.cpp
 )
 
 add_library(grox_indicators ${grox_indicators_SRCS})
@@ -42,8 +28,73 @@ target_link_libraries(
          grox_io
          Qt::Core
          fmt::fmt
+         ${CMAKE_DL_LIBS} # For dlopen/dlsym
 )
 
+# ==============================================================================
+# Macro for creating indicator plugins
+# ==============================================================================
+macro(add_indicator_plugin plugin_name plugin_source plugin_headers)
+  add_library(${plugin_name} SHARED ${plugin_source} ${plugin_headers})
+  target_include_directories(${plugin_name} PRIVATE ${GROX_INCLUDE_ROOT})
+  target_link_libraries(${plugin_name} PRIVATE grox_indicators qwt grox_data Qt::Core fmt::fmt)
+
+  set_target_properties(
+    ${plugin_name}
+    PROPERTIES PREFIX ""
+               OUTPUT_NAME "${ARGV3}"
+               SUFFIX ".so"
+               VERSION "1.0.0"
+               SOVERSION "1"
+               CXX_VISIBILITY_PRESET hidden
+               LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/grox/plugins"
+  )
+
+  install(TARGETS ${plugin_name} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/grox/plugins)
+endmacro()
+
+# ==============================================================================
+# Plugin: Moving Averages
+# ==============================================================================
+add_indicator_plugin(
+  grox_plugin_moving_averages
+  plugins/moving_averages_plugin.cpp
+  "moving_average.hpp;moving_average_exponential.hpp;moving_average_exponential_volume_weighted.hpp;moving_average_hull.hpp;moving_average_volume_weighted.hpp"
+  moving_averages
+)
+
+# ==============================================================================
+# Plugin: Volatility Indicators
+# ==============================================================================
+add_indicator_plugin(
+  grox_plugin_volatility plugins/volatility_plugin.cpp
+  "volatility_bollinger_bands.hpp;volatility_garman_klass.hpp;volatility_rogers_satchell.hpp"
+  volatility
+)
+
+# ==============================================================================
+# Plugin: Technical Indicators
+# ==============================================================================
+add_indicator_plugin(
+  grox_plugin_technical_indicators
+  plugins/technical_indicators_plugin.cpp
+  "relative_strength_indicator.hpp;stochastic_oscillator.hpp;stochastic_relative_strength_indicator.hpp"
+  technical_indicators
+)
+
+# ==============================================================================
+# Plugin: Trading Algorithms
+# ==============================================================================
+add_indicator_plugin(
+  grox_plugin_trading
+  plugins/trading_plugin.cpp
+  "trade_arbitrage_2_way.hpp;trade_currency_exchange.hpp;trade_market_maker.hpp;trade_sell_sliding_stop.hpp;trade_rebalance_funds.hpp"
+  trading
+)
+
+# ==============================================================================
+# Tests
+# ==============================================================================
 if(BUILD_TESTING)
   pika_add_pseudo_target(tests.indicators)
   pika_add_pseudo_dependencies(tests tests.indicators)
