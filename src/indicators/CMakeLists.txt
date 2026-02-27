@@ -15,10 +15,16 @@ set(grox_indicators_SRCS
     plugin_api.hpp
     plugin_loader.hpp
     plugin_loader.cpp
+    # Python support (headers included, implementation below)
+    python_bindings.hpp
+    python_plugin.hpp
+    python_plugin.cpp
 )
 
 add_library(grox_indicators ${grox_indicators_SRCS})
 target_include_directories(grox_indicators PUBLIC ${GROX_INCLUDE_ROOT})
+
+find_package(spdlog QUIET)
 
 target_link_libraries(
   grox_indicators
@@ -30,6 +36,15 @@ target_link_libraries(
          fmt::fmt
          ${CMAKE_DL_LIBS} # For dlopen/dlsym
 )
+
+if(spdlog_FOUND)
+  target_link_libraries(grox_indicators PUBLIC spdlog::spdlog)
+  target_compile_definitions(grox_indicators PUBLIC GROX_HAS_SPDLOG=1)
+  message(STATUS "Indicators: SPDLOG enabled")
+else()
+  target_compile_definitions(grox_indicators PUBLIC GROX_HAS_SPDLOG=0)
+  message(STATUS "Indicators: SPDLOG not found, SPDLOG logging disabled")
+endif()
 
 # ==============================================================================
 # Macro for creating indicator plugins
@@ -91,6 +106,34 @@ add_indicator_plugin(
   "trade_arbitrage_2_way.hpp;trade_currency_exchange.hpp;trade_market_maker.hpp;trade_sell_sliding_stop.hpp;trade_rebalance_funds.hpp"
   trading
 )
+
+# ==============================================================================
+# Python Indicator Support (optional)
+# ==============================================================================
+option(GROX_WITH_PYTHON_INDICATORS "Enable Python-based dynamic indicators" ON)
+
+if(GROX_WITH_PYTHON_INDICATORS)
+  # Try to find Python
+  find_package(Python3 COMPONENTS Interpreter Development QUIET)
+
+  if(Python3_FOUND)
+    target_include_directories(grox_indicators PUBLIC ${Python3_INCLUDE_DIRS})
+    target_link_libraries(grox_indicators PUBLIC ${Python3_LIBRARIES})
+
+    # Add Python path to indicators library for embedded interpreter
+    target_compile_definitions(
+      grox_indicators PRIVATE GROX_PYTHON_ENABLED=1 GROX_PYTHON_VERSION="${Python3_VERSION}"
+    )
+
+    message(STATUS "Python indicators enabled: Python ${Python3_VERSION}")
+  else()
+    message(WARNING "Python development headers not found, Python indicators disabled")
+    set(GROX_WITH_PYTHON_INDICATORS OFF)
+  endif()
+else()
+  # Stub implementation without Python
+  target_compile_definitions(grox_indicators PRIVATE GROX_PYTHON_ENABLED=0)
+endif()
 
 # ==============================================================================
 # Tests

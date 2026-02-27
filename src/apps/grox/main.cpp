@@ -24,6 +24,7 @@
 #include <pika/program_options.hpp>
 //
 #include "indicators/indicator_registry.hpp"
+#include "indicators/python_plugin.hpp"
 #include "network/evp-encrypt.hpp"
 #include "util/execute_os_command.hpp"
 #include "util/stringutils.hpp"
@@ -347,6 +348,32 @@ int qt_main(pika::program_options::variables_map& vm)
   }
 
   app_dbg<1>.debug(fmt::format("Loaded {} indicator plugin(s)", plugins_loaded));
+
+  // ------------------------------------------------------------------------
+  // Initialize and probe Python indicator modules
+  // ------------------------------------------------------------------------
+  auto& py_registry = indicators::python::python_indicator_registry::instance();
+  if (py_registry.initialize())
+  {
+    std::size_t py_modules_loaded = 0;
+    for (auto const& dir : plugin_dirs)
+    {
+      auto const py_dir = fmt::format("{}/python", dir);
+      app_dbg<2>.debug(fmt::format("Trying python plugin directory: {}", py_dir));
+      py_modules_loaded += py_registry.load_indicators_from_directory(py_dir);
+    }
+
+    auto const available_python_indicators = py_registry.get_available_indicators();
+    app_dbg<1>.debug(
+        fmt::format("Loaded {} python indicator module(s); {} python indicator class(es) available",
+            py_modules_loaded, available_python_indicators.size()));
+
+    // Register Python indicators with main registry so they appear in GUI
+    std::size_t py_registered = py_registry.register_with_main_registry(registry);
+    app_dbg<1>.debug(
+        fmt::format("Registered {} python indicator(s) with main registry", py_registered));
+  }
+  else { app_dbg<1>.debug("Python indicator registry initialization failed"); }
 
   // ------------------------------------------------------------------------
   // Create main window
