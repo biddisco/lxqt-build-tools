@@ -387,7 +387,7 @@ void ohlc_price_plot::update_time_axis(double t1, double t2, bool emit_signal)
   // volume bars as they sum more/less data)
   setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
 
-  GROX_LOG_DEBUG(plot_log, "{:>20} {} {} -> {} ({}, {})", "min_max",
+  GROX_LOG_TRACE(plot_log, "{:>20} {} {} -> {} ({}, {})", "min_max",
       ohlc_data_resolutions::get_resolution(get_candle_resolution()).name_,
       msecs_unix_to_calendar_time_local(t1), msecs_unix_to_calendar_time_local(t2),
       minmax.min_price_, minmax.max_price_);

@@ -113,10 +113,10 @@ class ohlc_dataset_view
   template <typename... Args>
   std::shared_lock<mutex_type> take_readonly_lock(Args... args) const
   {
-    GROX_LOG_DEBUG(view_log, "{:>20} {} acquire  {} {}", "take_readonly_lock", fmt::ptr(this),
+    GROX_LOG_TRACE(view_log, "{:>20} {} acquire  {} {}", "take_readonly_lock", fmt::ptr(this),
         exchange_, ticker_string_);
     std::shared_lock<mutex_type> lock(live_mutex_);
-    GROX_LOG_DEBUG(view_log, "{:>20} {} acquired {} {}", "take_readonly_lock", fmt::ptr(this),
+    GROX_LOG_TRACE(view_log, "{:>20} {} acquired {} {}", "take_readonly_lock", fmt::ptr(this),
         exchange_, ticker_string_);
     return lock;
   }
@@ -124,10 +124,10 @@ class ohlc_dataset_view
   template <typename... Args>
   std::unique_lock<mutex_type> take_readwrite_lock(Args... args) const
   {
-    GROX_LOG_DEBUG(view_log, "{:>20} {} acquire  {} {}", "take_readwrite_lock", fmt::ptr(this),
+    GROX_LOG_TRACE(view_log, "{:>20} {} acquire  {} {}", "take_readwrite_lock", fmt::ptr(this),
         exchange_, ticker_string_);
     std::unique_lock<mutex_type> lock(live_mutex_);
-    GROX_LOG_DEBUG(view_log, "{:>20} {} acquired {} {}", "take_readwrite_lock", fmt::ptr(this),
+    GROX_LOG_TRACE(view_log, "{:>20} {} acquired {} {}", "take_readwrite_lock", fmt::ptr(this),
         exchange_, ticker_string_);
     return lock;
   }

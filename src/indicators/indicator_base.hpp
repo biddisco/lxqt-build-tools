@@ -9,11 +9,9 @@
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_dataset_view.hpp"
-#include "data/ohlc_utils.hpp"
 #include "data/timebased_chart_data.hpp"
 #include "indicators/algorithm_base.hpp"
 #include "indicators/indicator_partitioner.hpp"
-#include "indicators/indicator_registry.hpp"
 #include "indicators/indicator_types.hpp"
 
 // ----------------------------------------------------------------------------

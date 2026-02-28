@@ -236,7 +236,7 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(
     result.min_volume_ = 0;
     result.max_volume_ = 1;
   }
-  GROX_LOG_DEBUG(view_log, "{:>20} {} {} -> {} ( {} , {} )", "min_max",
+  GROX_LOG_TRACE(view_log, "{:>20} {} {} -> {} ( {} , {} )", "min_max",
       ohlc_data_resolutions::get_resolution(res).name_,
       msecs_unix_to_calendar_time_local(start_time), msecs_unix_to_calendar_time_local(end_time),
       result.min_price_, result.max_price_);

@@ -63,7 +63,7 @@ TEST(abstract_exchange, request_account_info)
       | ex::then([&acct, &finished](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
-          GROX_LOG_DEBUG(test1_log, "{:>20} {}", "request_account_info", jdata.dump(4));
+          GROX_LOG_TRACE(test1_log, "{:>20} {}", "request_account_info", jdata.dump(4));
           EXPECT_TRUE(jdata.size() > 0);
           EXPECT_TRUE(jdata["eur_available"] != "");
           finished = true;
@@ -91,7 +91,7 @@ TEST(abstract_exchange, request_all_account_infos)
       auto handle_account_info = [&acct, &finished](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         nlohmann::json jdata = nlohmann::json::parse(data);
-        GROX_LOG_DEBUG(test1_log, "{:>20} {} {}", "handle_account_info", acct.name_, jdata.dump(4));
+        GROX_LOG_TRACE(test1_log, "{:>20} {} {}", "handle_account_info", acct.name_, jdata.dump(4));
         EXPECT_TRUE(jdata.size() > 0);
         EXPECT_TRUE(jdata["eur_available"] != "");
         finished--;
@@ -136,7 +136,7 @@ TEST(abstract_exchange, cancel_order)
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
-          GROX_LOG_DEBUG(test1_log, "{:>20} {}", "cancel_order", jdata.dump(4));
+          GROX_LOG_TRACE(test1_log, "{:>20} {}", "cancel_order", jdata.dump(4));
           EXPECT_EQ(jdata["error"], "Order not found");
           EXPECT_TRUE(jdata.size() == 2);
           finished = true;

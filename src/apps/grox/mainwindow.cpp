@@ -245,7 +245,7 @@ void create_ticker_orderbook_widgets(ticker::data tdata, currency_pair cp)
 
   auto orderbook_text_sub = [tdata, orderbook_text](currency_pair cp) {
     QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
-      GROX_LOG_DEBUG(main_log, "{:>20} {}", "Orderbook-Text", "orderbook_plot_sub");
+      GROX_LOG_TRACE(main_log, "{:>20} {}", "Orderbook-Text", "orderbook_plot_sub");
       // check pointers in case messages arrive after cleanup has started
       if (tdata && tdata->orderbook_)
       {
@@ -258,7 +258,7 @@ void create_ticker_orderbook_widgets(ticker::data tdata, currency_pair cp)
 
   auto orderbook_plot_sub = [tdata, orderbook_plot](currency_pair cp) {
     QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
-      GROX_LOG_DEBUG(main_log, "{:>20} {}", "Orderbook-Plot", "orderbook_plot_sub");
+      GROX_LOG_TRACE(main_log, "{:>20} {}", "Orderbook-Plot", "orderbook_plot_sub");
       // check pointers in case messages arrive after cleanup has started
       if (tdata && tdata->orderbook_)
       {
@@ -274,7 +274,7 @@ void create_ticker_orderbook_widgets(ticker::data tdata, currency_pair cp)
 // ----------------------------------------------------------------------------
 void ticker_stream_gui_constructor(currency_pair cp, ticker::data tdata, ticker::streams stream)
 {
-  GROX_LOG_DEBUG(main_log, "{:>20} {}", "Stream", "factory_create");
+  GROX_LOG_TRACE(main_log, "{:>20} {}", "Stream", "factory_create");
   if (stream == ticker::streams::price_data)
     create_ticker_price_plot(tdata, cp);
   else if (stream == ticker::streams::order_book)

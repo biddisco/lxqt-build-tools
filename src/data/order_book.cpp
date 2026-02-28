@@ -100,7 +100,7 @@ void order_book_base::update_graph_limits(bool primary)
   double yscale = scale * std::pow(10, static_cast<int64_t>(std::log10(yrange)));
   double ymax = (std::ceil(yrange / yscale)) * yscale;
   //
-  GROX_LOG_DEBUG(obook_log, "{:>20} {} {} {} {}", "order_book_base", xmin, xmax, 0.0, ymax);
+  GROX_LOG_TRACE(obook_log, "{:>20} {} {} {} {}", "order_book_base", xmin, xmax, 0.0, ymax);
 
   static bool first_time[2] = {true, true};
   if (first_time[index])
@@ -119,9 +119,9 @@ void order_book_base::update_graph_limits(bool primary)
     prev_xmax[index] -= x2;
     prev_ymax[index] -= y2;
   }
-  GROX_LOG_DEBUG(
+  GROX_LOG_TRACE(
       obook_log, "{:>20} prev_xminmax {} {}", "order_book_base", prev_xmin[0], prev_xmax[0]);
-  GROX_LOG_DEBUG(obook_log, "{:>20} prev_ymax {}", "order_book_base", prev_ymax[0]);
+  GROX_LOG_TRACE(obook_log, "{:>20} prev_ymax {}", "order_book_base", prev_ymax[0]);
   in_function = false;
 }
 

@@ -212,7 +212,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onTextFrameReceived(QString const& frame, bool isLastFrame)
   {
-    GROX_LOG_ERROR(qwebsocket_log, "{:20s} TextFrameReceived - this should be overriden", id_);
+    // GROX_LOG_ERROR(qwebsocket_log, "{:20s} TextFrameReceived - this should be overriden", id_);
   }
 
   // ------------------------------------------------------------------
@@ -249,6 +249,6 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::onBytesWritten(qint64 bytes)
   {
-    GROX_LOG_ERROR(qwebsocket_log, "{:20s} BytesWritten {}", id_, bytes);
+    // GROX_LOG_ERROR(qwebsocket_log, "{:20s} BytesWritten {}", id_, bytes);
   }
 }    // namespace net::ws

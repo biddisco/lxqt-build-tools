@@ -18,25 +18,29 @@
 #include <string>
 #include <vector>
 
+#include "debug/logging.hpp"
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_registry.hpp"
 
-#if __has_include(<spdlog/spdlog.h>)
-# include <spdlog/spdlog.h>
-# define GROX_PYPLUGIN_HAS_SPDLOG 1
-#else
-# define GROX_PYPLUGIN_HAS_SPDLOG 0
-#endif
+// ----------------------------------------------------------------------------
+static auto py_plug_log = grox::log::create("pyplugin");
 
-#if GROX_PYPLUGIN_HAS_SPDLOG
-# define GROX_PYPLUGIN_TRACE(...)                                                                  \
-   do {                                                                                            \
-     spdlog::set_level(spdlog::level::debug);                                                      \
-     spdlog::debug(__VA_ARGS__);                                                                   \
-   } while (false)
-#else
-# define GROX_PYPLUGIN_TRACE(...)
-#endif
+// #if __has_include(<spdlog/spdlog.h>)
+// # include <spdlog/spdlog.h>
+// # define GROX_PYPLUGIN_HAS_SPDLOG 1
+// #else
+// # define GROX_PYPLUGIN_HAS_SPDLOG 0
+// #endif
+
+// #if GROX_PYPLUGIN_HAS_SPDLOG
+// # define GROX_PYPLUGIN_TRACE(...)                                                                  \
+//    do {                                                                                            \
+//      spdlog::set_level(spdlog::level::debug);                                                      \
+//      spdlog::debug(__VA_ARGS__);                                                                   \
+//    } while (false)
+// #else
+// # define GROX_PYPLUGIN_TRACE(...)
+// #endif
 
 namespace indicators { namespace python {
 

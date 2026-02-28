@@ -46,7 +46,7 @@ namespace grox {
         using grox::debug::print_type;
         for (auto& subscriber : subscriptions)
         {
-          GROX_LOG_DEBUG(
+          GROX_LOG_TRACE(
               pubsub_log, "{:>20} {} {}", "publish", subscriber.first, print_type<Signature>());
 
           stdexec::sender auto snd =
@@ -101,7 +101,7 @@ namespace grox {
       using grox::debug::print_type;
       for (auto const& [k, v] : subscriptions)
       {
-        GROX_LOG_DEBUG(
+        GROX_LOG_TRACE(
             pubsub_log, "{:>20} {} {} {}", "unsubscribe", "clear", k, print_type<Signature>());
       }
       std::lock_guard<mutex_type> lk(add_remove_mtx_);

@@ -91,7 +91,7 @@ namespace net::http {
   {
     // just for debugging, to track use
     debug_count_--;
-    GROX_LOG_DEBUG(http_log, "{:>20} {} {}", "destructor", fmt::ptr(this), debug_count_.load());
+    GROX_LOG_TRACE(http_log, "{:>20} {} {}", "destructor", fmt::ptr(this), debug_count_.load());
   }
 
   // ----------------------------------------------------------------------------
@@ -130,7 +130,7 @@ namespace net::http {
   void qhttp_request_client::get_request()
   {
     // issue get request
-    GROX_LOG_DEBUG(http_log, "{:>20} {} {}", "get_request", fmt::ptr(this), url_);
+    GROX_LOG_TRACE(http_log, "{:>20} {} {}", "get_request", fmt::ptr(this), url_);
     QNetworkReply* reply = networkmanager_.get(request_);
     attach_handler(reply);
   }
@@ -146,7 +146,7 @@ namespace net::http {
   void qhttp_request_client::post_request()
   {
     // issue post request
-    GROX_LOG_DEBUG(http_log, "{:>20} {} {} {}", "post_request", fmt::ptr(this), url_, content_);
+    GROX_LOG_TRACE(http_log, "{:>20} {} {} {}", "post_request", fmt::ptr(this), url_, content_);
     QNetworkReply* reply = networkmanager_.post(request_, QByteArray(content_.data()));
     attach_handler(reply);
   }
@@ -161,7 +161,7 @@ namespace net::http {
   // ----------------------------------------------------------------------------
   void qhttp_request_client::reply_finished(client_ptr self, QNetworkReply* reply)
   {
-    GROX_LOG_DEBUG(http_log, "{:>20} {}", "reply_finished", fmt::ptr(self));
+    GROX_LOG_TRACE(http_log, "{:>20} {}", "reply_finished", fmt::ptr(self));
     if (!reply) return;
     // convert raw data into std::string, this should be safe since our http traffic is utf8
     QByteArray byteArray = reply->readAll();

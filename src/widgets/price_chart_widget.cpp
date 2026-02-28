@@ -339,7 +339,7 @@ void price_chart_widget::resizeEvent(QResizeEvent* event)
 {
   QWidget::resizeEvent(event);
   bool changed = price_plot_->update_candle_size();
-  GROX_LOG_DEBUG(pplot_log, "{:>20} {} {}", "Resize", "res changed", changed);
+  GROX_LOG_TRACE(pplot_log, "{:>20} {} {}", "Resize", "res changed", changed);
 }
 
 // ----------------------------------------------------------------------------
@@ -347,7 +347,7 @@ void price_chart_widget::showEvent(QShowEvent* event)
 {
   QWidget::showEvent(event);
   bool changed = price_plot_->update_candle_size();
-  GROX_LOG_DEBUG(pplot_log, "{:>20} {} {}", "Show", "res changed", changed);
+  GROX_LOG_TRACE(pplot_log, "{:>20} {} {}", "Show", "res changed", changed);
 }
 
 // ----------------------------------------------------------------------------

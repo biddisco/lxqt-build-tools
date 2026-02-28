@@ -103,7 +103,7 @@ void trade_widget::connect_events()
         | stdexec::then([this](QByteArray byteArray) {                               // pika
             std::string_view data(byteArray.constData(), byteArray.length());
             nlohmann::json jdata = nlohmann::json::parse(data);
-            GROX_LOG_DEBUG(trade_log, "{:>20} {} {}", "cancel_order", trade_.id_, jdata.dump());
+            GROX_LOG_TRACE(trade_log, "{:>20} {} {}", "cancel_order", trade_.id_, jdata.dump());
             if (!jdata.contains("error"))
             {
               if (jdata["id"] == trade_.id_)

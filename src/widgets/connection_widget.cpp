@@ -54,7 +54,7 @@ QStandardItem* findChildItem(QStandardItem* parent, data_slot slot, T cdata)
     QStandardItem* child = parent->child(c);
     auto stream = magic_enum::enum_cast<ticker::streams>(child->data(slot).toInt());
     auto s = magic_enum::enum_name(stream.value());
-    GROX_LOG_DEBUG(conn_log, "{:>20} {} {} {}", "stream-load", c, fmt::ptr(child), s);
+    GROX_LOG_TRACE(conn_log, "{:>20} {} {} {}", "stream-load", c, fmt::ptr(child), s);
     if (child->data(slot) == cdata) { return child; }
   }
   return nullptr;
@@ -93,7 +93,7 @@ void connection_widget::setup_gui()
       stream_item->setCheckState(Qt::Unchecked);
       children.append(stream_item);
       auto name = magic_enum::enum_name(s);
-      GROX_LOG_DEBUG(conn_log, "{:>20} {} {}", "stream-create", fmt::ptr(stream_item), name);
+      GROX_LOG_TRACE(conn_log, "{:>20} {} {}", "stream-create", fmt::ptr(stream_item), name);
     }
     ticker_item->appendColumn(children);
   }

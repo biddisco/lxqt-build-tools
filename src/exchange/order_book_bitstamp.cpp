@@ -62,7 +62,7 @@ void bitstamp_order_book::accept_json_bitstamp(QString const data)
 // these must be converted to numeric arrays
 void bitstamp_order_book::bid_ask_string_to_number(json const& jdata, offer_data& data)
 {
-  GROX_LOG_DEBUG(bobook_log, "{:>20} {}", "bid_ask_string_to_number", jdata.size());
+  GROX_LOG_TRACE(bobook_log, "{:>20} {}", "bid_ask_string_to_number", jdata.size());
   //
   data.rate.resize(jdata.size(), 0);
   data.size.resize(jdata.size(), 0);

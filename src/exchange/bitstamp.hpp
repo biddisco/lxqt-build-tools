@@ -25,7 +25,7 @@
 #include "network/qhttp-request-client.hpp"
 #include "senders/sender_defs.hpp"
 
-inline auto bitstamp_fee_log = grox::log::create("bit-fee");
+inline auto bitstamp_fee_log = grox::log::create("bit--fee");
 
 // ----------------------------------------------------------------------------
 class bitstamp_network : public abstract_exchange
@@ -64,10 +64,10 @@ class bitstamp_network : public abstract_exchange
   template <typename... Args>
   std::shared_lock<mutex_type> take_readonly_lock(Args... args) const
   {
-    GROX_LOG_DEBUG(
+    GROX_LOG_TRACE(
         bitstamp_fee_log, "{:>20} {} acquire  fee map", "take_readonly_lock", fmt::ptr(this));
     std::shared_lock<mutex_type> lock(fee_mutex_);
-    GROX_LOG_DEBUG(
+    GROX_LOG_TRACE(
         bitstamp_fee_log, "{:>20} {} acquired fee map", "take_readonly_lock", fmt::ptr(this));
     return lock;
   }
@@ -75,10 +75,10 @@ class bitstamp_network : public abstract_exchange
   template <typename... Args>
   std::unique_lock<mutex_type> take_readwrite_lock(Args... args) const
   {
-    GROX_LOG_DEBUG(
+    GROX_LOG_TRACE(
         bitstamp_fee_log, "{:>20} {} acquire  fee map", "take_readwrite_lock", fmt::ptr(this));
     std::unique_lock<mutex_type> lock(fee_mutex_);
-    GROX_LOG_DEBUG(
+    GROX_LOG_TRACE(
         bitstamp_fee_log, "{:>20} {} acquired fee map", "take_readwrite_lock", fmt::ptr(this));
     return lock;
   }

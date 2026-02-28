@@ -44,7 +44,7 @@ std::uint64_t ohlc_dataset::merge_data(ohlctv_vector const& new_ohlc_samples_)
     auto first_new = new_ohlc_samples_.front().time;
     // new samples must start exactly one timestep after old
     int offset = (first_new - last_existing) / ohlc_data_resolutions::minute;
-    GROX_LOG_DEBUG(ohlc_log, "{:>20} {} new samples offset {:06d}", "merging", ticker_str_, offset);
+    GROX_LOG_TRACE(ohlc_log, "{:>20} {} new samples offset {:06d}", "merging", ticker_str_, offset);
     if (first_new - last_existing != ohlc_data_resolutions::minute)
     {
       // ohlc_dbg<0>.error(ffmt<s20>("merging"), ticker_str_, "last_existing", ffmt<dec12>(last_existing),
@@ -53,14 +53,14 @@ std::uint64_t ohlc_dataset::merge_data(ohlctv_vector const& new_ohlc_samples_)
         throw std::runtime_error("Data OHLC time mismatch in merge");
     }
     // add new samples
-    GROX_LOG_DEBUG(
+    GROX_LOG_TRACE(
         ohlc_log, "{:>20} {} new samples {:06d}", "merging", ticker_str_, new_ohlc_samples_.size());
     data().append(new_ohlc_samples_);
     update += new_ohlc_samples_.size();
   }
   if (update > 0)
   {
-    GROX_LOG_DEBUG(ohlc_log, "{:>20} {} new samples {:04d}", "publish", ticker_str_, update);
+    GROX_LOG_TRACE(ohlc_log, "{:>20} {} new samples {:04d}", "publish", ticker_str_, update);
     new_data_subscribers_.publish(update);
   }
   return update;
@@ -88,7 +88,7 @@ int64_t ohlc_dataset::validate_ohlc(
     init_index = offset_index(origin_time, time, res);
     init_time = samples.at(init_index).time;
   }
-  GROX_LOG_DEBUG(ohlc_log, "{:>20} {} {:>3} from {} index {:09d}", "validating", name, res.name_,
+  GROX_LOG_TRACE(ohlc_log, "{:>20} {} {:>3} from {} index {:09d}", "validating", name, res.name_,
       msecs_unix_to_calendar_time_local(init_time), init_index);
 
   for (int64_t index = init_index; index < samples.size(); ++index)
@@ -129,7 +129,7 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset const* other)
 
   // how many of the hi-res candles in the new lower-res candle?
   int subsamples = static_cast<int>(res_lo / res_hi);
-  GROX_LOG_DEBUG(ohlc_log, "{:>20} {} {:>3} subsamples {:>3} {:03d}", "resample", ticker_str_,
+  GROX_LOG_TRACE(ohlc_log, "{:>20} {} {:>3} subsamples {:>3} {:03d}", "resample", ticker_str_,
       res_hi.name_, res_lo.name_, subsamples);
 
   // Get the final time-point of this dataset if present -
@@ -147,7 +147,7 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset const* other)
   // the start time must start an integral candle at the new resolution
   while (static_cast<int>(0.5 + start_T / res_hi) % subsamples != 0)
   {
-    GROX_LOG_DEBUG(ohlc_log, "{:>20} {} {:03d} of {:03d}", "candle modulus", ticker_str_,
+    GROX_LOG_TRACE(ohlc_log, "{:>20} {} {:03d} of {:03d}", "candle modulus", ticker_str_,
         static_cast<int>(0.5 + start_T / res_hi) % subsamples, subsamples);
     start_T += res_hi;
   }
@@ -184,7 +184,7 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset const* other)
       modified = true;
     }
   }
-  GROX_LOG_DEBUG(ohlc_log, "{:>20} {} {:>3} from {} index {:09d} of {}", "resampled", ticker_str_,
+  GROX_LOG_TRACE(ohlc_log, "{:>20} {} {:>3} from {} index {:09d} of {}", "resampled", ticker_str_,
       res_lo.name_, msecs_unix_to_calendar_time_local(current_ohlc.time), orig_size, size());
   validate_ohlc(data(), res_lo, orig_T, ticker_str_);
 

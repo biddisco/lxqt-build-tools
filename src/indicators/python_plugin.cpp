@@ -26,45 +26,44 @@ namespace indicators { namespace python {
 
   python_indicator_registry::~python_indicator_registry()
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] registry dtor initialized={}", initialized_);
+    GROX_LOG_DEBUG(py_plug_log, "registry dtor initialized={}", initialized_);
     if (initialized_) { shutdown(); }
   }
 
   bool python_indicator_registry::initialize()
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] initialize called initialized={}", initialized_);
+    GROX_LOG_DEBUG(py_plug_log, "initialize called initialized={}", initialized_);
     if (initialized_)
     {
-      GROX_PYPLUGIN_TRACE("[python_plugin] initialize skipped (already initialized)");
+      GROX_LOG_DEBUG(py_plug_log, "initialize skipped (already initialized)");
       return true;
     }
 
 #ifdef GROX_PYTHON_ENABLED
-    GROX_PYPLUGIN_TRACE("[python_plugin] calling Py_Initialize()");
+    GROX_LOG_DEBUG(py_plug_log, "calling Py_Initialize()");
     Py_Initialize();
     if (!Py_IsInitialized())
     {
-      GROX_PYPLUGIN_TRACE("[python_plugin] Py_Initialize failed");
+      GROX_LOG_DEBUG(py_plug_log, "Py_Initialize failed");
       return false;
     }
-    GROX_PYPLUGIN_TRACE("[python_plugin] Python interpreter initialized");
+    GROX_LOG_DEBUG(py_plug_log, "Python interpreter initialized");
 #else
-    GROX_PYPLUGIN_TRACE(
-        "[python_plugin] Python support not compiled in (GROX_PYTHON_ENABLED not defined)");
+    GROX_LOG_DEBUG(py_plug_log, "Python support not compiled in (GROX_PYTHON_ENABLED not defined)");
 #endif
 
     initialized_ = true;
-    GROX_PYPLUGIN_TRACE("[python_plugin] initialize complete initialized={}", initialized_);
+    GROX_LOG_DEBUG(py_plug_log, "initialize complete initialized={}", initialized_);
 
     return true;
   }
 
   void python_indicator_registry::shutdown()
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] shutdown called initialized={}", initialized_);
+    GROX_LOG_DEBUG(py_plug_log, "shutdown called initialized={}", initialized_);
     if (!initialized_)
     {
-      GROX_PYPLUGIN_TRACE("[python_plugin] shutdown skipped (not initialized)");
+      GROX_LOG_DEBUG(py_plug_log, "shutdown skipped (not initialized)");
       return;
     }
 
@@ -79,27 +78,27 @@ namespace indicators { namespace python {
     registered_classes_.clear();
 
 #ifdef GROX_PYTHON_ENABLED
-    GROX_PYPLUGIN_TRACE("[python_plugin] calling Py_Finalize()");
+    GROX_LOG_DEBUG(py_plug_log, "calling Py_Finalize()");
     Py_Finalize();
 #endif
 
     initialized_ = false;
-    GROX_PYPLUGIN_TRACE("[python_plugin] shutdown complete initialized={}", initialized_);
+    GROX_LOG_DEBUG(py_plug_log, "shutdown complete initialized={}", initialized_);
   }
 
   bool python_indicator_registry::load_module(fs::path const& module_path)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] load_module path={}", module_path.string());
+    GROX_LOG_DEBUG(py_plug_log, "load_module path={}", module_path.string());
     if (!fs::exists(module_path))
     {
-      GROX_PYPLUGIN_TRACE("[python_plugin] load_module path missing path={}", module_path.string());
+      GROX_LOG_DEBUG(py_plug_log, "load_module path missing path={}", module_path.string());
       return false;
     }
 
 #ifdef GROX_PYTHON_ENABLED
     if (!initialized_)
     {
-      GROX_PYPLUGIN_TRACE("[python_plugin] load_module called before initialize()");
+      GROX_LOG_DEBUG(py_plug_log, "load_module called before initialize()");
       return false;
     }
 
@@ -107,7 +106,7 @@ namespace indicators { namespace python {
     std::string module_name = module_path.stem().string();
     std::string module_dir = module_path.parent_path().string();
 
-    GROX_PYPLUGIN_TRACE("[python_plugin] loading module={} from dir={}", module_name, module_dir);
+    GROX_LOG_DEBUG(py_plug_log, "loading module={} from dir={}", module_name, module_dir);
 
     // Add module directory to Python path
     PyObject* sys_path = PySys_GetObject("path");
@@ -123,11 +122,11 @@ namespace indicators { namespace python {
     if (!py_module)
     {
       PyErr_Print();
-      GROX_PYPLUGIN_TRACE("[python_plugin] failed to import module={}", module_name);
+      GROX_LOG_DEBUG(py_plug_log, "failed to import module={}", module_name);
       return false;
     }
 
-    GROX_PYPLUGIN_TRACE("[python_plugin] imported module={}", module_name);
+    GROX_LOG_DEBUG(py_plug_log, "imported module={}", module_name);
 
     // Get module dictionary to scan for indicator classes
     PyObject* module_dict = PyModule_GetDict(py_module);
@@ -152,7 +151,7 @@ namespace indicators { namespace python {
       // Check if class has compute_sample method
       if (PyObject_HasAttrString(value, "compute_sample"))
       {
-        GROX_PYPLUGIN_TRACE("[python_plugin] found indicator class={}", class_name);
+        GROX_LOG_DEBUG(py_plug_log, "found indicator class={}", class_name);
 
         // Store the class object (increment refcount)
         Py_INCREF(value);
@@ -162,13 +161,13 @@ namespace indicators { namespace python {
 
     Py_DECREF(py_module);
 
-    GROX_PYPLUGIN_TRACE("[python_plugin] load_module success path={}", module_path.string());
+    GROX_LOG_DEBUG(py_plug_log, "load_module success path={}", module_path.string());
     return true;
 #else
     // Stub implementation when Python is not available
     std::string class_name = module_path.stem().string();
     registered_classes_[class_name] = nullptr;
-    GROX_PYPLUGIN_TRACE("[python_plugin] load_module registered stub class={} path={}", class_name,
+    GROX_LOG_DEBUG(py_plug_log, "load_module registered stub class={} path={}", class_name,
         module_path.string());
     return true;
 #endif
@@ -176,27 +175,25 @@ namespace indicators { namespace python {
 
   void* python_indicator_registry::get_indicator_class(std::string const& class_name)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] get_indicator_class name={}", class_name);
+    GROX_LOG_DEBUG(py_plug_log, "get_indicator_class name={}", class_name);
     auto it = registered_classes_.find(class_name);
     if (it != registered_classes_.end())
     {
-      GROX_PYPLUGIN_TRACE(
-          "[python_plugin] get_indicator_class hit name={} ptr={}", class_name, it->second);
+      GROX_LOG_DEBUG(py_plug_log, "get_indicator_class hit name={} ptr={}", class_name, it->second);
       return it->second;
     }
-    GROX_PYPLUGIN_TRACE("[python_plugin] get_indicator_class miss name={}", class_name);
+    GROX_LOG_DEBUG(py_plug_log, "get_indicator_class miss name={}", class_name);
     return nullptr;
   }
 
   std::shared_ptr<py_indicator_instance> python_indicator_registry::create_instance(
       std::string const& class_name)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] create_instance name={}", class_name);
+    GROX_LOG_DEBUG(py_plug_log, "create_instance name={}", class_name);
     auto* py_class = get_indicator_class(class_name);
     if (!py_class)
     {
-      GROX_PYPLUGIN_TRACE(
-          "[python_plugin] create_instance failed (class not found) name={}", class_name);
+      GROX_LOG_DEBUG(py_plug_log, "create_instance failed (class not found) name={}", class_name);
       return nullptr;
     }
 
@@ -206,19 +203,18 @@ namespace indicators { namespace python {
     if (!py_instance)
     {
       PyErr_Print();
-      GROX_PYPLUGIN_TRACE(
-          "[python_plugin] create_instance failed to instantiate class={}", class_name);
+      GROX_LOG_ERROR(py_plug_log, "create_instance failed to instantiate class={}", class_name);
       return nullptr;
     }
 
     auto instance = std::make_shared<py_indicator_instance>(py_instance);
-    GROX_PYPLUGIN_TRACE("[python_plugin] create_instance success name={} instance_ptr={}",
-        class_name, static_cast<void*>(instance.get()));
+    GROX_LOG_DEBUG(py_plug_log, "create_instance success name={} instance_ptr={}", class_name,
+        static_cast<void*>(instance.get()));
     return instance;
 #else
     // Stub implementation
     auto instance = std::make_shared<py_indicator_instance>(nullptr);
-    GROX_PYPLUGIN_TRACE("[python_plugin] create_instance stub name={} instance_ptr={}", class_name,
+    GROX_LOG_DEBUG(py_plug_log, "create_instance stub name={} instance_ptr={}", class_name,
         static_cast<void*>(instance.get()));
     return instance;
 #endif
@@ -226,11 +222,10 @@ namespace indicators { namespace python {
 
   std::size_t python_indicator_registry::load_indicators_from_directory(fs::path const& directory)
   {
-    GROX_PYPLUGIN_TRACE(
-        "[python_plugin] load_indicators_from_directory dir={}", directory.string());
+    GROX_LOG_DEBUG(py_plug_log, "load_indicators_from_directory dir={}", directory.string());
     if (!fs::is_directory(directory))
     {
-      GROX_PYPLUGIN_TRACE("[python_plugin] not a directory dir={}", directory.string());
+      GROX_LOG_DEBUG(py_plug_log, "not a directory dir={}", directory.string());
       return 0;
     }
 
@@ -250,7 +245,7 @@ namespace indicators { namespace python {
       if (load_module(path)) { count++; }
     }
 
-    GROX_PYPLUGIN_TRACE("[python_plugin] load_indicators_from_directory done dir={} count={}",
+    GROX_LOG_DEBUG(py_plug_log, "load_indicators_from_directory done dir={} count={}",
         directory.string(), count);
 
     return count;
@@ -258,8 +253,7 @@ namespace indicators { namespace python {
 
   std::vector<std::string> python_indicator_registry::get_available_indicators() const
   {
-    GROX_PYPLUGIN_TRACE(
-        "[python_plugin] get_available_indicators count={}", registered_classes_.size());
+    GROX_LOG_DEBUG(py_plug_log, "get_available_indicators count={}", registered_classes_.size());
     std::vector<std::string> result;
     for (auto const& [name, _] : registered_classes_) { result.push_back(name); }
     return result;
@@ -272,12 +266,12 @@ namespace indicators { namespace python {
   py_indicator_instance::py_indicator_instance(void* py_object)
     : py_object_(py_object)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] py_indicator_instance ctor py_object={}", py_object_);
+    GROX_LOG_DEBUG(py_plug_log, "py_indicator_instance ctor py_object={}", py_object_);
   }
 
   py_indicator_instance::~py_indicator_instance()
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] py_indicator_instance dtor py_object={}", py_object_);
+    GROX_LOG_DEBUG(py_plug_log, "py_indicator_instance dtor py_object={}", py_object_);
 #ifdef GROX_PYTHON_ENABLED
     if (py_object_) { Py_DECREF(static_cast<PyObject*>(py_object_)); }
 #endif
@@ -287,13 +281,14 @@ namespace indicators { namespace python {
   double py_indicator_instance::compute_sample(
       double open, double high, double low, double close, double volume, uint64_t time)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] compute_sample called open={} high={} low={} close={} "
-                        "volume={} time={} py_object={}",
+    GROX_LOG_DEBUG(py_plug_log,
+        "compute_sample called open={} high={} low={} close={} "
+        "volume={} time={} py_object={}",
         open, high, low, close, volume, time, py_object_);
 
     if (!py_object_)
     {
-      GROX_PYPLUGIN_TRACE("[python_plugin] compute_sample returning default (null py_object)");
+      GROX_LOG_DEBUG(py_plug_log, "compute_sample returning default (null py_object)");
       return 0.0;
     }
 
@@ -316,67 +311,67 @@ namespace indicators { namespace python {
     if (!result)
     {
       PyErr_Print();
-      GROX_PYPLUGIN_TRACE("[python_plugin] compute_sample Python call failed");
+      GROX_LOG_ERROR(py_plug_log, "compute_sample Python call failed");
       return 0.0;
     }
 
     double value = PyFloat_AsDouble(result);
     Py_DECREF(result);
 
-    GROX_PYPLUGIN_TRACE("[python_plugin] compute_sample result={}", value);
+    GROX_LOG_DEBUG(py_plug_log, "compute_sample result={}", value);
     return value;
 #else
-    GROX_PYPLUGIN_TRACE("[python_plugin] compute_sample returning stub default value");
+    GROX_LOG_DEBUG(py_plug_log, "compute_sample returning stub default value");
     return 0.0;
 #endif
   }
 
   bool py_indicator_instance::set_parameter(std::string const& name, double value)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] set_parameter<double> name={} value={} py_object={}", name,
-        value, py_object_);
+    GROX_LOG_DEBUG(py_plug_log, "set_parameter<double> name={} value={} py_object={}", name, value,
+        py_object_);
     // In full implementation:
     // 1. Use PyObject_SetAttrString to set attribute
     // 2. Handle exception on failure
 
     bool const ok = py_object_ != nullptr;
-    GROX_PYPLUGIN_TRACE("[python_plugin] set_parameter<double> result={}", ok);
+    GROX_LOG_DEBUG(py_plug_log, "set_parameter<double> result={}", ok);
     return ok;
   }
 
   bool py_indicator_instance::set_parameter(std::string const& name, int value)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] set_parameter<int> name={} value={} py_object={}", name,
-        value, py_object_);
+    GROX_LOG_DEBUG(
+        py_plug_log, "set_parameter<int> name={} value={} py_object={}", name, value, py_object_);
     bool const ok = py_object_ != nullptr;
-    GROX_PYPLUGIN_TRACE("[python_plugin] set_parameter<int> result={}", ok);
+    GROX_LOG_DEBUG(py_plug_log, "set_parameter<int> result={}", ok);
     return ok;
   }
 
   bool py_indicator_instance::set_parameter(std::string const& name, std::string const& value)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] set_parameter<string> name={} value={} py_object={}", name,
-        value, py_object_);
+    GROX_LOG_DEBUG(py_plug_log, "set_parameter<string> name={} value={} py_object={}", name, value,
+        py_object_);
     bool const ok = py_object_ != nullptr;
-    GROX_PYPLUGIN_TRACE("[python_plugin] set_parameter<string> result={}", ok);
+    GROX_LOG_DEBUG(py_plug_log, "set_parameter<string> result={}", ok);
     return ok;
   }
 
   double py_indicator_instance::get_double_parameter(std::string const& name)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] get_double_parameter name={} (stub)", name);
+    GROX_LOG_DEBUG(py_plug_log, "get_double_parameter name={} (stub)", name);
     return 0.0;
   }
 
   int py_indicator_instance::get_int_parameter(std::string const& name)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] get_int_parameter name={} (stub)", name);
+    GROX_LOG_DEBUG(py_plug_log, "get_int_parameter name={} (stub)", name);
     return 0;
   }
 
   std::string py_indicator_instance::get_string_parameter(std::string const& name)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] get_string_parameter name={} (stub)", name);
+    GROX_LOG_DEBUG(py_plug_log, "get_string_parameter name={} (stub)", name);
     return "";
   }
 
@@ -391,7 +386,7 @@ namespace indicators { namespace python {
     , instance_(nullptr)
     , last_result_(0.0)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] python_indicator_wrapper default ctor");
+    GROX_LOG_DEBUG(py_plug_log, "python_indicator_wrapper default ctor");
   }
 
   python_indicator_wrapper::python_indicator_wrapper(std::string const& name,
@@ -403,21 +398,19 @@ namespace indicators { namespace python {
     , instance_(nullptr)
     , last_result_(0.0)
   {
-    GROX_PYPLUGIN_TRACE(
-        "[python_plugin] python_indicator_wrapper ctor name={} class_name={}", name, class_name);
+    GROX_LOG_DEBUG(
+        py_plug_log, "python_indicator_wrapper ctor name={} class_name={}", name, class_name);
   }
 
   void python_indicator_wrapper::initialize()
   {
-    GROX_PYPLUGIN_TRACE(
-        "[python_plugin] python_indicator_wrapper::initialize class_name={}", class_name_);
+    GROX_LOG_DEBUG(py_plug_log, "python_indicator_wrapper::initialize class_name={}", class_name_);
     if (registry_) { instance_ = registry_->create_instance(class_name_); }
   }
 
   void python_indicator_wrapper::init_params()
   {
-    GROX_PYPLUGIN_TRACE(
-        "[python_plugin] python_indicator_wrapper::init_params class_name={}", class_name_);
+    GROX_LOG_DEBUG(py_plug_log, "python_indicator_wrapper::init_params class_name={}", class_name_);
     // Parameters would be populated from Python class metadata
     // For now, use default empty parameters
     params_ = {};
@@ -425,11 +418,11 @@ namespace indicators { namespace python {
 
   double python_indicator_wrapper::operator()(ohlctv_sample const& sample)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] python_indicator_wrapper::operator() called");
+    GROX_LOG_DEBUG(py_plug_log, "python_indicator_wrapper::operator() called");
 
     if (!instance_)
     {
-      GROX_PYPLUGIN_TRACE("[python_plugin] operator() no instance, returning 0.0");
+      GROX_LOG_DEBUG(py_plug_log, "operator() no instance, returning 0.0");
       return 0.0;
     }
 
@@ -446,7 +439,7 @@ namespace indicators { namespace python {
   std::size_t python_indicator_registry::register_with_main_registry(
       indicators::indicator_registry& main_registry)
   {
-    GROX_PYPLUGIN_TRACE("[python_plugin] register_with_main_registry called classes_count={}",
+    GROX_LOG_DEBUG(py_plug_log, "register_with_main_registry called classes_count={}",
         registered_classes_.size());
 
     std::size_t count = 0;
@@ -456,7 +449,7 @@ namespace indicators { namespace python {
 
     for (auto const& [class_name, py_class_ptr] : registered_classes_)
     {
-      GROX_PYPLUGIN_TRACE("[python_plugin] registering wrapper for class={}", class_name);
+      GROX_LOG_DEBUG(py_plug_log, "registering wrapper for class={}", class_name);
 
       // Create wrapper with metadata extracted from Python class
       // TODO: Parse actual metadata from Python class attributes (name, description, category)
@@ -471,11 +464,11 @@ namespace indicators { namespace python {
       // Register with main registry
       main_registry.register_indicator(wrapper);
 
-      GROX_PYPLUGIN_TRACE("[python_plugin] wrapper registered class={}", class_name);
+      GROX_LOG_DEBUG(py_plug_log, "wrapper registered class={}", class_name);
       count++;
     }
 
-    GROX_PYPLUGIN_TRACE("[python_plugin] register_with_main_registry complete count={}", count);
+    GROX_LOG_DEBUG(py_plug_log, "register_with_main_registry complete count={}", count);
     return count;
   }
 

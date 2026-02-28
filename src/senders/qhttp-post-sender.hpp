@@ -102,7 +102,7 @@ namespace grox::senders {
             r.op_state.client_ = client;
             assert(r.op_state.client_ != nullptr);
 
-            GROX_LOG_DEBUG(qt_trig_log, "{:>20} set_value_t req {}", "qhttp_post_recv",
+            GROX_LOG_TRACE(qt_trig_log, "{:>20} set_value_t req {}", "qhttp_post_recv",
                 fmt::ptr(r.op_state.client_));
 
             pika::detail::try_catch_exception_ptr(
@@ -118,7 +118,7 @@ namespace grox::senders {
                           ex::continues_on(default_pool_scheduler()) |
                           ex::then([receiver = std::move(receiver)](QByteArray byteArray) mutable {
                             std::string_view strv(byteArray.constData(), byteArray.length());
-                            GROX_LOG_DEBUG(
+                            GROX_LOG_TRACE(
                                 qt_trig_log, "{:>20} {}", "set_value_error_helper", strv);
                             ex::set_value(std::move(receiver), std::move(byteArray));
                           });
@@ -163,12 +163,12 @@ namespace grox::senders {
           , client_(nullptr)
           , req_type_{req_type}
         {
-          GROX_LOG_DEBUG(qt_trig_log, "{:>20} {}", "create", fmt::ptr(client_));
+          GROX_LOG_TRACE(qt_trig_log, "{:>20} {}", "create", fmt::ptr(client_));
         }
 
         ~operation_state()
         {
-          GROX_LOG_DEBUG(qt_trig_log, "{:>20} {}", "destroy", fmt::ptr(client_));
+          GROX_LOG_TRACE(qt_trig_log, "{:>20} {}", "destroy", fmt::ptr(client_));
         }
 
         friend constexpr auto tag_invoke(ex::start_t, operation_state& os) noexcept

@@ -91,12 +91,12 @@ bitstamp_network::bitstamp_network()
 }
 
 // ----------------------------------------------------------------------------
-bitstamp_network::~bitstamp_network() { GROX_LOG_DEBUG(bitstamp_log, "{:>20}", "destructor"); }
+bitstamp_network::~bitstamp_network() { GROX_LOG_TRACE(bitstamp_log, "{:>20}", "destructor"); }
 
 // ----------------------------------------------------------------------------
 void bitstamp_network::shut_down()
 {
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20}", "shutdown start");
+  GROX_LOG_TRACE(bitstamp_log, "{:>20}", "shutdown start");
   abstract_exchange::shut_down();
 }
 
@@ -152,7 +152,7 @@ void bitstamp_network::initialize()
       | stdexec::let_value([this]() { return request_tickers_available(); })           // Qt -> pika
       | stdexec::then([this](QByteArray byteArray) {                                   //
           std::string_view data(byteArray.constData(), byteArray.length());            //
-          GROX_LOG_DEBUG(bitstamp_log, "{:>20} Tickers {}", "Initialize", data);       //
+          GROX_LOG_TRACE(bitstamp_log, "{:>20} Tickers {}", "Initialize", data);       //
           handle_tickers_available(data);                                              //
         })                                                                             //
       | stdexec::then([this]() { load_subscribed_tickers(); })                         //
@@ -184,7 +184,7 @@ bool bitstamp_network::subscribe_live_trades(currency_pair const& cp, bool enabl
   command["data"]["channel"] = string_join("live_trades_", ticker);
 
   ticker::data tdata = get_subscribed_ticker_data(cp);
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} {} {}", "websocket trades",
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {} {}", "websocket trades",
       command["event"].get<std::string>(), string_join("live_trades_", ticker), command.dump(4));
 
   if (enable)
@@ -211,7 +211,7 @@ bool bitstamp_network::subscribe_order_book(currency_pair const& cp, bool enable
   command["data"]["channel"] = string_join("order_book_", ticker);
 
   ticker::data tdata = get_subscribed_ticker_data(cp);
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} {} {}", "websocket orders",
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {} {}", "websocket orders",
       command["event"].get<std::string>(), string_join("order_book_", ticker), command.dump(4));
 
   if (enable)
@@ -239,7 +239,7 @@ bool bitstamp_network::subscribe_my_trades(currency_pair const& cp, bool enable)
   command["data"]["auth"] = websocket_token_;
 
   ticker::data tdata = get_subscribed_ticker_data(cp);
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} {} {}", "websocket mytrades",
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {} {}", "websocket mytrades",
       command["event"].get<std::string>(), string_join("private-my_trades_", ticker),
       command.dump(4));
 
@@ -249,7 +249,7 @@ bool bitstamp_network::subscribe_my_trades(currency_pair const& cp, bool enable)
         net::ws::qwebsocket_session::create("bs::MyTrades " + ticker, bitstamp_websocket_address,
             bitstamp_websocket_port, command.dump(4), [](QString const data) {
               //
-              GROX_LOG_DEBUG(
+              GROX_LOG_TRACE(
                   bitstamp_log, "{:>20} {}", "(private) Trade data handler", data.toStdString());
             });
   }
@@ -271,7 +271,7 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
   command["data"]["auth"] = websocket_token_;
 
   ticker::data tdata = get_subscribed_ticker_data(cp);
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} {} {}", "websocket myorders",
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {} {}", "websocket myorders",
       command["event"].get<std::string>(), string_join("private-my_orders_", ticker),
       command.dump(4));
 
@@ -281,11 +281,11 @@ bool bitstamp_network::subscribe_my_orders(currency_pair const& cp, bool enable)
         net::ws::qwebsocket_session::create("bs::MyOrders " + ticker, bitstamp_websocket_address,
             bitstamp_websocket_port, command.dump(4), [this](QString const data) {
               std::string stdstring = data.toStdString();
-              GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Orders data", stdstring);
+              GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "Orders data", stdstring);
               nlohmann::json jdata = nlohmann::json::parse(stdstring);
               if (jdata["event"] == "bts:subscription_succeeded")
               {
-                GROX_LOG_DEBUG(bitstamp_log, "{:>20} bts:subscription_succeeded", "Orders data");
+                GROX_LOG_TRACE(bitstamp_log, "{:>20} bts:subscription_succeeded", "Orders data");
               }
               else
               {
@@ -317,12 +317,12 @@ bool bitstamp_network::stream_subscribe(
       | stdexec::then([this, keepalive](QByteArray byteArray) {                              // pika
           if (closing_down_.load()) return;
           std::string_view data(byteArray.constData(), byteArray.length());
-          GROX_LOG_DEBUG(bitstamp_log, "{:>20} WebsocketToken {}", "Initialize", data);
+          GROX_LOG_TRACE(bitstamp_log, "{:>20} WebsocketToken {}", "Initialize", data);
           handle_websocket_token(data);
         })    //
       | stdexec::let_stopped([this, keepalive]() {
           if (closing_down_.load()) return stdexec::just();
-          GROX_LOG_DEBUG(bitstamp_log, "{:>20} WebsocketToken already up-to-date", "Stopped");
+          GROX_LOG_TRACE(bitstamp_log, "{:>20} WebsocketToken already up-to-date", "Stopped");
           return stdexec::just();
         })    //
       |
@@ -392,7 +392,7 @@ bool bitstamp_network::make_payment(
 {
   bitstamp_account* from = static_cast<bitstamp_account*>(src);
   ledger_wallet* to = static_cast<ledger_wallet*>(dest);
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} amount {} currency {} from {} to {}{}", "make_payment",
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} amount {} currency {} from {} to {}{}", "make_payment",
       c.balance_, fmt::streamed(c), from->name_, to->public_,
       ((to->tag_ != 0) ? "(" + std::to_string(to->tag_) + ")" : ""));
 
@@ -410,7 +410,7 @@ bool bitstamp_network::make_payment(
         | qhttp_post()                                                                // Qt -> pika
         | stdexec::then([this](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
-            GROX_LOG_DEBUG(
+            GROX_LOG_TRACE(
                 bitstamp_log, "{:>20} {} {}", "request CB", "/api/v2/xrp_withdrawal/", data);
             emit transaction_event();
           });
@@ -425,7 +425,7 @@ bool bitstamp_network::make_payment(
         | qhttp_post()                                                                // Qt -> pika
         | stdexec::then([this](QByteArray byteArray) {
             std::string_view data(byteArray.constData(), byteArray.length());
-            GROX_LOG_DEBUG(
+            GROX_LOG_TRACE(
                 bitstamp_log, "{:>20} {} {}", "request CB", "/api/v2/ripple_withdrawal/", data);
             emit transaction_event();
           });
@@ -447,7 +447,7 @@ any_void_sender bitstamp_network::request_all_account_infos()
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
   using namespace grox::debug;
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20}", "all_account_infos");
+  GROX_LOG_TRACE(bitstamp_log, "{:>20}", "all_account_infos");
 
   // we can't block the Qt thread, so put async_scope onto a pika thread
   auto get_all_account_infos = [this]() {
@@ -456,7 +456,7 @@ any_void_sender bitstamp_network::request_all_account_infos()
     {
       auto handle_data = [this, &acct](QByteArray byteArray) {    // pika
         std::string_view data(byteArray.constData(), byteArray.length());
-        GROX_LOG_DEBUG(bitstamp_log, "{:>20} AccountInfo {}", "Initialize", data);
+        GROX_LOG_TRACE(bitstamp_log, "{:>20} AccountInfo {}", "Initialize", data);
         handle_account_info(acct, data);
       };
 
@@ -467,9 +467,9 @@ any_void_sender bitstamp_network::request_all_account_infos()
       scope.spawn(std::move(snd));
     }
 
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} scope all_account_infos", "SYNC_WAIT");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} scope all_account_infos", "SYNC_WAIT");
     tt::sync_wait(scope.on_empty());
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} scope all_account_infos", "COMPLETE");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} scope all_account_infos", "COMPLETE");
   };
 
   // must be on a pika thread if we are using sync_wait
@@ -485,11 +485,11 @@ any_bytearray_sender bitstamp_network::request_websocket_token()
 {
   if (token_valid(token_expiry_))
   {
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} Still valid", "websocket_token");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} Still valid", "websocket_token");
     return any_bytearray_sender{stdexec::just_stopped()};
   }
   //
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} Fetching new", "websocket_token");
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} Fetching new", "websocket_token");
   auto* client = signed_request(get_account_by_name("Main"), "/api/v2/websockets_token/", "");
   return stdexec::just(client) | qhttp_post();
 }
@@ -507,7 +507,7 @@ any_void_sender bitstamp_network::request_all_account_orders()
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
   using namespace grox::debug;
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20}", "all_account_orders");
+  GROX_LOG_TRACE(bitstamp_log, "{:>20}", "all_account_orders");
 
   // we can't block the Qt thread, so put async_scope onto a pika thread
   auto get_all_orders = [this]() {
@@ -516,7 +516,7 @@ any_void_sender bitstamp_network::request_all_account_orders()
     {
       auto handle_data = [this, &acct](QByteArray byteArray) {    // pika
         std::string_view data(byteArray.constData(), byteArray.length());
-        GROX_LOG_DEBUG(bitstamp_log, "{:>20} AccountOrders {}", "Initialize", data);
+        GROX_LOG_TRACE(bitstamp_log, "{:>20} AccountOrders {}", "Initialize", data);
         handle_open_orders(acct, data);
       };
 
@@ -527,9 +527,9 @@ any_void_sender bitstamp_network::request_all_account_orders()
       scope.spawn(std::move(snd));
     }
 
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} scope all_account_orders", "SYNC_WAIT");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} scope all_account_orders", "SYNC_WAIT");
     tt::sync_wait(scope.on_empty());
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} scope all_account_orders", "COMPLETE");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} scope all_account_orders", "COMPLETE");
   };
 
   // must be on a pika thread if we are using sync_wait
@@ -555,7 +555,7 @@ any_void_sender bitstamp_network::read_transaction_logs(std::string ini_name)
       if (last_orderId > 0)
       {
         acct.last_order_ID = std::max(acct.last_order_ID, last_orderId);
-        GROX_LOG_DEBUG(bitstamp_log, "{:>20} last_Id {} {}", "TransactionLogs",
+        GROX_LOG_TRACE(bitstamp_log, "{:>20} last_Id {} {}", "TransactionLogs",
             fmt::format("ID_{}_{}", suffix, acct.name_), last_orderId);
       }
     }
@@ -583,9 +583,9 @@ any_void_sender bitstamp_network::update_transaction_logs(std::string ini_name)
       GROX_SOURCE_DIR, GROX_SOURCE_DIR, global_settings.appDataLocation,
       global_settings.appDataLocation, accountnames);
   //
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Execute", cmd_str);
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "Execute", cmd_str);
   std::string result = execute_os_command(cmd_str.c_str(), false);
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Execute result", result);
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "Execute result", result);
 
   return any_void_sender{stdexec::just()};
 }
@@ -605,7 +605,7 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
   using namespace grox::debug;
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20}", "Transactions_Crypto");
+  GROX_LOG_TRACE(bitstamp_log, "{:>20}", "Transactions_Crypto");
 
   // we can't block the Qt thread, so put async_scope onto a pika thread
   auto get_all_transactions = [this]() {
@@ -615,7 +615,7 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
     {
       auto handle_data = [this, &acct](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
-        GROX_LOG_DEBUG(bitstamp_log, "{:>20} Handler {}", "Transactions_Crypto", data);
+        GROX_LOG_TRACE(bitstamp_log, "{:>20} Handler {}", "Transactions_Crypto", data);
         nlohmann::json jdata = nlohmann::json::parse(data);
         if (jdata.size() > 0)
         {
@@ -623,10 +623,10 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
               global_settings.appDataLocation, getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
           std::ofstream transactions(name);
           transactions << jdata.dump(4);
-          GROX_LOG_DEBUG(bitstamp_log, "{:>20} Written {}", "Transactions_Crypto", name);
+          GROX_LOG_TRACE(bitstamp_log, "{:>20} Written {}", "Transactions_Crypto", name);
           // handle_open_orders(acct, data);
         }
-        else { GROX_LOG_DEBUG(bitstamp_log, "{:>20} Empty", "Transactions_Crypto"); }
+        else { GROX_LOG_TRACE(bitstamp_log, "{:>20} Empty", "Transactions_Crypto"); }
       };
 
       auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                   //
@@ -636,9 +636,9 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
       scope.spawn(std::move(snd));
     }
 
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} scope Transactions_Crypto", "SYNC_WAIT");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} scope Transactions_Crypto", "SYNC_WAIT");
     tt::sync_wait(scope.on_empty());
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} scope Transactions_Crypto", "COMPLETE");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} scope Transactions_Crypto", "COMPLETE");
   };
 
   // must be on a pika thread if we are using sync_wait
@@ -677,7 +677,7 @@ any_void_sender bitstamp_network::request_all_market_transactions()
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
   using namespace grox::debug;
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20}", "Transactions_Market");
+  GROX_LOG_TRACE(bitstamp_log, "{:>20}", "Transactions_Market");
 
   // we can't block the Qt thread, so put async_scope onto a pika thread
   auto get_all_transactions = [this]() {
@@ -689,9 +689,9 @@ any_void_sender bitstamp_network::request_all_market_transactions()
       {
         auto handle_data = [this, cp, &acct](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
-          GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} Handler {}", "Transactions_Market",
+          GROX_LOG_TRACE(bitstamp_log, "{:>20} {} Handler {}", "Transactions_Market",
               currency_pair_string(cp), data.length());
-          GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} Handler {}", "Transactions_Market",
+          GROX_LOG_TRACE(bitstamp_log, "{:>20} {} Handler {}", "Transactions_Market",
               currency_pair_string(cp), data);
           nlohmann::json jdata = nlohmann::json::parse(data);
           if (jdata.size() > 0)
@@ -701,12 +701,12 @@ any_void_sender bitstamp_network::request_all_market_transactions()
                     acct.name_, currency_pair_string(cp), getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
             std::ofstream transactions(name);
             transactions << jdata.dump(4);
-            GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} Written {}", "Transactions_Market",
+            GROX_LOG_TRACE(bitstamp_log, "{:>20} {} Written {}", "Transactions_Market",
                 currency_pair_string(cp), name);
           }
           else
           {
-            GROX_LOG_DEBUG(
+            GROX_LOG_TRACE(
                 bitstamp_log, "{:>20} {} Empty", "Transactions_Market", currency_pair_string(cp));
           }
         };
@@ -719,9 +719,9 @@ any_void_sender bitstamp_network::request_all_market_transactions()
       }
     }
 
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} scope Transactions_Market", "SYNC_WAIT");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} scope Transactions_Market", "SYNC_WAIT");
     tt::sync_wait(scope.on_empty());
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} scope Transactions_Market", "COMPLETE");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} scope Transactions_Market", "COMPLETE");
   };
 
   // must be on a pika thread if we are using sync_wait
@@ -756,7 +756,7 @@ any_void_sender bitstamp_network::request_all_account_transactions()
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
   using namespace grox::debug;
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} All", "Transactions_User");
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} All", "Transactions_User");
 
   // we can't block the Qt thread, so put async_scope onto a pika thread
   auto get_all_transactions = [this]() {
@@ -765,7 +765,7 @@ any_void_sender bitstamp_network::request_all_account_transactions()
     {
       auto handle_data = [this, &acct](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
-        GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} Handler {}", "Transactions_User", acct.name_, data);
+        GROX_LOG_TRACE(bitstamp_log, "{:>20} {} Handler {}", "Transactions_User", acct.name_, data);
         nlohmann::json jdata = nlohmann::json::parse(data);
         if (jdata.size() > 0)
         {
@@ -773,12 +773,12 @@ any_void_sender bitstamp_network::request_all_account_transactions()
               global_settings.appDataLocation, acct.name_, getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
           std::ofstream transactions(name);
           transactions << jdata.dump(4);
-          GROX_LOG_DEBUG(
+          GROX_LOG_TRACE(
               bitstamp_log, "{:>20} {} Written {}", "Transactions_User", acct.name_, name);
 
           // handle_open_orders(acct, data);
         }
-        else { GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} Empty", "Transactions_User", acct.name_); }
+        else { GROX_LOG_TRACE(bitstamp_log, "{:>20} {} Empty", "Transactions_User", acct.name_); }
       };
 
       auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                //
@@ -788,9 +788,9 @@ any_void_sender bitstamp_network::request_all_account_transactions()
       scope.spawn(std::move(snd));
     }
 
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} scope Transactions_User", "SYNC_WAIT");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} scope Transactions_User", "SYNC_WAIT");
     tt::sync_wait(scope.on_empty());
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} scope Transactions_User", "COMPLETE");
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} scope Transactions_User", "COMPLETE");
   };
 
   // must be on a pika thread if we are using sync_wait
@@ -846,7 +846,7 @@ any_bytearray_sender bitstamp_network::request_limit_order(
         to_string_with_precision(t.exchange_rate_, 5));
   }
   //
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} {} {}", "limit-order",
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {} {}", "limit-order",
       (t.get_trade_type() == trade_type::buy ? "Buy" : "Sell"), req, query);
 
   auto* client = signed_request(acct, req, query);
@@ -871,7 +871,7 @@ currency_pair bitstamp_network::split_token_string(std::string utoken) const
   {
     if (currency_pair_string(cp, "", false) == utoken) { return cp; }
   }
-  GROX_LOG_ERROR(bitstamp_log, "{:>20} Currency pair not found {}", "split_token_string", utoken);
+  //GROX_LOG_ERROR(bitstamp_log, "{:>20} Currency pair not found {}", "split_token_string", utoken);
   return currency_pair();
 }
 
@@ -881,8 +881,8 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
   try
   {
     nlohmann::json jdata = nlohmann::json::parse(data);
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "account info", jdata.dump(4));
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} Processing {}", "account info", acct.name_);
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "account info", jdata.dump(4));
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} Processing {}", "account info", acct.name_);
 
     std::regex bal_regex("_balance", std::regex_constants::icase);
     std::regex tok_regex("([^_]+)_.*");
@@ -908,7 +908,7 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
           };
           acct.add_currency(cur);
 
-          GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "account info", fmt::streamed(cur));
+          GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "account info", fmt::streamed(cur));
         }
       }
 
@@ -921,7 +921,7 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
           std::string utoken = uppercase(mtch[1]);
           take_readwrite_lock();
           withdrawal_fee_map_[{"", utoken}] = value;
-          GROX_LOG_DEBUG(
+          GROX_LOG_TRACE(
               bitstamp_log, "{:>20} withdrawal fee {} {}", "account info", utoken, value);
         }
       }
@@ -934,7 +934,7 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
           currency_pair cp = split_token_string(utoken);
           take_readwrite_lock();
           transaction_fee_map_[cp] = value;
-          GROX_LOG_DEBUG(bitstamp_log, "{:>20} transaction fee {} {} {}", "account info",
+          GROX_LOG_TRACE(bitstamp_log, "{:>20} transaction fee {} {} {}", "account info",
               fmt::streamed(cp.c1_), fmt::streamed(cp.c2_), value);
         }
       }
@@ -955,7 +955,7 @@ void bitstamp_network::handle_websocket_token(std::string_view data)
   try
   {
     nlohmann::json jdata = nlohmann::json::parse(data);
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "websocket token", jdata.dump());
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "websocket token", jdata.dump());
     //
     using namespace std::literals;
     auto valid_sec = jdata["valid_sec"].get<int>();
@@ -963,7 +963,7 @@ void bitstamp_network::handle_websocket_token(std::string_view data)
     websocket_user_id_ = std::to_string(jdata["user_id"].get<int>());
     token_expiry_ = std::chrono::system_clock::now() + valid_sec * 1s;
 
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} {}", "websocket_token",
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {}", "websocket_token",
         token_valid(token_expiry_) ? "valid until" : "expired",
         fmt::format("{:%Y-%m-%d %X}", round<std::chrono::seconds>(token_expiry_.load())));
   }
@@ -978,7 +978,7 @@ void bitstamp_network::handle_websocket_token(std::string_view data)
 void bitstamp_network::handle_open_orders(bitstamp_account& acct, std::string_view data)
 {
   nlohmann::json jdata = nlohmann::json::parse(data);
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "open_orders", jdata.dump());
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "open_orders", jdata.dump());
   for (auto const& [key, val] : jdata.items())
   {
     std::string const jstring = val[std::string_view("currency_pair")];
@@ -1019,7 +1019,7 @@ void bitstamp_network::handle_tickers_available(std::string_view data)
     {
       json::string_t jstring = val[std::string_view("pair")];
       auto const& [c1, c2] = string_to_pair(jstring, "/");
-      GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} {} {}", "Currency pair", jstring, fmt::streamed(c1),
+      GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {} {}", "Currency pair", jstring, fmt::streamed(c1),
           fmt::streamed(c2));
       add_currency_pair({c1, c2});
     }
@@ -1082,7 +1082,7 @@ void bitstamp_network::process_order(bitstamp_account& acct, json& jdata, std::s
     }
     else
     {
-      GROX_LOG_DEBUG(bitstamp_log, "{:>20} {:018d}", "Order deleted", id);
+      GROX_LOG_TRACE(bitstamp_log, "{:>20} {:018d}", "Order deleted", id);
       trades.erase(trade);
     }
   }
@@ -1097,7 +1097,7 @@ void bitstamp_network::process_order(bitstamp_account& acct, json& jdata, std::s
     {
       if (trade->confirmed_ == false)
       {
-        GROX_LOG_DEBUG(bitstamp_log, "{:>20} {:018d} confirmed", "Order created", id);
+        GROX_LOG_TRACE(bitstamp_log, "{:>20} {:018d} confirmed", "Order created", id);
         trade->confirmed_ = true;
       }
       else { GROX_LOG_ERROR(bitstamp_log, "{:>20} {:018d} already active", "Order created", id); }
@@ -1181,7 +1181,7 @@ net::http::client_ptr bitstamp_network::signed_request(
 
   std::string urlstring = fmt::format(
       "https://{}:{}{}{}", bitstamp_https_address, bitstamp_https_port, url_path, url_query);
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} {}", "account_request", urlstring, string_to_sign);
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {}", "account_request", urlstring, string_to_sign);
 
   QNetworkRequest request(QUrl(to_qstring(urlstring)));
   request.setRawHeader("Content-Type", content_type.c_str());
@@ -1204,8 +1204,8 @@ net::http::client_ptr bitstamp_network::signed_request(
 void bitstamp_network::new_orderbook_data_q(
     bitstamp_network* abstract_exchange, currency_pair const cp, QString const data)
 {
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} Ticker {}", "Orderbook", currency_pair_string(cp));
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Orderbook data", data.toStdString());
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} Ticker {}", "Orderbook", currency_pair_string(cp));
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "Orderbook data", data.toStdString());
 
   if (abstract_exchange->closing_down_.load())
   {
@@ -1249,8 +1249,8 @@ void bitstamp_network::new_orderbook_data_q(
 void bitstamp_network::new_live_trade_data_q(
     bitstamp_network* abstract_exchange, currency_pair cp, QString const data)
 {
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} Ticker {}", "Live Trade", currency_pair_string(cp));
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Trade data", data.toStdString());
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} Ticker {}", "Live Trade", currency_pair_string(cp));
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "Trade data", data.toStdString());
 
   if (abstract_exchange->closing_down_.load())
   {
@@ -1274,7 +1274,7 @@ void bitstamp_network::new_live_trade_data_q(
     if (abstract_exchange->closing_down_.load()) return;
     std::string stdstring = data.toStdString();
     nlohmann::json jdata = nlohmann::json::parse(stdstring)["data"];
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Trade data parsed", jdata.dump(4));
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "Trade data parsed", jdata.dump(4));
     live_trade_data trade_data = jdata.get<live_trade_data>();
     //
     abstract_exchange->get_subscribed_ticker_data(cp)->live_trade_subscribers_.publish(
@@ -1319,7 +1319,7 @@ std::uint64_t bitstamp_network::handle_price_history(std::string_view data)
   GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "price history", subsect.dump(4));
   auto prices = subsect.get<std::vector<price>>();
   auto first_time = prices[prices.size() - 2].time;
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} {}", "First date", first_time,
+  GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {}", "First date", first_time,
       secs_unix_to_calendar_time_local(first_time));
   return first_time;
 }
@@ -1379,7 +1379,7 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker::data tdata)
         })    //
       | stdexec::then([this, cp, tdata](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
-          GROX_LOG_DEBUG(
+          GROX_LOG_TRACE(
               bitstamp_log, "{:>20} {}", "OHLC (lambda)", tdata->view_->get_ticker_string());
           return handle_new_ohlc_data(tdata, data);
         })    //
@@ -1420,7 +1420,7 @@ any_bytearray_sender bitstamp_network::request_new_ohlc_data(
   {
     if (samples >= 1000)
     {
-      GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Limiting request", samples);
+      GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "Limiting request", samples);
       samples = 1000;
     }
     std::string start = std::to_string(start_t);
@@ -1462,7 +1462,7 @@ void bitstamp_network::place_buy_sell_orders(
         | stdexec::then([&, trade = trade, this](QByteArray byteArray) mutable {
             std::string_view data(byteArray.constData(), byteArray.length());
             json jdata = json::parse(data);
-            GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "buy_sell response", jdata.dump(4));
+            GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "buy_sell response", jdata.dump(4));
             if (jdata.contains("error"))
               GROX_LOG_ERROR(bitstamp_log, "{:>20} {}", "buy_sell error", jdata.dump(4));
             else
@@ -1488,7 +1488,7 @@ void bitstamp_network::place_buy_sell_orders(
     auto snd = request_account_orders(*bacct)                    //
         | stdexec::then([this, bacct](QByteArray byteArray) {    // pika
             std::string_view data(byteArray.constData(), byteArray.length());
-            GROX_LOG_DEBUG(bitstamp_log, "{:>20} OpenOrders {}", "Initialize", data);
+            GROX_LOG_TRACE(bitstamp_log, "{:>20} OpenOrders {}", "Initialize", data);
             handle_open_orders(*bacct, data);
           });
     return snd;
@@ -1504,7 +1504,7 @@ stream_set bitstamp_network::ticker_subscribe(currency_pair const& cp)
   std::string cps = currency_pair_string(cp);
   if (ticker_subscribed(cp))
   {
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} already subscribed", "subscription", cps);
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} {} already subscribed", "subscription", cps);
     return stream_set{};
   }
   GROX_LOG_INFO(bitstamp_log, "{:>20} {}", "subscribing", cps);
@@ -1553,7 +1553,7 @@ bool bitstamp_network::handle_new_ohlc_data(ticker::data tdata, std::string_view
       new_ohlc_samples.push_back(sample);
     }
     //
-    GROX_LOG_DEBUG(bitstamp_log, "{:>20} {} {} new OHLC samples", "Converted",
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {} new OHLC samples", "Converted",
         tdata->view_->get_ticker_string(), new_ohlc_samples.size());
   }
   catch (std::exception& e)

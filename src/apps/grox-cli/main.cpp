@@ -58,7 +58,7 @@ int request_account_info()
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
-          GROX_LOG_DEBUG(cli_log, "{:>20} {}", "request_account_info", jdata.dump(4));
+          GROX_LOG_TRACE(cli_log, "{:>20} {}", "request_account_info", jdata.dump(4));
           assert(jdata.size() > 0);
           assert(jdata["eur_available"] != "");
           finished = true;
