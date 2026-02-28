@@ -14,11 +14,10 @@
 #include "data/ohlc_utils.hpp"
 #include "data/order_book.hpp"
 #include "data/timebased_chart_data.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 
 // ----------------------------------------------------------------------------
-template <int Level>
-inline constexpr grox::debug::detail::print_threshold<Level, 2> indicator_dbg("Indicate");
+inline auto indicator_log = grox::log::create("Indicate");
 
 // ----------------------------------------------------------------------------
 struct order_book_param

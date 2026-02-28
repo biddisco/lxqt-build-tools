@@ -13,7 +13,7 @@
 #include <fmt/format.h>
 #include "nlohmann/json.hpp"
 //
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "util/datetime_utils.hpp"
 
@@ -21,10 +21,7 @@
 static std::atomic<int> counter{0};
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug::detail;
-//
-template <int Level>
-inline constexpr print_threshold<Level, 6> test_dbg("Test");
+static auto test_log = grox::log::create("Test");
 
 // ----------------------------------------------------------------------------
 struct price
@@ -43,7 +40,8 @@ void from_json(nlohmann::json const& j, price& p)
     else
       p.value = stod(j[0].get<std::string>());
     p.time = j[1];
-    test_dbg<7>.debug(ffmt<s20>("price history"), msecs_unix_to_calendar_time_local(p.time * 1000));
+    GROX_LOG_DEBUG(
+        test_log, "{:>20} {}", "price history", msecs_unix_to_calendar_time_local(p.time * 1000));
   }
 }
 
@@ -52,19 +50,19 @@ void handle_price_history(QByteArray byteArray)
 {
   std::string_view data(byteArray.constData(), byteArray.length());
   nlohmann::json jdata = nlohmann::json::parse(data);
-  test_dbg<9>.debug(ffmt<s20>("price history"), jdata.dump(4));
+  GROX_LOG_DEBUG(test_log, "{:>20} {}", "price history", jdata.dump(4));
   counter++;
   //
   auto subsect = jdata["data"]["prices"]["all"]["prices"];
-  test_dbg<8>.debug(ffmt<s20>("price history"), subsect.dump(4));
+  GROX_LOG_DEBUG(test_log, "{:>20} {}", "price history", subsect.dump(4));
   auto prices = subsect.get<std::vector<price>>();
   auto first_date = prices.back().time;
   std::string first_string = msecs_unix_to_calendar_time_local(first_date * 1000);
-  test_dbg<6>.debug(ffmt<s20>("First date"), first_string);
+  GROX_LOG_DEBUG(test_log, "{:>20} {}", "First date", first_string);
   //
   if (first_string != "2020-05-26 02:00:00")
   {
-    test_dbg<6>.error(ffmt<s20>("Fail"), first_string, "2020-05-26 02:00:00");
+    GROX_LOG_ERROR(test_log, "{:>20} {} {}", "Fail", first_string, "2020-05-26 02:00:00");
     counter--;
   }
   QCoreApplication::quit();

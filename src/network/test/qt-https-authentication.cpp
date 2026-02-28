@@ -14,7 +14,7 @@
 //
 #include "fmt/format.h"
 //
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "util/execute_os_command.hpp"
@@ -29,9 +29,7 @@ int const bitstamp_https_port = 443;
 QNetworkAccessManager networkmanager;
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug::detail;
-template <int Level>
-inline constexpr print_threshold<Level, 2> test1_dbg("https://");
+static auto test1_log = grox::log::create("https://");
 
 // ----------------------------------------------------------------------------
 void account_request(QNetworkAccessManager& networkmanager_, std::string const& url_path,
@@ -115,7 +113,7 @@ void make_request(QNetworkAccessManager& networkmanager)
   std::string url_path = "/api/v2/websockets_token/";
   std::string url_query = "";
 
-  //test1_dbg<0>.debug(ffmt<s20>("ref count"), client.get(), "test", client.use_count());
+  //GROX_LOG_DEBUG(test1_log, "{:>20} {} test {}", "ref count", client.get(), client.use_count());
 
   // Run
   account_request(networkmanager, url_path, url_query, [](QByteArray byteArray) {

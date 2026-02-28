@@ -7,12 +7,10 @@
 #include "widgets/currency_widget.hpp"
 #include "widgets/wallet_widget.hpp"
 //
+#include "debug/logging.hpp"
+//
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of zero disables messages with a priority>0
-// a debug level of N shows messages with priority<N
-template <int Level>
-inline constexpr print_threshold<Level, 2> wwidg_dbg("Wallet-W");
+static auto wwidg_log = grox::log::create("Wallet-W");
 
 // ----------------------------------------------------------------------------
 wallet_widget::wallet_widget(QWidget* parent)
@@ -48,7 +46,7 @@ void wallet_widget::set_data(ledger_wallet* w)
   int decimals = w->network_->get_decimals();
   //
   std::string wname = fmt::format("{}/{}", w->network_->get_name(), w->name_);
-  wwidg_dbg<0>.debug(ffmt<s20>("set_data"), wname);
+  GROX_LOG_DEBUG(wwidg_log, "{:>20} {}", "set_data", wname);
   ui->wallet_groupbox->setTitle(to_qstring(wname));
   ui->address->setText(w->public_.c_str());
   ui->address->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -58,7 +56,7 @@ void wallet_widget::set_data(ledger_wallet* w)
   auto l = w->lock_currencies();
   for (auto& c : w->currencies_)
   {
-    wwidg_dbg<0>.debug(ffmt<s20>("assign currencies"), c.symbol_.to_stringrep(true, true));
+    GROX_LOG_DEBUG(wwidg_log, "{:>20} {}", "assign currencies", c.symbol_.to_stringrep(true, true));
     // widgets are added to the layout, but become children of the layout's parent
     auto* widget =
         ui->wallet_groupbox->findChild<currency_widget*>(c.symbol_.to_stringrep(true, true));

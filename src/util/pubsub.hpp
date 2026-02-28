@@ -15,13 +15,11 @@
 #include <pika/execution_base/any_sender.hpp>
 //
 #include "debug/demangle_helper.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "senders/pika_stdexec.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug::detail;
-template <int Level>
-inline constexpr print_threshold<Level, 2> pubsub_dbg("Pub__Sub");
+inline auto pubsub_log = grox::log::create("Pub__Sub");
 
 // ----------------------------------------------------------------------------
 namespace grox {
@@ -45,10 +43,11 @@ namespace grox {
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
       if (subscriptions.size() > 0)
       {
-        using namespace grox::debug;
+        using grox::debug::print_type;
         for (auto& subscriber : subscriptions)
         {
-          pubsub_dbg<6>.debug(ffmt<s20>("publish"), subscriber.first, print_type<Signature>());
+          GROX_LOG_DEBUG(
+              pubsub_log, "{:>20} {} {}", "publish", subscriber.first, print_type<Signature>());
 
           stdexec::sender auto snd =
               stdexec::starts_on(grox::senders::default_pool_scheduler(), stdexec::just()) |
@@ -61,11 +60,12 @@ namespace grox {
     // ----------------------------------------------------------------------------
     void subscribe(std::string const& id, Signature callback)
     {
-      using namespace grox::debug;
+      using grox::debug::print_type;
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
       if (subscriptions.contains(id))
       {
-        pubsub_dbg<0>.error(ffmt<s20>("duplicate subscribe"), id, print_type<Signature>());
+        GROX_LOG_ERROR(
+            pubsub_log, "{:>20} {} {}", "duplicate subscribe", id, print_type<Signature>());
       }
       subscriptions.insert(std::make_pair(id, callback));
     }
@@ -73,21 +73,22 @@ namespace grox {
     // ----------------------------------------------------------------------------
     void unsubscribe(std::string const& id)
     {
-      using namespace grox::debug;
+      using grox::debug::print_type;
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
       if (subscriptions.contains(id)) { subscriptions.erase(id); }
       else
       {
         if (subscriptions.empty())
         {
-          pubsub_dbg<0>.error(
-              ffmt<s20>("unsubscribe"), id, "empty/cleared", print_type<Signature>());
+          GROX_LOG_ERROR(pubsub_log, "{:>20} {} {} {}", "unsubscribe", id, "empty/cleared",
+              print_type<Signature>());
         }
         else
         {
           for (auto const& [k, v] : subscriptions)
           {
-            pubsub_dbg<0>.error(ffmt<s20>("unsubscribe"), id, k, print_type<Signature>());
+            GROX_LOG_ERROR(
+                pubsub_log, "{:>20} {} {} {}", "unsubscribe", id, k, print_type<Signature>());
           }
           throw std::runtime_error("Incorrect Id given to unsubscribe");
         }
@@ -97,10 +98,11 @@ namespace grox {
     // ----------------------------------------------------------------------------
     void clear()
     {
-      using namespace grox::debug;
+      using grox::debug::print_type;
       for (auto const& [k, v] : subscriptions)
       {
-        pubsub_dbg<3>.debug(ffmt<s20>("unsubscribe"), "clear", k, print_type<Signature>());
+        GROX_LOG_DEBUG(
+            pubsub_log, "{:>20} {} {} {}", "unsubscribe", "clear", k, print_type<Signature>());
       }
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
       subscriptions.clear();

@@ -1,6 +1,6 @@
 #include <utility>
 //
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "trade_widget.hpp"
 #include "ui_trade_widget.h"
 #include "util/stringutils.hpp"
@@ -10,9 +10,7 @@
 #include "senders/qtstdexec.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-template <int Level>
-inline constexpr print_threshold<Level, 3> trade_dbg("TradeWgt");
+static auto trade_log = grox::log::create("TradeWgt");
 
 // ----------------------------------------------------------------------------
 trade_widget::trade_widget(QWidget* parent)
@@ -105,7 +103,7 @@ void trade_widget::connect_events()
         | stdexec::then([this](QByteArray byteArray) {                               // pika
             std::string_view data(byteArray.constData(), byteArray.length());
             nlohmann::json jdata = nlohmann::json::parse(data);
-            trade_dbg<2>.debug(ffmt<s20>("cancel_order"), trade_.id_, jdata.dump());
+            GROX_LOG_DEBUG(trade_log, "{:>20} {} {}", "cancel_order", trade_.id_, jdata.dump());
             if (!jdata.contains("error"))
             {
               if (jdata["id"] == trade_.id_)
@@ -114,7 +112,10 @@ void trade_widget::connect_events()
                     std::dynamic_pointer_cast<bitstamp_network>(trade_.network_)->wallets()[0];
                 acct->remove_trade(trade_);
               }
-              else { trade_dbg<0>.error(ffmt<s20>("cancel_order"), trade_.id_, jdata.dump()); }
+              else
+              {
+                GROX_LOG_ERROR(trade_log, "{:>20} {} {}", "cancel_order", trade_.id_, jdata.dump());
+              }
             }
           });
     stdexec::start_detached(std::move(web));

@@ -11,7 +11,6 @@
 #include "data/ohlc_dataset_view.hpp"
 #include "data/ohlc_utils.hpp"
 #include "data/timebased_chart_data.hpp"
-#include "debug/print.hpp"
 #include "indicators/algorithm_base.hpp"
 #include "indicators/indicator_partitioner.hpp"
 #include "indicators/indicator_registry.hpp"
@@ -108,11 +107,11 @@ public:
     // ----------------------------------------------------------------------------
     virtual ~indicator_base()
     {
-      using namespace grox::debug;
       for (auto d : get_inputs())
       {
         std::string id = subscription_name();
-        indicator_dbg<0>.debug(ffmt<s20>("UnSubscribing"), id, d.dataset_->get_resolution());
+        GROX_LOG_DEBUG(
+            indicator_log, "{:>20} {} {}", "UnSubscribing", id, d.dataset_->get_resolution().name_);
         d.dataset_->new_data_subscribers_.unsubscribe(id);
       }
     }
@@ -167,7 +166,6 @@ public:
     std::vector<candle_input_data> connect_candle_input_datasets(
         std::shared_ptr<ohlc_dataset_view> view)
     {
-      using namespace grox::debug;
       std::vector<candle_input_data> result;
       for (auto const& p : get_params())
       {
@@ -184,14 +182,14 @@ public:
     void register_callbacks()
     {
       // register a handler to make sure we pickup updates to datasets
-      using namespace grox::debug;
       for (auto d : get_inputs())
       {
         std::string id = subscription_name();
-        indicator_dbg<0>.debug(ffmt<s20>("Subscribing"), id, d.dataset_->get_resolution());
+        GROX_LOG_DEBUG(
+            indicator_log, "{:>20} {} {}", "Subscribing", id, d.dataset_->get_resolution().name_);
         // attach a callback that is triggered when new data arrives
         d.dataset_->new_data_subscribers_.subscribe(id, [this](std::uint64_t N) {
-          indicator_dbg<0>.debug(ffmt<s20>(get_name().c_str()), "new samples", ffmt<dec4>(N));
+          GROX_LOG_DEBUG(indicator_log, "{:>20} new samples {:04d}", get_name().c_str(), N);
           // todo - only call if all inputs are updated
           execute_continue();
         });
@@ -279,7 +277,7 @@ public:
           // resume from previous position
           start_index = valid_index_;
         }
-        indicator_dbg<5>.debug(ffmt<s20>("operator_buy_sell"), "start_index", start_index);
+        GROX_LOG_DEBUG(indicator_log, "{:>20} start_index {}", "operator_buy_sell", start_index);
         auto partitioner = block_partitioner(input->data(), start_index, chunksize);
         // we have extracted pointers, we can now unlock
         l.unlock();
@@ -291,7 +289,8 @@ public:
           auto l = get_input(0).view_->take_readonly_lock(name_, "operator_buy_sell", p);
           if (input->size() < origin_size)
           {
-            indicator_dbg<5>.debug(ffmt<s20>("operator_buy_sell"), "Data reduced", "Aborting", p);
+            GROX_LOG_DEBUG(
+                indicator_log, "{:>20} Data reduced Aborting {}", "operator_buy_sell", p);
             break;
           }
           // recompute partitions, just in case input data grew in size
@@ -323,7 +322,7 @@ public:
             }
             valid_index_++;
           }
-          indicator_dbg<2>.debug(ffmt<s20>("operator_buy_sell"), "partition complete", p);
+          GROX_LOG_DEBUG(indicator_log, "{:>20} partition complete {}", "operator_buy_sell", p);
         }
       }
       executing_ = false;

@@ -19,7 +19,7 @@
 #include <pika/program_options.hpp>
 //
 #include "config/config.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "exchange/bitstamp.hpp"
 #include "senders/qhttp-post-sender.hpp"
 #include "senders/qtstdexec.hpp"
@@ -42,15 +42,13 @@ std::shared_ptr<bitstamp_network> bitstamp_exchange;
 
 // ----------------------------------------------------------------------------
 namespace {
-  template <int Level>
-  inline constexpr grox::debug::detail::print_threshold<Level, 0> test1_dbg("test-exB");
+  static auto cli_log = grox::log::create("test-exB");
 }    // namespace
 
 // ------------------------------------------------------------------
 int request_account_info()
 {
-  using namespace grox::debug;
-  test1_dbg<2>.debug(ffmt<s20>("TEST(abstract_exchange, request_account_info)"));
+  GROX_LOG_DEBUG(cli_log, "{:>20}", "TEST(abstract_exchange, request_account_info)");
   std::atomic<bool> finished{false};
 
   bitstamp_account& acct = bitstamp_exchange->accounts()[0];
@@ -60,7 +58,7 @@ int request_account_info()
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
-          test1_dbg<0>.debug(ffmt<s20>("request_account_info"), jdata.dump(4));
+          GROX_LOG_DEBUG(cli_log, "{:>20} {}", "request_account_info", jdata.dump(4));
           assert(jdata.size() > 0);
           assert(jdata["eur_available"] != "");
           finished = true;
@@ -76,8 +74,7 @@ int request_account_info()
 // ----------------------------------------------------------------------------
 int qt_main(int argc, char* argv[])
 {
-  using namespace grox::debug;
-  test1_dbg<2>.debug(ffmt<s20>("enter qt_main"));
+  GROX_LOG_DEBUG(cli_log, "{:>20}", "enter qt_main");
   QCoreApplication a(argc, argv);
   // the lifetime of the network manager must be as long as the qt application
   QNetworkAccessManager networkmanager;
@@ -112,8 +109,7 @@ int qt_main(int argc, char* argv[])
 // pika_main - executes on an pika thread
 int pika_main(int argc, char** argv, pika::program_options::variables_map& vm)
 {
-  using namespace grox::debug;
-  test1_dbg<2>.debug(ffmt<s20>("enter pika_main"));
+  GROX_LOG_DEBUG(cli_log, "{:>20}", "enter pika_main");
   // Get a scheduler on the thread pool we have reserved for Qt
   auto qt_sch = pika::execution::experimental::thread_pool_scheduler{
       &pika::resource::get_thread_pool(qt_pool_name)};
@@ -128,7 +124,7 @@ int pika_main(int argc, char** argv, pika::program_options::variables_map& vm)
   auto ret = [&] {
     // launch and block on completion of the Qt application thread
     int test_results = tt::sync_wait(std::move(snd));
-    test1_dbg<2>.debug(ffmt<s20>("qt_main complete"));
+    GROX_LOG_DEBUG(cli_log, "{:>20}", "qt_main complete");
     return test_results;
   }();
   pika::finalize();
@@ -159,6 +155,7 @@ void init_qt_pool(pika::resource::partitioner& rp, pika::program_options::variab
 // will execute pika_main on an pika thread
 int main(int argc, char** argv)
 {
+  grox::log::init_from_env();
   // setup pika initialization including thread pool for Qt main thread
   // tell the scheduler to sleep quickly when there are no tasks to work on
   // if not specified on the command line, ask for 2 threads

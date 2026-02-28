@@ -16,17 +16,15 @@
 #include <nlohmann/json.hpp>
 // Grox
 #include "data/order_book.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "exchange/order_book_bitstamp.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
 #include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug::detail;
 using namespace nlohmann;
-template <int Level>
-inline constexpr print_threshold<Level, 2> bobook_dbg("bit-book");
+static auto bobook_log = grox::log::create("bit-book");
 
 // ----------------------------------------------------------------------------
 // Bitstamp specific order book processing routines
@@ -54,8 +52,8 @@ void bitstamp_order_book::accept_json_bitstamp(QString const data)
   }
   catch (json::exception& e)
   {
-    bobook_dbg<0>.error(ffmt<s20>("accept_json_bitstamp"), "JSON parse error:", e.what(),
-        "data:", data.toStdString());
+    GROX_LOG_ERROR(bobook_log, "{:>20} JSON parse error: {} data: {}", "accept_json_bitstamp",
+        e.what(), data.toStdString());
   }
 }
 
@@ -64,7 +62,7 @@ void bitstamp_order_book::accept_json_bitstamp(QString const data)
 // these must be converted to numeric arrays
 void bitstamp_order_book::bid_ask_string_to_number(json const& jdata, offer_data& data)
 {
-  bobook_dbg<5>.debug(ffmt<s20>("bid_ask_string_to_number"), jdata.size());
+  GROX_LOG_DEBUG(bobook_log, "{:>20} {}", "bid_ask_string_to_number", jdata.size());
   //
   data.rate.resize(jdata.size(), 0);
   data.size.resize(jdata.size(), 0);

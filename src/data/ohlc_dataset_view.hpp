@@ -16,14 +16,13 @@
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
 #include "data/timebased_chart_data.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 
 /// dataset_view provides functions to access the data array holding a dataset
 /// as well as other resampled arrays that hold the same data at lower resolutions.
 
 // ----------------------------------------------------------------------------
-template <int Level>
-inline constexpr grox::debug::detail::print_threshold<Level, 2> view_dbg("DataView");
+inline auto view_log = grox::log::create("DataView");
 
 // ----------------------------------------------------------------------------
 class ohlc_dataset_view
@@ -114,22 +113,22 @@ class ohlc_dataset_view
   template <typename... Args>
   std::shared_lock<mutex_type> take_readonly_lock(Args... args) const
   {
-    view_dbg<4>.debug(
-        ffmt<s20>("take_readonly_lock"), this, "acquire ", exchange_, ticker_string_, args...);
+    GROX_LOG_DEBUG(view_log, "{:>20} {} acquire  {} {}", "take_readonly_lock", fmt::ptr(this),
+        exchange_, ticker_string_);
     std::shared_lock<mutex_type> lock(live_mutex_);
-    view_dbg<4>.debug(
-        ffmt<s20>("take_readonly_lock"), this, "acquired", exchange_, ticker_string_, args...);
+    GROX_LOG_DEBUG(view_log, "{:>20} {} acquired {} {}", "take_readonly_lock", fmt::ptr(this),
+        exchange_, ticker_string_);
     return lock;
   }
 
   template <typename... Args>
   std::unique_lock<mutex_type> take_readwrite_lock(Args... args) const
   {
-    view_dbg<4>.debug(
-        ffmt<s20>("take_readwrite_lock"), this, "acquire ", exchange_, ticker_string_, args...);
+    GROX_LOG_DEBUG(view_log, "{:>20} {} acquire  {} {}", "take_readwrite_lock", fmt::ptr(this),
+        exchange_, ticker_string_);
     std::unique_lock<mutex_type> lock(live_mutex_);
-    view_dbg<4>.debug(
-        ffmt<s20>("take_readwrite_lock"), this, "acquired", exchange_, ticker_string_, args...);
+    GROX_LOG_DEBUG(view_log, "{:>20} {} acquired {} {}", "take_readwrite_lock", fmt::ptr(this),
+        exchange_, ticker_string_);
     return lock;
   }
 

@@ -9,17 +9,12 @@
 #include <QwtScaleEngine>
 #include <QwtScaleMap>
 // Grox
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "plot/ohlc_interactor.hpp"
 #include "plot/timebased_chart_plot.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
-//
-template <int Level>
-inline constexpr print_threshold<Level, debug_level> inter_dbg("interact");
+static auto inter_log = grox::log::create("interact");
 
 // ----------------------------------------------------------------------------
 class ohlc_interactor::PrivateData
@@ -229,11 +224,13 @@ bool ohlc_interactor::eventFilter(QObject* object, QEvent* event)
 
     if (value > 0)
     {
-      inter_dbg<5>.debug(ffmt<s20>("gesture"), static_cast<QNativeGestureEvent*>(event)->value());
+      GROX_LOG_DEBUG(
+          inter_log, "{:>20} {}", "gesture", static_cast<QNativeGestureEvent*>(event)->value());
     }
     else if (value < 0)
     {
-      inter_dbg<5>.debug(ffmt<s20>("gesture"), static_cast<QNativeGestureEvent*>(event)->value());
+      GROX_LOG_DEBUG(
+          inter_log, "{:>20} {}", "gesture", static_cast<QNativeGestureEvent*>(event)->value());
     }
     break;
   }

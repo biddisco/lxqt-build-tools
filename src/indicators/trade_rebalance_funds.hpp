@@ -7,6 +7,7 @@
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
+#include "debug/logging.hpp"
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/kernels/gradient.hpp"
@@ -116,14 +117,14 @@ public:
       indicator_base::create_outputs(view);
       auto d1 = get_input(0);
       set_time_resolution(d1.dataset_->get_resolution());
-      indicator_dbg<0>.debug(
-          ffmt<s20>("set_time_resolution"), get_name(), d1.dataset_->get_resolution());
+      GROX_LOG_DEBUG(indicator_log, "{:>20} {} {}", "set_time_resolution", get_name(),
+          d1.dataset_->get_resolution().name_);
     }
 
     // ---------------------------------------
     void buy(double time, double cash_amount)
     {
-      indicator_dbg<0>.debug(ffmt<s20>("buy"), time, cash_amount);
+      GROX_LOG_DEBUG(indicator_log, "{:>20} {} {}", "buy", time, cash_amount);
       double fee = 0.01 * fee_percent_buy_ * cash_amount;
       double taker_pay = cash_amount - fee;
       //
@@ -149,15 +150,16 @@ public:
     // ---------------------------------------
     void sell(double time, double xrp_amount)
     {
-      indicator_dbg<0>.debug(ffmt<s20>("sell"), time, xrp_amount);
+      GROX_LOG_DEBUG(indicator_log, "{:>20} {} {}", "sell", time, xrp_amount);
       double fee = 0.01 * fee_percent_sell_ * xrp_amount;
       double maker_pay = xrp_amount - fee;
       //
       double p = hdf5_ohlc_->get_estimated_sell_price_volume(maker_pay, time + time_res_, 2.0);
       double initial_value = (p * xrp_total_) + cash_total_;
 
-      indicator_dbg<0>.debug(ffmt<s20>("sell"), "initial_value", initial_value, "cash_total_",
-          cash_total_, "xrp_total", xrp_total_, "sell_amount", xrp_amount, "price", p);
+      GROX_LOG_DEBUG(indicator_log,
+          "{:>20} initial_value {} cash_total_ {} xrp_total {} sell_amount {} price {}", "sell",
+          initial_value, cash_total_, xrp_total_, xrp_amount, p);
 
       cash_total_ += maker_pay * p;
       xrp_total_ -= xrp_amount;
@@ -170,8 +172,9 @@ public:
           .tokens_ = xrp_total_,
           .cash_ = cash_total_};
       //
-      indicator_dbg<0>.debug(ffmt<s20>("sell"), "final_value", last_result_.value_, "cash_total_",
-          cash_total_, "xrp_total", xrp_total_, "sell_amount", xrp_amount, "price", p);
+      GROX_LOG_DEBUG(indicator_log,
+          "{:>20} final_value {} cash_total_ {} xrp_total {} sell_amount {} price {}", "sell",
+          last_result_.value_, cash_total_, xrp_total_, xrp_amount, p);
       assert(xrp_total_ >= 0);
       assert(cash_total_ >= 0);
       assert(initial_value >= last_result_.value_);
@@ -202,8 +205,8 @@ public:
         // rebalance by selling some XRP
         double excess_cash = (cash_fraction * initial_value_est) - cash_total_;
         double excess_xrp_est = excess_cash / sell_price_est;
-        indicator_dbg<0>.debug(
-            ffmt<s20>("rebalance-sell"), time, initial_value_est, cash_total_, excess_xrp_est);
+        GROX_LOG_DEBUG(indicator_log, "{:>20} {} {} {} {}", "rebalance-sell", time,
+            initial_value_est, cash_total_, excess_xrp_est);
         sell(time, excess_xrp_est);
         if (last_result_.event_price_ < sell_price_est) sell_price_est = last_result_.event_price_;
       }
@@ -212,15 +215,16 @@ public:
         // rebalance by buying some XRP
         double target_cash = cash_fraction * initial_value_est;
         double excess_cash = cash_total_ - target_cash;
-        indicator_dbg<0>.debug(
-            ffmt<s20>("rebalance-buy"), time, initial_value_est, cash_total_, excess_cash);
+        GROX_LOG_DEBUG(indicator_log, "{:>20} {} {} {} {}", "rebalance-buy", time,
+            initial_value_est, cash_total_, excess_cash);
         buy(time, excess_cash);
         if (last_result_.event_price_ > buy_price_est) buy_price_est = last_result_.event_price_;
       }
       //
       initial_value_est = round_n((sell_price_est * xrp_total_initial + cash_total_initial), 6);
       double final_value_total = round_n((sell_price_est * xrp_total_) + cash_total_, 6);
-      indicator_dbg<0>.debug(ffmt<s20>("rebalance-value"), initial_value_est, final_value_total);
+      GROX_LOG_DEBUG(
+          indicator_log, "{:>20} {} {}", "rebalance-value", initial_value_est, final_value_total);
       assert(final_value_total <= initial_value_est);
     }
 
@@ -248,8 +252,8 @@ public:
         if (std::signbit(gradient_this_) != std::signbit(gradient_last_))
         {
           // gradient changed sign
-          indicator_dbg<0>.debug(
-              ffmt<s20>("gradient sign change"), val.time, current_average_, rsi, gradient_this_);
+          GROX_LOG_DEBUG(indicator_log, "{:>20} {} {} {} {}", "gradient sign change", val.time,
+              current_average_, rsi, gradient_this_);
           rebalance(val.time, rsi);
         }
       }

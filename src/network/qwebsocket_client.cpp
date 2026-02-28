@@ -8,7 +8,7 @@
 #include <QtNetwork/QSslError>
 #include <QtWebSockets/QWebSocket>
 //
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "network/qwebsocket_client.hpp"
 
 QT_USE_NAMESPACE
@@ -34,9 +34,7 @@ struct fmt::formatter<QUrl> : formatter<char const*>
 namespace net::ws {
 
   // ----------------------------------------------------------------------------
-  using namespace grox::debug::detail;
-  template <int Level>
-  inline constexpr print_threshold<Level, 2> qwebsocket_dbg("QWebsock");
+  static auto qwebsocket_log = grox::log::create("QWebsock");
 
   // ------------------------------------------------------------------
   qwebsocket_client::qwebsocket_client(std::string const& id, QUrl const& url, QString subscribe,
@@ -52,22 +50,22 @@ namespace net::ws {
   // ------------------------------------------------------------------
   qwebsocket_client::~qwebsocket_client()
   {
-    qwebsocket_dbg<2>.debug(ffmt<s20>(id_), "Destructor");
+    GROX_LOG_DEBUG(qwebsocket_log, "{:>20} Destructor", id_);
     auto ws = websocket_.load();
     if (ws)
     {
-      qwebsocket_dbg<1>.error(
-          ffmt<s20>(id_), "Client::destructor : websocket delete - out of order");
+      GROX_LOG_ERROR(
+          qwebsocket_log, "{:>20} Client::destructor : websocket delete - out of order", id_);
       delete ws;
       websocket_.store(nullptr);
     }
-    else { qwebsocket_dbg<3>.error("~qwebsocket_client after deletion"); }
+    else { GROX_LOG_ERROR(qwebsocket_log, "~qwebsocket_client after deletion"); }
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::startConnection()
   {
-    qwebsocket_dbg<2>.debug(fmt::format("{:20s} startConnection", id_, url_));
+    GROX_LOG_DEBUG(qwebsocket_log, "{:20s} startConnection {}", id_, url_);
     //
     auto ws = new QWebSocket;
     ws->setPauseMode(QAbstractSocket::PauseNever);    // @todo PauseOnSslErrors
@@ -111,7 +109,7 @@ namespace net::ws {
     connect(ws, &QWebSocket::bytesWritten, this, &qwebsocket_client::onBytesWritten,
         Qt::DirectConnection);
 
-    qwebsocket_dbg<2>.debug(fmt::format("{:20s} openConnection {}", id_, url_));
+    GROX_LOG_DEBUG(qwebsocket_log, "{:20s} openConnection {}", id_, url_);
     QNetworkRequest request = QNetworkRequest(QUrl(url_));
     ws->open(request);
   }
@@ -122,12 +120,12 @@ namespace net::ws {
     auto ws = websocket_.load();
     if (ws)
     {
-      qwebsocket_dbg<2>.debug(fmt::format("{:20s} stopConnection : invoking WebSocket close", id_));
+      GROX_LOG_DEBUG(qwebsocket_log, "{:20s} stopConnection : invoking WebSocket close", id_);
       // Use QueuedConnection to ensure close happens on the websocket thread
       bool result = QMetaObject::invokeMethod(
           ws, "close", Qt::QueuedConnection, QWebSocketProtocol::CloseCodeNormal);
     }
-    else { qwebsocket_dbg<3>.error("stopConnection after deletion"); }
+    else { GROX_LOG_ERROR(qwebsocket_log, "stopConnection after deletion"); }
   }
 
   // ------------------------------------------------------------------
@@ -136,10 +134,10 @@ namespace net::ws {
     auto ws = websocket_.load();
     if (ws)
     {
-      qwebsocket_dbg<3>.debug(fmt::format("{:20s} Connected : sending subscribe", id_));
+      GROX_LOG_DEBUG(qwebsocket_log, "{:20s} Connected : sending subscribe", id_);
       ws->sendTextMessage(subscribe_);
     }
-    else { qwebsocket_dbg<3>.error("onConnected after deletion"); }
+    else { GROX_LOG_ERROR(qwebsocket_log, "onConnected after deletion"); }
   }
 
   // ------------------------------------------------------------------
@@ -148,18 +146,18 @@ namespace net::ws {
     auto ws = websocket_.load();
     if (ws)
     {
-      qwebsocket_dbg<2>.error(fmt::format("{:20s} Disconnected : Unexpected : CloseCode is : {} {}",
-          id_, QVariant::fromValue(ws->closeCode()).toString(), ws->errorString()));
+      GROX_LOG_ERROR(qwebsocket_log, "{:20s} Disconnected : Unexpected : CloseCode is : {} {}", id_,
+          QVariant::fromValue(ws->closeCode()).toString(), ws->errorString());
     }
-    else { qwebsocket_dbg<3>.error("onDisconnected after deletion"); }
+    else { GROX_LOG_ERROR(qwebsocket_log, "onDisconnected after deletion"); }
     emit finished();
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onStateChanged(QAbstractSocket::SocketState socketState)
   {
-    qwebsocket_dbg<3>.debug(
-        fmt::format("{:20s} StateChanged {}", id_, QVariant::fromValue(socketState).toString()));
+    GROX_LOG_DEBUG(
+        qwebsocket_log, "{:20s} StateChanged {}", id_, QVariant::fromValue(socketState).toString());
   }
 
   // ------------------------------------------------------------------
@@ -172,15 +170,15 @@ namespace net::ws {
       if (code != QWebSocketProtocol::CloseCodeNormal)
       {
         auto reason = ws->closeReason();
-        qwebsocket_dbg<2>.error(fmt::format(
+        GROX_LOG_ERROR(qwebsocket_log,
             "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
-            QVariant::fromValue(code).toString(), ws->errorString()));
+            QVariant::fromValue(code).toString(), ws->errorString());
       }
-      else { qwebsocket_dbg<3>.debug(fmt::format("{:20s} AboutToClose : CloseCode Normal", id_)); }
+      else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} AboutToClose : CloseCode Normal", id_); }
       ws->deleteLater();
       websocket_.store(nullptr);
     }
-    else { qwebsocket_dbg<3>.error("onAboutToClose after deletion"); }
+    else { GROX_LOG_ERROR(qwebsocket_log, "onAboutToClose after deletion"); }
   }
 
   // ------------------------------------------------------------------
@@ -188,7 +186,7 @@ namespace net::ws {
   {
     for (auto const& err : errors)
     {
-      qwebsocket_dbg<2>.error(fmt::format("{:20s} SslError : {}", id_, err.errorString()));
+      GROX_LOG_ERROR(qwebsocket_log, "{:20s} SslError : {}", id_, err.errorString());
     }
     // qwebsocket_dbg<2>.error(fmt::format("{:20s} SslErrors", id_));
     // Q_UNUSED(errors);
@@ -207,52 +205,50 @@ namespace net::ws {
     auto ws = websocket_.load();
     if (ws)
     {
-      qwebsocket_dbg<2>.error(fmt::format("{:20s} SslErrors : Error :{}", id_, ws->errorString()));
+      GROX_LOG_ERROR(qwebsocket_log, "{:20s} SslErrors : Error :{}", id_, ws->errorString());
     }
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onTextFrameReceived(QString const& frame, bool isLastFrame)
   {
-    qwebsocket_dbg<9>.error(
-        fmt::format("{:20s} TextFrameReceived - this should be overriden", id_));
+    GROX_LOG_ERROR(qwebsocket_log, "{:20s} TextFrameReceived - this should be overriden", id_);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onTextMessageReceived(QString message)
   {
-    qwebsocket_dbg<2>.error(
-        fmt::format("{:20s} TextMessageReceived - this should be overriden", id_));
+    GROX_LOG_ERROR(qwebsocket_log, "{:20s} TextMessageReceived - this should be overriden", id_);
     emit processIncomingMessage(message);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onBinaryFrameReceived(QByteArray const& frame, bool isLastFrame)
   {
-    qwebsocket_dbg<5>.error(fmt::format("{:20s} BinaryFrameReceived", id_));
+    GROX_LOG_ERROR(qwebsocket_log, "{:20s} BinaryFrameReceived", id_);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onBinaryMessageReceived(QByteArray const& message)
   {
-    qwebsocket_dbg<5>.error(fmt::format("{:20s} BinaryMessageReceived", id_));
+    GROX_LOG_ERROR(qwebsocket_log, "{:20s} BinaryMessageReceived", id_);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onReadChannelFinished()
   {
-    qwebsocket_dbg<3>.debug(fmt::format("{:20s} ReadChannelFinished", id_));
+    GROX_LOG_DEBUG(qwebsocket_log, "{:20s} ReadChannelFinished", id_);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onPong(quint64 elapsedTime, QByteArray const& payload)
   {
-    qwebsocket_dbg<9>.error(fmt::format("{:20s} Pong", id_));
+    GROX_LOG_ERROR(qwebsocket_log, "{:20s} Pong", id_);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onBytesWritten(qint64 bytes)
   {
-    qwebsocket_dbg<9>.error(fmt::format("{:20s} BytesWritten {}", id_, bytes));
+    GROX_LOG_ERROR(qwebsocket_log, "{:20s} BytesWritten {}", id_, bytes);
   }
 }    // namespace net::ws

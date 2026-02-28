@@ -7,14 +7,12 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 //
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug::detail;
-template <int Level>
-inline constexpr print_threshold<Level, 1> http_dbg("https://");
+static auto http_log = grox::log::create("https://");
 
 // ----------------------------------------------------------------------------
 namespace net::http {
@@ -93,7 +91,7 @@ namespace net::http {
   {
     // just for debugging, to track use
     debug_count_--;
-    http_dbg<5>.debug(ffmt<s20>("destructor"), this, debug_count_.load());
+    GROX_LOG_DEBUG(http_log, "{:>20} {} {}", "destructor", fmt::ptr(this), debug_count_.load());
   }
 
   // ----------------------------------------------------------------------------
@@ -102,7 +100,7 @@ namespace net::http {
     using namespace std::placeholders;
     if (nullptr == reply)
     {
-      http_dbg<0>.error(ffmt<s20>("attach_handler"), this, "fail : nullptr");
+      GROX_LOG_ERROR(http_log, "{:>20} {} fail : nullptr", "attach_handler", fmt::ptr(this));
       return;
     }
     if (reply->isRunning())
@@ -113,8 +111,8 @@ namespace net::http {
       QObject::connect(
           reply, &QNetworkReply::errorOccurred, this,
           [this, reply](QNetworkReply::NetworkError err) {
-            http_dbg<0>.error(ffmt<s20>("handler"), this, QVariant(err).toString().toStdString(),
-                reply->errorString().toStdString());
+            GROX_LOG_ERROR(http_log, "{:>20} {} {} {}", "handler", fmt::ptr(this),
+                QVariant(err).toString().toStdString(), reply->errorString().toStdString());
           },
           Qt::DirectConnection);
 
@@ -123,7 +121,7 @@ namespace net::http {
     }
     else
     {    // if already finished
-      http_dbg<2>.debug(ffmt<s20>("early completion"), this, "attach handler");
+      GROX_LOG_DEBUG(http_log, "{:>20} {} attach handler", "early completion", fmt::ptr(this));
       reply_finished(this, reply);
     }
   }
@@ -132,7 +130,7 @@ namespace net::http {
   void qhttp_request_client::get_request()
   {
     // issue get request
-    http_dbg<2>.debug(ffmt<s20>("get_request"), this, url_);
+    GROX_LOG_DEBUG(http_log, "{:>20} {} {}", "get_request", fmt::ptr(this), url_);
     QNetworkReply* reply = networkmanager_.get(request_);
     attach_handler(reply);
   }
@@ -148,7 +146,7 @@ namespace net::http {
   void qhttp_request_client::post_request()
   {
     // issue post request
-    http_dbg<2>.debug(ffmt<s20>("post_request"), this, url_, content_);
+    GROX_LOG_DEBUG(http_log, "{:>20} {} {} {}", "post_request", fmt::ptr(this), url_, content_);
     QNetworkReply* reply = networkmanager_.post(request_, QByteArray(content_.data()));
     attach_handler(reply);
   }
@@ -163,7 +161,7 @@ namespace net::http {
   // ----------------------------------------------------------------------------
   void qhttp_request_client::reply_finished(client_ptr self, QNetworkReply* reply)
   {
-    http_dbg<2>.debug(ffmt<s20>("reply_finished"), self);
+    GROX_LOG_DEBUG(http_log, "{:>20} {}", "reply_finished", fmt::ptr(self));
     if (!reply) return;
     // convert raw data into std::string, this should be safe since our http traffic is utf8
     QByteArray byteArray = reply->readAll();

@@ -7,6 +7,7 @@
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
+#include "debug/logging.hpp"
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/kernels/gradient.hpp"
@@ -120,8 +121,8 @@ public:
       indicator_base::create_outputs(view);
       auto d1 = get_input(0);
       set_time_resolution(d1.dataset_->get_resolution());
-      indicator_dbg<0>.debug(
-          ffmt<s20>("set_time_resolution"), get_name(), d1.dataset_->get_resolution());
+      GROX_LOG_DEBUG(indicator_log, "{:>20} {} {}", "set_time_resolution", get_name(),
+          d1.dataset_->get_resolution().name_);
     }
 
     // ---------------------------------------

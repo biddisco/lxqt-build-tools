@@ -9,17 +9,11 @@
 //
 #include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_dataset_view.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "io/hdf5_ohlc_manager.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of zero disables messages with a priority>0
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 2;
-//
-template <int Level>
-inline constexpr print_threshold<Level, debug_level> man_dbg("DManager");
+static auto man_log = grox::log::create("DManager");
 
 // ----------------------------------------------------------------------------
 hdf5_ohlc_manager::hdf5_ohlc_manager() {}
@@ -54,7 +48,7 @@ void hdf5_ohlc_manager::read_impl(
   std::string path = group + "/" + dataname;
   if (std::filesystem::exists(file_name_))
   {
-    man_dbg<3>.debug(ffmt<s20>("file open"), path, "read_hdf5", file_name_);
+    GROX_LOG_DEBUG(man_log, "{:>20} {} read_hdf5 {}", "file open", path, file_name_);
     File file(file_name_, File::ReadWrite | File::OpenOrCreate);
     if (file.exist(path))
     {
@@ -64,8 +58,7 @@ void hdf5_ohlc_manager::read_impl(
       std::uint64_t Nread =
           std::min(Nelem, N >= 0 ? N : std::numeric_limits<std::uint64_t>().max());
       data.resize(Nread);
-      man_dbg<3>.debug(
-          ffmt<s20>("dataset read"), path, "size", ffmt<dec9>(Nread), ffmt<dec9>(Nelem));
+      GROX_LOG_DEBUG(man_log, "{:>20} {} size {:09d} {:09d}", "dataset read", path, Nread, Nelem);
       std::vector<size_t> offset{0};
       std::vector<size_t> size{Nread * ohlc_size};
       Selection slice = dataset.select(offset, size);
@@ -74,13 +67,13 @@ void hdf5_ohlc_manager::read_impl(
     else
     {
       data.clear();
-      man_dbg<3>.debug(ffmt<s20>("dataset missing"), path);
+      GROX_LOG_DEBUG(man_log, "{:>20} {}", "dataset missing", path);
     }
   }
   else { data.clear(); }
   //
   ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
-  man_dbg<3>.debug(ffmt<s20>("file close"), path, "read_hdf5", ffmt<dec9>(data.size()));
+  GROX_LOG_DEBUG(man_log, "{:>20} {} read_hdf5 {:09d}", "file close", path, data.size());
 }
 
 // ----------------------------------------------------------------------------
@@ -98,7 +91,7 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
   int valid = ohlc_dataset::validate_ohlc(data, ohlc_data_resolutions::minute, 0, dataname);
   if (valid != data.size())
   {
-    man_dbg<0>.error(ffmt<s20>("Error"), path, "Aborting write");
+    GROX_LOG_ERROR(man_log, "{:>20} {} Aborting write", "Error", path);
     throw ohlc_data_exception(valid);
     return;
   }
@@ -113,12 +106,12 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
 
   if (!std::filesystem::exists(file_name_))
   {
-    man_dbg<3>.debug(ffmt<s20>("create"), path, "write_hdf5", file_name_);
+    GROX_LOG_DEBUG(man_log, "{:>20} {} write_hdf5 {}", "create", path, file_name_);
     File file(file_name_, File::ReadWrite | File::OpenOrCreate);
   }
 
   // open for read/write
-  man_dbg<3>.debug(ffmt<s20>("open"), path, "write_hdf5", file_name_);
+  GROX_LOG_DEBUG(man_log, "{:>20} {} write_hdf5 {}", "open", path, file_name_);
   File file(file_name_, File::ReadWrite);
 
   // Create dataset if it does not already exist
@@ -134,13 +127,13 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
     DataSetCreateProps props;
     props.add(Chunking(std::vector<hsize_t>{65536}));
     // Create the dataset and write data
-    man_dbg<0>.debug(ffmt<s20>("create"), path, "size", ffmt<dec9>(data.size()));
+    GROX_LOG_DEBUG(man_log, "{:>20} {} size {:09d}", "create", path, data.size());
     DataSet dataset = file.createDataSet(path, dataspace, create_datatype<double>(), props);
   }
   // if we are extending an existing dataset
   if (update > 0)
   {
-    man_dbg<5>.debug(ffmt<s20>("extend"), path, ffmt<dec9>(update));
+    GROX_LOG_DEBUG(man_log, "{:>20} {} {:09d}", "extend", path, update);
     DataSet dataset = file.getDataSet(path);
     // resize along 1 dimmension
     dataset.resize({N});
@@ -154,10 +147,10 @@ void hdf5_ohlc_manager::write_impl(std::string group, std::string dataname,
   // truncating a dataset
   else if (truncate)
   {
-    man_dbg<0>.debug(ffmt<s20>("truncate"), path, ffmt<dec9>(data.size()));
+    GROX_LOG_DEBUG(man_log, "{:>20} {} {:09d}", "truncate", path, data.size());
     DataSet dataset = file.getDataSet(path);
     // resize along 1 dimension
     dataset.resize({N});
   }
-  man_dbg<3>.debug(ffmt<s20>("file close"), path, "write_hdf5", ffmt<dec9>(data.size()));
+  GROX_LOG_DEBUG(man_log, "{:>20} {} write_hdf5 {:09d}", "file close", path, data.size());
 }

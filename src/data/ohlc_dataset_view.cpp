@@ -44,9 +44,9 @@ ohlc_dataset_view::ohlc_dataset_view(std::string abstract_exchange, currency_pai
       origin_data->new_data_subscribers_.subscribe(
           "dataset_view" + new_data->ticker_str_ + new_data->get_resolution().name_,
           [origin_data, new_data](std::uint64_t N) {
-            view_dbg<5>.debug(ffmt<s20>("dataset_view"), new_data->ticker_str_,
-                new_data->get_resolution(), "received new samples", ffmt<dec4>(N), "updating from",
-                origin_data->ticker_str_, origin_data->get_resolution());
+            GROX_LOG_DEBUG(view_log, "{:>20} {} {} received new samples {:04d} updating from {} {}",
+                "dataset_view", new_data->ticker_str_, new_data->get_resolution().name_, N,
+                origin_data->ticker_str_, origin_data->get_resolution().name_);
             new_data->downsample_update(origin_data);
           });
     }
@@ -89,8 +89,8 @@ void ohlc_dataset_view::read_from_disk()
   {
     // QInputDialog requires int and not int64 unfortunately
     int64_t index = e.index();
-    view_dbg<0>.error(
-        ffmt<s20>("Data integrity error"), ticker_string_, "at index", ffmt<dec9>(index));
+    GROX_LOG_ERROR(
+        view_log, "{:>20} {} at index {:09d}", "Data integrity error", ticker_string_, index);
     bool ok = false;
     QString label = "First bad index is :" + QString::number(index);
     index = QInputDialog::getInt(nullptr, "Truncate from", label, index, 0, 1 << 30, 1, &ok);
@@ -110,8 +110,8 @@ void ohlc_dataset_view::truncate_from_time(double t)
   {
     auto index = samples->sample_index(t);
     samples->data().resize(index);
-    view_dbg<0>.debug(ffmt<s20>("Truncating"), ticker_string_,
-        ffmt<s3>(ohlc_data_resolutions::get_resolution(res).name_), "at index", ffmt<dec9>(index));
+    GROX_LOG_DEBUG(view_log, "{:>20} {} {:>3} at index {:09d}", "Truncating", ticker_string_,
+        ohlc_data_resolutions::get_resolution(res).name_, index);
     if (res == ohlc_data_resolutions::minute)
     {
       global_settings.data_manager_->write_impl(
@@ -236,10 +236,10 @@ ohlcv_minmax ohlc_dataset_view::get_min_max_window(
     result.min_volume_ = 0;
     result.max_volume_ = 1;
   }
-  view_dbg<8>.debug(ffmt<s20>("min_max"), ohlc_data_resolutions::get_resolution(res).name_,
-      msecs_unix_to_calendar_time_local(start_time), "->",
-      msecs_unix_to_calendar_time_local(end_time), "(", result.min_price_, ",", result.max_price_,
-      ")");
+  GROX_LOG_DEBUG(view_log, "{:>20} {} {} -> {} ( {} , {} )", "min_max",
+      ohlc_data_resolutions::get_resolution(res).name_,
+      msecs_unix_to_calendar_time_local(start_time), msecs_unix_to_calendar_time_local(end_time),
+      result.min_price_, result.max_price_);
   return result;
 }
 

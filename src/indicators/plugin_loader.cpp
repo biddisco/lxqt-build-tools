@@ -4,17 +4,13 @@
 #include <filesystem>
 #include <iostream>
 //
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "indicators/indicator_registry.hpp"
 #include "indicators/plugin_api.hpp"
 
 namespace fs = std::filesystem;
 
 namespace indicators {
-
-  using namespace grox::debug;
-  using pika::debug::detail::ffmt;
-  using pika::debug::detail::s20;
 
   // ----------------------------------------------------------------------------
   plugin_loader::~plugin_loader() { unload_all(); }
@@ -23,11 +19,11 @@ namespace indicators {
   std::size_t plugin_loader::load_plugins_from_directory(
       std::string const& directory, indicator_registry& registry)
   {
-    indicator_dbg<1>.debug(ffmt<s20>("Loading plugins from"), directory);
+    GROX_LOG_DEBUG(indicator_log, "{:>20} {}", "Loading plugins from", directory);
 
     if (!fs::exists(directory) || !fs::is_directory(directory))
     {
-      indicator_dbg<1>.warning(ffmt<s20>("Plugin directory"), "does not exist:", directory);
+      GROX_LOG_WARN(indicator_log, "{:>20} does not exist: {}", "Plugin directory", directory);
       return 0;
     }
 
@@ -45,17 +41,17 @@ namespace indicators {
         // Only load .so files (Linux shared libraries)
         if (ext != ".so") continue;
 
-        indicator_dbg<1>.debug(ffmt<s20>("Found plugin file"), path);
+        GROX_LOG_DEBUG(indicator_log, "{:>20} {}", "Found plugin file", path);
 
         if (load_plugin(path, registry)) { loaded_count++; }
       }
     }
     catch (fs::filesystem_error const& e)
     {
-      indicator_dbg<1>.error(ffmt<s20>("Filesystem error"), e.what());
+      GROX_LOG_ERROR(indicator_log, "{:>20} {}", "Filesystem error", e.what());
     }
 
-    indicator_dbg<1>.debug(ffmt<s20>("Plugins loaded"), loaded_count, "from", directory);
+    GROX_LOG_DEBUG(indicator_log, "{:>20} {} from {}", "Plugins loaded", loaded_count, directory);
 
     return loaded_count;
   }
@@ -70,8 +66,8 @@ namespace indicators {
     // Verify API version compatibility
     if ((plugin.info.api_version >> 16) != (GROX_PLUGIN_API_VERSION >> 16))
     {
-      indicator_dbg<1>.error(ffmt<s20>("Plugin API mismatch"), plugin.info.name,
-          "requires API version", (plugin.info.api_version >> 16), "but we have",
+      GROX_LOG_ERROR(indicator_log, "{:>20} {} requires API version {} but we have {}",
+          "Plugin API mismatch", plugin.info.name, (plugin.info.api_version >> 16),
           (GROX_PLUGIN_API_VERSION >> 16));
       unload_plugin(plugin);
       return false;
@@ -80,20 +76,20 @@ namespace indicators {
     // Call plugin registration function
     try
     {
-      indicator_dbg<1>.debug(ffmt<s20>("Registering plugin"), plugin.info.name, plugin.info.version,
-          "-", plugin.info.description);
+      GROX_LOG_DEBUG(indicator_log, "{:>20} {} {} - {}", "Registering plugin", plugin.info.name,
+          plugin.info.version, plugin.info.description);
 
       plugin.reg_func(&registry);
 
       plugins_.push_back(plugin);
-      indicator_dbg<1>.debug(
-          ffmt<s20>("Plugin registered"), plugin.info.name, "category:", plugin.info.category);
+      GROX_LOG_DEBUG(indicator_log, "{:>20} {} category: {}", "Plugin registered", plugin.info.name,
+          plugin.info.category);
       return true;
     }
     catch (std::exception const& e)
     {
-      indicator_dbg<1>.error(
-          ffmt<s20>("Plugin registration"), "failed for", plugin.info.name, ":", e.what());
+      GROX_LOG_ERROR(indicator_log, "{:>20} failed for {} : {}", "Plugin registration",
+          plugin.info.name, e.what());
       unload_plugin(plugin);
       return false;
     }
@@ -106,7 +102,7 @@ namespace indicators {
     void* handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
     if (!handle)
     {
-      indicator_dbg<1>.error(ffmt<s20>("dlopen failed"), path, ":", dlerror());
+      GROX_LOG_ERROR(indicator_log, "{:>20} {} : {}", "dlopen failed", path, dlerror());
       return false;
     }
 
@@ -122,7 +118,8 @@ namespace indicators {
     char const* dlsym_error = dlerror();
     if (dlsym_error || !plugin.info_func)
     {
-      indicator_dbg<1>.error(ffmt<s20>("dlsym failed"), path, ": grox_plugin_get_info not found");
+      GROX_LOG_ERROR(
+          indicator_log, "{:>20} {} : grox_plugin_get_info not found", "dlsym failed", path);
       dlclose(handle);
       return false;
     }
@@ -131,7 +128,7 @@ namespace indicators {
     grox_plugin_info const* info_ptr = plugin.info_func();
     if (!info_ptr)
     {
-      indicator_dbg<1>.error(ffmt<s20>("Plugin info"), path, ": get_info returned nullptr");
+      GROX_LOG_ERROR(indicator_log, "{:>20} {} : get_info returned nullptr", "Plugin info", path);
       dlclose(handle);
       return false;
     }
@@ -143,7 +140,8 @@ namespace indicators {
     dlsym_error = dlerror();
     if (dlsym_error || !plugin.reg_func)
     {
-      indicator_dbg<1>.error(ffmt<s20>("dlsym failed"), path, ": grox_plugin_register not found");
+      GROX_LOG_ERROR(
+          indicator_log, "{:>20} {} : grox_plugin_register not found", "dlsym failed", path);
       dlclose(handle);
       return false;
     }
@@ -156,7 +154,7 @@ namespace indicators {
   {
     if (plugin.handle)
     {
-      indicator_dbg<1>.debug(ffmt<s20>("Unloading plugin"), plugin.info.name);
+      GROX_LOG_DEBUG(indicator_log, "{:>20} {}", "Unloading plugin", plugin.info.name);
       dlclose(plugin.handle);
       plugin.handle = nullptr;
     }

@@ -36,7 +36,7 @@
 #include "currency/json_data_types.hpp"
 #include "currency/ohlctv_sample.hpp"
 #include "debug/demangle_helper.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "exchange/xrpl.hpp"
 #include "exchange/xrpl_network.hpp"
 #include "io/hdf5_ohlc_manager.hpp"
@@ -74,11 +74,7 @@
 extern void generate_encrypted_ini_data(password_dialog& npw);
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of zero disables messages with a priority>0
-// a debug level of N shows messages with priority<N
-template <int Level>
-inline constexpr print_threshold<Level, 2> main_dbg("Main-win");
+static auto main_log = grox::log::create("Main-win");
 
 using namespace ads;
 
@@ -249,7 +245,7 @@ void create_ticker_orderbook_widgets(ticker::data tdata, currency_pair cp)
 
   auto orderbook_text_sub = [tdata, orderbook_text](currency_pair cp) {
     QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
-      main_dbg<4>.debug(ffmt<s20>("Orderbook-Text"), "orderbook_plot_sub");
+      GROX_LOG_DEBUG(main_log, "{:>20} {}", "Orderbook-Text", "orderbook_plot_sub");
       // check pointers in case messages arrive after cleanup has started
       if (tdata && tdata->orderbook_)
       {
@@ -262,7 +258,7 @@ void create_ticker_orderbook_widgets(ticker::data tdata, currency_pair cp)
 
   auto orderbook_plot_sub = [tdata, orderbook_plot](currency_pair cp) {
     QMetaObject::invokeMethod(QCoreApplication::instance()->thread(), [=]() {
-      main_dbg<4>.debug(ffmt<s20>("Orderbook-Plot"), "orderbook_plot_sub");
+      GROX_LOG_DEBUG(main_log, "{:>20} {}", "Orderbook-Plot", "orderbook_plot_sub");
       // check pointers in case messages arrive after cleanup has started
       if (tdata && tdata->orderbook_)
       {
@@ -278,28 +274,28 @@ void create_ticker_orderbook_widgets(ticker::data tdata, currency_pair cp)
 // ----------------------------------------------------------------------------
 void ticker_stream_gui_constructor(currency_pair cp, ticker::data tdata, ticker::streams stream)
 {
-  main_dbg<0>.debug(ffmt<s20>("Stream"), "factory_create");
+  GROX_LOG_DEBUG(main_log, "{:>20} {}", "Stream", "factory_create");
   if (stream == ticker::streams::price_data)
     create_ticker_price_plot(tdata, cp);
   else if (stream == ticker::streams::order_book)
     create_ticker_orderbook_widgets(tdata, cp);
   else
-    main_dbg<0>.error(
-        ffmt<s20>("Stream"), "factory_create no GUI for stream", ticker::stream_names[stream]);
+    GROX_LOG_ERROR(main_log, "{:>20} {} {}", "Stream", "factory_create no GUI for stream",
+        ticker::stream_names[stream]);
 }
 
 // ----------------------------------------------------------------------------
 void ticker_stream_gui_destructor(currency_pair cp, ticker::data tdata, ticker::streams stream)
 {
-  main_dbg<0>.debug(ffmt<s20>("Stream"), "factory_destroy");
+  GROX_LOG_DEBUG(main_log, "{:>20} {}", "Stream", "factory_destroy");
   if (stream == ticker::streams::price_data)
   {
     tdata->chart_widget_->parentWidget()->deleteLater();
     tdata->chart_widget_.reset();
     tdata->live_trade_subscribers_.clear();
     tdata->view_.reset();
-    main_dbg<0>.error(ffmt<s20>("Stream"), tdata->chart_widget_.use_count());
-    main_dbg<0>.error(ffmt<s20>("Stream"), tdata->view_.use_count());
+    GROX_LOG_ERROR(main_log, "{:>20} {}", "Stream", tdata->chart_widget_.use_count());
+    GROX_LOG_ERROR(main_log, "{:>20} {}", "Stream", tdata->view_.use_count());
   }
   else if (stream == ticker::streams::order_book)
   {
@@ -307,7 +303,7 @@ void ticker_stream_gui_destructor(currency_pair cp, ticker::data tdata, ticker::
     tdata->orderbook_.reset();
   }
   else
-    main_dbg<0>.error(ffmt<s20>("Stream"), "factory_destroy unknown stream");
+    GROX_LOG_ERROR(main_log, "{:>20} {}", "Stream", "factory_destroy unknown stream");
 }
 
 // ----------------------------------------------------------------------------
@@ -502,7 +498,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       std::string wname = fmt::format("{}/{}", w->network_->get_name(), w->name_);
       widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
       widget->setObjectName(to_qstring(wname));
-      main_dbg<0>.debug(ffmt<s20>("wallet_widget"), "set_data", wname);
+      GROX_LOG_DEBUG(main_log, "{:>20} {} {}", "wallet_widget", "set_data", wname);
       if (startswith(network->get_name(), "Bitstamp"))
         widget->set_data(static_cast<bitstamp_account*>(w));
       if (startswith(network->get_name(), "XRPL")) widget->set_data(static_cast<ledger_wallet*>(w));
@@ -588,7 +584,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   // initialize networks / start websocket connections etc
   for (auto const& e : exchange_list_)
   {
-    main_dbg<0>.debug(ffmt<s20>("Init abstract_exchange"), e->get_name());
+    GROX_LOG_DEBUG(main_log, "{:>20} {}", "Init abstract_exchange", e->get_name());
     e->initialize();
   }
 
@@ -616,7 +612,7 @@ GroxMainWindow::~GroxMainWindow()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::appExitCleanupHandler()
 {
-  main_dbg<0>.debug(ffmt<s20>("appExitCleanupHandler"));
+  GROX_LOG_DEBUG(main_log, "{:>20}", "appExitCleanupHandler");
 }
 
 // ----------------------------------------------------------------------------
@@ -640,7 +636,7 @@ void GroxMainWindow::connect_gui_controls()
 
   qs_password_ =
       new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_P)), this, [this]() {
-        main_dbg<6>.debug("Shift click pressed");
+        GROX_LOG_DEBUG(main_log, "Shift click pressed");
         // iterate over wallets to convert type from basic pointers
         // @TODO - improve this
         std::vector<ledger_wallet> wallets;
@@ -698,18 +694,18 @@ void GroxMainWindow::connect_gui_controls()
 void GroxMainWindow::wallet_changed(ledger_wallet* w)
 {
   std::string wname = fmt::format("{}/{}", w->network_->get_name(), w->name_);
-  main_dbg<0>.debug(ffmt<s20>("wallet_changed"), wname);
+  GROX_LOG_DEBUG(main_log, "{:>20} {}", "wallet_changed", wname);
   // widgets are added to the layout, but are "owned" by the layout's parent
   auto* widget = accounts_frame_->findChild<wallet_widget*>(to_qstring(wname));
   if (widget) { widget->set_data(w); }
-  else { main_dbg<0>.error(ffmt<s20>("wallet_changed"), "Failed to locate", wname); }
+  else { GROX_LOG_ERROR(main_log, "{:>20} {} {}", "wallet_changed", "Failed to locate", wname); }
   display_offers();
 }
 
 // ----------------------------------------------------------------------------
 void GroxMainWindow::transaction_event()
 {
-  main_dbg<5>.debug("transaction_event : update balances?");
+  GROX_LOG_DEBUG(main_log, "transaction_event : update balances?");
 }
 
 // ----------------------------------------------------------------------------
@@ -746,7 +742,7 @@ void GroxMainWindow::display_offers()
 // ----------------------------------------------------------------------------
 void GroxMainWindow::closeEvent(QCloseEvent* event)
 {
-  main_dbg<0>.debug(ffmt<s20>("closeEvent"));
+  GROX_LOG_DEBUG(main_log, "{:>20}", "closeEvent");
 
   if (!exchange_list_.empty())
   {
@@ -758,17 +754,17 @@ void GroxMainWindow::closeEvent(QCloseEvent* event)
             for (auto& e : exchange_list_)
             {
               auto name = e->get_name();
-              main_dbg<0>.debug(ffmt<s20>("shut down"), name, "start");
+              GROX_LOG_DEBUG(main_log, "{:>20} {} {}", "shut down", name, "start");
               e->shut_down();
               e.reset();
-              main_dbg<0>.debug(ffmt<s20>("shut down"), name, "complete");
+              GROX_LOG_DEBUG(main_log, "{:>20} {} {}", "shut down", name, "complete");
             }
-            main_dbg<0>.debug(ffmt<s20>("exchanges"), "shutdown complete");
+            GROX_LOG_DEBUG(main_log, "{:>20} {}", "exchanges", "shutdown complete");
             exchange_list_.clear();
           })                                                      //
         | stdexec::continues_on(QtStdExec::QThreadScheduler())    // pika -> Qt
         | stdexec::then([this]() {
-            main_dbg<0>.debug(ffmt<s20>("Close"));
+            GROX_LOG_DEBUG(main_log, "{:>20}", "Close");
             close();
           });
     stdexec::start_detached(std::move(snd));
@@ -776,7 +772,7 @@ void GroxMainWindow::closeEvent(QCloseEvent* event)
     // close all network connections, these need the application messaging loop
     // to correctly process everything (because they use Qt Networking/threads),
     // so we will ignore the close event, and call 'close' on ourselves once shutdown is ready
-    main_dbg<0>.debug(ffmt<s20>("closeEvent"), "Ignore");
+    GROX_LOG_DEBUG(main_log, "{:>20} {}", "closeEvent", "Ignore");
     event->ignore();
   }
   else
@@ -821,7 +817,7 @@ void GroxMainWindow::saveTrustlines()
     settings.setValue(key.c_str(), t.issuer_.c_str());
   }
   settings.endGroup();
-  main_dbg<0>.debug(ffmt<s20>("Trustlines saved"), settings.fileName().toStdString());
+  GROX_LOG_DEBUG(main_log, "{:>20} {}", "Trustlines saved", settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -838,7 +834,7 @@ void GroxMainWindow::loadTrustlines()
     currencies::trustlines.push_back({issuer, currency_to_hex(code)});
   }
   settings.endGroup();
-  main_dbg<0>.debug(ffmt<s20>("Trustlines loaded"), settings.fileName().toStdString());
+  GROX_LOG_DEBUG(main_log, "{:>20} {}", "Trustlines loaded", settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -870,11 +866,12 @@ void GroxMainWindow::saveConnectionSetups()
       for (auto const& s : streams)
       {
         auto skey = std::string(magic_enum::enum_name(s));
-        main_dbg<6>.debug(ffmt<s20>("saveConnectionSetups"), "Stream subscribed", key, skey);
+        GROX_LOG_DEBUG(
+            main_log, "{:>20} {} {} {}", "saveConnectionSetups", "Stream subscribed", key, skey);
         bool subscribed = e->is_stream_subscribed(cp, s);
         settings.setValue(skey.c_str(), subscribed);
         if (subscribed)
-          main_dbg<0>.debug(ffmt<s20>("saveConnectionSetups"), "Stream subscribed",
+          GROX_LOG_DEBUG(main_log, "{:>20} {} {} {}", "saveConnectionSetups", "Stream subscribed",
               settings.group().toStdString(), key);
       }
       settings.endGroup();    // ticker
@@ -882,7 +879,7 @@ void GroxMainWindow::saveConnectionSetups()
     settings.endGroup();    // abstract_exchange
   }
   settings.endGroup();    // streams
-  main_dbg<0>.debug(ffmt<s20>("Connections saved"), settings.fileName().toStdString());
+  GROX_LOG_DEBUG(main_log, "{:>20} {}", "Connections saved", settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -890,7 +887,7 @@ void GroxMainWindow::loadConnectionSetups()
 {
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
 
-  main_dbg<0>.error(ffmt<s20>("Fix connect init"), settings.fileName().toStdString());
+  GROX_LOG_ERROR(main_log, "{:>20} {}", "Fix connect init", settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -914,7 +911,7 @@ void GroxMainWindow::saveWindowSettings()
   settings.setValue("active", active_perspective_);
   settings.endGroup();
 
-  main_dbg<0>.debug(ffmt<s20>("Settings saved"), settings.fileName().toStdString());
+  GROX_LOG_DEBUG(main_log, "{:>20} {}", "Settings saved", settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -943,7 +940,7 @@ void GroxMainWindow::loadWindowSettings()
   }
   settings.endGroup();
 
-  main_dbg<0>.debug(ffmt<s20>("Settings loaded"), settings.fileName().toStdString());
+  GROX_LOG_DEBUG(main_log, "{:>20} {}", "Settings loaded", settings.fileName().toStdString());
 }
 
 // ----------------------------------------------------------------------------
@@ -1025,7 +1022,7 @@ void GroxMainWindow::LoadStyleSheet(int dark)
   QFile f(name);
   if (!f.exists())
   {
-    main_dbg<0>.error(ffmt<s20>("Stylesheet"), "Unable to set stylesheet, file not found");
+    GROX_LOG_ERROR(main_log, "{:>20} {}", "Stylesheet", "Unable to set stylesheet, file not found");
   }
   else
   {

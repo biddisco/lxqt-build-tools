@@ -7,7 +7,7 @@
 #include <QStandardItemModel>
 //
 #include "config/config.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/collapsible_groupbox.hpp"
 #include "widgets/connection_widget.hpp"
@@ -15,11 +15,7 @@
 #include "ui_connection_widget.h"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of zero disables messages with a priority>0
-// a debug level of N shows messages with priority<N
-template <int Level>
-inline constexpr print_threshold<Level, 2> conn_dbg("CxWidget");
+static auto conn_log = grox::log::create("CxWidget");
 
 // ----------------------------------------------------------------------------
 connection_widget::connection_widget(QWidget* parent, abstract_exchange* ex)
@@ -58,7 +54,7 @@ QStandardItem* findChildItem(QStandardItem* parent, data_slot slot, T cdata)
     QStandardItem* child = parent->child(c);
     auto stream = magic_enum::enum_cast<ticker::streams>(child->data(slot).toInt());
     auto s = magic_enum::enum_name(stream.value());
-    conn_dbg<7>.debug(ffmt<s20>("stream-load"), c, child, s);
+    GROX_LOG_DEBUG(conn_log, "{:>20} {} {} {}", "stream-load", c, fmt::ptr(child), s);
     if (child->data(slot) == cdata) { return child; }
   }
   return nullptr;
@@ -97,7 +93,7 @@ void connection_widget::setup_gui()
       stream_item->setCheckState(Qt::Unchecked);
       children.append(stream_item);
       auto name = magic_enum::enum_name(s);
-      conn_dbg<7>.debug(ffmt<s20>("stream-create"), stream_item, name);
+      GROX_LOG_DEBUG(conn_log, "{:>20} {} {}", "stream-create", fmt::ptr(stream_item), name);
     }
     ticker_item->appendColumn(children);
   }
@@ -176,8 +172,8 @@ void connection_widget::setup_gui()
             child->setCheckState(Qt::Checked);
           else
           {
-            conn_dbg<0>.error(
-                ffmt<s20>("stream-load"), "Did not find a child tree item with the right data");
+            GROX_LOG_ERROR(conn_log, "{:>20} {}", "stream-load",
+                "Did not find a child tree item with the right data");
           }
         }
       }

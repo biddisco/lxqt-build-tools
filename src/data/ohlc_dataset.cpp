@@ -7,17 +7,11 @@
 #include "data/ohlc_data_exception.hpp"
 #include "data/ohlc_dataset.hpp"
 #include "data/timebased_chart_data.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "util/datetime_utils.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of zero disables messages with a priority>0
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 1;
-//
-template <int Level>
-inline constexpr print_threshold<Level, debug_level> ohlc_dbg("ohlcdata");
+static auto ohlc_log = grox::log::create("ohlcdata");
 
 // ----------------------------------------------------------------------------
 ohlc_dataset::ohlc_dataset(candle_res res, std::string const& name)
@@ -50,7 +44,7 @@ std::uint64_t ohlc_dataset::merge_data(ohlctv_vector const& new_ohlc_samples_)
     auto first_new = new_ohlc_samples_.front().time;
     // new samples must start exactly one timestep after old
     int offset = (first_new - last_existing) / ohlc_data_resolutions::minute;
-    ohlc_dbg<5>.debug(ffmt<s20>("merging"), ticker_str_, "new samples offset", ffmt<dec6>(offset));
+    GROX_LOG_DEBUG(ohlc_log, "{:>20} {} new samples offset {:06d}", "merging", ticker_str_, offset);
     if (first_new - last_existing != ohlc_data_resolutions::minute)
     {
       // ohlc_dbg<0>.error(ffmt<s20>("merging"), ticker_str_, "last_existing", ffmt<dec12>(last_existing),
@@ -59,14 +53,14 @@ std::uint64_t ohlc_dataset::merge_data(ohlctv_vector const& new_ohlc_samples_)
         throw std::runtime_error("Data OHLC time mismatch in merge");
     }
     // add new samples
-    ohlc_dbg<5>.debug(
-        ffmt<s20>("merging"), ticker_str_, "new samples", ffmt<dec6>(new_ohlc_samples_.size()));
+    GROX_LOG_DEBUG(
+        ohlc_log, "{:>20} {} new samples {:06d}", "merging", ticker_str_, new_ohlc_samples_.size());
     data().append(new_ohlc_samples_);
     update += new_ohlc_samples_.size();
   }
   if (update > 0)
   {
-    ohlc_dbg<2>.debug(ffmt<s20>("publish"), ticker_str_, "new samples", ffmt<dec4>(update));
+    GROX_LOG_DEBUG(ohlc_log, "{:>20} {} new samples {:04d}", "publish", ticker_str_, update);
     new_data_subscribers_.publish(update);
   }
   return update;
@@ -94,8 +88,8 @@ int64_t ohlc_dataset::validate_ohlc(
     init_index = offset_index(origin_time, time, res);
     init_time = samples.at(init_index).time;
   }
-  ohlc_dbg<6>.debug(ffmt<s20>("validating"), name, ffmt<s3>(res.name_), "from",
-      msecs_unix_to_calendar_time_local(init_time), "index", ffmt<dec9>(init_index));
+  GROX_LOG_DEBUG(ohlc_log, "{:>20} {} {:>3} from {} index {:09d}", "validating", name, res.name_,
+      msecs_unix_to_calendar_time_local(init_time), init_index);
 
   for (int64_t index = init_index; index < samples.size(); ++index)
   {
@@ -104,14 +98,14 @@ int64_t ohlc_dataset::validate_ohlc(
     double expected_time = origin_time + (res * index);
     if (expected_time != s1.time)
     {
-      ohlc_dbg<0>.error(ffmt<s20>("validation"), name, ffmt<s3>(res.name_), "index",
-          ffmt<dec9>(index), "expected", msecs_unix_to_calendar_time_local(expected_time), "found",
+      GROX_LOG_ERROR(ohlc_log, "{:>20} {} {:>3} index {:09d} expected {} found {}", "validation",
+          name, res.name_, index, msecs_unix_to_calendar_time_local(expected_time),
           msecs_unix_to_calendar_time_local(s1.time));
       throw ohlc_data_exception(index);
     }
   }
-  ohlc_dbg<1>.debug(ffmt<s20>("validated"), name, ffmt<s3>(res.name_), "from",
-      msecs_unix_to_calendar_time_local(init_time), "index", ffmt<dec9>(init_index));
+  GROX_LOG_DEBUG(ohlc_log, "{:>20} {} {:>3} from {} index {:09d}", "validated", name, res.name_,
+      msecs_unix_to_calendar_time_local(init_time), init_index);
   return samples.size();
 }
 
@@ -135,8 +129,8 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset const* other)
 
   // how many of the hi-res candles in the new lower-res candle?
   int subsamples = static_cast<int>(res_lo / res_hi);
-  ohlc_dbg<6>.debug(ffmt<s20>("resample"), ticker_str_, ffmt<s3>(res_hi.name_), "subsamples",
-      ffmt<s3>(res_lo.name_), ffmt<dec3>(subsamples));
+  GROX_LOG_DEBUG(ohlc_log, "{:>20} {} {:>3} subsamples {:>3} {:03d}", "resample", ticker_str_,
+      res_hi.name_, res_lo.name_, subsamples);
 
   // Get the final time-point of this dataset if present -
   // and increment it by 1 hi-res sample to get next start time
@@ -153,9 +147,8 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset const* other)
   // the start time must start an integral candle at the new resolution
   while (static_cast<int>(0.5 + start_T / res_hi) % subsamples != 0)
   {
-    ohlc_dbg<7>.debug(ffmt<s20>("candle modulus"), ticker_str_,
-        ffmt<dec3>(static_cast<int>(0.5 + start_T / res_hi) % subsamples), "of",
-        ffmt<dec3>(subsamples));
+    GROX_LOG_DEBUG(ohlc_log, "{:>20} {} {:03d} of {:03d}", "candle modulus", ticker_str_,
+        static_cast<int>(0.5 + start_T / res_hi) % subsamples, subsamples);
     start_T += res_hi;
   }
 
@@ -191,15 +184,14 @@ ohlc_dataset* ohlc_dataset::downsample_update(ohlc_dataset const* other)
       modified = true;
     }
   }
-  ohlc_dbg<2>.debug(ffmt<s20>("resampled"), ticker_str_, ffmt<s3>(res_lo.name_), "from",
-      msecs_unix_to_calendar_time_local(current_ohlc.time), "index", ffmt<dec9>(orig_size), "of",
-      size());
+  GROX_LOG_DEBUG(ohlc_log, "{:>20} {} {:>3} from {} index {:09d} of {}", "resampled", ticker_str_,
+      res_lo.name_, msecs_unix_to_calendar_time_local(current_ohlc.time), orig_size, size());
   validate_ohlc(data(), res_lo, orig_T, ticker_str_);
 
   if (modified)
   {
-    ohlc_dbg<1>.debug(ffmt<s20>("publish"), ticker_str_, ffmt<s3>(res_lo.name_), "new samples",
-        ffmt<dec4>(size() - orig_size));
+    GROX_LOG_DEBUG(ohlc_log, "{:>20} {} {:>3} new samples {:04d}", "publish", ticker_str_,
+        res_lo.name_, size() - orig_size);
     new_data_subscribers_.publish(size() - orig_size);
   }
   return this;

@@ -26,18 +26,17 @@ namespace indicators {
       // set extent from begin of partition 0, the end of data
       origin_.begin = std::next(input.begin(), start);
       origin_.end = input.end();
-      indicator_dbg<5>.debug(ffmt<s20>("Partition create"), ffmt<dec3>(num_partitions_),
-          static_cast<void const*>(&*input.begin()), static_cast<void const*>(&*input.end()),
-          ffmt<dec8>(input.size()));
+      GROX_LOG_DEBUG(indicator_log, "{:>20} {:03d} {} {} {:08d}", "Partition create",
+          num_partitions_, static_cast<void const*>(&*input.begin()),
+          static_cast<void const*>(&*input.end()), input.size());
     }
 
     extent get_partition(int piece) const
     {
       Iterator begin = std::next(origin_.begin, piece * chunksize_);
       Iterator end = std::min(std::next(origin_.begin, (piece + 1) * chunksize_), origin_.end);
-      indicator_dbg<2>.debug(ffmt<s20>("Partition get"), ffmt<dec3>(piece), "of",
-          ffmt<dec3>(num_partitions_),
-          fmt::format("{},{}", static_cast<void const*>(&*begin), static_cast<void const*>(&*end)),
+      GROX_LOG_DEBUG(indicator_log, "{:>20} {:03d} of {:03d} {},{} {} {}", "Partition get", piece,
+          num_partitions_, static_cast<void const*>(&*begin), static_cast<void const*>(&*end),
           begin - origin_.begin, end - origin_.begin);
       return {begin, end};
     }

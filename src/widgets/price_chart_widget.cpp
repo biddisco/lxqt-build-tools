@@ -17,7 +17,7 @@
 //
 #include "config/config.hpp"
 #include "debug/demangle_helper.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "indicators/indicator_params.hpp"
 #include "indicators/indicator_types.hpp"
 #include "plot/ohlc_chart_curve.hpp"
@@ -30,9 +30,7 @@
 #include "widgets_control/indicator_widget.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-template <int Level>
-inline constexpr print_threshold<Level, 0> pplot_dbg("PricePlt");
+static auto pplot_log = grox::log::create("PricePlt");
 
 // ----------------------------------------------------------------------------
 QColor chart_colours[10] = {QColor("cyan"), QColor("magenta"), QColor("red"), QColor("darkRed"),
@@ -104,7 +102,7 @@ price_chart_widget::~price_chart_widget()
   ind_model_.indicators_.clear();
   hdf5_ohlc_.reset();
   exchange_.reset();
-  pplot_dbg<0>.debug(ffmt<s20>("~price_chart_widget"));
+  GROX_LOG_DEBUG(pplot_log, "{:>20}", "~price_chart_widget");
   delete ui;
   delete price_plot_;
   for (auto p : filter_plots_) { delete p; }
@@ -175,11 +173,11 @@ void price_chart_widget::connect_gui()
         if (reply == QMessageBox::Yes)
         {
           hdf5_ohlc_->truncate_from_time(msecs);
-          pplot_dbg<0>.error(ffmt<s20>("emit update_candlestick_data"));
+          GROX_LOG_ERROR(pplot_log, "{:>20}", "emit update_candlestick_data");
           this->replot();
           // update_candlestick_data();
         }
-        else { pplot_dbg<0>.debug(ffmt<s20>("Yes *not* clicked")); }
+        else { GROX_LOG_DEBUG(pplot_log, "{:>20}", "Yes *not* clicked"); }
       },
       Qt::QueuedConnection);
 
@@ -249,7 +247,7 @@ void price_chart_widget::connect_gui()
   static std::size_t available_indicators_index{0};
 
   connect(btn_indicator_, &QPushButton::clicked, this, [this](bool b) {
-    pplot_dbg<0>.debug(ffmt<s20>("Indicators"), ticker_string_);
+    GROX_LOG_DEBUG(pplot_log, "{:>20} {}", "Indicators", ticker_string_);
 
     using namespace grox::senders;
 
@@ -341,7 +339,7 @@ void price_chart_widget::resizeEvent(QResizeEvent* event)
 {
   QWidget::resizeEvent(event);
   bool changed = price_plot_->update_candle_size();
-  pplot_dbg<5>.debug(ffmt<s20>("Resize"), "res changed", changed);
+  GROX_LOG_DEBUG(pplot_log, "{:>20} {} {}", "Resize", "res changed", changed);
 }
 
 // ----------------------------------------------------------------------------
@@ -349,7 +347,7 @@ void price_chart_widget::showEvent(QShowEvent* event)
 {
   QWidget::showEvent(event);
   bool changed = price_plot_->update_candle_size();
-  pplot_dbg<5>.debug(ffmt<s20>("Show"), "res changed", changed);
+  GROX_LOG_DEBUG(pplot_log, "{:>20} {} {}", "Show", "res changed", changed);
 }
 
 // ----------------------------------------------------------------------------

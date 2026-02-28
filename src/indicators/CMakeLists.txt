@@ -24,8 +24,6 @@ set(grox_indicators_SRCS
 add_library(grox_indicators ${grox_indicators_SRCS})
 target_include_directories(grox_indicators PUBLIC ${GROX_INCLUDE_ROOT})
 
-find_package(spdlog QUIET)
-
 target_link_libraries(
   grox_indicators
   PUBLIC qwt
@@ -36,15 +34,6 @@ target_link_libraries(
          fmt::fmt
          ${CMAKE_DL_LIBS} # For dlopen/dlsym
 )
-
-if(spdlog_FOUND)
-  target_link_libraries(grox_indicators PUBLIC spdlog::spdlog)
-  target_compile_definitions(grox_indicators PUBLIC GROX_HAS_SPDLOG=1)
-  message(STATUS "Indicators: SPDLOG enabled")
-else()
-  target_compile_definitions(grox_indicators PUBLIC GROX_HAS_SPDLOG=0)
-  message(STATUS "Indicators: SPDLOG not found, SPDLOG logging disabled")
-endif()
 
 # ==============================================================================
 # Macro for creating indicator plugins

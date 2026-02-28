@@ -15,7 +15,7 @@
 #include <nlohmann/json.hpp>
 // Grox
 #include "data/order_book.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "exchange/order_book_xrpl.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
@@ -23,10 +23,8 @@
 
 // ----------------------------------------------------------------------------
 using namespace grox;
-using namespace grox::debug::detail;
 using namespace nlohmann;
-template <int Level>
-inline constexpr print_threshold<Level, 6> xbook_dbg("xrplbook");
+static auto xbook_log = grox::log::create("xrplbook");
 
 // ----------------------------------------------------------------------------
 // XRP ledger specific order book processing routines
@@ -38,7 +36,7 @@ inline constexpr print_threshold<Level, 6> xbook_dbg("xrplbook");
 // This function should only be executed once : when connecting to stream
 void xrpl_order_book::accept_json_ledger_snapshot(nlohmann::json const& joffers)
 {
-  xbook_dbg<9>.debug(ffmt<s20>("snapshot"), joffers.dump(4));
+  GROX_LOG_DEBUG(xbook_log, "{:>20} {}", "snapshot", joffers.dump(4));
   //
   // websocket (re?)connnect: clear the orderbook ...
   orders.clear();
@@ -105,8 +103,8 @@ void xrpl_order_book::ledger_map_to_order_book()
     std::vector<xrpl_offer>& acc_bids_ = std::get<bid_index>(bid_ask);
     std::vector<xrpl_offer>& acc_asks_ = std::get<ask_index>(bid_ask);
     //
-    xbook_dbg<7>.debug(
-        ffmt<s20>("bid/ask"), acct, "bids:", acc_bids_.size(), "asks:", acc_asks_.size());
+    GROX_LOG_DEBUG(xbook_log, "{:>20} {} bids: {} asks: {}", "bid/ask", acct, acc_bids_.size(),
+        acc_asks_.size());
 
     // the account may not be fully funded, so the offers may be invalid
     if (acc_bids_.size() > 0)
@@ -184,10 +182,10 @@ void xrpl_order_book::accept_json_ledger_transaction(nlohmann::json const& jdata
   if (success != "tesSUCCESS") return;
   //
   json affected = jdata["meta"]["AffectedNodes"];
-  xbook_dbg<7>.debug(ffmt<s20>("Affected nodes"), affected.dump(4));
+  GROX_LOG_DEBUG(xbook_log, "{:>20} {}", "Affected nodes", affected.dump(4));
 
   json transaction = jdata["transaction"];
-  xbook_dbg<7>.debug(ffmt<s20>("transaction"), transaction.dump(4));
+  GROX_LOG_DEBUG(xbook_log, "{:>20} {}", "transaction", transaction.dump(4));
 
   std::string ttype = transaction.at("TransactionType").get<std::string>();
   if (ttype == "OfferCreate" || ttype == "OfferCancel" || ttype == "Payment")
@@ -241,7 +239,8 @@ bool xrpl_order_book::update_offer(
       final_offer.owner_funds = it2->owner_funds;
     }
     // overwrite old offer with new one
-    xbook_dbg<5>.debug(ffmt<s20>("Update Bid:"), prev_offer, final_offer);
+    GROX_LOG_DEBUG(xbook_log, "{:>20} {} {}", "Update Bid:", fmt::streamed(prev_offer),
+        fmt::streamed(final_offer));
     *it2 = final_offer;
   }
   else
@@ -253,7 +252,8 @@ bool xrpl_order_book::update_offer(
       return false;
     }
     // overwrite old offer with new one
-    xbook_dbg<5>.debug(ffmt<s20>("Update Ask:"), prev_offer, final_offer);
+    GROX_LOG_DEBUG(xbook_log, "{:>20} {} {}", "Update Ask:", fmt::streamed(prev_offer),
+        fmt::streamed(final_offer));
     *it2 = final_offer;
   }
   return true;
@@ -283,12 +283,12 @@ bool xrpl_order_book::insert_offer(xrpl_offer const& offer)
   if (offer.TakerPays.currency_.is_xrp())
   {
     acc_bids_.push_back(offer);
-    xbook_dbg<7>.debug(ffmt<s20>("Insert Bid:"), offer);
+    GROX_LOG_DEBUG(xbook_log, "{:>20} {}", "Insert Bid:", fmt::streamed(offer));
   }
   else
   {
     acc_asks_.push_back(offer);
-    xbook_dbg<7>.debug(ffmt<s20>("Insert Ask:"), offer);
+    GROX_LOG_DEBUG(xbook_log, "{:>20} {}", "Insert Ask:", fmt::streamed(offer));
   }
   return true;
 }
@@ -321,11 +321,11 @@ bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
       // update tracking of account funds
       if (val->owner_funds != -1)
       {
-        xbook_dbg<5>.debug(ffmt<s20>("Update owner_funds"), val->owner_funds);
+        GROX_LOG_DEBUG(xbook_log, "{:>20} {}", "Update owner_funds", val->owner_funds);
         std::next(val)->owner_funds = val->owner_funds;
       }
     }
-    xbook_dbg<7>.debug(ffmt<s20>("Delete Bid:"), offer);
+    GROX_LOG_DEBUG(xbook_log, "{:>20} {}", "Delete Bid:", fmt::streamed(offer));
     acc_bids_.erase(val);
   }
   else
@@ -342,17 +342,17 @@ bool xrpl_order_book::delete_offer(xrpl_offer const& offer)
       // update tracking of account funds
       if (val->owner_funds != -1)
       {
-        xbook_dbg<5>.debug(ffmt<s20>("Update owner_funds"), val->owner_funds);
+        GROX_LOG_DEBUG(xbook_log, "{:>20} {}", "Update owner_funds", val->owner_funds);
         std::next(val)->owner_funds = val->owner_funds;
       }
     }
-    xbook_dbg<7>.debug(ffmt<s20>("Delete Ask:"), offer);
+    GROX_LOG_DEBUG(xbook_log, "{:>20} {}", "Delete Ask:", fmt::streamed(offer));
     acc_asks_.erase(val);
   }
   if (acc_bids_.size() == 0 && acc_asks_.size() == 0)
   {
     // we can safely remove the account
-    xbook_dbg<5>.debug(ffmt<s20>("Account"), offer.Account, "can be removed");
+    GROX_LOG_DEBUG(xbook_log, "{:>20} {} can be removed", "Account", offer.Account);
     orders.erase(offer.Account);
   }
   return true;

@@ -22,7 +22,7 @@
 #include <pika/program_options.hpp>
 //
 #include "config/config.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "exchange/bitstamp.hpp"
 #include "senders/pika_stdexec.hpp"
 #include "senders/qhttp-post-sender.hpp"
@@ -46,8 +46,7 @@ std::shared_ptr<bitstamp_network> bitstamp;
 
 // ----------------------------------------------------------------------------
 namespace {
-  template <int Level>
-  inline constexpr grox::debug::detail::print_threshold<Level, 3> test1_dbg("test-exB");
+  static auto test1_log = grox::log::create("test-exB");
 }    // namespace
 
 // ------------------------------------------------------------------
@@ -55,9 +54,8 @@ TEST(abstract_exchange, request_account_info)
 {
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
-  using namespace grox::debug;
   //
-  test1_dbg<2>.debug(ffmt<s20>("TEST"), "request_account_info");
+  GROX_LOG_DEBUG(test1_log, "{:>20} request_account_info", "TEST");
   std::atomic<bool> finished{false};
   bitstamp_account& acct = bitstamp->accounts()[0];
   auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                //
@@ -65,16 +63,16 @@ TEST(abstract_exchange, request_account_info)
       | ex::then([&acct, &finished](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
-          test1_dbg<5>.debug(ffmt<s20>("request_account_info"), jdata.dump(4));
+          GROX_LOG_DEBUG(test1_log, "{:>20} {}", "request_account_info", jdata.dump(4));
           EXPECT_TRUE(jdata.size() > 0);
           EXPECT_TRUE(jdata["eur_available"] != "");
           finished = true;
         });
 
-  test1_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "request_account_info");
+  GROX_LOG_DEBUG(test1_log, "{:>20} request_account_info", "SYNC_WAIT");
   tt::sync_wait(std::move(snd));
   EXPECT_TRUE(finished);
-  test1_dbg<2>.debug(ffmt<s20>("COMPLETE"), "request_account_info");
+  GROX_LOG_DEBUG(test1_log, "{:>20} request_account_info", "COMPLETE");
 }
 
 // ------------------------------------------------------------------
@@ -82,9 +80,8 @@ TEST(abstract_exchange, request_all_account_infos)
 {
   // note pika::this_thread::sync_wait yields task, but stdexec::sync_wait blocks thread
   namespace tt = pika::this_thread::experimental;
-  using namespace grox::debug;
   //
-  test1_dbg<2>.debug(ffmt<s20>("TEST"), "request_all_account_infos");
+  GROX_LOG_DEBUG(test1_log, "{:>20} request_all_account_infos", "TEST");
   std::atomic<std::size_t> finished{bitstamp->wallets().size()};
 
   auto get_all_account_infos = [&finished]() {
@@ -94,12 +91,12 @@ TEST(abstract_exchange, request_all_account_infos)
       auto handle_account_info = [&acct, &finished](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         nlohmann::json jdata = nlohmann::json::parse(data);
-        test1_dbg<5>.debug(ffmt<s20>("handle_account_info"), acct.name_, jdata.dump(4));
+        GROX_LOG_DEBUG(test1_log, "{:>20} {} {}", "handle_account_info", acct.name_, jdata.dump(4));
         EXPECT_TRUE(jdata.size() > 0);
         EXPECT_TRUE(jdata["eur_available"] != "");
         finished--;
-        test1_dbg<0>.debug(
-            ffmt<s20>("handle_account_info"), "complete", acct.name_, finished.load());
+        GROX_LOG_DEBUG(
+            test1_log, "{:>20} complete {} {}", "handle_account_info", acct.name_, finished.load());
       };
 
       auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                // Qt
@@ -109,20 +106,20 @@ TEST(abstract_exchange, request_all_account_infos)
       scope.spawn(std::move(snd));
     }
 
-    test1_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "request_all_account_infos");
+    GROX_LOG_DEBUG(test1_log, "{:>20} request_all_account_infos", "SYNC_WAIT");
     EXPECT_TRUE(pika::this_thread::get_pool()->get_pool_name() != qt_pool_name);
     tt::sync_wait(scope.on_empty());
-    test1_dbg<2>.debug(ffmt<s20>("COMPLETE"), "request_all_account_infos");
+    GROX_LOG_DEBUG(test1_log, "{:>20} request_all_account_infos", "COMPLETE");
   };
 
   stdexec::sender auto snd =
       stdexec::starts_on(grox::senders::default_pool_scheduler(), stdexec::just())    //
       | stdexec::then(get_all_account_infos);
 
-  test1_dbg<2>.debug(ffmt<s20>("SYNC_WAIT"), "scope");
+  GROX_LOG_DEBUG(test1_log, "{:>20} scope", "SYNC_WAIT");
   EXPECT_TRUE(pika::this_thread::get_pool()->get_pool_name() != qt_pool_name);
   tt::sync_wait(std::move(snd));
-  test1_dbg<2>.debug(ffmt<s20>("COMPLETE"), "scope");
+  GROX_LOG_DEBUG(test1_log, "{:>20} scope", "COMPLETE");
 }
 
 // ----------------------------------------------------------------------------
@@ -132,15 +129,14 @@ TEST(abstract_exchange, cancel_order)
   t.id_ = 1816315536502784;
   t.wallet_ = "Main";
 
-  using namespace grox::debug;
-  test1_dbg<2>.debug(ffmt<s20>("TEST(abstract_exchange, request_account_info)"));
+  GROX_LOG_DEBUG(test1_log, "{:>20}", "TEST(abstract_exchange, request_account_info)");
   std::atomic<bool> finished{false};
   auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())         //
       | ex::let_value([t]() { return bitstamp->request_cancel_order(t); })    // Qt -> pika
       | ex::then([&](QByteArray byteArray) {
           std::string_view data(byteArray.constData(), byteArray.length());
           nlohmann::json jdata = nlohmann::json::parse(data);
-          test1_dbg<0>.debug(ffmt<s20>("cancel_order"), jdata.dump(4));
+          GROX_LOG_DEBUG(test1_log, "{:>20} {}", "cancel_order", jdata.dump(4));
           EXPECT_EQ(jdata["error"], "Order not found");
           EXPECT_TRUE(jdata.size() == 2);
           finished = true;
@@ -155,8 +151,7 @@ TEST(abstract_exchange, cancel_order)
 // ----------------------------------------------------------------------------
 int qt_main(int argc, char* argv[])
 {
-  using namespace grox::debug;
-  test1_dbg<2>.debug(ffmt<s20>("enter qt_main"));
+  GROX_LOG_DEBUG(test1_log, "{:>20}", "enter qt_main");
   QCoreApplication a(argc, argv);
   // the lifetime of the network manager must be as long as the qt application
   QNetworkAccessManager networkmanager;
@@ -191,8 +186,7 @@ int qt_main(int argc, char* argv[])
 // pika_main - executes on an pika thread
 int pika_main(int argc, char** argv, pika::program_options::variables_map& vm)
 {
-  using namespace grox::debug;
-  test1_dbg<2>.debug(ffmt<s20>("enter pika_main"));
+  GROX_LOG_DEBUG(test1_log, "{:>20}", "enter pika_main");
   // Get a scheduler on the thread pool we have reserved for Qt
   auto qt_sch = pika::execution::experimental::thread_pool_scheduler{
       &pika::resource::get_thread_pool(qt_pool_name)};
@@ -207,7 +201,7 @@ int pika_main(int argc, char** argv, pika::program_options::variables_map& vm)
   auto ret = [&] {
     // launch and block on completion of the Qt application thread
     int test_results = tt::sync_wait(std::move(snd));
-    test1_dbg<2>.debug(ffmt<s20>("qt_main complete"));
+    GROX_LOG_DEBUG(test1_log, "{:>20}", "qt_main complete");
     return test_results;
   }();
   pika::finalize();

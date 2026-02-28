@@ -16,6 +16,7 @@
 #include <pika/modules/runtime.hpp>
 #include <pika/modules/schedulers.hpp>
 //
+#include "debug/logging.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "senders/pika_stdexec.hpp"
 
@@ -31,12 +32,9 @@
 // -----------------------------------------------------------------
 namespace grox::senders {
 
-  using namespace grox::debug::detail;
-  template <int Level>
-  inline constexpr print_threshold<Level, 2> qt_trig("QT_TRIGG");
+  inline auto qt_trig_log = grox::log::create("QT_TRIGG");
 
   namespace ex = pika::execution::experimental;
-  using namespace pika::debug::detail;
 
   enum http_request_type
   {
@@ -104,9 +102,8 @@ namespace grox::senders {
             r.op_state.client_ = client;
             assert(r.op_state.client_ != nullptr);
 
-            PIKA_DETAIL_DP(qt_trig<5>,
-                debug(ffmt<s20>("qhttp_post_recv"), "set_value_t", "req",
-                    fmt::ptr(r.op_state.client_)));
+            GROX_LOG_DEBUG(qt_trig_log, "{:>20} set_value_t req {}", "qhttp_post_recv",
+                fmt::ptr(r.op_state.client_));
 
             pika::detail::try_catch_exception_ptr(
                 [&]() mutable {
@@ -121,9 +118,8 @@ namespace grox::senders {
                           ex::continues_on(default_pool_scheduler()) |
                           ex::then([receiver = std::move(receiver)](QByteArray byteArray) mutable {
                             std::string_view strv(byteArray.constData(), byteArray.length());
-                            PIKA_DETAIL_DP(qt_trig<5>,
-                                debug(
-                                    ffmt<s20>("set_value_error_helper"), fmt::format("{}", strv)));
+                            GROX_LOG_DEBUG(
+                                qt_trig_log, "{:>20} {}", "set_value_error_helper", strv);
                             ex::set_value(std::move(receiver), std::move(byteArray));
                           });
                       ex::start_detached(std::move(snd0));
@@ -167,10 +163,13 @@ namespace grox::senders {
           , client_(nullptr)
           , req_type_{req_type}
         {
-          PIKA_DETAIL_DP(qt_trig<3>, debug(ffmt<s20>("create"), client_));
+          GROX_LOG_DEBUG(qt_trig_log, "{:>20} {}", "create", fmt::ptr(client_));
         }
 
-        ~operation_state() { PIKA_DETAIL_DP(qt_trig<3>, debug(ffmt<s20>("destroy"), client_)); }
+        ~operation_state()
+        {
+          GROX_LOG_DEBUG(qt_trig_log, "{:>20} {}", "destroy", fmt::ptr(client_));
+        }
 
         friend constexpr auto tag_invoke(ex::start_t, operation_state& os) noexcept
         {

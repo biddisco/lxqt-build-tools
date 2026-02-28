@@ -14,7 +14,7 @@ target_include_directories(
             /
             ..
 )
-target_link_libraries(grox_senders INTERFACE pika::pika)
+target_link_libraries(grox_senders INTERFACE pika::pika grox_debug)
 
 if(BUILD_TESTING)
   pika_add_pseudo_target(tests.senders)

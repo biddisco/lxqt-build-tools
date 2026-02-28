@@ -30,14 +30,11 @@
 #include "util/stringutils.hpp"
 #include "widgets/password_dialog.hpp"
 //
+#include "debug/logging.hpp"
 #include "mainwindow.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace pika::debug::detail;
-// a debug level of zero disables messages with a priority>0
-// a debug level of N shows messages with priority<N
-template <int Level>
-inline constexpr print_threshold<Level, 5> app_dbg("App-Main");
+static auto app_log = grox::log::create("App-Main");
 
 // save these to pass to Qt init.
 static int argc;
@@ -57,7 +54,7 @@ void init_settings(app_settings* settings, QNetworkAccessManager* networkmanager
   settings->hdfFileName = "grox.hdf5";
   settings->logFileName = QLatin1String("grox.log").data();
   settings->iniFileName = to_qstring(fmt::format("{}/grox.ini", settings->configLocation));
-  app_dbg<5>.debug(ffmt<s20>("Ini"), settings->iniFileName.toStdString());
+  GROX_LOG_DEBUG(app_log, "{:>20} {}", "Ini", settings->iniFileName.toStdString());
 }
 
 QByteArray base64_encode(QByteArray const& ba) { return ba.toBase64(); }
@@ -173,7 +170,7 @@ int qt_main(pika::program_options::variables_map& vm)
 
   // disable stdout buffering so that messages appear right away
   // (especially noticable in debugger terminal)
-  app_dbg<0>.eval([]() { std::cout.setf(std::ios::unitbuf); });
+  std::cout.setf(std::ios::unitbuf);
 
   // initialize global settings : @TODO - get rid of this singleton?
   init_settings(&global_settings, &networkmanager);
@@ -189,9 +186,9 @@ int qt_main(pika::program_options::variables_map& vm)
   {
     global_settings.grox_password = result;
     authenticated = true;
-    app_dbg<5>.debug(ffmt<s20>("authentication"), "pass", "ok");
+    GROX_LOG_DEBUG(app_log, "{:>20} {} {}", "authentication", "pass", "ok");
   }
-  else { app_dbg<5>.error(ffmt<s20>("Authentication"), "pass", "fail"); }
+  else { GROX_LOG_ERROR(app_log, "{:>20} {} {}", "Authentication", "pass", "fail"); }
 
   // if pass command failed, then allow user to enter password via dialog box
   if (!authenticated)
@@ -201,13 +198,13 @@ int qt_main(pika::program_options::variables_map& vm)
     {
       global_settings.grox_password = npw.getPassword().toStdString();
       authenticated = true;
-      app_dbg<5>.debug(ffmt<s20>("authentication"), "password", "ok");
+      GROX_LOG_DEBUG(app_log, "{:>20} {} {}", "authentication", "password", "ok");
     }
   }
   if (!authenticated)
   {
-    app_dbg<5>.error(
-        ffmt<s20>("Authentication"), "fail", "No access to accounts/wallets available");
+    GROX_LOG_ERROR(app_log, "{:>20} {} {}", "Authentication", "fail",
+        "No access to accounts/wallets available");
   }
 
   // we need random data for the encryption block
@@ -294,30 +291,30 @@ int qt_main(pika::program_options::variables_map& vm)
   if (vm["decode"].as<bool>())
   {
     auto& bitstamp = bitstamp_network::get_bitstamp_instance()->accounts()[0];
-    app_dbg<5>.debug("\nDecrypted information\n");
-    app_dbg<5>.debug("API_user       : ", bitstamp.API_user);
-    app_dbg<5>.debug("API_key        : ", bitstamp.API_key);
-    app_dbg<5>.debug("API_secret     : ", bitstamp.API_secret);
-    app_dbg<5>.debug("xrp.tag        : ", bitstamp.tag_);
-    app_dbg<5>.debug("xrp.public     : ", bitstamp.public_);
+    GROX_LOG_DEBUG(app_log, "\nDecrypted information\n");
+    GROX_LOG_DEBUG(app_log, "API_user       : {}", bitstamp.API_user);
+    GROX_LOG_DEBUG(app_log, "API_key        : {}", bitstamp.API_key);
+    GROX_LOG_DEBUG(app_log, "API_secret     : {}", bitstamp.API_secret);
+    GROX_LOG_DEBUG(app_log, "xrp.tag        : {}", bitstamp.tag_);
+    GROX_LOG_DEBUG(app_log, "xrp.public     : {}", bitstamp.public_);
     //
     auto const& x1 = xrpl_network::get_xrpl_instance(false)->wallets();
     auto const& x2 = xrpl_network::get_xrpl_instance(true)->wallets();
     for (auto const lw : x1)
     {
       auto w = static_cast<ledger_wallet*>(lw);
-      app_dbg<5>.debug("XRP_name       : ", w->name_);
-      app_dbg<5>.debug("XRP_public     : ", w->public_);
-      app_dbg<5>.debug("XRP_secret     : ", w->private_);
-      app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
+      GROX_LOG_DEBUG(app_log, "XRP_name       : {}", w->name_);
+      GROX_LOG_DEBUG(app_log, "XRP_public     : {}", w->public_);
+      GROX_LOG_DEBUG(app_log, "XRP_secret     : {}", w->private_);
+      GROX_LOG_DEBUG(app_log, "XRP_testnet    : {}", w->testnet_);
     }
     for (auto const lw : x2)
     {
       auto w = static_cast<ledger_wallet*>(lw);
-      app_dbg<5>.debug("XRP_name       : ", w->name_);
-      app_dbg<5>.debug("XRP_public     : ", w->public_);
-      app_dbg<5>.debug("XRP_secret     : ", w->private_);
-      app_dbg<5>.debug("XRP_testnet    : ", w->testnet_);
+      GROX_LOG_DEBUG(app_log, "XRP_name       : {}", w->name_);
+      GROX_LOG_DEBUG(app_log, "XRP_public     : {}", w->public_);
+      GROX_LOG_DEBUG(app_log, "XRP_secret     : {}", w->private_);
+      GROX_LOG_DEBUG(app_log, "XRP_testnet    : {}", w->testnet_);
     }
     return EXIT_SUCCESS;
   }
@@ -326,7 +323,7 @@ int qt_main(pika::program_options::variables_map& vm)
   // ------------------------------------------------------------------------
   // Load indicator plugins from standard plugin directory
   // ------------------------------------------------------------------------
-  app_dbg<1>.debug("Loading indicator plugins...");
+  GROX_LOG_DEBUG(app_log, "Loading indicator plugins...");
   auto& registry = indicators::indicator_registry::getInstance();
 
   // Try multiple possible plugin locations:
@@ -343,11 +340,11 @@ int qt_main(pika::program_options::variables_map& vm)
   std::size_t plugins_loaded = 0;
   for (auto const& dir : plugin_dirs)
   {
-    app_dbg<2>.debug(fmt::format("Trying plugin directory: {}", dir));
+    GROX_LOG_DEBUG(app_log, "Trying plugin directory: {}", dir);
     plugins_loaded += registry.load_plugins_from_directory(dir);
   }
 
-  app_dbg<1>.debug(fmt::format("Loaded {} indicator plugin(s)", plugins_loaded));
+  GROX_LOG_DEBUG(app_log, "Loaded {} indicator plugin(s)", plugins_loaded);
 
   // ------------------------------------------------------------------------
   // Initialize and probe Python indicator modules
@@ -359,21 +356,20 @@ int qt_main(pika::program_options::variables_map& vm)
     for (auto const& dir : plugin_dirs)
     {
       auto const py_dir = fmt::format("{}/python", dir);
-      app_dbg<2>.debug(fmt::format("Trying python plugin directory: {}", py_dir));
+      GROX_LOG_DEBUG(app_log, "Trying python plugin directory: {}", py_dir);
       py_modules_loaded += py_registry.load_indicators_from_directory(py_dir);
     }
 
     auto const available_python_indicators = py_registry.get_available_indicators();
-    app_dbg<1>.debug(
-        fmt::format("Loaded {} python indicator module(s); {} python indicator class(es) available",
-            py_modules_loaded, available_python_indicators.size()));
+    GROX_LOG_DEBUG(app_log,
+        "Loaded {} python indicator module(s); {} python indicator class(es) available",
+        py_modules_loaded, available_python_indicators.size());
 
     // Register Python indicators with main registry so they appear in GUI
     std::size_t py_registered = py_registry.register_with_main_registry(registry);
-    app_dbg<1>.debug(
-        fmt::format("Registered {} python indicator(s) with main registry", py_registered));
+    GROX_LOG_DEBUG(app_log, "Registered {} python indicator(s) with main registry", py_registered);
   }
-  else { app_dbg<1>.debug("Python indicator registry initialization failed"); }
+  else { GROX_LOG_DEBUG(app_log, "Python indicator registry initialization failed"); }
 
   // ------------------------------------------------------------------------
   // Create main window
@@ -395,6 +391,8 @@ std::string qt_pool_name = "Qt:pool";
 //----------------------------------------------------------------------------
 int pika_main(pika::program_options::variables_map& vm)
 {
+  grox::log::init_from_env();
+
   namespace ex = pika::execution::experimental;
   namespace tt = pika::this_thread::experimental;
 

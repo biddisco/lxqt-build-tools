@@ -32,7 +32,7 @@
 //
 #include "data/ohlc_utils.hpp"
 #include "data/timebased_chart_data.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "plot/ohlc_chart_curve.hpp"
 #include "plot/ohlc_date_scaledraw.hpp"
 #include "plot/ohlc_interactor.hpp"
@@ -42,12 +42,7 @@
 #include "util/datetime_utils.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
-//
-template <int Level>
-inline constexpr print_threshold<Level, debug_level> plot_dbg("OHLCplot");
+static auto plot_log = grox::log::create("OHLCplot");
 
 // ----------------------------------------------------------------------------
 void fill_text_label(QwtText& label)
@@ -99,7 +94,8 @@ class ohlc_price_scaledraw : public QwtScaleDraw
     }
     else { dig_ = dec_ + 2; }
     fstr = fmt::format("%{}.{}{}", dig_, dec_, form_);
-    plot_dbg<0>.debug(ffmt<s20>("Format string"), range, exponent, dig_, dec_, form_, fstr);
+    GROX_LOG_DEBUG(plot_log, "{:>20} {} {} {} {} {} {}", "Format string", range, exponent, dig_,
+        dec_, form_, fstr);
   }
 
   QwtText label(double value) const QWT_OVERRIDE
@@ -391,10 +387,10 @@ void ohlc_price_plot::update_time_axis(double t1, double t2, bool emit_signal)
   // volume bars as they sum more/less data)
   setAxisScale(QwtAxis::YLeft, 0, minmax.max_volume_);
 
-  plot_dbg<8>.debug(ffmt<s20>("min_max"),
+  GROX_LOG_DEBUG(plot_log, "{:>20} {} {} -> {} ({}, {})", "min_max",
       ohlc_data_resolutions::get_resolution(get_candle_resolution()).name_,
-      msecs_unix_to_calendar_time_local(t1), "->", msecs_unix_to_calendar_time_local(t2), "(",
-      minmax.min_price_, ",", minmax.max_price_, ")");
+      msecs_unix_to_calendar_time_local(t1), msecs_unix_to_calendar_time_local(t2),
+      minmax.min_price_, minmax.max_price_);
 
   setAutoReplot(doAutoReplot);
   replot();
@@ -529,7 +525,7 @@ void ohlc_price_plot::updateLayout()
   QwtPlot::updateLayout();
   if (first_update_)
   {
-    plot_dbg<5>.debug(ffmt<s20>("updateLayout"), "adjust_candle_size");
+    GROX_LOG_DEBUG(plot_log, "{:>20} adjust_candle_size", "updateLayout");
     update_candle_size();
     first_update_ = false;
   }

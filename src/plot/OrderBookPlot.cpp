@@ -13,14 +13,12 @@
 #include <QwtScaleWidget>
 #include <QwtText>
 //
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "plot/OrderBookCurve.h"
 #include "plot/OrderBookPlot.h"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug::detail;
-template <int Level>
-inline constexpr print_threshold<Level, 9> book_dbg("ord-plot");
+static auto book_log = grox::log::create("ord-plot");
 
 // ----------------------------------------------------------------------------
 OrderBookPlot::OrderBookPlot(QWidget* parent, std::shared_ptr<order_book_base> order_book)
@@ -147,7 +145,7 @@ OrderBookPlot::OrderBookPlot(QWidget* parent, std::shared_ptr<order_book_base> o
 OrderBookPlot::~OrderBookPlot()
 {
   order_book_.reset();
-  book_dbg<2>.debug(ffmt<s20>("Destroying"), "orderbook plot");
+  GROX_LOG_DEBUG(book_log, "{:>20} orderbook plot", "Destroying");
 }
 
 // ----------------------------------------------------------------------------

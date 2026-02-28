@@ -7,17 +7,12 @@
 #include <QObject>
 //
 #include "config/config.hpp"
-#include "debug/print.hpp"
+#include "debug/logging.hpp"
 #include "exchange/abstract_exchange.hpp"
 #include "util/stringutils.hpp"
 
 // ----------------------------------------------------------------------------
-using namespace grox::debug;
-// a debug level of N shows messages with priority<N
-constexpr int debug_level = 0;
-//
-template <int Level>
-inline constexpr print_threshold<Level, debug_level> exchange_dbg("Exchange");
+static auto exchange_log = grox::log::create("Exchange");
 
 // ----------------------------------------------------------------------------
 abstract_exchange::abstract_exchange()
@@ -41,7 +36,7 @@ void abstract_exchange::shut_down()
   // do not allow shutdown / async operations concurrently
   closing_down_ = true;
   std::lock_guard l(async_mutex_);
-  exchange_dbg<0>.debug(ffmt<s20>(get_name().c_str()), "shutdown start");
+  GROX_LOG_DEBUG(exchange_log, "{:>20} shutdown start", get_name());
   //
   save_subscribed_tickers();
   //
@@ -51,8 +46,8 @@ void abstract_exchange::shut_down()
     {
       try
       {
-        exchange_dbg<0>.debug(
-            ffmt<s20>("websocket reset"), currency_pair_string(ticker), fmt::ptr(websocket.get()));
+        GROX_LOG_DEBUG(exchange_log, "{:>20} {} {}", "websocket reset",
+            currency_pair_string(ticker), fmt::ptr(websocket.get()));
         websocket.reset();
       }
       catch (std::exception const& e)
@@ -65,7 +60,7 @@ void abstract_exchange::shut_down()
   }
   tickers_subscribed_.clear();
   //
-  exchange_dbg<0>.debug(ffmt<s20>(get_name().c_str()), "shutdown complete");
+  GROX_LOG_DEBUG(exchange_log, "{:>20} shutdown complete", get_name());
 }
 
 // ----------------------------------------------------------------------------
@@ -112,7 +107,8 @@ ticker::data abstract_exchange::get_subscribed_ticker_data(currency_pair cp) con
   {
     for (auto const& [key, value] : tickers_subscribed_)
     {
-      exchange_dbg<0>.error(ffmt<s20>("tickers_subscribed"), "want", cp, "Found", key);
+      GROX_LOG_ERROR(exchange_log, "{:>20} want {} Found {}", "tickers_subscribed",
+          currency_pair_string(cp), currency_pair_string(key));
     }
     throw std::runtime_error("Attempt to access unsubscribed ticker");
   }
@@ -174,7 +170,7 @@ void abstract_exchange::load_subscribed_tickers()
   {
     if (settings.value(ticker).toBool())
     {
-      exchange_dbg<0>.debug(ffmt<s20>("subscription"), ticker.toStdString());
+      GROX_LOG_DEBUG(exchange_log, "{:>20} {}", "subscription", ticker.toStdString());
       currency_pair cp = string_to_pair(ticker.toStdString(), "-");
       ticker_subscribe(cp);
     }
