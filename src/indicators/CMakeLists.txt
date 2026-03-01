@@ -119,9 +119,6 @@ if(GROX_WITH_PYTHON_INDICATORS)
     message(WARNING "Python development headers not found, Python indicators disabled")
     set(GROX_WITH_PYTHON_INDICATORS OFF)
   endif()
-else()
-  # Stub implementation without Python
-  target_compile_definitions(grox_indicators PRIVATE GROX_PYTHON_ENABLED=0)
 endif()
 
 # ==============================================================================
