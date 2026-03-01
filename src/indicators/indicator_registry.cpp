@@ -19,7 +19,15 @@ namespace indicators {
   }
 
   // ----------------------------------------------------------------------------
-  indicator_registry::~indicator_registry() = default;
+  indicator_registry::~indicator_registry()
+  {
+    // Ensure algorithm instances are destroyed before registry-owned resources.
+    available_indicators.clear();
+    available_arbitragers.clear();
+
+    // Keep explicit teardown ordering here.
+    plugin_loader_.reset();
+  }
 
   // ----------------------------------------------------------------------------
   shared_algorithm indicator_registry::find_by_name(std::string name)

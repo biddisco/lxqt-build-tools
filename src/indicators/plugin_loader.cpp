@@ -13,7 +13,13 @@ namespace fs = std::filesystem;
 namespace indicators {
 
   // ----------------------------------------------------------------------------
-  plugin_loader::~plugin_loader() { unload_all(); }
+  plugin_loader::~plugin_loader()
+  {
+    // NOTE: Do not unload plugins during static shutdown.
+    // Indicator instances may still be alive in other static objects, and calling
+    // dlclose here can invalidate code/vtables before those objects are destroyed.
+    // The OS will reclaim these mappings at process exit.
+  }
 
   // ----------------------------------------------------------------------------
   std::size_t plugin_loader::load_plugins_from_directory(
