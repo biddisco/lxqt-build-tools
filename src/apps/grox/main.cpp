@@ -23,6 +23,7 @@
 #include <pika/modules/thread_manager.hpp>
 #include <pika/program_options.hpp>
 //
+#include "grox/config-options.hpp"
 #include "indicators/indicator_registry.hpp"
 #include "indicators/python_plugin.hpp"
 #include "network/evp-encrypt.hpp"
@@ -331,10 +332,10 @@ int qt_main(pika::program_options::variables_map& vm)
   // 2. Relative to build/bin
   // 3. Standard install location
   std::vector<std::string> plugin_dirs = {
-      "./lib/grox/plugins",             // Build directory root
-      "../lib/grox/plugins",            // From build/bin directory
-      "./plugins",                      // Same directory as executable
-      "/usr/local/lib/grox/plugins",    // Standard install location
+      std::string(GROX_BINARY_DIR) + "/lib/grox/plugins",    // Build directory root
+      "../lib/grox/plugins",                                 // From build/bin directory
+      "./plugins",                                           // Same directory as executable
+      "/usr/local/lib/grox/plugins",                         // Standard install location
   };
 
   std::size_t plugins_loaded = 0;
@@ -346,9 +347,10 @@ int qt_main(pika::program_options::variables_map& vm)
 
   GROX_LOG_DEBUG(app_log, "{:>20} Loaded {}", "indicator plugins", plugins_loaded);
 
-  // ------------------------------------------------------------------------
-  // Initialize and probe Python indicator modules
-  // ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// Initialize and probe Python indicator modules
+// -----------------
+#ifdef GROX_PYTHON_ENABLED
   auto& py_registry = indicators::python::python_indicator_registry::instance();
   if (py_registry.initialize())
   {
@@ -370,6 +372,9 @@ int qt_main(pika::program_options::variables_map& vm)
         "python indicators", py_registered);
   }
   else { GROX_LOG_ERROR(app_log, "{:>20} registry initialization failed", "python indicators"); }
+#else
+  GROX_LOG_INFO(app_log, "{:>20} Python support disabled (no GROX_PYTHON_ENABLED)", "registry");
+#endif
 
   // ------------------------------------------------------------------------
   // Create main window

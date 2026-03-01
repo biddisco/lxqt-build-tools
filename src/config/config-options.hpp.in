@@ -1,2 +1,3 @@
 // The path to the directory with all the auxiliary data files
 #define GROX_SOURCE_DIR "@GROX_SOURCE_DIR@"
+#define GROX_BINARY_DIR "@GROX_BINARY_DIR@"

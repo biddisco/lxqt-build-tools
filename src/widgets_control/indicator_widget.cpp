@@ -12,9 +12,9 @@
 #include <QVBoxLayout>
 #include <QWidget>
 // Grox
-#include "data/ohlc_dataset.hpp"
-#include "indicators/indicator_params.hpp"
 #include "ui_indicator_widget.h"
+//
+#include "indicators/indicator_registry.hpp"
 #include "widgets_control/control_builder.hpp"
 #include "widgets_control/control_factory.hpp"
 #include "widgets_control/indicator_json.hpp"
@@ -29,6 +29,12 @@ indicator_widget::indicator_widget(indicators::indicator_vector const* vec, std:
   , algorithm_{}
   , indicator_widget_(nullptr)
 {
+  if (index >= indicators_->size())
+  {
+    GROX_LOG_ERROR(indicator_log, "{:>20} index out of range index={} size={}", "indicator_widget",
+        index, indicators_->size());
+    return;
+  }
   ui = new Ui::indicator_widget();
   ui->setupUi(this);
   this->setWindowTitle("Indicator");
