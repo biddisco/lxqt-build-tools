@@ -26,7 +26,7 @@ namespace indicators { namespace python {
 
   python_indicator_registry::~python_indicator_registry()
   {
-    GROX_LOG_DEBUG(py_plug_log, "registry dtor initialized={}", initialized_);
+    // NOTE: No logging in destructor - logging system may be destroyed during static teardown
     if (initialized_) { shutdown(); }
   }
 
@@ -71,7 +71,22 @@ namespace indicators { namespace python {
     }
 
 #ifdef GROX_PYTHON_ENABLED
-    // Decrement all cached Python object refcounts
+    // NOTE: We deliberately do NOT call Py_Finalize() here to avoid shutdown crashes.
+    // Reason: There may still be py_indicator_instance objects alive (owned by
+    // indicator_registry), and their destructors will try to Py_DECREF after
+    // Py_Finalize() has torn down the interpreter, causing segfaults.
+    //
+    // Skipping Py_Finalize() at program exit is safe - the OS reclaims all resources.
+    // This is a common practice in Python-embedding applications.
+    //
+    // If explicit cleanup is needed (e.g., for orderly shutdown in tests), call
+    // shutdown() early while all instances are still managed, then destroy the
+    // instances before process exit.
+
+    GROX_LOG_DEBUG(
+        py_plug_log, "{:>20} clearing registered classes (skipping Py_Finalize)", "registry");
+
+    // We still clear our references, but don't call Py_Finalize
     for (auto& [name, py_obj] : registered_classes_)
     {
       if (py_obj) { Py_DECREF(static_cast<PyObject*>(py_obj)); }
@@ -79,12 +94,6 @@ namespace indicators { namespace python {
 #endif
 
     registered_classes_.clear();
-
-#ifdef GROX_PYTHON_ENABLED
-    GROX_LOG_DEBUG(py_plug_log, "calling Py_Finalize()");
-    Py_Finalize();
-#endif
-
     initialized_ = false;
 
     GROX_LOG_DEBUG(

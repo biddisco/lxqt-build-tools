@@ -105,11 +105,11 @@ public:
     // ----------------------------------------------------------------------------
     virtual ~indicator_base()
     {
+      // NOTE: No logging in destructor - may be called during static destruction
+      // when logging system is already destroyed
       for (auto d : get_inputs())
       {
         std::string id = subscription_name();
-        GROX_LOG_DEBUG(
-            indicator_log, "{:>20} {} {}", "UnSubscribing", id, d.dataset_->get_resolution().name_);
         d.dataset_->new_data_subscribers_.unsubscribe(id);
       }
     }
