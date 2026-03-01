@@ -60,7 +60,7 @@ namespace net::ws {
     QObject::connect(
         thread_, &QThread::started, client_,
         [this]() {
-          GROX_LOG_DEBUG(qsession_log, "{:20s} {} {} Starting websocket connection", client_->id(),
+          GROX_LOG_TRACE(qsession_log, "{:20s} {} {} Starting websocket connection", client_->id(),
               fmt::ptr(this), "QThread:started");
           this->client_->startConnection();
         },

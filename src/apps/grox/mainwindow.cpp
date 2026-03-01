@@ -866,12 +866,12 @@ void GroxMainWindow::saveConnectionSetups()
       for (auto const& s : streams)
       {
         auto skey = std::string(magic_enum::enum_name(s));
-        GROX_LOG_DEBUG(
+        GROX_LOG_TRACE(
             main_log, "{:>20} {} {} {}", "saveConnectionSetups", "Stream subscribed", key, skey);
         bool subscribed = e->is_stream_subscribed(cp, s);
         settings.setValue(skey.c_str(), subscribed);
         if (subscribed)
-          GROX_LOG_DEBUG(main_log, "{:>20} {} {} {}", "saveConnectionSetups", "Stream subscribed",
+          GROX_LOG_TRACE(main_log, "{:>20} {} {} {}", "saveConnectionSetups", "Stream subscribed",
               settings.group().toStdString(), key);
       }
       settings.endGroup();    // ticker

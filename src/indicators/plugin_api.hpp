@@ -58,7 +58,7 @@ typedef grox_plugin_info const* (*grox_plugin_info_func)();
 #define GROX_DEFINE_PLUGIN_INFO(plugin_name, plugin_version, plugin_desc, plugin_category)         \
   GROX_PLUGIN_EXPORT const grox_plugin_info* grox_plugin_get_info()                                \
   {                                                                                                \
-    GROX_LOG_DEBUG(plugin_api_log, "grox_plugin_get_info name={} version={} category={}",          \
+    GROX_LOG_TRACE(plugin_api_log, "{:>20} name={} version={} category={}", "plugin_get_info",     \
         plugin_name, plugin_version, plugin_category);                                             \
     static const grox_plugin_info info = {                                                         \
         plugin_name, plugin_version, plugin_desc, plugin_category, GROX_PLUGIN_API_VERSION};       \
@@ -69,7 +69,7 @@ typedef grox_plugin_info const* (*grox_plugin_info_func)();
 #define GROX_BEGIN_PLUGIN_REGISTRATION()                                                           \
   GROX_PLUGIN_EXPORT void grox_plugin_register(indicators::indicator_registry* registry)           \
   {                                                                                                \
-    GROX_LOG_DEBUG(plugin_api_log, "grox_plugin_register called registry_ptr={}",                  \
+    GROX_LOG_TRACE(plugin_api_log, "{:>20} called registry_ptr={}", "plugin_register",             \
         static_cast<void*>(registry));                                                             \
     using namespace indicators;
 

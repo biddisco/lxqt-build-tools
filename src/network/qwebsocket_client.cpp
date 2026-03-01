@@ -65,7 +65,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::startConnection()
   {
-    GROX_LOG_DEBUG(qwebsocket_log, "{:20s} startConnection {}", id_, url_);
+    GROX_LOG_TRACE(qwebsocket_log, "{:20s} startConnection {}", id_, url_);
     //
     auto ws = new QWebSocket;
     ws->setPauseMode(QAbstractSocket::PauseNever);    // @todo PauseOnSslErrors
@@ -109,7 +109,7 @@ namespace net::ws {
     connect(ws, &QWebSocket::bytesWritten, this, &qwebsocket_client::onBytesWritten,
         Qt::DirectConnection);
 
-    GROX_LOG_DEBUG(qwebsocket_log, "{:20s} openConnection {}", id_, url_);
+    GROX_LOG_TRACE(qwebsocket_log, "{:20s} openConnection {}", id_, url_);
     QNetworkRequest request = QNetworkRequest(QUrl(url_));
     ws->open(request);
   }
@@ -134,7 +134,7 @@ namespace net::ws {
     auto ws = websocket_.load();
     if (ws)
     {
-      GROX_LOG_DEBUG(qwebsocket_log, "{:20s} Connected : sending subscribe", id_);
+      GROX_LOG_TRACE(qwebsocket_log, "{:20s} Connected : sending subscribe", id_);
       ws->sendTextMessage(subscribe_);
     }
     else { GROX_LOG_ERROR(qwebsocket_log, "onConnected after deletion"); }

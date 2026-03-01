@@ -323,7 +323,7 @@ int qt_main(pika::program_options::variables_map& vm)
   // ------------------------------------------------------------------------
   // Load indicator plugins from standard plugin directory
   // ------------------------------------------------------------------------
-  GROX_LOG_DEBUG(app_log, "Loading indicator plugins...");
+  GROX_LOG_DEBUG(app_log, "{:>20} indicators", "Loading plugins");
   auto& registry = indicators::indicator_registry::getInstance();
 
   // Try multiple possible plugin locations:
@@ -340,11 +340,11 @@ int qt_main(pika::program_options::variables_map& vm)
   std::size_t plugins_loaded = 0;
   for (auto const& dir : plugin_dirs)
   {
-    GROX_LOG_DEBUG(app_log, "Trying plugin directory: {}", dir);
+    GROX_LOG_TRACE(app_log, "{:>20} Trying {}", "indicator plugins", dir);
     plugins_loaded += registry.load_plugins_from_directory(dir);
   }
 
-  GROX_LOG_DEBUG(app_log, "Loaded {} indicator plugin(s)", plugins_loaded);
+  GROX_LOG_DEBUG(app_log, "{:>20} Loaded {}", "indicator plugins", plugins_loaded);
 
   // ------------------------------------------------------------------------
   // Initialize and probe Python indicator modules
@@ -356,20 +356,20 @@ int qt_main(pika::program_options::variables_map& vm)
     for (auto const& dir : plugin_dirs)
     {
       auto const py_dir = fmt::format("{}/python", dir);
-      GROX_LOG_DEBUG(app_log, "Trying python plugin directory: {}", py_dir);
+      GROX_LOG_DEBUG(app_log, "{:>20} Trying {}", "python indicators", py_dir);
       py_modules_loaded += py_registry.load_indicators_from_directory(py_dir);
     }
 
     auto const available_python_indicators = py_registry.get_available_indicators();
-    GROX_LOG_DEBUG(app_log,
-        "Loaded {} python indicator module(s); {} python indicator class(es) available",
-        py_modules_loaded, available_python_indicators.size());
+    GROX_LOG_DEBUG(app_log, "{:>20} Loaded {} module(s); {} class(es) available",
+        "Python indicators", py_modules_loaded, available_python_indicators.size());
 
     // Register Python indicators with main registry so they appear in GUI
     std::size_t py_registered = py_registry.register_with_main_registry(registry);
-    GROX_LOG_DEBUG(app_log, "Registered {} python indicator(s) with main registry", py_registered);
+    GROX_LOG_DEBUG(app_log, "{:>20} Registered {} python indicator(s) with main registry",
+        "python indicators", py_registered);
   }
-  else { GROX_LOG_DEBUG(app_log, "Python indicator registry initialization failed"); }
+  else { GROX_LOG_ERROR(app_log, "{:>20} registry initialization failed", "python indicators"); }
 
   // ------------------------------------------------------------------------
   // Create main window
