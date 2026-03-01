@@ -7,6 +7,7 @@
 //
 #include "indicators/algorithm_base.hpp"
 #include "indicators/indicator_types.hpp"
+#include "logging.hpp"
 
 // ----------------------------------------------------------------------------
 namespace indicators {
@@ -33,10 +34,18 @@ public:
     }
 
     // Register an indicator (called by plugins during initialization)
-    void register_indicator(shared_algorithm p) { available_indicators.push_back(p); }
+    void register_indicator(shared_algorithm p)
+    {
+      GROX_LOG_TRACE(indicator_log, "{:>20} Registering indicator: {}", "registry", p->get_name());
+      available_indicators.push_back(p);
+    }
 
     // Register a trading algorithm (called by plugins during initialization)
-    void register_arbitrage(shared_algorithm p) { available_arbitragers.push_back(p); }
+    void register_arbitrage(shared_algorithm p)
+    {
+      GROX_LOG_TRACE(indicator_log, "{:>20} Registering arbitrage: {}", "registry", p->get_name());
+      available_arbitragers.push_back(p);
+    }
 
     // Find an indicator by name
     static shared_algorithm find_by_name(std::string);

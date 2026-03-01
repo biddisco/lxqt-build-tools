@@ -11,16 +11,17 @@
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  class stochastic_oscillator : public algorithm_base
+  class stochastic_oscillator : public indicator_base
   {
 public:
     // ---------------------------------------
-    FACTORY_ALGORITHM_CREATE(stochastic_oscillator);
+    FACTORY_INDICATOR_CREATE(stochastic_oscillator, operator_type);
 
     // ---------------------------------------
     /// Default constructor
     stochastic_oscillator()
-      : algorithm_base("Stochastic Oscillator", "Stochastic Oscillator")
+      : indicator_base(
+            "Stochastic Oscillator", "Stochastic Oscillator", {overlay_type::minmax_limit})
       , buffer_{}
       , stoch_val_{0.5}
       , mode_{1}
@@ -65,6 +66,13 @@ public:
         stoch_val_ = (val - min_val) / (max_val - min_val);
 
       return stoch_val_;
+    }
+
+    // ---------------------------------------
+    double operator()(ohlctv_sample const& val)
+    {
+      double price = ohlc_mode_extract(mode_, val);
+      return operator()(price);
     }
 
     // ---------------------------------------
