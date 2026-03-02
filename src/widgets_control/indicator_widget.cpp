@@ -113,7 +113,7 @@ void indicator_widget::add_indicator_to_dialog(QDialog* dlg)
       QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Reset);
   connect(buttonBox, &QDialogButtonBox::accepted, dlg, &QDialog::accept);
   connect(buttonBox, &QDialogButtonBox::rejected, dlg, &QDialog::reject);
-  connect(buttonBox, &QDialogButtonBox::clicked, this, [=](QAbstractButton* b) {
+  connect(buttonBox, &QDialogButtonBox::clicked, this, [=, this](QAbstractButton* b) {
     if (buttonBox->standardButton(b) == QDialogButtonBox::Reset)
     {    //
       dlg->done(2);

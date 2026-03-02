@@ -100,14 +100,35 @@ namespace indicators { namespace python {
       }
     }
 
-    if (!python_home_.empty()) { Py_SetPythonHome(python_home_.c_str()); }
+    // Initialize Python using PyConfig API (replaces deprecated Py_SetPythonHome/Py_Initialize)
+    GROX_LOG_TRACE(py_plug_log, "{:>20} initializing Python interpreter", "registry");
+    PyConfig config;
+    PyConfig_InitPythonConfig(&config);
 
-    GROX_LOG_TRACE(py_plug_log, "{:>20} calling Py_Initialize()", "registry");
-    Py_Initialize();
+    if (!python_home_.empty())
+    {
+      PyStatus status = PyConfig_SetString(&config, &config.home, python_home_.c_str());
+      if (PyStatus_Exception(status))
+      {
+        GROX_LOG_ERROR(
+            py_plug_log, "{:>20} PyConfig_SetString failed: {}", "registry", status.err_msg);
+        PyConfig_Clear(&config);
+        return false;
+      }
+    }
+
+    PyStatus status = Py_InitializeFromConfig(&config);
+    PyConfig_Clear(&config);
+
+    if (PyStatus_Exception(status))
+    {
+      GROX_LOG_ERROR(py_plug_log, "{:>20} Py_InitializeFromConfig failed", "registry");
+      return false;
+    }
 
     if (!Py_IsInitialized())
     {
-      GROX_LOG_ERROR(py_plug_log, "{:>20} Py_Initialize failed", "registry");
+      GROX_LOG_ERROR(py_plug_log, "{:>20} Python initialization check failed", "registry");
       return false;
     }
 

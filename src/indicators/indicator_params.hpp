@@ -35,7 +35,7 @@ namespace indicators {
     return os;
   }
 
-  static std::string param_string(param_list const& params)
+  inline std::string param_string(param_list const& params)
   {
     std::stringstream stream;
     for (auto const& p : params) { stream << /*std::get<0>(p) << "," << */ streamer{p} << ","; }

@@ -42,7 +42,7 @@ currency_widget::currency_widget(int decimals, QWidget* parent)
   connect(ui->amount_edit, SIGNAL(returnPressed()), this, SLOT(get_amount()));
 
   connect(ui->buy_sell_combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-      [=](int /*index*/) { buy_sell_status(); });
+      [this](int /*index*/) { buy_sell_status(); });
 }
 
 // ----------------------------------------------------------------------------

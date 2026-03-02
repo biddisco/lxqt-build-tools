@@ -188,7 +188,7 @@ void OrderBookPlot::update_graph_limits()
 {
   bool primary = true;
   //
-  int index = primary ? 0 : 1;
+  // int index = primary ? 0 : 1;
   auto [minx, maxx] = order_book_->get_xminmax(primary);
   setAxisScale(QwtPlot::xBottom, minx, maxx);
   auto [miny, maxy] = order_book_->get_yminmax(primary);

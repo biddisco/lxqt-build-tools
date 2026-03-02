@@ -38,7 +38,7 @@ namespace ticker {
 using stream_set = std::set<ticker::streams>;
 
 // ----------------------------------------------------------------------------
-static std::string stream_to_pretty_text(ticker::streams stream)
+inline std::string stream_to_pretty_text(ticker::streams stream)
 {
   std::string txt = std::string(magic_enum::enum_name(stream));
   // Transform fir char after each break
@@ -50,7 +50,7 @@ static std::string stream_to_pretty_text(ticker::streams stream)
   return txt;
 }
 
-static ticker::streams stream_from_pretty_text(std::string txt)
+inline ticker::streams stream_from_pretty_text(std::string txt)
 {
   std::transform(txt.begin(), txt.end(), txt.begin(), [](char c) { return std::tolower(c); });
   auto stream = magic_enum::enum_cast<ticker::streams>(txt);

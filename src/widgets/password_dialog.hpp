@@ -48,6 +48,6 @@ class password_dialog : public QDialog
   void refresh_gui(int index);
 
   private:
-  Ui::password_dialog* ui;
   bool simple_mode_;
+  Ui::password_dialog* ui;
 };

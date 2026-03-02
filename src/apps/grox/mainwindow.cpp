@@ -154,7 +154,7 @@ std::shared_ptr<price_chart_widget> create_price_chart_widget(
   // put the price plot into a dock widget
   using namespace ads;
   std::string title = currency_pair_string(cp) + " price " + tdata->exchange_->get_name();
-  CDockWidget* PlotDockWidget = new CDockWidget(to_qstring(title));
+  CDockWidget* PlotDockWidget = new CDockWidget(global_settings.dock_manager_, to_qstring(title));
   PlotDockWidget->setWidget(chart_widget.get(), CDockWidget::AutoScrollArea);
   PlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
   global_settings.dock_manager_->addDockWidgetFloating(PlotDockWidget);
@@ -180,7 +180,8 @@ QPlainTextEdit* create_order_book_text_widget(std::string cps, std::string name)
   // put the order book into a dock widget
   using namespace ads;
   std::string obtitle = cps + " text " + name;
-  CDockWidget* obPlotDockWidget = new CDockWidget(to_qstring(obtitle));
+  CDockWidget* obPlotDockWidget =
+      new CDockWidget(global_settings.dock_manager_, to_qstring(obtitle));
   obPlotDockWidget->setWidget(orderbook_text, CDockWidget::AutoScrollArea);
   obPlotDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
   global_settings.dock_manager_->addDockWidgetFloating(obPlotDockWidget);
@@ -199,7 +200,7 @@ OrderBookPlot* create_order_book_plot_widget(
   orderbook_plot->setMinimumSize(384, 256);
   //
   std::string obptitle = cps + " depth " + name;
-  CDockWidget* obpDockWidget = new CDockWidget(to_qstring(obptitle));
+  CDockWidget* obpDockWidget = new CDockWidget(global_settings.dock_manager_, to_qstring(obptitle));
   obpDockWidget->setWidget(orderbook_plot, CDockWidget::AutoScrollArea);
   obpDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
   global_settings.dock_manager_->addDockWidgetFloating(obpDockWidget);
@@ -360,7 +361,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   net_layout_ = new QTabWidget(this);
   net_layout_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   //
-  CDockWidget* NetworkDockWidget = new CDockWidget("Networks");
+  CDockWidget* NetworkDockWidget = new CDockWidget(global_settings.dock_manager_, "Networks");
   NetworkDockWidget->setWidget(net_layout_, CDockWidget::AutoScrollArea);
   NetworkDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
   NetworkDockWidget->setMinimumSize(128, 196);
@@ -374,7 +375,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   accounts_frame_ = new QFrame();
   accounts_frame_->setLayout(new QVBoxLayout());
   //
-  CDockWidget* AccountsDockWidget = new CDockWidget("Accounts");
+  CDockWidget* AccountsDockWidget = new CDockWidget(global_settings.dock_manager_, "Accounts");
   AccountsDockWidget->setWidget(accounts_frame_, CDockWidget::AutoScrollArea);
   AccountsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
   AccountsDockWidget->setMinimumSize(128, 196);
@@ -388,7 +389,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   orders_frame_ = new QFrame();
   orders_frame_->setLayout(new QVBoxLayout());
   //
-  CDockWidget* OrdersDockWidget = new CDockWidget("Trades");
+  CDockWidget* OrdersDockWidget = new CDockWidget(global_settings.dock_manager_, "Trades");
   OrdersDockWidget->setWidget(orders_frame_, CDockWidget::AutoScrollArea);
   OrdersDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContentMinimumSize);
   OrdersDockWidget->setMinimumSize(128, 196);
@@ -400,7 +401,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   // ----------------------------------
   // create a dock widget for terminal
   terminal_widget_ = create_terminal_widget(dark_mode_);
-  terminal_dock_widget_ = new CDockWidget("Terminal");
+  terminal_dock_widget_ = new CDockWidget(global_settings.dock_manager_, "Terminal");
   terminal_dock_widget_->setWidget(terminal_widget_);
   terminal_dock_widget_->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromDockWidget);
   terminal_dock_widget_->setMinimumSize(400, 300);
@@ -1026,10 +1027,16 @@ void GroxMainWindow::LoadStyleSheet(int dark)
   }
   else
   {
-    f.open(QFile::ReadOnly | QFile::Text);
-    QTextStream ts(&f);
-    global_settings.dock_manager_->setStyleSheet("");
-    qApp->setStyleSheet(ts.readAll());
+    if (!f.open(QFile::ReadOnly | QFile::Text))
+    {
+      GROX_LOG_ERROR(main_log, "{:>20} {}", "Stylesheet", "Unable to open stylesheet file");
+    }
+    else
+    {
+      QTextStream ts(&f);
+      global_settings.dock_manager_->setStyleSheet("");
+      qApp->setStyleSheet(ts.readAll());
+    }
   }
   apply_terminal_theme(terminal_widget_, dark);
 }

@@ -85,10 +85,10 @@ namespace grox {
         }
         else
         {
-          for (auto const& [k, v] : subscriptions)
+          for ([[maybe_unused]] auto const& subscriber : subscriptions)
           {
-            GROX_LOG_ERROR(
-                pubsub_log, "{:>20} {} {} {}", "unsubscribe", id, k, print_type<Signature>());
+            GROX_LOG_ERROR(pubsub_log, "{:>20} {} {} {}", "unsubscribe", id, subscriber.first,
+                print_type<Signature>());
           }
           throw std::runtime_error("Incorrect Id given to unsubscribe");
         }
@@ -99,10 +99,10 @@ namespace grox {
     void clear()
     {
       using grox::debug::print_type;
-      for (auto const& [k, v] : subscriptions)
+      for ([[maybe_unused]] auto const& subscriber : subscriptions)
       {
-        GROX_LOG_TRACE(
-            pubsub_log, "{:>20} {} {} {}", "unsubscribe", "clear", k, print_type<Signature>());
+        GROX_LOG_TRACE(pubsub_log, "{:>20} {} {} {}", "unsubscribe", "clear", subscriber.first,
+            print_type<Signature>());
       }
       std::lock_guard<mutex_type> lk(add_remove_mtx_);
       subscriptions.clear();

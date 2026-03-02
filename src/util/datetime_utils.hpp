@@ -40,7 +40,7 @@
 
 // ----------------------------------------------------------------------------
 // unixtime * 1000 is msecs since 1970/1/1
-static std::string msecs_unix_to_calendar_time_local(uint64_t unixmsecs)
+inline std::string msecs_unix_to_calendar_time_local(uint64_t unixmsecs)
 {
   // Convert milliseconds to seconds and nanoseconds
   auto seconds = unixmsecs / 1000;
@@ -63,7 +63,7 @@ static std::string msecs_unix_to_calendar_time_local(uint64_t unixmsecs)
 }
 
 // ----------------------------------------------------------------------------
-static std::string secs_unix_to_calendar_time_local(uint64_t unixsecs)
+inline std::string secs_unix_to_calendar_time_local(uint64_t unixsecs)
 {
   // Convert seconds since epoch to time_t
   std::time_t time = static_cast<std::time_t>(unixsecs);
@@ -81,7 +81,7 @@ static std::string secs_unix_to_calendar_time_local(uint64_t unixsecs)
 }
 
 // ----------------------------------------------------------------------------
-static std::string getCurrentUtcTime(std::string const format = "%Y-%m-%d %H:%M:%S")
+inline std::string getCurrentUtcTime(std::string const format = "%Y-%m-%d %H:%M:%S")
 {
   // Get current time in UTC
   auto now = std::chrono::system_clock::now();

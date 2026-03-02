@@ -92,6 +92,7 @@ protected:
     bool executing_;
 
 public:
+    using algorithm_base::create;
     using algorithm_base::initialize;
 
     // ----------------------------------------------------------------------------
@@ -123,7 +124,7 @@ public:
     // ----------------------------------------------------------------------------
     /// in principle an indicator can return multiple graph series, which might require
     /// different display types, currently they are all the same, so 'n' is ignored
-    virtual overlay_type const get_overlay(int n) const { return overlay_[n]; }
+    virtual overlay_type get_overlay(int n) const { return overlay_[n]; }
 
     // ----------------------------------------------------------------------------
     virtual std::vector<candle_input_data> const& get_inputs() const { return in_datasets_; }
@@ -136,7 +137,7 @@ public:
 
     virtual std::vector<output_type*>& get_outputs() { return out_datasets_; }
 
-    virtual output_type* const get_output(std::size_t i) const
+    virtual output_type* get_output(std::size_t i) const
     {
       if (i >= out_datasets_.size()) { throw std::runtime_error("Setup inputs/outputs"); }
       return out_datasets_[i];

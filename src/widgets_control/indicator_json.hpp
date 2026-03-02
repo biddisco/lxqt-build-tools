@@ -112,7 +112,7 @@ namespace indicators {
 }    // namespace indicators
 
 // ----------------------------------------------------------------------------
-static nlohmann::ordered_json get_json_layout_indicator(indicators::shared_algorithm alg)
+inline nlohmann::ordered_json get_json_layout_indicator(indicators::shared_algorithm alg)
 {
   nlohmann::ordered_json json;
   for (auto const& param : alg->get_params())
@@ -129,7 +129,7 @@ static nlohmann::ordered_json get_json_layout_indicator(indicators::shared_algor
 }
 
 // ----------------------------------------------------------------------------
-static nlohmann::json get_json_values_indicator(indicators::shared_algorithm alg)
+inline nlohmann::json get_json_values_indicator(indicators::shared_algorithm alg)
 {
   nlohmann::ordered_json json;
   for (auto const& param : alg->get_params())

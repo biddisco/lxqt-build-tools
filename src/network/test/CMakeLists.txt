@@ -135,6 +135,9 @@ foreach(test ${TEST_SRCS})
            Threads::Threads
            tests_network_util
   )
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+    target_compile_options(${testname} PRIVATE -Wno-deprecated-declarations)
+  endif()
   if(GROX_WITH_TESTING_SANITIZER)
     target_add_sanitizer_flags(${testname})
   endif()

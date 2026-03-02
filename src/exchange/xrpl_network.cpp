@@ -812,7 +812,7 @@ void xrpl_network::handle_account_offers(ledger_wallet& w, std::string_view data
         0.0,    // fee %
         0.0,    // fee fixed
         0,      // id
-        offer.at("seq").get<std::uint64_t>(), "- no date -"};
+        offer.at("seq").get<std::uint64_t>(), "- no date -", false};
 
     // xrp amounts are in drops, do divide by 1E6 to get whole xrp units
     if (t.get_trade_type() == trade_type::buy)

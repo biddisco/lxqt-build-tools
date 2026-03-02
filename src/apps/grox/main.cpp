@@ -292,7 +292,7 @@ int qt_main(pika::program_options::variables_map& vm)
 #ifdef GROX_SUPPORT_DECODE
   if (vm["decode"].as<bool>())
   {
-    auto& bitstamp = bitstamp_network::get_bitstamp_instance()->accounts()[0];
+    [[maybe_unused]] auto& bitstamp = bitstamp_network::get_bitstamp_instance()->accounts()[0];
     GROX_LOG_DEBUG(app_log, "\nDecrypted information\n");
     GROX_LOG_DEBUG(app_log, "API_user       : {}", bitstamp.API_user);
     GROX_LOG_DEBUG(app_log, "API_key        : {}", bitstamp.API_key);
@@ -304,7 +304,7 @@ int qt_main(pika::program_options::variables_map& vm)
     auto const& x2 = xrpl_network::get_xrpl_instance(true)->wallets();
     for (auto const lw : x1)
     {
-      auto w = static_cast<ledger_wallet*>(lw);
+      [[maybe_unused]] auto w = static_cast<ledger_wallet*>(lw);
       GROX_LOG_DEBUG(app_log, "XRP_name       : {}", w->name_);
       GROX_LOG_DEBUG(app_log, "XRP_public     : {}", w->public_);
       GROX_LOG_DEBUG(app_log, "XRP_secret     : {}", w->private_);
@@ -312,7 +312,7 @@ int qt_main(pika::program_options::variables_map& vm)
     }
     for (auto const lw : x2)
     {
-      auto w = static_cast<ledger_wallet*>(lw);
+      [[maybe_unused]] auto w = static_cast<ledger_wallet*>(lw);
       GROX_LOG_DEBUG(app_log, "XRP_name       : {}", w->name_);
       GROX_LOG_DEBUG(app_log, "XRP_public     : {}", w->public_);
       GROX_LOG_DEBUG(app_log, "XRP_secret     : {}", w->private_);
@@ -368,7 +368,7 @@ int qt_main(pika::program_options::variables_map& vm)
         "Python indicators", py_modules_loaded, available_python_indicators.size());
 
     // Register Python indicators with main registry so they appear in GUI
-    std::size_t py_registered = py_registry.register_with_main_registry(registry);
+    [[maybe_unused]] std::size_t py_registered = py_registry.register_with_main_registry(registry);
     GROX_LOG_DEBUG(app_log, "{:>20} Registered {} python indicator(s) with main registry",
         "python indicators", py_registered);
   }

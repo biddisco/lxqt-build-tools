@@ -308,7 +308,7 @@ bool ohlc_price_plot::adjust_candle_size(double res)
   // user selected resolution
   for (auto const& r : ohlc_data_resolutions::available_resolutions())
   {
-    auto* data = ohlc_dataset_view_->get_dataset(r);
+    // auto* data = ohlc_dataset_view_->get_dataset(r);
     if (!curves_.contains(r)) continue;
 
     auto* curve = curves_[r];

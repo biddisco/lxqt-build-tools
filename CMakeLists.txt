@@ -221,7 +221,7 @@ get_external_project(
 # ------------------------------------------------------------------------------
 # Build/Download Qt-Advanced-Docking-System
 # ------------------------------------------------------------------------------
-set(BUILD_EXAMPLES ON)
+set(BUILD_EXAMPLES OFF)
 get_external_project(
   PROJECT_NAME
   "QtADS"

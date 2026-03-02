@@ -114,7 +114,7 @@ QDialog* gui_trade_currency_exchange(
                         auto* obwidget2) {
     double budget = std::stod(ui_->spend->text().toStdString());
     //
-    fee_data maker_fee{ui_->maker_fee->value(), 0.00};
+    // fee_data maker_fee{ui_->maker_fee->value(), 0.00};
     fee_data taker_fee{ui_->taker_fee->value(), 0.00};
 
     // convert budget in source currency into equivalent xrp using orderbook

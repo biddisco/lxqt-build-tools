@@ -661,7 +661,7 @@ any_bytearray_sender bitstamp_network::request_market_transactions(
   // until_timestamp: Show only transactions to unix timestamp (for max 30 days old).
   std::string market_symbol = currency_pair_lowercase_string(cp);
 
-  std::uint64_t timestep = 1510323308;
+  // std::uint64_t timestep = 1510323308;
   std::uint64_t id = 0;
   std::string query = fmt::format("?&since_id={}&limit={}", id, 10);
 
@@ -1471,7 +1471,7 @@ void bitstamp_network::place_buy_sell_orders(
               trade.id_ = std::stoll(JCHARP(jdata["id"]));
               trade.confirmed_ = true;
               trade.datetime_ = JCHARP(jdata["datetime"]);
-              double amount = std::stod(JCHARP(jdata["amount"]));
+              // double amount = std::stod(JCHARP(jdata["amount"]));
               if (trade.get_price() != std::stod(JCHARP(jdata["price"])))
               {
                 GROX_LOG_ERROR(bitstamp_log, "{:>20} {} {}", "buy_sell price", trade.get_price(),
