@@ -15,9 +15,11 @@
 #include <cstdlib>
 #include <memory>
 #include <string>
+//
+#include "grox/config-logging.hpp"
 
 #if !defined(SPDLOG_ACTIVE_LEVEL)
-# define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+# error "SPDLOG_ACTIVE_LEVEL is not defined. Rerun cmake."
 #endif
 
 #include <spdlog/cfg/env.h>
@@ -76,16 +78,39 @@ namespace grox::log {
     if (pattern && pattern[0] != '\0')
       spdlog::set_pattern(pattern);
     else
-      spdlog::set_pattern("[%^%-8l%$] %n | %v");
+      spdlog::set_pattern("[%^%-8l%$] [%t] %n | %v");
 
-    // --- level ---
-    // SPDLOG_LEVEL is handled natively by spdlog::cfg::load_env_levels()
+    // set log level from thee user specified compilation level
+    spdlog::set_level(static_cast<spdlog::level::level_enum>(SPDLOG_ACTIVE_LEVEL));
+    // reads SPDLOG_LEVEL for per-logger overrides (e.g. "mylogger=debug,other=info") and applies them.
+    spdlog::cfg::load_env_levels();
+
     // We additionally support GROX_LOG_LEVEL as an override.
-    spdlog::set_level(spdlog::level::info);    // default
-    spdlog::cfg::load_env_levels();            // reads SPDLOG_LEVEL
-
     char const* level = std::getenv("GROX_LOG_LEVEL");
-    if (level && level[0] != '\0') spdlog::set_level(spdlog::level::from_str(level));
+    if (level && level[0] != '\0')
+    {
+      if (static_cast<spdlog::level::level_enum>(SPDLOG_ACTIVE_LEVEL) >
+          spdlog::level::from_str(level))
+      {
+        // If the user-specified level is more verbose than the compile-time level, log a warning.
+        spdlog::log(spdlog::level::off,
+            "GROX_LOG_LEVEL={} is more verbose than the compile-time level '{}', "
+            "but will be applied anyway. (Recompile with a lower SPDLOG_ACTIVE_LEVEL).",
+            level,
+            spdlog::level::to_string_view(
+                static_cast<spdlog::level::level_enum>(SPDLOG_ACTIVE_LEVEL)));
+      }
+      if (static_cast<spdlog::level::level_enum>(SPDLOG_ACTIVE_LEVEL) <
+          spdlog::level::from_str(level))
+      {
+        // If the user-specified level is more verbose than the compile-time level, log a warning.
+        spdlog::log(spdlog::level::off,
+            "GROX_LOG_LEVEL={} is less verbose than the compile-time level '{}'", level,
+            spdlog::level::to_string_view(
+                static_cast<spdlog::level::level_enum>(SPDLOG_ACTIVE_LEVEL)));
+      }
+      spdlog::set_level(spdlog::level::from_str(level));
+    }
   }
 
 }    // namespace grox::log

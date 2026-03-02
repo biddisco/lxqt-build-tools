@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 //
+#include "debug/logging.hpp"
 #include "indicators/indicator_types.hpp"
 
 // ----------------------------------------------------------------------------

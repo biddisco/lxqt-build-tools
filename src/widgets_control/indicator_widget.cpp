@@ -14,6 +14,7 @@
 // Grox
 #include "ui_indicator_widget.h"
 //
+#include "debug/logging.hpp"
 #include "indicators/indicator_registry.hpp"
 #include "widgets_control/control_builder.hpp"
 #include "widgets_control/control_factory.hpp"

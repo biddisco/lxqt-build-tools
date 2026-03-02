@@ -23,7 +23,9 @@
 #include <pika/modules/thread_manager.hpp>
 #include <pika/program_options.hpp>
 //
+#include "debug/logging.hpp"
 #include "grox/config-defines.hpp"
+#include "grox/config-python.hpp"
 #include "indicators/indicator_registry.hpp"
 #include "indicators/python_plugin.hpp"
 #include "network/evp-encrypt.hpp"
@@ -31,7 +33,6 @@
 #include "util/stringutils.hpp"
 #include "widgets/password_dialog.hpp"
 //
-#include "debug/logging.hpp"
 #include "mainwindow.hpp"
 
 // ----------------------------------------------------------------------------

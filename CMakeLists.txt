@@ -62,9 +62,26 @@ set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 # ------------------------------------------------------------------------------
 option(BUILD_SHARED_LIBS "build shared libraries" OFF)
 
+option(GROX_WITH_PYTHON_INDICATORS "Enable Python-based dynamic indicators" ON)
 option(GROX_WITH_SANITIZER "build grox with address/memory sanitizer flags" OFF)
 option(GROX_WITH_TESTING_SANITIZER "build grox tests with address/memory sanitizer flags" OFF)
 option(GROX_WITH_IWYU "add include-what-you-use support to grox build" OFF)
+
+# ------------------------------------------------------------------------------
+# Logging / Log level support for messages >= level
+# ------------------------------------------------------------------------------
+set(GROX_LOG_LEVEL "off" CACHE STRING "Enable logging for messages >=level")
+set_property(
+  CACHE GROX_LOG_LEVEL
+  PROPERTY STRINGS
+           off
+           trace
+           debug
+           info
+           warn
+           error
+           critical
+)
 
 # ------------------------------------------------------------------------------
 # CMake modules we need to include
@@ -146,6 +163,14 @@ find_package(range-v3 REQUIRED)
 find_package(fmt REQUIRED)
 
 # ------------------------------------------------------------------------------
+# spdlog logging library
+# ------------------------------------------------------------------------------
+string(TOUPPER ${GROX_LOG_LEVEL} GROX_LOG_LEVEL_UPPERCASE)
+if(NOT "${GROX_LOG_LEVEL_UPPERCASE}" MATCHES "OFF")
+  find_package(spdlog REQUIRED)
+endif()
+
+# ------------------------------------------------------------------------------
 # Boost
 # ------------------------------------------------------------------------------
 find_package(Boost NO_MODULE REQUIRED COMPONENTS headers program_options)
@@ -211,6 +236,7 @@ get_external_project(
 # ------------------------------------------------------------------------------
 # Build lxqt-build-tools (required by qtermwidget)
 # ------------------------------------------------------------------------------
+set(PULL_TRANSLATIONS OFF)
 get_external_project(
   PROJECT_NAME
   "lxqt2-build-tools"
@@ -281,6 +307,7 @@ get_external_project(
 # -------------------------------------------------------------
 # Find/Build/Download pika
 # -------------------------------------------------------------
+set(PIKA_LOG_LEVEL ${GROX_LOG_LEVEL_UPPERCASE})
 set(PIKA_WITH_CXX_STANDARD ${GROX_CXX_STANDARD})
 set(PIKA_WITH_STDEXEC ON)
 set(PIKA_WITH_SANITIZERS=${GROX_WITH_SANITIZER})
@@ -331,15 +358,6 @@ if(BUILD_TESTING)
 endif()
 
 # ------------------------------------------------------------------------------
-# generate config settings header
-# ------------------------------------------------------------------------------
-add_config_define_namespace(DEFINE GROX_SOURCE_DIR NAMESPACE ALL VALUE "\"${GROX_SOURCE_DIR}\"")
-add_config_define_namespace(DEFINE GROX_BINARY_DIR NAMESPACE ALL VALUE "\"${GROX_BINARY_DIR}\"")
-write_config_defines_file(
-  NAMESPACE ALL FILENAME "${PROJECT_BINARY_DIR}/src/grox/config-defines.hpp"
-)
-
-# ------------------------------------------------------------------------------
 # include/build all the subdirectories/modules
 # ------------------------------------------------------------------------------
 add_subdirectory(src/util)
@@ -358,3 +376,19 @@ add_subdirectory(src/widgets)
 # include/build all the applications
 # ------------------------------------------------------------------------------
 add_subdirectory(src/apps)
+
+# ------------------------------------------------------------------------------
+# generate config settings headers
+# ------------------------------------------------------------------------------
+add_config_define_namespace(NAMESPACE ALL DEFINE GROX_SOURCE_DIR VALUE "\"${GROX_SOURCE_DIR}\"")
+add_config_define_namespace(NAMESPACE ALL DEFINE GROX_BINARY_DIR VALUE "\"${GROX_BINARY_DIR}\"")
+
+write_config_defines_file(
+  NAMESPACE ALL FILENAME "${PROJECT_BINARY_DIR}/src/grox/config-defines.hpp"
+)
+write_config_defines_file(
+  NAMESPACE LOGGING FILENAME "${PROJECT_BINARY_DIR}/src/grox/config-logging.hpp"
+)
+write_config_defines_file(
+  NAMESPACE PYTHON FILENAME "${PROJECT_BINARY_DIR}/src/grox/config-python.hpp"
+)

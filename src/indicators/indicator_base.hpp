@@ -10,6 +10,7 @@
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_dataset_view.hpp"
 #include "data/timebased_chart_data.hpp"
+#include "debug/logging.hpp"
 #include "indicators/algorithm_base.hpp"
 #include "indicators/indicator_partitioner.hpp"
 #include "indicators/indicator_types.hpp"

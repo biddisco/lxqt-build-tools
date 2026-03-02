@@ -103,8 +103,6 @@ add_indicator_plugin(
 # ==============================================================================
 # Python Indicator Support (optional)
 # ==============================================================================
-option(GROX_WITH_PYTHON_INDICATORS "Enable Python-based dynamic indicators" ON)
-
 if(GROX_WITH_PYTHON_INDICATORS)
   # Try to find Python
   find_package(Python3 COMPONENTS Interpreter Development QUIET)
@@ -120,40 +118,18 @@ if(GROX_WITH_PYTHON_INDICATORS)
     )
 
     add_config_define_namespace(
-      DEFINE
-      GROX_PYTHON_EXECUTABLE
-      NAMESPACE
-      ALL
-      VALUE
-      "\"${Python3_EXECUTABLE}\""
+      NAMESPACE PYTHON DEFINE GROX_PYTHON_EXECUTABLE VALUE "\"${Python3_EXECUTABLE}\""
     )
     add_config_define_namespace(
-      DEFINE
-      GROX_PYTHON_VERSION
-      NAMESPACE
-      ALL
-      VALUE
-      "\"${Python3_VERSION}\""
+      NAMESPACE PYTHON DEFINE GROX_PYTHON_VERSION VALUE "\"${Python3_VERSION}\""
     )
     if(GROX_PYTHON_BASE_PREFIX)
       add_config_define_namespace(
-        DEFINE
-        GROX_PYTHON_BASE_PREFIX
-        NAMESPACE
-        ALL
-        VALUE
-        "\"${GROX_PYTHON_BASE_PREFIX}\""
+        NAMESPACE PYTHON DEFINE GROX_PYTHON_BASE_PREFIX VALUE "\"${GROX_PYTHON_BASE_PREFIX}\""
       )
     endif()
 
-    add_config_define_namespace(
-      DEFINE
-      GROX_PYTHON_INDICATORS
-      NAMESPACE
-      ALL
-      VALUE
-      1
-    )
+    add_config_define_namespace(NAMESPACE PYTHON DEFINE GROX_PYTHON_INDICATORS VALUE 1)
     message(STATUS "Python indicators enabled: Python ${Python3_VERSION} (${Python3_EXECUTABLE})")
   else()
     message(WARNING "Python development headers not found, Python indicators disabled")

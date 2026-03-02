@@ -11,11 +11,12 @@
 #include <dlfcn.h>
 #include <filesystem>
 //
-#include "grox/config-defines.hpp"
-
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-
+//
+#include "debug/logging.hpp"
+#include "grox/config-defines.hpp"
+#include "grox/config-python.hpp"
 #include "indicators/python_plugin.hpp"
 
 namespace fs = std::filesystem;

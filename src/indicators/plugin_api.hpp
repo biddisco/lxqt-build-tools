@@ -44,16 +44,6 @@ typedef grox_plugin_info const* (*grox_plugin_info_func)();
 // Convenience macros for plugin implementation
 #define GROX_PLUGIN_EXPORT extern "C" __attribute__((visibility("default")))
 
-// #if GROX_PLUGIN_HAS_SPDLOG
-// # define GROX_PLUGIN_TRACE(...)                                                                    \
-//    do {                                                                                            \
-//      spdlog::set_level(spdlog::level::debug);                                                      \
-//      spdlog::debug(__VA_ARGS__);                                                                   \
-//    } while (false)
-// #else
-// # define GROX_PLUGIN_TRACE(...)
-// #endif
-
 // Macro to define plugin info
 #define GROX_DEFINE_PLUGIN_INFO(plugin_name, plugin_version, plugin_desc, plugin_category)         \
   GROX_PLUGIN_EXPORT const grox_plugin_info* grox_plugin_get_info()                                \

@@ -10,10 +10,17 @@ target_include_directories(
 target_include_directories(grox_debug PUBLIC ${GROX_INCLUDE_ROOT})
 target_link_libraries(grox_debug PUBLIC pika::pika)
 
-# spdlog support
-find_package(spdlog REQUIRED)
-target_link_libraries(grox_debug PUBLIC spdlog::spdlog fmt::fmt)
-target_compile_definitions(grox_debug PUBLIC SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
+# ------------------------------------------------------------------------------
+# logging support
+# ------------------------------------------------------------------------------
+add_config_define_namespace(NAMESPACE LOGGING DEFINE GROX_LOGGING_ENABLED VALUE "1")
+add_config_define_namespace(
+  NAMESPACE LOGGING UNDEFINE DEFINE SPDLOG_ACTIVE_LEVEL
+  VALUE "SPDLOG_LEVEL_${GROX_LOG_LEVEL_UPPERCASE}"
+)
+if(NOT "${GROX_LOG_LEVEL_UPPERCASE}" MATCHES "OFF")
+  target_link_libraries(grox_debug PUBLIC spdlog::spdlog fmt::fmt)
+endif()
 
 if(BUILD_TESTING)
   pika_add_pseudo_target(tests.debug)

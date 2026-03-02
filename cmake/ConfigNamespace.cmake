@@ -3,18 +3,24 @@
 # the namespace can later be written out to a file
 # ---------------------------------------------------------------------
 function(add_config_define_namespace)
-  set(options)
+  set(options UNDEFINE)
   set(one_value_args DEFINE NAMESPACE)
   set(multi_value_args VALUE)
   cmake_parse_arguments(OPTION "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
-  set(DEF_VAR OOMPH_LIBFABRIC_CONFIG_DEFINITIONS_${OPTION_NAMESPACE})
+  # Global property name to store the defines for this namespace
+  set(DEF_VAR CONFIG_DEFINITIONS_${OPTION_NAMESPACE})
 
   # to avoid extra trailing spaces (no value), use an if check
   if(OPTION_VALUE)
     set_property(GLOBAL APPEND PROPERTY ${DEF_VAR} "${OPTION_DEFINE} ${OPTION_VALUE}")
   else()
     set_property(GLOBAL APPEND PROPERTY ${DEF_VAR} "${OPTION_DEFINE}")
+  endif()
+
+  # if the user has set UNDEFINE, it means we must #undef the var before setting it
+  if(OPTION_UNDEFINE)
+    set_property(GLOBAL APPEND PROPERTY ${DEF_VAR} "#undef ${OPTION_DEFINE}")
   endif()
 
 endfunction()
@@ -28,9 +34,7 @@ function(write_config_defines_file)
   set(multi_value_args)
   cmake_parse_arguments(OPTION "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
-  get_property(
-    DEFINITIONS_VAR GLOBAL PROPERTY OOMPH_LIBFABRIC_CONFIG_DEFINITIONS_${OPTION_NAMESPACE}
-  )
+  get_property(DEFINITIONS_VAR GLOBAL PROPERTY CONFIG_DEFINITIONS_${OPTION_NAMESPACE})
 
   if(DEFINED DEFINITIONS_VAR)
     list(SORT DEFINITIONS_VAR)
@@ -39,7 +43,14 @@ function(write_config_defines_file)
 
   set(config_defines "\n")
   foreach(def ${DEFINITIONS_VAR})
-    set(config_defines "${config_defines}#define ${def}\n")
+    if("${def}" MATCHES "^#undef")
+      string(REGEX MATCH "#undef (.+)" _ "${def}")
+      set(undef_var "${CMAKE_MATCH_1}")
+      set(undef_string "#if defined(${undef_var})\n# undef ${undef_var}\n#endif\n\n")
+      set(config_defines "${config_defines}${undef_string}")
+    else()
+      set(config_defines "${config_defines}#define ${def}\n")
+    endif()
   endforeach()
 
   # if the user has not specified a template, generate a proper header file
