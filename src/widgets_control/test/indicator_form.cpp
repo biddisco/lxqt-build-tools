@@ -1,5 +1,3 @@
-#include <list>
-#include <map>
 #include <memory>
 #include <string>
 //
@@ -15,9 +13,7 @@
 #include <QWidget>
 //
 #include "currency/currency_pair.hpp"
-#include "debug/demangle_helper.hpp"
-#include "exchange/bitstamp.hpp"
-#include "indicators/indicator_ptr.hpp"
+#include "grox/config-defines.hpp"
 #include "indicators/indicator_registry.hpp"
 #include "util/stringutils.hpp"
 #include "widgets_control/control_builder.hpp"
@@ -53,6 +49,17 @@ void execute_dialog(QWidget* form)
 int main(int argc, char* argv[])
 {
   QApplication app(argc, argv);
+
+  // Load indicator plugins from standard plugin directory
+  auto& registry = indicators::indicator_registry::getInstance();
+  std::vector<std::string> plugin_dirs = {
+      std::string(GROX_BINARY_DIR) + "/lib/grox/plugins",    // Build directory root
+      "../lib/grox/plugins",                                 // From build/bin directory
+      "./plugins",                                           // Same directory as executable
+      "/usr/local/lib/grox/plugins",                         // Standard install location
+  };
+
+  for (auto const& dir : plugin_dirs) { registry.load_plugins_from_directory(dir); }
 
 #ifdef TEST_ACTUAL_NETWORK
   // this isn't complete because subscribed tickers is empty by default
