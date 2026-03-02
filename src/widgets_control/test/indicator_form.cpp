@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 //
@@ -36,12 +37,19 @@ QWidget* form_for_algorithm(indicators::shared_algorithm alg, nlohmann::json val
 }
 
 // ----------------------------------------------------------------------------
+void auto_close_active_modal_dialog(int delay_ms = 500)
+{
+  QTimer::singleShot(delay_ms, []() { QApplication::closeAllWindows(); });
+}
+
+// ----------------------------------------------------------------------------
 void execute_dialog(QWidget* form)
 {
   QDialog dlg;
   QHBoxLayout* HLayout = new QHBoxLayout(&dlg);
   HLayout->addWidget(form);
   dlg.setLayout(HLayout);
+  auto_close_active_modal_dialog();
   dlg.exec();
 }
 
@@ -84,12 +92,14 @@ int main(int argc, char* argv[])
   auto alg_0 = indicators::indicator_registry::find_by_name("Trade: Sliding Stop");
   indicators::indicator_vector indicator_vec = {alg_0};
   indicator_widget widget1(&indicator_vec, index);
+  auto_close_active_modal_dialog();
   auto result = widget1.execute_as_dialog();
 
   // execute a second time tom see if params are persisted
   alg_0 = indicators::indicator_registry::find_by_name("Trade: Sliding Stop");
   indicator_vec = {alg_0};
   indicator_widget widget2 = indicator_widget(&indicator_vec, index);
+  auto_close_active_modal_dialog();
   result = widget2.execute_as_dialog();
 
   // execute_dialog(form_for_algorithm(alg_0));

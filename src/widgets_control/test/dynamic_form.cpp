@@ -5,11 +5,13 @@
 //
 #include <QApplication>
 #include <QComboBox>
+#include <QDialog>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 //
@@ -54,6 +56,11 @@ int main(int argc, char* argv[])
   QWidget* widget = build_control(get_json_for_person(), defaults, control_factory::getInstance());
   widget->setWindowTitle("Dynamic Person Editor");
   widget->show();
+
+  QTimer::singleShot(500, &app, [&app]() {
+    QApplication::closeAllWindows();
+    app.quit();
+  });
 
   return app.exec();
 }
