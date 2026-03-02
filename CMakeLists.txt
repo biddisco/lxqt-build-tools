@@ -73,6 +73,7 @@ include(FetchContent)
 include(FindPkgConfig)
 include(ExternalProject)
 include(Sanitizer)
+include(ConfigNamespace)
 
 # ------------------------------------------------------------------------------
 # CTest testing support
@@ -315,16 +316,13 @@ get_external_project(
 )
 
 # ------------------------------------------------------------------------------
-# generate config settings header
+# global include paths that subdirs will use
 # ------------------------------------------------------------------------------
-configure_file(
-  "${PROJECT_SOURCE_DIR}/src/config/config-options.hpp.in"
-  "${PROJECT_BINARY_DIR}/src/grox/config-options.hpp"
-)
-include_directories("${PROJECT_BINARY_DIR}/src")
+# config defines are written here in the binary directory
+set(GROX_INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 
 # ------------------------------------------------------------------------------
-# grox build
+# special targets for tests that are scoped by category
 # ------------------------------------------------------------------------------
 if(BUILD_TESTING)
   set(PIKA_WITH_PSEUDO_DEPENDENCIES ON CACHE INTERNAL "" FORCE)
@@ -332,8 +330,18 @@ if(BUILD_TESTING)
   pika_add_pseudo_target(tests)
 endif()
 
-set(GROX_INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
+# ------------------------------------------------------------------------------
+# generate config settings header
+# ------------------------------------------------------------------------------
+add_config_define_namespace(DEFINE GROX_SOURCE_DIR NAMESPACE ALL VALUE "\"${GROX_SOURCE_DIR}\"")
+add_config_define_namespace(DEFINE GROX_BINARY_DIR NAMESPACE ALL VALUE "\"${GROX_BINARY_DIR}\"")
+write_config_defines_file(
+  NAMESPACE ALL FILENAME "${PROJECT_BINARY_DIR}/src/grox/config-defines.hpp"
+)
 
+# ------------------------------------------------------------------------------
+# include/build all the subdirectories/modules
+# ------------------------------------------------------------------------------
 add_subdirectory(src/util)
 add_subdirectory(src/data)
 add_subdirectory(src/currency)
@@ -346,5 +354,7 @@ add_subdirectory(src/plot)
 add_subdirectory(src/widgets_control)
 add_subdirectory(src/widgets)
 
-#
+# ------------------------------------------------------------------------------
+# include/build all the applications
+# ------------------------------------------------------------------------------
 add_subdirectory(src/apps)

@@ -23,7 +23,7 @@
 #include <pika/modules/thread_manager.hpp>
 #include <pika/program_options.hpp>
 //
-#include "grox/config-options.hpp"
+#include "grox/config-defines.hpp"
 #include "indicators/indicator_registry.hpp"
 #include "indicators/python_plugin.hpp"
 #include "network/evp-encrypt.hpp"
@@ -350,7 +350,7 @@ int qt_main(pika::program_options::variables_map& vm)
 // ------------------------------------------------------------------------
 // Initialize and probe Python indicator modules
 // -----------------
-#ifdef GROX_PYTHON_ENABLED
+#ifdef GROX_PYTHON_INDICATORS
   auto& py_registry = indicators::python::python_indicator_registry::instance();
   if (py_registry.initialize())
   {
@@ -373,7 +373,7 @@ int qt_main(pika::program_options::variables_map& vm)
   }
   else { GROX_LOG_ERROR(app_log, "{:>20} registry initialization failed", "python indicators"); }
 #else
-  GROX_LOG_INFO(app_log, "{:>20} Python support disabled (no GROX_PYTHON_ENABLED)", "registry");
+  GROX_LOG_INFO(app_log, "{:>20} Python support disabled (no GROX_PYTHON_INDICATORS)", "registry");
 #endif
 
   // ------------------------------------------------------------------------

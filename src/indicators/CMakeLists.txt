@@ -15,11 +15,15 @@ set(grox_indicators_SRCS
     plugin_api.hpp
     plugin_loader.hpp
     plugin_loader.cpp
-    # Python support (headers included, implementation below)
-    python_bindings.hpp
-    python_plugin.hpp
-    python_plugin.cpp
 )
+
+if(GROX_WITH_PYTHON_INDICATORS)
+  set(grox_indicators_SRCS
+      ${grox_indicators_SRCS}
+      # Python support (headers included, implementation below)
+      python_bindings.hpp python_plugin.hpp python_plugin.cpp
+  )
+endif()
 
 add_library(grox_indicators ${grox_indicators_SRCS})
 target_include_directories(grox_indicators PUBLIC ${GROX_INCLUDE_ROOT})
@@ -108,16 +112,52 @@ if(GROX_WITH_PYTHON_INDICATORS)
   if(Python3_FOUND)
     target_include_directories(grox_indicators PUBLIC ${Python3_INCLUDE_DIRS})
     target_link_libraries(grox_indicators PUBLIC ${Python3_LIBRARIES})
+    set(GROX_PYTHON_VERSION "${Python3_VERSION}")
 
-    # Add Python path to indicators library for embedded interpreter
-    target_compile_definitions(
-      grox_indicators PRIVATE GROX_PYTHON_ENABLED=1 GROX_PYTHON_VERSION="${Python3_VERSION}"
+    execute_process(
+      COMMAND ${Python3_EXECUTABLE} -c "import sys; print(sys.base_prefix)"
+      OUTPUT_VARIABLE GROX_PYTHON_BASE_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
     )
 
-    message(STATUS "Python indicators enabled: Python ${Python3_VERSION}")
+    add_config_define_namespace(
+      DEFINE
+      GROX_PYTHON_EXECUTABLE
+      NAMESPACE
+      ALL
+      VALUE
+      "\"${Python3_EXECUTABLE}\""
+    )
+    add_config_define_namespace(
+      DEFINE
+      GROX_PYTHON_VERSION
+      NAMESPACE
+      ALL
+      VALUE
+      "\"${Python3_VERSION}\""
+    )
+    if(GROX_PYTHON_BASE_PREFIX)
+      add_config_define_namespace(
+        DEFINE
+        GROX_PYTHON_BASE_PREFIX
+        NAMESPACE
+        ALL
+        VALUE
+        "\"${GROX_PYTHON_BASE_PREFIX}\""
+      )
+    endif()
+
+    add_config_define_namespace(
+      DEFINE
+      GROX_PYTHON_INDICATORS
+      NAMESPACE
+      ALL
+      VALUE
+      1
+    )
+    message(STATUS "Python indicators enabled: Python ${Python3_VERSION} (${Python3_EXECUTABLE})")
   else()
     message(WARNING "Python development headers not found, Python indicators disabled")
-    set(GROX_WITH_PYTHON_INDICATORS OFF)
+    set(GROX_WITH_PYTHON_INDICATORS OFF CACHE BOOL "Enable Python-based dynamic indicators" FORCE)
   endif()
 endif()
 

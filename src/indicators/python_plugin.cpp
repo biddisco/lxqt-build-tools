@@ -7,12 +7,14 @@
  * At compile time without Python, this provides no-op implementations.
  */
 
+#include <algorithm>
+#include <dlfcn.h>
 #include <filesystem>
+//
+#include "grox/config-defines.hpp"
 
-#ifdef GROX_PYTHON_ENABLED
-# define PY_SSIZE_T_CLEAN
-# include <Python.h>
-#endif
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
 
 #include "indicators/python_plugin.hpp"
 
@@ -40,19 +42,75 @@ namespace indicators { namespace python {
       return true;
     }
 
-#ifdef GROX_PYTHON_ENABLED
+    // Determine Python home for embedded interpreter
+    GROX_LOG_TRACE(py_plug_log, "{:>20} detecting Python home", "registry");
+    bool have_python_home = false;
+
+    char const* python_home_env = std::getenv("PYTHONHOME");
+    if (python_home_env)
+    {
+      python_home_ = std::wstring(python_home_env, python_home_env + strlen(python_home_env));
+      have_python_home = true;
+      GROX_LOG_DEBUG(
+          py_plug_log, "{:>20} Using PYTHONHOME from environment: {}", "registry", python_home_env);
+    }
+#ifdef GROX_PYTHON_BASE_PREFIX
+    if (!have_python_home)
+    {
+      std::string const configured_home = GROX_PYTHON_BASE_PREFIX;
+      if (!configured_home.empty())
+      {
+        python_home_ = std::wstring(configured_home.begin(), configured_home.end());
+        have_python_home = true;
+        GROX_LOG_DEBUG(
+            py_plug_log, "{:>20} Using CMake Python home: {}", "registry", configured_home);
+      }
+    }
+#endif
+    if (!have_python_home)
+    {
+      // Auto-detect Python home by finding libpython shared library
+      // Use dladdr to find where Python symbols are loaded from
+      Dl_info dl_info;
+      // Use Py_GetVersion address to find the library
+      if (dladdr((void*) Py_GetVersion, &dl_info) && dl_info.dli_fname)
+      {
+        std::string lib_path(dl_info.dli_fname);
+        GROX_LOG_DEBUG(py_plug_log, "{:>20} Found Python library: {}", "registry", lib_path);
+
+        // Extract PYTHONHOME from library path
+        // Typical: /path/to/python/lib/libpython3.13.so -> /path/to/python
+        size_t lib_pos = lib_path.rfind("/lib/");
+        if (lib_pos != std::string::npos)
+        {
+          std::string home = lib_path.substr(0, lib_pos);
+          python_home_ = std::wstring(home.begin(), home.end());
+          GROX_LOG_DEBUG(py_plug_log, "{:>20} Auto-detected PYTHONHOME: {}", "registry", home);
+        }
+        else
+        {
+          GROX_LOG_WARN(
+              py_plug_log, "{:>20} Could not derive PYTHONHOME from library path", "registry");
+        }
+      }
+      else
+      {
+        GROX_LOG_WARN(py_plug_log, "{:>20} Could not find Python library location", "registry");
+      }
+    }
+
+    if (!python_home_.empty()) { Py_SetPythonHome(python_home_.c_str()); }
+
     GROX_LOG_TRACE(py_plug_log, "{:>20} calling Py_Initialize()", "registry");
     Py_Initialize();
+
     if (!Py_IsInitialized())
     {
       GROX_LOG_ERROR(py_plug_log, "{:>20} Py_Initialize failed", "registry");
       return false;
     }
+
     GROX_LOG_DEBUG(py_plug_log, "{:>20} Python interpreter initialized", "registry");
-#else
-    GROX_LOG_ERROR(py_plug_log,
-        "{:>20} Python support not compiled in (GROX_PYTHON_ENABLED not defined)", "registry");
-#endif
 
     initialized_ = true;
     GROX_LOG_DEBUG(
@@ -70,7 +128,6 @@ namespace indicators { namespace python {
       return;
     }
 
-#ifdef GROX_PYTHON_ENABLED
     // NOTE: We deliberately do NOT call Py_Finalize() here to avoid shutdown crashes.
     // Reason: There may still be py_indicator_instance objects alive (owned by
     // indicator_registry), and their destructors will try to Py_DECREF after
@@ -91,7 +148,6 @@ namespace indicators { namespace python {
     {
       if (py_obj) { Py_DECREF(static_cast<PyObject*>(py_obj)); }
     }
-#endif
 
     registered_classes_.clear();
     initialized_ = false;
@@ -110,7 +166,6 @@ namespace indicators { namespace python {
       return false;
     }
 
-#ifdef GROX_PYTHON_ENABLED
     if (!initialized_)
     {
       GROX_LOG_DEBUG(py_plug_log, "{:>20} load_module called before initialize()", "registry");
@@ -180,14 +235,6 @@ namespace indicators { namespace python {
     GROX_LOG_DEBUG(
         py_plug_log, "{:>20} load_module success path={}", "registry", module_path.string());
     return true;
-#else
-    // Stub implementation when Python is not available
-    std::string class_name = module_path.stem().string();
-    registered_classes_[class_name] = nullptr;
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} load_module registered stub class={} path={}", "registry",
-        class_name, module_path.string());
-    return true;
-#endif
   }
 
   void* python_indicator_registry::get_indicator_class(std::string const& class_name)
@@ -216,7 +263,6 @@ namespace indicators { namespace python {
       return nullptr;
     }
 
-#ifdef GROX_PYTHON_ENABLED
     // Call the class to create an instance (equivalent to MyClass())
     PyObject* py_instance = PyObject_CallObject(static_cast<PyObject*>(py_class), nullptr);
     if (!py_instance)
@@ -231,13 +277,6 @@ namespace indicators { namespace python {
     GROX_LOG_DEBUG(py_plug_log, "{:>20} create_instance success name={} instance_ptr={}",
         "registry", class_name, static_cast<void*>(instance.get()));
     return instance;
-#else
-    // Stub implementation
-    auto instance = std::make_shared<py_indicator_instance>(nullptr);
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} create_instance stub name={} instance_ptr={}", "registry",
-        class_name, static_cast<void*>(instance.get()));
-    return instance;
-#endif
   }
 
   std::size_t python_indicator_registry::load_indicators_from_directory(fs::path const& directory)
@@ -294,9 +333,7 @@ namespace indicators { namespace python {
   py_indicator_instance::~py_indicator_instance()
   {
     // NOTE: No logging in destructor - logging system may be destroyed during static teardown
-#ifdef GROX_PYTHON_ENABLED
     if (py_object_) { Py_DECREF(static_cast<PyObject*>(py_object_)); }
-#endif
     py_object_ = nullptr;
   }
 
@@ -315,7 +352,6 @@ namespace indicators { namespace python {
       return 0.0;
     }
 
-#ifdef GROX_PYTHON_ENABLED
     // Create Python dict with OHLCV data
     PyObject* ohlcv_dict = PyDict_New();
     PyDict_SetItemString(ohlcv_dict, "open", PyFloat_FromDouble(open));
@@ -343,11 +379,6 @@ namespace indicators { namespace python {
 
     GROX_LOG_DEBUG(py_plug_log, "{:>20} compute_sample result={}", "py_indicator", value);
     return value;
-#else
-    GROX_LOG_DEBUG(
-        py_plug_log, "{:>20} compute_sample returning stub default value", "py_indicator");
-    return 0.0;
-#endif
   }
 
   bool py_indicator_instance::set_parameter(std::string const& name, double value)

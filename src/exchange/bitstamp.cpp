@@ -30,7 +30,7 @@
 #include "exchange/bitstamp.hpp"
 #include "exchange/ticker_data.hpp"
 #include "exchange/xrpl_network.hpp"
-#include "grox/config-options.hpp"
+#include "grox/config-defines.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "senders/qhttp-post-sender.hpp"

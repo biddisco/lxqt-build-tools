@@ -25,23 +25,6 @@
 // ----------------------------------------------------------------------------
 static auto py_plug_log = grox::log::create("pyplugin");
 
-// #if __has_include(<spdlog/spdlog.h>)
-// # include <spdlog/spdlog.h>
-// # define GROX_PYPLUGIN_HAS_SPDLOG 1
-// #else
-// # define GROX_PYPLUGIN_HAS_SPDLOG 0
-// #endif
-
-// #if GROX_PYPLUGIN_HAS_SPDLOG
-// # define GROX_PYPLUGIN_TRACE(...)                                                                  \
-//    do {                                                                                            \
-//      spdlog::set_level(spdlog::level::debug);                                                      \
-//      spdlog::debug(__VA_ARGS__);                                                                   \
-//    } while (false)
-// #else
-// # define GROX_PYPLUGIN_TRACE(...)
-// #endif
-
 namespace indicators { namespace python {
 
   class py_indicator_instance;
@@ -164,6 +147,7 @@ private:
     bool initialized_ = false;
     std::map<std::string, void*> registered_classes_;
     void* py_main_module_ = nullptr;
+    std::wstring python_home_;    // Persistent storage for Py_SetPythonHome
   };
 
   /**
