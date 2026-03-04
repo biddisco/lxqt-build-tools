@@ -1,4 +1,4 @@
-set(TEST_SRCS averages.cpp trade.cpp volatility.cpp)
+set(TEST_SRCS averages.cpp trade.cpp volatility.cpp python_indicators.cpp)
 
 foreach(test ${TEST_SRCS})
   cmake_path(GET test STEM testname)

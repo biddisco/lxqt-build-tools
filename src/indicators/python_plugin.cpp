@@ -285,13 +285,41 @@ namespace indicators { namespace python {
       return nullptr;
     }
 
+    GROX_LOG_TRACE(py_plug_log, "{:>20} class object ptr={} type_check={}", "registry",
+        static_cast<PyObject*>(py_class),
+        PyType_Check(static_cast<PyObject*>(py_class)) ? "YES" : "NO");
+
+    // Verify the class is callable
+    if (!PyCallable_Check(static_cast<PyObject*>(py_class)))
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} class is not callable class_name={}", "registry", class_name);
+      return nullptr;
+    }
+
+    GROX_LOG_TRACE(py_plug_log, "{:>20} calling class to instantiate", "registry");
+
     // Call the class to create an instance (equivalent to MyClass())
     PyObject* py_instance = PyObject_CallObject(static_cast<PyObject*>(py_class), nullptr);
+
+    GROX_LOG_TRACE(py_plug_log, "{:>20} PyObject_CallObject returned ptr={}", "registry",
+        static_cast<void*>(py_instance));
+
     if (!py_instance)
     {
-      PyErr_Print();
       GROX_LOG_ERROR(py_plug_log, "{:>20} create_instance failed to instantiate class={}",
           "registry", class_name);
+      PyErr_Print();
+      return nullptr;
+    }
+
+    // Verify the instance has compute_sample method
+    if (!PyObject_HasAttrString(py_instance, "compute_sample"))
+    {
+      GROX_LOG_ERROR(py_plug_log,
+          "{:>20} created instance missing compute_sample method class_name={}", "registry",
+          class_name);
+      Py_DECREF(py_instance);
       return nullptr;
     }
 
@@ -350,12 +378,22 @@ namespace indicators { namespace python {
     : py_object_(py_object)
   {
     GROX_LOG_DEBUG(py_plug_log, "{:>20} instance ctor py_object={}", "py_indicator", py_object_);
+    // Verify object is valid Python object
+    if (py_object_)
+    {
+      auto* obj = static_cast<PyObject*>(py_object_);
+      GROX_LOG_TRACE(py_plug_log, "{:>20} py_object refcount={}", "py_indicator", Py_REFCNT(obj));
+    }
   }
 
   py_indicator_instance::~py_indicator_instance()
   {
     // NOTE: No logging in destructor - logging system may be destroyed during static teardown
-    if (py_object_) { Py_DECREF(static_cast<PyObject*>(py_object_)); }
+    if (py_object_)
+    {
+      auto* obj = static_cast<PyObject*>(py_object_);
+      if (Py_REFCNT(obj) > 0) { Py_DECREF(obj); }
+    }
     py_object_ = nullptr;
   }
 
@@ -376,12 +414,60 @@ namespace indicators { namespace python {
 
     // Create Python dict with OHLCV data
     PyObject* ohlcv_dict = PyDict_New();
-    PyDict_SetItemString(ohlcv_dict, "open", PyFloat_FromDouble(open));
-    PyDict_SetItemString(ohlcv_dict, "high", PyFloat_FromDouble(high));
-    PyDict_SetItemString(ohlcv_dict, "low", PyFloat_FromDouble(low));
-    PyDict_SetItemString(ohlcv_dict, "close", PyFloat_FromDouble(close));
-    PyDict_SetItemString(ohlcv_dict, "volume", PyFloat_FromDouble(volume));
-    PyDict_SetItemString(ohlcv_dict, "time", PyLong_FromUnsignedLongLong(time));
+    if (!ohlcv_dict)
+    {
+      GROX_LOG_ERROR(py_plug_log, "{:>20} failed to create OHLCV dict", "py_indicator");
+      return 0.0;
+    }
+
+// Helper macro to safely add items to dict (manages reference counts)
+#define SAFE_DICT_SET_FLOAT(dict, key, val)                                                        \
+  do {                                                                                             \
+    PyObject* tmp = PyFloat_FromDouble(val);                                                       \
+    if (!tmp)                                                                                      \
+    {                                                                                              \
+      GROX_LOG_ERROR(                                                                              \
+          py_plug_log, "{:>20} failed to create float for key={}", "py_indicator", key);           \
+      Py_DECREF(dict);                                                                             \
+      return 0.0;                                                                                  \
+    }                                                                                              \
+    int ret = PyDict_SetItemString(dict, key, tmp);                                                \
+    Py_DECREF(tmp);                                                                                \
+    if (ret < 0)                                                                                   \
+    {                                                                                              \
+      GROX_LOG_ERROR(py_plug_log, "{:>20} failed to set dict key={}", "py_indicator", key);        \
+      Py_DECREF(dict);                                                                             \
+      return 0.0;                                                                                  \
+    }                                                                                              \
+  } while (0)
+
+#define SAFE_DICT_SET_LONG(dict, key, val)                                                         \
+  do {                                                                                             \
+    PyObject* tmp = PyLong_FromUnsignedLongLong(val);                                              \
+    if (!tmp)                                                                                      \
+    {                                                                                              \
+      GROX_LOG_ERROR(py_plug_log, "{:>20} failed to create long for key={}", "py_indicator", key); \
+      Py_DECREF(dict);                                                                             \
+      return 0.0;                                                                                  \
+    }                                                                                              \
+    int ret = PyDict_SetItemString(dict, key, tmp);                                                \
+    Py_DECREF(tmp);                                                                                \
+    if (ret < 0)                                                                                   \
+    {                                                                                              \
+      GROX_LOG_ERROR(py_plug_log, "{:>20} failed to set dict key={}", "py_indicator", key);        \
+      Py_DECREF(dict);                                                                             \
+      return 0.0;                                                                                  \
+    }                                                                                              \
+  } while (0)
+
+    SAFE_DICT_SET_FLOAT(ohlcv_dict, "open", open);
+    SAFE_DICT_SET_FLOAT(ohlcv_dict, "high", high);
+    SAFE_DICT_SET_FLOAT(ohlcv_dict, "low", low);
+    SAFE_DICT_SET_FLOAT(ohlcv_dict, "close", close);
+    SAFE_DICT_SET_FLOAT(ohlcv_dict, "volume", volume);
+    SAFE_DICT_SET_LONG(ohlcv_dict, "time", time);
+
+    GROX_LOG_TRACE(py_plug_log, "{:>20} calling compute_sample on Python object", "py_indicator");
 
     // Call compute_sample(ohlcv_dict)
     PyObject* result =
@@ -396,11 +482,22 @@ namespace indicators { namespace python {
       return 0.0;
     }
 
+    if (!PyFloat_Check(result))
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} compute_sample returned non-float result", "py_indicator");
+      Py_DECREF(result);
+      return 0.0;
+    }
+
     double value = PyFloat_AsDouble(result);
     Py_DECREF(result);
 
     GROX_LOG_DEBUG(py_plug_log, "{:>20} compute_sample result={}", "py_indicator", value);
     return value;
+
+#undef SAFE_DICT_SET_FLOAT
+#undef SAFE_DICT_SET_LONG
   }
 
   bool py_indicator_instance::set_parameter(std::string const& name, double value)
