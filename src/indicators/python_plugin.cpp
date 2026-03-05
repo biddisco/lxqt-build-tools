@@ -23,6 +23,23 @@ namespace fs = std::filesystem;
 
 namespace indicators { namespace python {
 
+  // RAII guard to acquire/release Python GIL when calling Python C API from C++ threads
+  class PyGILGuard
+  {
+public:
+    PyGILGuard()
+      : state_(PyGILState_Ensure())
+    {
+    }
+    ~PyGILGuard() { PyGILState_Release(state_); }
+    // Prevent copying
+    PyGILGuard(PyGILGuard const&) = delete;
+    PyGILGuard& operator=(PyGILGuard const&) = delete;
+
+private:
+    PyGILState_STATE state_;
+  };
+
   // Helper function to normalize parameter names for Python attribute lookup
   // Converts "Price Type" -> "price_type", "Period" -> "period", etc.
   static std::string normalize_param_name(std::string const& name)
@@ -182,6 +199,22 @@ namespace indicators { namespace python {
     return true;
   }
 
+  void python_indicator_registry::release_gil()
+  {
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} releasing GIL (main thread)", "registry");
+    saved_thread_state_ = static_cast<void*>(PyEval_SaveThread());
+  }
+
+  void python_indicator_registry::reacquire_gil()
+  {
+    if (saved_thread_state_)
+    {
+      GROX_LOG_DEBUG(py_plug_log, "{:>20} re-acquiring GIL (main thread)", "registry");
+      PyEval_RestoreThread(static_cast<PyThreadState*>(saved_thread_state_));
+      saved_thread_state_ = nullptr;
+    }
+  }
+
   void python_indicator_registry::shutdown()
   {
     GROX_LOG_TRACE(py_plug_log, "{:>20} shutdown called initialized={}", "registry", initialized_);
@@ -191,22 +224,13 @@ namespace indicators { namespace python {
       return;
     }
 
-    // NOTE: We deliberately do NOT call Py_Finalize() here to avoid shutdown crashes.
-    // Reason: There may still be py_indicator_instance objects alive (owned by
-    // indicator_registry), and their destructors will try to Py_DECREF after
-    // Py_Finalize() has torn down the interpreter, causing segfaults.
-    //
-    // Skipping Py_Finalize() at program exit is safe - the OS reclaims all resources.
-    // This is a common practice in Python-embedding applications.
-    //
-    // If explicit cleanup is needed (e.g., for orderly shutdown in tests), call
-    // shutdown() early while all instances are still managed, then destroy the
-    // instances before process exit.
+    // Re-acquire the GIL on the main thread if it was released
+    reacquire_gil();
 
     GROX_LOG_DEBUG(
         py_plug_log, "{:>20} clearing registered classes (skipping Py_Finalize)", "registry");
 
-    // We still clear our references, but don't call Py_Finalize
+    // Main thread now holds the GIL, safe to Py_DECREF
     for (auto& [name, py_obj] : registered_classes_)
     {
       if (py_obj) { Py_DECREF(static_cast<PyObject*>(py_obj)); }
@@ -318,6 +342,10 @@ namespace indicators { namespace python {
       std::string const& class_name)
   {
     GROX_LOG_DEBUG(py_plug_log, "{:>20} create_instance name={}", "registry", class_name);
+
+    // Acquire GIL for all Python C API calls
+    PyGILGuard gil;
+
     auto* py_class = get_indicator_class(class_name);
     if (!py_class)
     {
@@ -432,6 +460,8 @@ namespace indicators { namespace python {
     // NOTE: No logging in destructor - logging system may be destroyed during static teardown
     if (py_object_)
     {
+      // Must hold GIL when calling Py_DECREF
+      PyGILGuard gil;
       auto* obj = static_cast<PyObject*>(py_object_);
       if (Py_REFCNT(obj) > 0) { Py_DECREF(obj); }
     }
@@ -452,6 +482,9 @@ namespace indicators { namespace python {
           py_plug_log, "{:>20} compute_sample returning default (null py_object)", "py_indicator");
       return 0.0;
     }
+
+    // Acquire GIL for all Python C API calls
+    PyGILGuard gil;
 
     // Create Python dict with OHLCV data
     PyObject* ohlcv_dict = PyDict_New();
@@ -829,6 +862,45 @@ namespace indicators { namespace python {
   {
     GROX_LOG_DEBUG(
         py_plug_log, "{:>20} ctor name={} class_name={}", "py_indicator_wrapper", name, class_name);
+
+    // Extract Python parameter specifications so the template has params for GUI display
+    init_params();
+  }
+
+  // Custom factory create method
+  // Note: Do NOT call init_params() here - the template already has params_ set
+  // from construction/registration, and the copy preserves user-modified values from the GUI.
+  indicators::shared_indicator python_indicator_wrapper::create(
+      algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc) const
+  {
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} create method called", "py_indicator_wrapper");
+    auto result = std::make_shared<python_indicator_wrapper>();
+    *result = *dynamic_cast<python_indicator_wrapper*>(alg);
+    result->hdf5_ohlc_ = hdf5_ohlc;
+
+    result->initialize();
+    result->create_outputs(hdf5_ohlc);
+    result->register_callbacks();
+    return result;
+  }
+
+  void python_indicator_wrapper::execute_from(std::uint64_t N)
+  {
+    if ((N == std::numeric_limits<std::uint64_t>::max()) || (N > get_input(0).dataset_->size()))
+    {
+      N = 0;
+    }
+    call_helper<double> helper;
+    helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });
+  }
+
+  void python_indicator_wrapper::execute_continue()
+  {
+    std::uint64_t N = 1;
+    if ((N == std::numeric_limits<std::uint64_t>::max()) || (N > get_input(0).dataset_->size()))
+      N = 0;
+    call_helper<double> helper;
+    helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });
   }
 
   void python_indicator_wrapper::initialize()
@@ -837,49 +909,54 @@ namespace indicators { namespace python {
         py_plug_log, "{:>20} initialize class_name={}", "py_indicator_wrapper", class_name_);
     if (registry_)
     {
+      // Acquire GIL for create_instance + set_parameter calls
+      PyGILGuard gil;
+
       instance_ = registry_->create_instance(class_name_);
 
       // Apply parameters from params_ to the Python instance
-      if (instance_ && !params_.empty())
+      // Skip index 0 (candle_data) - it's a C++ infrastructure param, not a Python attribute
+      if (instance_ && python_attr_names_.size() > 0)
       {
         GROX_LOG_DEBUG(py_plug_log, "{:>20} applying {} parameters to Python instance",
-            "py_indicator_wrapper", params_.size());
+            "py_indicator_wrapper", python_attr_names_.size());
 
         for (size_t i = 0; i < params_.size(); ++i)
         {
+          // Skip params that have no corresponding Python attribute (e.g. candle_data at index 0)
+          if (i >= python_attr_names_.size() || python_attr_names_[i].empty()) continue;
+
+          std::string const& py_attr = python_attr_names_[i];
           std::visit(
-              [this, i](auto&& param_variant) {
+              [this, i, &py_attr](auto&& param_variant) {
                 using T = std::decay_t<decltype(param_variant.val_)>;
 
                 if constexpr (std::is_same_v<T, int>)
                 {
-                  instance_->set_parameter(param_variant.name_.toStdString(), param_variant.val_);
-                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}]={} value={}",
-                      "py_indicator_wrapper", i, param_variant.name_.toStdString(),
-                      param_variant.val_);
+                  instance_->set_parameter(py_attr, param_variant.val_);
+                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}] py_attr={} value={}",
+                      "py_indicator_wrapper", i, py_attr, param_variant.val_);
                 }
                 else if constexpr (std::is_same_v<T, double>)
                 {
-                  instance_->set_parameter(param_variant.name_.toStdString(), param_variant.val_);
-                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}]={} value={}",
-                      "py_indicator_wrapper", i, param_variant.name_.toStdString(),
-                      param_variant.val_);
+                  instance_->set_parameter(py_attr, param_variant.val_);
+                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}] py_attr={} value={}",
+                      "py_indicator_wrapper", i, py_attr, param_variant.val_);
                 }
                 else if constexpr (std::is_same_v<T, std::string>)
                 {
-                  instance_->set_parameter(param_variant.name_.toStdString(), param_variant.val_);
-                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}]={} value={}",
-                      "py_indicator_wrapper", i, param_variant.name_.toStdString(),
-                      param_variant.val_);
+                  instance_->set_parameter(py_attr, param_variant.val_);
+                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}] py_attr={} value={}",
+                      "py_indicator_wrapper", i, py_attr, param_variant.val_);
                 }
                 else if constexpr (std::is_same_v<T, ohlc_modes>)
                 {
                   std::string value = ohlc_mode_to_price_type(param_variant.val_);
-                  instance_->set_parameter(param_variant.name_.toStdString(), value);
-                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}]={} value={}",
-                      "py_indicator_wrapper", i, param_variant.name_.toStdString(), value);
+                  instance_->set_parameter(py_attr, value);
+                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}] py_attr={} value={}",
+                      "py_indicator_wrapper", i, py_attr, value);
                 }
-                // Add more type handlers as needed
+                // candle_data and other C++-only types are silently skipped
               },
               params_[i]);
         }
@@ -899,6 +976,12 @@ namespace indicators { namespace python {
       params_ = {};
       return;
     }
+
+    // Acquire GIL BEFORE creating temp instance so that:
+    // 1. create_instance()'s nested GILGuard is a safe no-op
+    // 2. All subsequent Python C API calls are protected
+    // 3. temp_instance is destroyed BEFORE GIL is released (C++ destruction order)
+    PyGILGuard gil;
 
     auto temp_instance = registry_->create_instance(class_name_);
     if (!temp_instance)
@@ -920,6 +1003,12 @@ namespace indicators { namespace python {
 
     // Extract parameters from Python instance
     params_.clear();
+    python_attr_names_.clear();
+
+    // First param MUST be candle_data so that connect_candle_input_datasets()
+    // can find the input dataset (same convention as all C++ indicators)
+    params_.push_back(param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}});
+    python_attr_names_.push_back("");    // No Python attribute for candle_data
 
     // Try to get the Python class to access param_specs
     PyObject* py_class = PyObject_GetAttrString(py_obj, "__class__");
@@ -993,6 +1082,7 @@ namespace indicators { namespace python {
             {
               int int_value = PyLong_AsLong(value_obj);
               params_.push_back(param<int>{gui_label, int_value});
+              python_attr_names_.push_back(attr_name);
               GROX_LOG_DEBUG(py_plug_log, "{:>20} extracted int param: {}={}",
                   "py_indicator_wrapper", attr_name, int_value);
             }
@@ -1008,6 +1098,7 @@ namespace indicators { namespace python {
             {
               double double_value = PyFloat_AsDouble(value_obj);
               params_.push_back(param<double>{gui_label, double_value});
+              python_attr_names_.push_back(attr_name);
               GROX_LOG_DEBUG(py_plug_log, "{:>20} extracted double param: {}={}",
                   "py_indicator_wrapper", attr_name, double_value);
             }
@@ -1025,6 +1116,7 @@ namespace indicators { namespace python {
               if (str_value)
               {
                 params_.push_back(param<std::string>{gui_label, std::string(str_value)});
+                python_attr_names_.push_back(attr_name);
                 GROX_LOG_DEBUG(py_plug_log, "{:>20} extracted string param: {}={}",
                     "py_indicator_wrapper", attr_name, str_value);
               }
@@ -1044,6 +1136,7 @@ namespace indicators { namespace python {
               {
                 ohlc_modes mode_value = price_type_to_ohlc_mode(str_value);
                 params_.push_back(param<ohlc_modes>{gui_label, mode_value});
+                python_attr_names_.push_back(attr_name);
                 GROX_LOG_DEBUG(py_plug_log, "{:>20} extracted ohlc_modes param: {}={}",
                     "py_indicator_wrapper", attr_name, str_value);
               }
@@ -1060,6 +1153,7 @@ namespace indicators { namespace python {
             {
               bool bool_value = PyObject_IsTrue(value_obj);
               params_.push_back(param<bool>{gui_label, bool_value});
+              python_attr_names_.push_back(attr_name);
               GROX_LOG_DEBUG(py_plug_log, "{:>20} extracted bool param: {}={}",
                   "py_indicator_wrapper", attr_name, bool_value);
             }
@@ -1133,15 +1227,12 @@ namespace indicators { namespace python {
       GROX_LOG_DEBUG(
           py_plug_log, "{:>20} registering wrapper for class={}", "python_registry", class_name);
 
-      // Create wrapper with metadata extracted from Python class
-      // TODO: Parse actual metadata from Python class attributes (name, description, category)
+      // Constructor already calls init_params() to extract Python parameter specs
       auto wrapper = std::make_shared<python_indicator_wrapper>(class_name,    // name
           "Python-based indicator: " + class_name,                             // description
           class_name,                                                          // Python class name
           this                                                                 // registry reference
       );
-
-      wrapper->init_params();
 
       // Register with main registry
       main_registry.register_indicator(wrapper);

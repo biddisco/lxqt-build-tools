@@ -44,8 +44,11 @@ public:
     python_indicator_wrapper(std::string const& name, std::string const& description,
         std::string const& class_name, python_indicator_registry* registry);
 
-    // indicator_base interface implementation
-    FACTORY_INDICATOR_CREATE(python_indicator_wrapper, double)
+    // Custom factory create that calls init_params() before initialize()
+    shared_indicator create(
+        algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc) const override;
+    void execute_from(std::uint64_t N) override;
+    void execute_continue() override;
 
     void initialize() override;
     void init_params() override;
@@ -69,6 +72,9 @@ private:
     python_indicator_registry* registry_;
     std::shared_ptr<py_indicator_instance> instance_;
     double last_result_ = 0.0;
+    // Maps param index to Python attribute name for set_parameter calls
+    // (params_ stores GUI labels, but Python needs the actual attribute name)
+    std::vector<std::string> python_attr_names_;
   };
 
   /**
@@ -137,6 +143,18 @@ public:
     bool is_initialized() const { return initialized_; }
 
     /**
+     * Release the GIL after startup initialization is complete.
+     * Must be called from the main thread after all modules are loaded
+     * and indicators are registered, so that worker threads can acquire the GIL.
+     */
+    void release_gil();
+
+    /**
+     * Re-acquire the GIL on the main thread (for shutdown cleanup).
+     */
+    void reacquire_gil();
+
+    /**
      * Register loaded Python indicators with the main indicator registry
      * Creates C++ wrappers for each Python indicator and registers them
      * so they appear in the GUI dropdown.
@@ -153,7 +171,8 @@ private:
     bool initialized_ = false;
     std::map<std::string, void*> registered_classes_;
     void* py_main_module_ = nullptr;
-    std::wstring python_home_;    // Persistent storage for Py_SetPythonHome
+    std::wstring python_home_;              // Persistent storage for Py_SetPythonHome
+    void* saved_thread_state_ = nullptr;    // For PyEval_SaveThread/RestoreThread
   };
 
   /**

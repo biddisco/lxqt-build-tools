@@ -371,6 +371,10 @@ int qt_main(pika::program_options::variables_map& vm)
     [[maybe_unused]] std::size_t py_registered = py_registry.register_with_main_registry(registry);
     GROX_LOG_DEBUG(app_log, "{:>20} Registered {} python indicator(s) with main registry",
         "python indicators", py_registered);
+
+    // Release the GIL so that worker threads (pika pool) can acquire it
+    // when executing Python indicator algorithms
+    py_registry.release_gil();
   }
   else { GROX_LOG_ERROR(app_log, "{:>20} registry initialization failed", "python indicators"); }
 #else
