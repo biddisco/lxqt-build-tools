@@ -10,6 +10,8 @@ else
 fi
 echo script dir is $SCRIPT_DIR
 
+export SHIBOKEN_PYTHON_SHARED_LIBRARY_OUTPUT_DIR=$QT_PLUGIN_PATH/../lib
+
 # activate python env if it exists
 if [[ -f "$SCRIPT_DIR/python/.venv/bin/activate" ]]; then
   echo Activating python environment in $SCRIPT_DIR

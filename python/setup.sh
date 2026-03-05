@@ -8,10 +8,13 @@ source .venv/bin/activate
 
 # install main packages
 uv pip install ipykernel jupyter pandas seaborn matplotlib argparse 
-uv pip install pyqt6 pip-chill
+uv pip install pip-chill
+uv pip install PySide6==$QT_VER
 
 # used in analysis of transactions
 uv pip install yfinance yfinance-cache xrpl-py
+
+uv pip install torch tensorflow
 
 # my dev stuff
 uv pip install -e ~/src/plotutils/

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[19]:
+# In[5]:
 
 
 # activate .venv in grox/python dir : source ~/src/grox/python/.venv/bin/activate
@@ -12,22 +12,26 @@ import argparse
 import json
 import glob
 import shutil
-#
+import plotutils as pu
 from IPython.display import display, HTML
 #
-os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = os.environ["QT_PLUGIN_PATH"]
-from PyQt6.QtCore import QStandardPaths
-from PyQt6.QtCore import QSettings
-from PyQt6.QtCore import QLibraryInfo
+from PySide6.QtCore import QStandardPaths, QSettings, QLibraryInfo
 #
-print("LD_LIBRARY_PATH    :", os.environ["LD_LIBRARY_PATH"])
+print("Python version     :", sys.version)
+print("Python binary path :", sys.executable)
+#
+qt_locations = QStandardPaths.standardLocations(QStandardPaths.StandardLocation.AppDataLocation)
+qt_data_path = os.getenv("XDG_DATA_HOME") or (qt_locations[0] if qt_locations else "")
+grox_data_dir = os.path.join(qt_data_path, "grox")
+
+print("Qt Data PATH       :", qt_data_path)
+print("Qt App Data path   :", grox_data_dir)
+print("LD_LIBRARY_PATH    :", os.getenv("LD_LIBRARY_PATH", "<unset>"))
+print("QT_PLUGIN_PATH     :", os.getenv("QT_PLUGIN_PATH", "<unset>"))
 print("Qt library path    :", QLibraryInfo.path(QLibraryInfo.LibraryPath.LibrariesPath))
+print("Qt plugins path    :", QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath))
 print("Qt version         :", QLibraryInfo.version().toString())
 #
-import plotutils as pu
-
-print(f"Python version     : {sys.version}")
-print(f"Python binary path : {sys.executable}")
 delete_airdrops = False
 delete_files = False
 decimals = 8
@@ -36,12 +40,12 @@ debug = True
 
 # ---
 # ## setup directories
-# grox_data_dir : where grox stores data it uses for decisions
+# grox_data_dir : where grox stores data it uses for decisions \
 # grox_json_dir : where this script looks for new json files (normally when not debugging grox_json_dir==grox_data_dir)
 # 
 # ---
 
-# In[20]:
+# In[6]:
 
 
 # The directory where grox will store new json files downloaded from exchanges
@@ -61,7 +65,7 @@ print(f"grox_ini_file: {grox_ini_file}")
 # 
 # ---
 
-# In[21]:
+# In[7]:
 
 
 # these are officil transaction types as defined by the bitstamp API
@@ -87,7 +91,7 @@ transaction_types_dict = {
 account_names = ['Main', 'Currency', 'Test']
 
 
-# In[26]:
+# In[8]:
 
 
 if 'ipykernel' in sys.modules:
@@ -119,7 +123,7 @@ else:
 pd.options.display.float_format = '{:.8f}'.format
 
 
-# In[ ]:
+# In[9]:
 
 
 # we must handle "2021-02-23 08:59:14.652000" and "2021-02-23 08:59:14" and unix timestamps
@@ -193,7 +197,7 @@ def cleanup_dataframe(df, message, debug=False):
 # 
 # ---
 
-# In[ ]:
+# In[10]:
 
 
 account_files = {}
@@ -219,7 +223,7 @@ else:
 # 
 # ---
 
-# In[ ]:
+# In[11]:
 
 
 # load previously generated csv files into pandas dataframes
@@ -243,7 +247,7 @@ for account in account_names:
 # 
 # ---
 
-# In[ ]:
+# In[12]:
 
 
 json_files_read = []
@@ -297,7 +301,7 @@ if all(data is None for data in account_data.values()):
     sys.exit(0)
 
 
-# In[ ]:
+# In[13]:
 
 
 if success:
@@ -355,7 +359,7 @@ else:
 # ## Find which transactions in the "official" bitstamp export are not present in our API exports 
 # ---
 
-# In[ ]:
+# In[14]:
 
 
 if not validation_file:
