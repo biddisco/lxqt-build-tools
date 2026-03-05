@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -15,6 +16,8 @@
 //
 #include <boost/program_options.hpp>
 #include <magic_enum/magic_enum.hpp>
+#include <nlohmann/json.hpp>
+#include <zmq.hpp>
 // Grox
 #include "config/config.hpp"
 #include "currency/currency_pair.hpp"
@@ -50,6 +53,8 @@ namespace {
     std::string app_data_location;
     std::string hdf_file{"grox.hdf5"};
     bool show_help{false};
+    bool zmq_mode{false};
+    std::string zmq_endpoint{"tcp://*:5555"};
   };
 
   std::string normalize_algorithm(std::string_view algorithm)
@@ -83,7 +88,10 @@ namespace {
         "Candle resolution")("samples",
         po::value<std::uint64_t>(&out.samples)->default_value(out.samples),
         "Number of samples from start")(
-        "show-events", po::bool_switch(&out.show_events), "Print each buy/sell event");
+        "show-events", po::bool_switch(&out.show_events), "Print each buy/sell event")(
+        "zmq-mode", po::bool_switch(&out.zmq_mode), "Run in ZeroMQ server mode")("zmq-endpoint",
+        po::value<std::string>(&out.zmq_endpoint)->default_value(out.zmq_endpoint),
+        "ZeroMQ endpoint to bind to (REP socket)");
     return desc;
   }
 
@@ -265,8 +273,20 @@ namespace {
     return false;
   }
 
+  std::string format_result(options const& opts, std::uint64_t buys, std::uint64_t sells,
+      indicators::buy_sell_point const& last, std::uint64_t count)
+  {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(8) << "algorithm=" << opts.algorithm
+        << " exchange=" << opts.exchange << " pair=" << opts.base << "/" << opts.quote
+        << " resolution=" << opts.resolution << " samples=" << count << " buys=" << buys
+        << " sells=" << sells << " final_value=" << last.value_ << " final_tokens=" << last.tokens_
+        << " final_cash=" << last.cash_;
+    return oss.str();
+  }
+
   template <typename Algorithm>
-  int run_algorithm(options const& opts)
+  int run_algorithm(options const& opts, std::string* result_out = nullptr)
   {
     auto res = parse_resolution(opts.resolution);
     if (!res)
@@ -361,11 +381,78 @@ namespace {
       last = point;
     }
 
-    std::cout << std::fixed << std::setprecision(8) << "algorithm=" << opts.algorithm
-              << " exchange=" << opts.exchange << " pair=" << opts.base << "/" << opts.quote
-              << " resolution=" << opts.resolution << " samples=" << count << " buys=" << buys
-              << " sells=" << sells << " final_value=" << last.value_
-              << " final_tokens=" << last.tokens_ << " final_cash=" << last.cash_ << "\n";
+    auto result = format_result(opts, buys, sells, last, count);
+    if (result_out) { *result_out = result; }
+    else { std::cout << result << "\n"; }
+
+    return 0;
+  }
+  void update_options_from_json(options& opts, nlohmann::json const& j)
+  {
+    if (j.contains("samples")) opts.samples = j["samples"].get<std::uint64_t>();
+    if (j.contains("window_size")) opts.window_size = j["window_size"].get<int>();
+    if (j.contains("mode")) opts.mode = j["mode"].get<std::string>();
+    if (j.contains("fee_buy")) opts.fee_buy = j["fee_buy"].get<double>();
+    if (j.contains("fee_sell")) opts.fee_sell = j["fee_sell"].get<double>();
+    if (j.contains("upper_gap_percent"))
+      opts.upper_gap_percent = j["upper_gap_percent"].get<double>();
+    if (j.contains("lower_gap_percent"))
+      opts.lower_gap_percent = j["lower_gap_percent"].get<double>();
+    if (j.contains("rsi_multiplier")) opts.rsi_multiplier = j["rsi_multiplier"].get<double>();
+    if (j.contains("gradient_upper")) opts.gradient_upper = j["gradient_upper"].get<double>();
+    if (j.contains("gradient_lower")) opts.gradient_lower = j["gradient_lower"].get<double>();
+  }
+
+  template <typename Algorithm>
+  int run_zmq_server(options const& base_opts)
+  {
+    zmq::context_t context(1);
+    zmq::socket_t socket(context, zmq::socket_type::rep);
+    socket.bind(base_opts.zmq_endpoint);
+
+    std::cout << "ZeroMQ server listening on " << base_opts.zmq_endpoint
+              << " for algorithm: " << base_opts.algorithm << "\n";
+
+    while (true)
+    {
+      zmq::message_t request;
+      auto recv_result = socket.recv(request, zmq::recv_flags::none);
+      if (!recv_result) break;
+
+      std::string request_str(static_cast<char*>(request.data()), request.size());
+
+      try
+      {
+        nlohmann::json j = nlohmann::json::parse(request_str);
+
+        // Check for shutdown signal
+        if (j.contains("shutdown") && j["shutdown"].is_boolean() && j["shutdown"].get<bool>())
+        {
+          std::string shutdown_msg = "Shutting down";
+          socket.send(zmq::buffer(shutdown_msg), zmq::send_flags::none);
+          std::cout << "Shutdown signal received. Exiting...\n";
+          break;
+        }
+
+        options opts = base_opts;
+        update_options_from_json(opts, j);
+
+        std::string result;
+        int ret = run_algorithm<Algorithm>(opts, &result);
+
+        if (ret == 0) { socket.send(zmq::buffer(result), zmq::send_flags::none); }
+        else
+        {
+          std::string error = "ERROR: Algorithm execution failed with code " + std::to_string(ret);
+          socket.send(zmq::buffer(error), zmq::send_flags::none);
+        }
+      }
+      catch (std::exception const& e)
+      {
+        std::string error = std::string("ERROR: ") + e.what();
+        socket.send(zmq::buffer(error), zmq::send_flags::none);
+      }
+    }
 
     return 0;
   }
@@ -382,15 +469,31 @@ int main(int argc, char** argv)
   {
     init_data_storage(opts);
 
-    if ((opts.algorithm == "trade_sell_sliding_stop") || (opts.algorithm == "sliding_stop"))
+    if (opts.zmq_mode)
     {
-      return run_algorithm<indicators::trade_sell_sliding_stop>(opts);
-    }
+      if ((opts.algorithm == "trade_sell_sliding_stop") || (opts.algorithm == "sliding_stop"))
+      {
+        return run_zmq_server<indicators::trade_sell_sliding_stop>(opts);
+      }
 
-    if ((opts.algorithm == "trade_rebalance_funds") || (opts.algorithm == "rebalance_funds") ||
-        (opts.algorithm == "rebalance"))
+      if ((opts.algorithm == "trade_rebalance_funds") || (opts.algorithm == "rebalance_funds") ||
+          (opts.algorithm == "rebalance"))
+      {
+        return run_zmq_server<indicators::trade_rebalance_funds>(opts);
+      }
+    }
+    else
     {
-      return run_algorithm<indicators::trade_rebalance_funds>(opts);
+      if ((opts.algorithm == "trade_sell_sliding_stop") || (opts.algorithm == "sliding_stop"))
+      {
+        return run_algorithm<indicators::trade_sell_sliding_stop>(opts);
+      }
+
+      if ((opts.algorithm == "trade_rebalance_funds") || (opts.algorithm == "rebalance_funds") ||
+          (opts.algorithm == "rebalance"))
+      {
+        return run_algorithm<indicators::trade_rebalance_funds>(opts);
+      }
     }
 
     std::cerr << "Unknown algorithm: " << opts.algorithm

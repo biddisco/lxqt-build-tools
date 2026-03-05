@@ -1,3 +1,5 @@
+find_package(cppzmq REQUIRED)
+
 set(GROX_BACKTESTER_SRC main.cpp)
 
 add_executable(backtester ${GROX_BACKTESTER_SRC})
@@ -19,4 +21,10 @@ target_link_libraries(
          grox_io
          grox_util
          Qt::Core
+         nlohmann_json::nlohmann_json
+         cppzmq
 )
+# Test client for ZeroMQ mode
+add_executable(backtester_test_client test_client.cpp)
+set_property(TARGET backtester_test_client PROPERTY CXX_STANDARD ${GROX_CXX_STANDARD})
+target_link_libraries(backtester_test_client PUBLIC nlohmann_json::nlohmann_json cppzmq)
