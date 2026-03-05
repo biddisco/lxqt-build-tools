@@ -492,6 +492,252 @@ TEST_F(PythonIndicatorTest, InstanceLifecycle)
   std::cout << "Successfully created and destroyed " << NUM_INSTANCES << " instances\n";
 }
 
+// Test: Factory method (what GUI uses to create indicators)
+TEST_F(PythonIndicatorTest, FactoryMethod)
+{
+  auto& registry = indicators::python::python_indicator_registry::instance();
+
+  // Load module
+  fs::path indicator_path =
+      fs::path(__FILE__).parent_path().parent_path() / "python" / "indicator_example.py";
+  ASSERT_TRUE(registry.load_module(indicator_path));
+
+  // Create a template wrapper (this is typically stored in the indicator registry)
+  indicators::python::python_indicator_wrapper template_wrapper(
+      "Python SMA", "Simple Moving Average", "SimplePythonMovingAverage", &registry);
+
+  template_wrapper.init_params();
+
+  std::cout << fmt::format("Template wrapper class_name: {}\n", template_wrapper.get_class_name());
+  EXPECT_EQ(template_wrapper.get_class_name(), "SimplePythonMovingAverage");
+  EXPECT_NE(template_wrapper.get_registry(), nullptr);
+  EXPECT_FALSE(template_wrapper.has_instance()) << "Instance should not exist before initialize()";
+
+  // Simulate what the factory does when UI selects this indicator
+  // The FACTORY_INDICATOR_CREATE macro:
+  // 1. Creates a default instance
+  // 2. Copies from the template
+  // 3. Calls initialize()
+
+  // We need to manually call initialize since we can't call create() without a full dataset
+  template_wrapper.initialize();
+
+  EXPECT_TRUE(template_wrapper.has_instance()) << "Instance should exist after initialize()";
+
+  // Now test that it works
+  std::vector<ohlctv_sample> samples;
+  for (int i = 0; i < 10; ++i)
+  {
+    ohlctv_sample sample;
+    sample.open = 100.0 + i;
+    sample.high = 101.0 + i;
+    sample.low = 99.0 + i;
+    sample.close = 100.5 + i;
+    sample.volume = 1000.0;
+    sample.time = i * 3600;
+    samples.push_back(sample);
+  }
+
+  for (size_t i = 0; i < samples.size(); ++i)
+  {
+    double result = template_wrapper(samples[i]);
+    EXPECT_TRUE(std::isfinite(result))
+        << fmt::format("Factory test: Got non-finite value at sample {}", i);
+
+    std::cout << fmt::format("Factory test sample {}: {:.6f}\n", i, result);
+  }
+}
+
+// Test: Test wrapper copy semantics (assignment operator)
+TEST_F(PythonIndicatorTest, WrapperCopySemantics)
+{
+  auto& registry = indicators::python::python_indicator_registry::instance();
+
+  // Load module
+  fs::path indicator_path =
+      fs::path(__FILE__).parent_path().parent_path() / "python" / "indicator_example.py";
+  ASSERT_TRUE(registry.load_module(indicator_path));
+
+  // Create original wrapper with proper initialization
+  indicators::python::python_indicator_wrapper original(
+      "Python SMA", "Simple Moving Average", "SimplePythonMovingAverage", &registry);
+  original.init_params();
+  original.initialize();
+
+  // Create a copy (simulates what FACTORY_INDICATOR_CREATE does)
+  indicators::python::python_indicator_wrapper copied;
+  copied = original;
+
+  // Verify the copied wrapper has the same state
+  EXPECT_EQ(copied.get_class_name(), "SimplePythonMovingAverage");
+  EXPECT_NE(copied.get_registry(), nullptr);
+  EXPECT_TRUE(copied.has_instance()) << "Copied wrapper should have instance";
+  EXPECT_EQ(copied.getLastResult(), original.getLastResult());
+
+  // Try to use the copied wrapper
+  ohlctv_sample sample;
+  sample.open = 100.0;
+  sample.high = 101.0;
+  sample.low = 99.0;
+  sample.close = 100.5;
+  sample.volume = 1000.0;
+  sample.time = 0;
+
+  double result_original = original(sample);
+  double result_copied = copied(sample);
+
+  EXPECT_TRUE(std::isfinite(result_original)) << "Original wrapper produced non-finite result";
+  EXPECT_TRUE(std::isfinite(result_copied)) << "Copied wrapper produced non-finite result";
+
+  std::cout << fmt::format(
+      "Copy semantics: original={:.6f}, copied={:.6f}\n", result_original, result_copied);
+}
+
+// Test: Verify Python object persistence across copies
+TEST_F(PythonIndicatorTest, PythonObjectPersistence)
+{
+  auto& registry = indicators::python::python_indicator_registry::instance();
+
+  // Load module
+  fs::path indicator_path =
+      fs::path(__FILE__).parent_path().parent_path() / "python" / "indicator_example.py";
+  ASSERT_TRUE(registry.load_module(indicator_path));
+
+  // Create original wrapper and initialize
+  auto wrapper1 = std::make_shared<indicators::python::python_indicator_wrapper>(
+      "Python SMA", "Simple Moving Average", "SimplePythonMovingAverage", &registry);
+  wrapper1->init_params();
+  wrapper1->initialize();
+
+  // Create a second wrapper by copying
+  auto wrapper2 = std::make_shared<indicators::python::python_indicator_wrapper>(*wrapper1);
+
+  // Both should be able to compute independently
+  ohlctv_sample sample;
+  sample.open = 100.0;
+  sample.high = 101.0;
+  sample.low = 99.0;
+  sample.close = 100.5;
+  sample.volume = 1000.0;
+  sample.time = 0;
+
+  double result1 = (*wrapper1)(sample);
+  EXPECT_TRUE(std::isfinite(result1)) << "Wrapper1 result is not finite";
+
+  double result2 = (*wrapper2)(sample);
+  EXPECT_TRUE(std::isfinite(result2)) << "Wrapper2 result is not finite";
+
+  // Feed more data to wrapper1
+  for (int i = 1; i < 5; ++i)
+  {
+    sample.close = 100.0 + i;
+    double r1 = (*wrapper1)(sample);
+    EXPECT_TRUE(std::isfinite(r1));
+  }
+
+  // Feed different data to wrapper2 (should maintain independent state if each has own instance)
+  for (int i = 1; i < 5; ++i)
+  {
+    sample.close = 200.0 + i;
+    double r2 = (*wrapper2)(sample);
+    EXPECT_TRUE(std::isfinite(r2));
+  }
+
+  std::cout << "Python object persistence test passed\n";
+}
+
+// Test: Parameter extraction from Python indicators
+TEST_F(PythonIndicatorTest, ParameterExtraction)
+{
+  auto& registry = indicators::python::python_indicator_registry::instance();
+
+  // Load module
+  fs::path indicator_path =
+      fs::path(__FILE__).parent_path().parent_path() / "python" / "indicator_example.py";
+  ASSERT_TRUE(registry.load_module(indicator_path));
+
+  // Create wrapper and extract parameters
+  indicators::python::python_indicator_wrapper wrapper(
+      "Python SMA", "Simple Moving Average", "SimplePythonMovingAverage", &registry);
+
+  wrapper.init_params();
+
+  // Check that parameters were extracted
+  auto const& params = wrapper.get_params();
+  EXPECT_GT(params.size(), 0) << "Should have extracted at least one parameter";
+
+  std::cout << fmt::format("Extracted {} parameters:\n", params.size());
+
+  for (size_t i = 0; i < params.size(); ++i)
+  {
+    std::visit(
+        [i](auto&& param_variant) {
+          std::cout << fmt::format("  [{}] {} = ", i, param_variant.name_.toStdString());
+          using T = std::decay_t<decltype(param_variant.val_)>;
+          if constexpr (std::is_same_v<T, int>) { std::cout << param_variant.val_ << " (int)\n"; }
+          else if constexpr (std::is_same_v<T, double>)
+          {
+            std::cout << param_variant.val_ << " (double)\n";
+          }
+          else if constexpr (std::is_same_v<T, std::string>)
+          {
+            std::cout << param_variant.val_ << " (string)\n";
+          }
+          else if constexpr (std::is_same_v<T, ohlc_modes>)
+          {
+            std::cout << static_cast<int>(param_variant.val_) << " (ohlc_modes)\n";
+          }
+          else { std::cout << "(unknown type)\n"; }
+        },
+        params[i]);
+  }
+}
+
+// Test: Parameter setting and modification
+TEST_F(PythonIndicatorTest, ParameterModification)
+{
+  auto& registry = indicators::python::python_indicator_registry::instance();
+
+  // Load module
+  fs::path indicator_path =
+      fs::path(__FILE__).parent_path().parent_path() / "python" / "indicator_example.py";
+  ASSERT_TRUE(registry.load_module(indicator_path));
+
+  // Create instance
+  auto instance = registry.create_instance("SimplePythonMovingAverage");
+  ASSERT_NE(instance, nullptr);
+
+  // Set period to a different value
+  bool set_success = instance->set_parameter("Period", 10);
+  EXPECT_TRUE(set_success) << "Failed to set period parameter";
+
+  // Verify the parameter was set
+  int new_period = instance->get_int_parameter("period");
+  EXPECT_EQ(new_period, 10) << "Period was not updated";
+
+  std::cout << fmt::format("Successfully set period to {}\n", new_period);
+
+  // Set price_type
+  bool set_success2 = instance->set_parameter("Price Type", std::string("high"));
+  EXPECT_TRUE(set_success2) << "Failed to set price_type parameter";
+
+  std::string new_price_type = instance->get_string_parameter("price_type");
+  EXPECT_EQ(new_price_type, "high") << "Price type was not updated";
+
+  std::cout << fmt::format("Successfully set price_type to {}\n", new_price_type);
+
+  // Verify the indicator still works with new parameters
+  std::vector<double> results;
+  for (int i = 0; i < 15; ++i)
+  {
+    double result = instance->compute_sample(100.0 + i, 102.0 + i, 98.0 + i, 101.0 + i, 1000.0, i);
+    results.push_back(result);
+    EXPECT_TRUE(std::isfinite(result));
+  }
+
+  std::cout << fmt::format("Computed {} samples with modified parameters\n", results.size());
+}
+
 //----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {

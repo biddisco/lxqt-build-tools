@@ -58,6 +58,12 @@ public:
 
     double getLastResult() { return last_result_; }
 
+    // Accessors for debugging and testing
+    std::string const& get_class_name() const { return class_name_; }
+    python_indicator_registry* get_registry() const { return registry_; }
+    bool has_instance() const { return instance_ != nullptr; }
+    param_list const& get_params() const override { return params_; }
+
 private:
     std::string class_name_;
     python_indicator_registry* registry_;

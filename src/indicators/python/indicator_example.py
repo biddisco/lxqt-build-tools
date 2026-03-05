@@ -30,6 +30,13 @@ class SimplePythonMovingAverage:
     num_outputs = 1
     category = "averages"
 
+    # Parameter specifications for GUI display
+    # Format: [(attribute_name, gui_label, type_name), ...]
+    param_specs = [
+        ("period", "Window Size", "int"),
+        ("price_type", "mode", "ohlc_modes"),
+    ]
+
     def __init__(self):
         """Initialize the indicator with default parameters."""
         self.period = 20
@@ -63,6 +70,11 @@ class SimplePythonMovingAverage:
             "high": ohlcv_data["high"],
             "low": ohlcv_data["low"],
             "close": ohlcv_data["close"],
+            "mid_open_close": 0.5 * (ohlcv_data["open"] + ohlcv_data["close"]),
+            "mid_high_low": 0.5 * (ohlcv_data["high"] + ohlcv_data["low"]),
+            "volume": ohlcv_data["volume"],
+            "value": ohlcv_data["volume"]
+            * (0.5 * (ohlcv_data["open"] + ohlcv_data["close"])),
         }
 
         price = price_map.get(self.price_type, ohlcv_data["close"])
@@ -102,6 +114,11 @@ class ExponentialPythonMovingAverage:
     num_inputs = 1
     num_outputs = 1
     category = "averages"
+
+    # Parameter specifications for GUI display
+    param_specs = [
+        ("period", "Window Size", "int"),
+    ]
 
     def __init__(self):
         """Initialize the exponential moving average."""
@@ -160,6 +177,11 @@ class WeightedPythonMovingAverage:
     num_inputs = 1
     num_outputs = 1
     category = "averages"
+
+    # Parameter specifications for GUI display
+    param_specs = [
+        ("period", "Window Size", "int"),
+    ]
 
     def __init__(self):
         self.period = 20

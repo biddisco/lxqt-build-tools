@@ -23,6 +23,47 @@ namespace fs = std::filesystem;
 
 namespace indicators { namespace python {
 
+  // Helper function to normalize parameter names for Python attribute lookup
+  // Converts "Price Type" -> "price_type", "Period" -> "period", etc.
+  static std::string normalize_param_name(std::string const& name)
+  {
+    std::string result = name;
+    // Convert to lowercase
+    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+    // Replace spaces with underscores
+    std::replace(result.begin(), result.end(), ' ', '_');
+    return result;
+  }
+
+  static std::string ohlc_mode_to_price_type(ohlc_modes mode)
+  {
+    switch (mode)
+    {
+    case ohlc_modes::open: return "open";
+    case ohlc_modes::close: return "close";
+    case ohlc_modes::mid_open_close: return "mid_open_close";
+    case ohlc_modes::high: return "high";
+    case ohlc_modes::low: return "low";
+    case ohlc_modes::mid_high_low: return "mid_high_low";
+    case ohlc_modes::volume: return "volume";
+    case ohlc_modes::value: return "value";
+    default: return "close";
+    }
+  }
+
+  static ohlc_modes price_type_to_ohlc_mode(std::string const& value)
+  {
+    if (value == "open") return ohlc_modes::open;
+    if (value == "close") return ohlc_modes::close;
+    if (value == "mid_open_close") return ohlc_modes::mid_open_close;
+    if (value == "high") return ohlc_modes::high;
+    if (value == "low") return ohlc_modes::low;
+    if (value == "mid_high_low") return ohlc_modes::mid_high_low;
+    if (value == "volume") return ohlc_modes::volume;
+    if (value == "value") return ohlc_modes::value;
+    return ohlc_modes::close;
+  }
+
   // ============================================================================
   // Registry Implementation
   // ============================================================================
@@ -504,49 +545,263 @@ namespace indicators { namespace python {
   {
     GROX_LOG_DEBUG(py_plug_log, "{:>20} set_parameter<double> name={} value={} py_object={}",
         "py_indicator", name, value, py_object_);
-    // In full implementation:
-    // 1. Use PyObject_SetAttrString to set attribute
-    // 2. Handle exception on failure
 
-    bool const ok = py_object_ != nullptr;
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} set_parameter<double> result={}", "py_indicator", ok);
-    return ok;
+    if (!py_object_)
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} set_parameter<double> failed: null py_object", "py_indicator");
+      return false;
+    }
+
+    // Convert parameter name for Python attribute lookup
+    std::string attr_name = normalize_param_name(name);
+
+    // Create Python float
+    PyObject* py_value = PyFloat_FromDouble(value);
+    if (!py_value)
+    {
+      GROX_LOG_ERROR(py_plug_log, "{:>20} set_parameter<double> failed to create Python float",
+          "py_indicator");
+      return false;
+    }
+
+    // Set attribute on Python object
+    int result =
+        PyObject_SetAttrString(static_cast<PyObject*>(py_object_), attr_name.c_str(), py_value);
+    Py_DECREF(py_value);
+
+    if (result < 0)
+    {
+      PyErr_Print();
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} set_parameter<double> failed to set attribute", "py_indicator");
+      return false;
+    }
+
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} set_parameter<double> success", "py_indicator");
+    return true;
   }
 
   bool py_indicator_instance::set_parameter(std::string const& name, int value)
   {
     GROX_LOG_DEBUG(py_plug_log, "{:>20} set_parameter<int> name={} value={} py_object={}",
         "py_indicator", name, value, py_object_);
-    bool const ok = py_object_ != nullptr;
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} set_parameter<int> result={}", "py_indicator", ok);
-    return ok;
+
+    if (!py_object_)
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} set_parameter<int> failed: null py_object", "py_indicator");
+      return false;
+    }
+
+    // Convert parameter name for Python attribute lookup
+    std::string attr_name = normalize_param_name(name);
+
+    // Create Python long
+    PyObject* py_value = PyLong_FromLong(value);
+    if (!py_value)
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} set_parameter<int> failed to create Python int", "py_indicator");
+      return false;
+    }
+
+    // Set attribute on Python object
+    int result =
+        PyObject_SetAttrString(static_cast<PyObject*>(py_object_), attr_name.c_str(), py_value);
+    Py_DECREF(py_value);
+
+    if (result < 0)
+    {
+      PyErr_Print();
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} set_parameter<int> failed to set attribute", "py_indicator");
+      return false;
+    }
+
+    // Special handling for 'period' parameter - need to reinitialize the deque
+    if (attr_name == "period" &&
+        PyObject_HasAttrString(static_cast<PyObject*>(py_object_), "prices"))
+    {
+      // Call Python to rebuild the prices deque with new maxlen
+      // prices = deque(prices, maxlen=period)
+      PyObject* deque_module = PyImport_ImportModule("collections");
+      if (deque_module)
+      {
+        PyObject* deque_class = PyObject_GetAttrString(deque_module, "deque");
+        if (deque_class)
+        {
+          PyObject* old_prices =
+              PyObject_GetAttrString(static_cast<PyObject*>(py_object_), "prices");
+          if (old_prices)
+          {
+            PyObject* args = PyTuple_Pack(1, old_prices);
+            PyObject* kwargs = Py_BuildValue("{s:i}", "maxlen", value);
+            PyObject* new_prices = PyObject_Call(deque_class, args, kwargs);
+
+            if (new_prices)
+            {
+              PyObject_SetAttrString(static_cast<PyObject*>(py_object_), "prices", new_prices);
+              Py_DECREF(new_prices);
+            }
+
+            Py_XDECREF(kwargs);
+            Py_XDECREF(args);
+            Py_DECREF(old_prices);
+          }
+          Py_DECREF(deque_class);
+        }
+        Py_DECREF(deque_module);
+      }
+    }
+
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} set_parameter<int> success", "py_indicator");
+    return true;
   }
 
   bool py_indicator_instance::set_parameter(std::string const& name, std::string const& value)
   {
     GROX_LOG_DEBUG(py_plug_log, "{:>20} set_parameter<string> name={} value={} py_object={}",
         "py_indicator", name, value, py_object_);
-    bool const ok = py_object_ != nullptr;
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} set_parameter<string> result={}", "py_indicator", ok);
-    return ok;
+
+    if (!py_object_)
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} set_parameter<string> failed: null py_object", "py_indicator");
+      return false;
+    }
+
+    // Convert parameter name for Python attribute lookup
+    std::string attr_name = normalize_param_name(name);
+
+    // Create Python string
+    PyObject* py_value = PyUnicode_FromString(value.c_str());
+    if (!py_value)
+    {
+      GROX_LOG_ERROR(py_plug_log, "{:>20} set_parameter<string> failed to create Python string",
+          "py_indicator");
+      return false;
+    }
+
+    // Set attribute on Python object
+    int result =
+        PyObject_SetAttrString(static_cast<PyObject*>(py_object_), attr_name.c_str(), py_value);
+    Py_DECREF(py_value);
+
+    if (result < 0)
+    {
+      PyErr_Print();
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} set_parameter<string> failed to set attribute", "py_indicator");
+      return false;
+    }
+
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} set_parameter<string> success", "py_indicator");
+    return true;
   }
 
   double py_indicator_instance::get_double_parameter(std::string const& name)
   {
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} get_double_parameter name={} (stub)", "py_indicator", name);
-    return 0.0;
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} get_double_parameter name={}", "py_indicator", name);
+
+    if (!py_object_)
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} get_double_parameter failed: null py_object", "py_indicator");
+      return 0.0;
+    }
+
+    // Convert parameter name for Python attribute lookup
+    std::string attr_name = normalize_param_name(name);
+
+    // Get attribute from Python object
+    PyObject* py_value =
+        PyObject_GetAttrString(static_cast<PyObject*>(py_object_), attr_name.c_str());
+    if (!py_value)
+    {
+      PyErr_Clear();    // Clear the error
+      GROX_LOG_DEBUG(
+          py_plug_log, "{:>20} get_double_parameter: attribute not found", "py_indicator");
+      return 0.0;
+    }
+
+    double result = 0.0;
+    if (PyFloat_Check(py_value)) { result = PyFloat_AsDouble(py_value); }
+    else if (PyLong_Check(py_value)) { result = static_cast<double>(PyLong_AsLong(py_value)); }
+
+    Py_DECREF(py_value);
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} get_double_parameter={}", "py_indicator", result);
+    return result;
   }
 
   int py_indicator_instance::get_int_parameter(std::string const& name)
   {
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} get_int_parameter name={} (stub)", "py_indicator", name);
-    return 0;
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} get_int_parameter name={}", "py_indicator", name);
+
+    if (!py_object_)
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} get_int_parameter failed: null py_object", "py_indicator");
+      return 0;
+    }
+
+    // Convert parameter name for Python attribute lookup
+    std::string attr_name = normalize_param_name(name);
+
+    // Get attribute from Python object
+    PyObject* py_value =
+        PyObject_GetAttrString(static_cast<PyObject*>(py_object_), attr_name.c_str());
+    if (!py_value)
+    {
+      PyErr_Clear();    // Clear the error
+      GROX_LOG_DEBUG(py_plug_log, "{:>20} get_int_parameter: attribute not found", "py_indicator");
+      return 0;
+    }
+
+    int result = 0;
+    if (PyLong_Check(py_value)) { result = PyLong_AsLong(py_value); }
+    else if (PyFloat_Check(py_value)) { result = static_cast<int>(PyFloat_AsDouble(py_value)); }
+
+    Py_DECREF(py_value);
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} get_int_parameter={}", "py_indicator", result);
+    return result;
   }
 
   std::string py_indicator_instance::get_string_parameter(std::string const& name)
   {
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} get_string_parameter name={} (stub)", "py_indicator", name);
-    return "";
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} get_string_parameter name={}", "py_indicator", name);
+
+    if (!py_object_)
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} get_string_parameter failed: null py_object", "py_indicator");
+      return "";
+    }
+
+    // Convert parameter name for Python attribute lookup
+    std::string attr_name = normalize_param_name(name);
+
+    // Get attribute from Python object
+    PyObject* py_value =
+        PyObject_GetAttrString(static_cast<PyObject*>(py_object_), attr_name.c_str());
+    if (!py_value)
+    {
+      PyErr_Clear();    // Clear the error
+      GROX_LOG_DEBUG(
+          py_plug_log, "{:>20} get_string_parameter: attribute not found", "py_indicator");
+      return "";
+    }
+
+    std::string result;
+    if (PyUnicode_Check(py_value))
+    {
+      char const* str = PyUnicode_AsUTF8(py_value);
+      if (str) { result = str; }
+    }
+
+    Py_DECREF(py_value);
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} get_string_parameter={}", "py_indicator", result);
+    return result;
   }
 
   // ============================================================================
@@ -580,16 +835,266 @@ namespace indicators { namespace python {
   {
     GROX_LOG_DEBUG(
         py_plug_log, "{:>20} initialize class_name={}", "py_indicator_wrapper", class_name_);
-    if (registry_) { instance_ = registry_->create_instance(class_name_); }
+    if (registry_)
+    {
+      instance_ = registry_->create_instance(class_name_);
+
+      // Apply parameters from params_ to the Python instance
+      if (instance_ && !params_.empty())
+      {
+        GROX_LOG_DEBUG(py_plug_log, "{:>20} applying {} parameters to Python instance",
+            "py_indicator_wrapper", params_.size());
+
+        for (size_t i = 0; i < params_.size(); ++i)
+        {
+          std::visit(
+              [this, i](auto&& param_variant) {
+                using T = std::decay_t<decltype(param_variant.val_)>;
+
+                if constexpr (std::is_same_v<T, int>)
+                {
+                  instance_->set_parameter(param_variant.name_.toStdString(), param_variant.val_);
+                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}]={} value={}",
+                      "py_indicator_wrapper", i, param_variant.name_.toStdString(),
+                      param_variant.val_);
+                }
+                else if constexpr (std::is_same_v<T, double>)
+                {
+                  instance_->set_parameter(param_variant.name_.toStdString(), param_variant.val_);
+                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}]={} value={}",
+                      "py_indicator_wrapper", i, param_variant.name_.toStdString(),
+                      param_variant.val_);
+                }
+                else if constexpr (std::is_same_v<T, std::string>)
+                {
+                  instance_->set_parameter(param_variant.name_.toStdString(), param_variant.val_);
+                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}]={} value={}",
+                      "py_indicator_wrapper", i, param_variant.name_.toStdString(),
+                      param_variant.val_);
+                }
+                else if constexpr (std::is_same_v<T, ohlc_modes>)
+                {
+                  std::string value = ohlc_mode_to_price_type(param_variant.val_);
+                  instance_->set_parameter(param_variant.name_.toStdString(), value);
+                  GROX_LOG_TRACE(py_plug_log, "{:>20} set param[{}]={} value={}",
+                      "py_indicator_wrapper", i, param_variant.name_.toStdString(), value);
+                }
+                // Add more type handlers as needed
+              },
+              params_[i]);
+        }
+      }
+    }
   }
 
   void python_indicator_wrapper::init_params()
   {
     GROX_LOG_DEBUG(
         py_plug_log, "{:>20} init_params class_name={}", "py_indicator_wrapper", class_name_);
-    // Parameters would be populated from Python class metadata
-    // For now, use default empty parameters
-    params_ = {};
+
+    // Extract parameters from Python class by creating a temporary instance
+    if (!registry_)
+    {
+      GROX_LOG_WARN(py_plug_log, "{:>20} init_params: no registry", "py_indicator_wrapper");
+      params_ = {};
+      return;
+    }
+
+    auto temp_instance = registry_->create_instance(class_name_);
+    if (!temp_instance)
+    {
+      GROX_LOG_WARN(py_plug_log, "{:>20} init_params: failed to create temp instance",
+          "py_indicator_wrapper");
+      params_ = {};
+      return;
+    }
+
+    // Call init_params() on the Python instance to set defaults
+    PyObject* py_obj = static_cast<PyObject*>(temp_instance->get_py_object());
+    if (PyObject_HasAttrString(py_obj, "init_params"))
+    {
+      PyObject* result = PyObject_CallMethod(py_obj, "init_params", nullptr);
+      if (result) { Py_DECREF(result); }
+      else { PyErr_Print(); }
+    }
+
+    // Extract parameters from Python instance
+    params_.clear();
+
+    // Try to get the Python class to access param_specs
+    PyObject* py_class = PyObject_GetAttrString(py_obj, "__class__");
+    if (!py_class)
+    {
+      GROX_LOG_WARN(py_plug_log, "{:>20} failed to get Python class", "py_indicator_wrapper");
+      Py_XDECREF(py_class);
+      return;
+    }
+
+    // Check if the class has param_specs
+    if (PyObject_HasAttrString(py_class, "param_specs"))
+    {
+      PyObject* param_specs = PyObject_GetAttrString(py_class, "param_specs");
+      if (param_specs && PyList_Check(param_specs))
+      {
+        GROX_LOG_DEBUG(py_plug_log, "{:>20} reading param_specs list", "py_indicator_wrapper");
+
+        // Iterate through param_specs tuples
+        for (Py_ssize_t i = 0; i < PyList_Size(param_specs); ++i)
+        {
+          PyObject* spec = PyList_GetItem(param_specs, i);
+          if (!spec || !PyTuple_Check(spec) || PyTuple_Size(spec) != 3)
+          {
+            GROX_LOG_WARN(
+                py_plug_log, "{:>20} invalid param_spec at index {}", "py_indicator_wrapper", i);
+            continue;
+          }
+
+          // Extract tuple: (attr_name, gui_label, type_name)
+          PyObject* attr_name_obj = PyTuple_GetItem(spec, 0);
+          PyObject* gui_label_obj = PyTuple_GetItem(spec, 1);
+          PyObject* type_name_obj = PyTuple_GetItem(spec, 2);
+
+          if (!PyUnicode_Check(attr_name_obj) || !PyUnicode_Check(gui_label_obj) ||
+              !PyUnicode_Check(type_name_obj))
+          {
+            GROX_LOG_WARN(py_plug_log, "{:>20} param_spec tuple contains non-string at index {}",
+                "py_indicator_wrapper", i);
+            continue;
+          }
+
+          char const* attr_name = PyUnicode_AsUTF8(attr_name_obj);
+          char const* gui_label = PyUnicode_AsUTF8(gui_label_obj);
+          char const* type_name = PyUnicode_AsUTF8(type_name_obj);
+
+          GROX_LOG_DEBUG(py_plug_log, "{:>20} processing param_spec: attr={} label={} type={}",
+              "py_indicator_wrapper", attr_name, gui_label, type_name);
+
+          // Get the current value from the Python instance
+          if (!PyObject_HasAttrString(py_obj, attr_name))
+          {
+            GROX_LOG_WARN(py_plug_log, "{:>20} Python object missing attribute '{}'",
+                "py_indicator_wrapper", attr_name);
+            continue;
+          }
+
+          PyObject* value_obj = PyObject_GetAttrString(py_obj, attr_name);
+          if (!value_obj)
+          {
+            GROX_LOG_WARN(py_plug_log, "{:>20} failed to get attribute '{}'",
+                "py_indicator_wrapper", attr_name);
+            continue;
+          }
+
+          // Create param<T> based on type_name
+          std::string type_str(type_name);
+          if (type_str == "int")
+          {
+            if (PyLong_Check(value_obj))
+            {
+              int int_value = PyLong_AsLong(value_obj);
+              params_.push_back(param<int>{gui_label, int_value});
+              GROX_LOG_DEBUG(py_plug_log, "{:>20} extracted int param: {}={}",
+                  "py_indicator_wrapper", attr_name, int_value);
+            }
+            else
+            {
+              GROX_LOG_WARN(
+                  py_plug_log, "{:>20} param '{}' not an int", "py_indicator_wrapper", attr_name);
+            }
+          }
+          else if (type_str == "double" || type_str == "float")
+          {
+            if (PyFloat_Check(value_obj) || PyLong_Check(value_obj))
+            {
+              double double_value = PyFloat_AsDouble(value_obj);
+              params_.push_back(param<double>{gui_label, double_value});
+              GROX_LOG_DEBUG(py_plug_log, "{:>20} extracted double param: {}={}",
+                  "py_indicator_wrapper", attr_name, double_value);
+            }
+            else
+            {
+              GROX_LOG_WARN(py_plug_log, "{:>20} param '{}' not a float/double",
+                  "py_indicator_wrapper", attr_name);
+            }
+          }
+          else if (type_str == "string" || type_str == "str")
+          {
+            if (PyUnicode_Check(value_obj))
+            {
+              char const* str_value = PyUnicode_AsUTF8(value_obj);
+              if (str_value)
+              {
+                params_.push_back(param<std::string>{gui_label, std::string(str_value)});
+                GROX_LOG_DEBUG(py_plug_log, "{:>20} extracted string param: {}={}",
+                    "py_indicator_wrapper", attr_name, str_value);
+              }
+            }
+            else
+            {
+              GROX_LOG_WARN(
+                  py_plug_log, "{:>20} param '{}' not a string", "py_indicator_wrapper", attr_name);
+            }
+          }
+          else if (type_str == "ohlc_modes" || type_str == "mode")
+          {
+            if (PyUnicode_Check(value_obj))
+            {
+              char const* str_value = PyUnicode_AsUTF8(value_obj);
+              if (str_value)
+              {
+                ohlc_modes mode_value = price_type_to_ohlc_mode(str_value);
+                params_.push_back(param<ohlc_modes>{gui_label, mode_value});
+                GROX_LOG_DEBUG(py_plug_log, "{:>20} extracted ohlc_modes param: {}={}",
+                    "py_indicator_wrapper", attr_name, str_value);
+              }
+            }
+            else
+            {
+              GROX_LOG_WARN(py_plug_log, "{:>20} param '{}' not a string for ohlc_modes",
+                  "py_indicator_wrapper", attr_name);
+            }
+          }
+          else if (type_str == "bool")
+          {
+            if (PyBool_Check(value_obj))
+            {
+              bool bool_value = PyObject_IsTrue(value_obj);
+              params_.push_back(param<bool>{gui_label, bool_value});
+              GROX_LOG_DEBUG(py_plug_log, "{:>20} extracted bool param: {}={}",
+                  "py_indicator_wrapper", attr_name, bool_value);
+            }
+            else
+            {
+              GROX_LOG_WARN(
+                  py_plug_log, "{:>20} param '{}' not a bool", "py_indicator_wrapper", attr_name);
+            }
+          }
+          else
+          {
+            GROX_LOG_WARN(py_plug_log, "{:>20} unknown parameter type '{}' for attr '{}'",
+                "py_indicator_wrapper", type_name, attr_name);
+          }
+
+          Py_DECREF(value_obj);
+        }
+
+        Py_DECREF(param_specs);
+      }
+      else
+      {
+        GROX_LOG_WARN(py_plug_log, "{:>20} param_specs is not a list", "py_indicator_wrapper");
+      }
+    }
+    else
+    {
+      GROX_LOG_DEBUG(
+          py_plug_log, "{:>20} no param_specs found in Python class", "py_indicator_wrapper");
+    }
+
+    Py_DECREF(py_class);
+
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} init_params extracted {} parameters",
+        "py_indicator_wrapper", params_.size());
   }
 
   double python_indicator_wrapper::operator()(ohlctv_sample const& sample)
