@@ -13,8 +13,12 @@ uv pip install PySide6==$QT_VER
 
 # used in analysis of transactions
 uv pip install yfinance yfinance-cache xrpl-py
-
+i
+# Machine learning
 uv pip install torch tensorflow
+
+# backtesting and optimization
+uv pip install optuna pyzmq h5py
 
 # my dev stuff
 uv pip install -e ~/src/plotutils/

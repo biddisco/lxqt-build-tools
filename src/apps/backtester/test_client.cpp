@@ -45,9 +45,10 @@ namespace {
 
 int main(int argc, char* argv[])
 {
-  std::string endpoint = "tcp://localhost:5555";
+  std::string endpoint;
   std::string algorithm = "trade_sell_sliding_stop";
   bool shutdown = false;
+  int index = 0;
   int param_start = 1;
 
   // Parse arguments
@@ -61,14 +62,16 @@ int main(int argc, char* argv[])
                 << "Options:\n"
                 << "  --algorithm ALG      Algorithm: trade_sell_sliding_stop, "
                    "trade_rebalance_funds\n"
-                << "  --endpoint ENDPOINT  ZeroMQ endpoint (default: tcp://localhost:5555)\n"
+                << "  --endpoint ENDPOINT  ZeroMQ endpoint (default: ipc:///tmp/backtester.sock)\n"
+                << "  --index IDX          Index for parallel instances, offsets socket/port "
+                   "(default: 0)\n"
                 << "  --shutdown           Tell server to shutdown and exit\n"
                 << "  --help, -h          Show this help\n\n"
                 << "Examples:\n"
                 << "  backtester_test_client\n"
-                << "  backtester_test_client --algorithm trade_rebalance_funds "
-                   "window_size=15\n"
-                << "  backtester_test_client --endpoint tcp://127.0.0.1:5556 samples=200\n"
+                << "  backtester_test_client --algorithm trade_rebalance_funds window_size=15\n"
+                << "  backtester_test_client --index 1 samples=200\n"
+                << "  backtester_test_client --endpoint tcp://localhost:5556 samples=200\n"
                 << "  backtester_test_client --shutdown\n";
       return 0;
     }
@@ -82,6 +85,12 @@ int main(int argc, char* argv[])
     if (arg == "--algorithm" && i + 1 < argc)
     {
       algorithm = argv[++i];
+      continue;
+    }
+
+    if (arg == "--index" && i + 1 < argc)
+    {
+      index = std::stoi(argv[++i]);
       continue;
     }
 
@@ -101,6 +110,44 @@ int main(int argc, char* argv[])
     param_start = i;
     break;
   }
+
+  // Helper function to compute endpoint based on index
+  auto get_endpoint_for_index = [](std::string_view base, int idx) -> std::string {
+    if (base.empty())
+    {
+      if (idx == 0)
+        return "ipc:///tmp/backtester.sock";
+      else
+        return "ipc:///tmp/backtester-" + std::to_string(idx) + ".sock";
+    }
+    if (base.find("ipc://") == 0)
+    {
+      if (idx == 0) return std::string(base);
+      auto sock_pos = base.rfind(".sock");
+      if (sock_pos != std::string::npos)
+        return std::string(base.substr(0, sock_pos)) + "-" + std::to_string(idx) + ".sock";
+    }
+    if (base.find("tcp://") == 0)
+    {
+      if (idx == 0) return std::string(base);
+      auto colon_pos = base.rfind(':');
+      if (colon_pos != std::string::npos)
+      {
+        try
+        {
+          auto port_str = base.substr(colon_pos + 1);
+          int port = std::stoi(std::string(port_str));
+          return std::string(base.substr(0, colon_pos)) + ":" + std::to_string(port + idx);
+        }
+        catch (...)
+        {
+        }
+      }
+    }
+    return std::string(base);
+  };
+
+  endpoint = get_endpoint_for_index(endpoint, index);
 
   if (shutdown)
   {

@@ -24,6 +24,7 @@ class hdf5_ohlc_manager : public abstract_dataset_manager
   std::string data_dir_;
   std::string file_name_;
   std::mutex hdf5_mutex_;
+  bool read_only_;
 
   public:
   hdf5_ohlc_manager();
@@ -31,10 +32,16 @@ class hdf5_ohlc_manager : public abstract_dataset_manager
 
   void init(std::string data_dir, std::string filename) override
   {
+    init(data_dir, filename, false);
+  }
+
+  void init(std::string data_dir, std::string filename, bool read_only)
+  {
     data_dir_ = data_dir;
     file_name_ = data_dir + "/" + filename;
+    read_only_ = read_only;
     //
-    create_data_dir();
+    if (!read_only_) { create_data_dir(); }
   }
 
   // Make sure that the initial data dir is present

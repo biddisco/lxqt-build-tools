@@ -54,8 +54,56 @@ namespace {
     std::string hdf_file{"grox.hdf5"};
     bool show_help{false};
     bool zmq_mode{false};
-    std::string zmq_endpoint{"tcp://*:5555"};
+    int index{0};
+    std::string zmq_endpoint;    // Will be computed based on index
   };
+
+  std::string get_endpoint_for_index(std::string_view base_endpoint, int index)
+  {
+    if (base_endpoint.empty())
+    {
+      // Default: IPC with optional index suffix
+      if (index == 0)
+        return "ipc:///tmp/backtester.sock";
+      else
+        return "ipc:///tmp/backtester-" + std::to_string(index) + ".sock";
+    }
+
+    // If endpoint contains "ipc://", append index before .sock
+    if (base_endpoint.find("ipc://") == 0)
+    {
+      if (index == 0) return std::string(base_endpoint);
+      auto sock_pos = base_endpoint.rfind(".sock");
+      if (sock_pos != std::string::npos)
+      {
+        return std::string(base_endpoint.substr(0, sock_pos)) + "-" + std::to_string(index) +
+            ".sock";
+      }
+      return std::string(base_endpoint);
+    }
+
+    // If endpoint contains "tcp://", increment port by index
+    if (base_endpoint.find("tcp://") == 0)
+    {
+      if (index == 0) return std::string(base_endpoint);
+      auto colon_pos = base_endpoint.rfind(':');
+      if (colon_pos != std::string::npos)
+      {
+        try
+        {
+          auto port_str = base_endpoint.substr(colon_pos + 1);
+          int port = std::stoi(std::string(port_str));
+          return std::string(base_endpoint.substr(0, colon_pos)) + ":" +
+              std::to_string(port + index);
+        }
+        catch (...)
+        {
+        }
+      }
+    }
+
+    return std::string(base_endpoint);
+  }
 
   std::string normalize_algorithm(std::string_view algorithm)
   {
@@ -87,11 +135,12 @@ namespace {
         po::value<std::string>(&out.resolution)->default_value(out.resolution),
         "Candle resolution")("samples",
         po::value<std::uint64_t>(&out.samples)->default_value(out.samples),
-        "Number of samples from start")(
-        "show-events", po::bool_switch(&out.show_events), "Print each buy/sell event")(
-        "zmq-mode", po::bool_switch(&out.zmq_mode), "Run in ZeroMQ server mode")("zmq-endpoint",
-        po::value<std::string>(&out.zmq_endpoint)->default_value(out.zmq_endpoint),
-        "ZeroMQ endpoint to bind to (REP socket)");
+        "Number of samples from start")("show-events", po::bool_switch(&out.show_events),
+        "Print each buy/sell event")("zmq-mode", po::bool_switch(&out.zmq_mode),
+        "Run in ZeroMQ server mode")("index", po::value<int>(&out.index)->default_value(out.index),
+        "Index for parallel instances (offsets IPC socket or TCP port)")("endpoint",
+        po::value<std::string>(&out.zmq_endpoint),
+        "ZeroMQ endpoint to use (default: ipc:///tmp/backtester.sock)");
     return desc;
   }
 
@@ -251,9 +300,9 @@ namespace {
         opts.app_data_location.empty() ? default_app_data_path() : opts.app_data_location;
     std::filesystem::create_directories(global_settings.appDataLocation);
     global_settings.hdfFileName = opts.hdf_file;
-    global_settings.data_manager_ = std::make_shared<hdf5_ohlc_manager>();
-    global_settings.data_manager_->init(
-        global_settings.appDataLocation, global_settings.hdfFileName);
+    auto hdf5_manager = std::make_shared<hdf5_ohlc_manager>();
+    hdf5_manager->init(global_settings.appDataLocation, global_settings.hdfFileName, true);
+    global_settings.data_manager_ = hdf5_manager;
   }
 
   template <typename T>
@@ -464,6 +513,9 @@ int main(int argc, char** argv)
 
   options opts;
   if (!parse_args(argc, argv, opts)) { return opts.show_help ? 0 : 1; }
+
+  // Compute actual endpoint based on index
+  opts.zmq_endpoint = get_endpoint_for_index(opts.zmq_endpoint, opts.index);
 
   try
   {

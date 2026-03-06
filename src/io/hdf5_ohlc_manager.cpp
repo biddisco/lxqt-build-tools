@@ -16,7 +16,10 @@
 static auto man_log = grox::log::create("DManager");
 
 // ----------------------------------------------------------------------------
-hdf5_ohlc_manager::hdf5_ohlc_manager() {}
+hdf5_ohlc_manager::hdf5_ohlc_manager()
+  : read_only_(false)
+{
+}
 
 // ----------------------------------------------------------------------------
 hdf5_ohlc_manager::~hdf5_ohlc_manager() {}
@@ -49,7 +52,7 @@ void hdf5_ohlc_manager::read_impl(
   if (std::filesystem::exists(file_name_))
   {
     GROX_LOG_DEBUG(man_log, "{:>20} {} read_hdf5 {}", "file open", path, file_name_);
-    File file(file_name_, File::ReadWrite | File::OpenOrCreate);
+    File file(file_name_, read_only_ ? File::ReadOnly : (File::ReadWrite | File::OpenOrCreate));
     if (file.exist(path))
     {
       auto dataset = file.getDataSet(path);
