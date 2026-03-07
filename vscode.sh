@@ -1,6 +1,8 @@
 #!/bin/bash
 
+# ----------------------------------------------------------------------------
 # this is the directory of the script, regardless of where it's called from
+# ----------------------------------------------------------------------------
 if [[ $0 != $BASH_SOURCE ]]; then
   # this script was sourced from somewhere, expand name if a symlink
   SCRIPT_DIR=$(dirname $(readlink -f $BASH_SOURCE))
@@ -10,6 +12,19 @@ else
 fi
 echo script dir is $SCRIPT_DIR
 
+# ----------------------------------------------------------------------------
+# source spack environment (which also sets python version)
+# ----------------------------------------------------------------------------
+echo checking for opal environment
+#if spack env list | grep -q 'opal'; then
+  echo Activating spack environment in $SCRIPT_DIR
+  spack env activate --prompt opal
+#fi
+
+# ----------------------------------------------------------------------------
+# source python environment
+# ----------------------------------------------------------------------------
+# for PySide6 to use our installation of Qt
 export SHIBOKEN_PYTHON_SHARED_LIBRARY_OUTPUT_DIR=$QT_PLUGIN_PATH/../lib
 
 # activate python env if it exists
@@ -20,12 +35,9 @@ else
   source /home/biddisco/benchmarking-results/.venv/bin/activate
 fi
 
-echo checking for opal environment
-#if spack env list | grep -q 'opal'; then
-  echo Activating spack environment in $SCRIPT_DIR
-  spack env activate --prompt opal
-#fi
-
+# ----------------------------------------------------------------------------
+# Launch vscode using the right workspace root
+# ----------------------------------------------------------------------------
 if [[ $1 == "python" ]]; then
   SCRIPT_DIR=$SCRIPT_DIR/python
 fi
