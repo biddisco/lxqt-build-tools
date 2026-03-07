@@ -67,7 +67,7 @@ endmacro()
 add_indicator_plugin(
   grox_plugin_moving_averages
   plugins/moving_averages_plugin.cpp
-  "moving_average.hpp;moving_average_cross.hpp;moving_average_exponential.hpp;moving_average_exponential_volume_weighted.hpp;moving_average_hull.hpp;moving_average_volume_weighted.hpp"
+  "moving_average.hpp;moving_average_convergence_divergence.hpp;moving_average_cross.hpp;moving_average_exponential.hpp;moving_average_exponential_volume_weighted.hpp;moving_average_hull.hpp;moving_average_volume_weighted.hpp"
   moving_averages
 )
 

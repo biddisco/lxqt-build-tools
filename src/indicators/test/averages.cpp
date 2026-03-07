@@ -16,6 +16,7 @@
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
 #include "indicators/moving_average.hpp"
+#include "indicators/moving_average_convergence_divergence.hpp"
 #include "indicators/moving_average_cross.hpp"
 #include "indicators/moving_average_exponential.hpp"
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
@@ -222,6 +223,56 @@ TEST(moving_averages, moving_average_cross)
   std::cout << "Signal:       " << signal_str.str() << std::endl;
   std::cout << "Bullish crosses: " << bullish_count << ", Bearish crosses: " << bearish_count
             << std::endl;
+}
+
+//----------------------------------------------------------------------------
+TEST(moving_averages, macd)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  // Standard MACD: fast=12, slow=26, signal=9
+  indicators::moving_average_convergence_divergence alg(12, 26, 9, ohlc_modes::mid_open_close);
+
+  std::stringstream macd_str, signal_str, hist_str;
+  int histogram_sign_changes = 0;
+  float prev_histogram = 0.0f;
+  bool first = true;
+
+  for (auto const& ohlc : result)
+  {
+    auto vals = alg(ohlc);
+    macd_str << fmt::format("{:9.07f}, ", vals[0]);
+    signal_str << fmt::format("{:9.07f}, ", vals[1]);
+    hist_str << fmt::format("{:9.07f}, ", vals[2]);
+
+    if (!first)
+    {
+      // count sign changes in the histogram (MACD crossing signal line)
+      if ((vals[2] > 0 && prev_histogram < 0) || (vals[2] < 0 && prev_histogram > 0))
+        histogram_sign_changes++;
+    }
+    prev_histogram = vals[2];
+    first = false;
+  }
+
+  // The MACD line should start near zero (EMAs begin at same value) and diverge
+  EXPECT_NE(alg.getMACDLine(), 0.0) << "MACD line should have diverged from zero";
+  EXPECT_NE(alg.getSignalLine(), 0.0) << "Signal line should be non-zero";
+
+  // Verify histogram sign changes occurred (MACD crossed the signal line)
+  EXPECT_GT(histogram_sign_changes, 0)
+      << "Expected at least one histogram sign change in 128 samples";
+
+  // Output for visual inspection
+  std::cout << "MACD line:   " << macd_str.str() << std::endl;
+  std::cout << "Signal line: " << signal_str.str() << std::endl;
+  std::cout << "Histogram:   " << hist_str.str() << std::endl;
+  std::cout << "Histogram sign changes: " << histogram_sign_changes << std::endl;
 }
 
 //----------------------------------------------------------------------------

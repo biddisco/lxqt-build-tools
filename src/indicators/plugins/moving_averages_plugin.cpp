@@ -6,6 +6,7 @@
 
 // Include the moving average indicators
 #include "indicators/moving_average.hpp"
+#include "indicators/moving_average_convergence_divergence.hpp"
 #include "indicators/moving_average_cross.hpp"
 #include "indicators/moving_average_exponential.hpp"
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
@@ -14,7 +15,8 @@
 
 // Define plugin metadata
 GROX_DEFINE_PLUGIN_INFO("Moving Averages", "1.0.0",
-    "Simple, Exponential, Volume-Weighted, Hull, and Crossover Moving Averages", "moving_averages")
+    "Simple, Exponential, Volume-Weighted, Hull, Crossover, and MACD Moving Averages",
+    "moving_averages")
 
 // Register indicators with the system
 GROX_BEGIN_PLUGIN_REGISTRATION()
@@ -43,5 +45,9 @@ GROX_BEGIN_PLUGIN_REGISTRATION()
   auto ma_cross = std::make_shared<indicators::moving_average_cross>();
   ma_cross->init_params();
   registry->register_indicator(ma_cross);
+
+  auto ma_macd = std::make_shared<indicators::moving_average_convergence_divergence>();
+  ma_macd->init_params();
+  registry->register_indicator(ma_macd);
 }
 GROX_END_PLUGIN_REGISTRATION()
