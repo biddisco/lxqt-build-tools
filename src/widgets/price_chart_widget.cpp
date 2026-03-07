@@ -301,6 +301,29 @@ void price_chart_widget::connect_gui()
                     curve = price_plot_->add_overlay_curve(
                         name, algp.indicator()->get_outputs()[i], colour);
                 }
+                else if (ot == indicators::overlay_type::shared_axis)
+                {
+                  if (!algp.plot)
+                  {
+                    // first shared_axis output creates the plot
+                    std::tie(algp.plot, curve) =
+                        add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);
+                  }
+                  else
+                  {
+                    // subsequent shared_axis outputs attach to the same plot
+                    auto m_curve = new timebased_data_curve(name);
+                    m_curve->setYAxis(QwtPlot::yRight);
+                    m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
+                    m_curve->setStyle(QwtPlotCurve::Lines);
+                    m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
+                    auto next_colour = chart_colours[colour_count++ % 10];
+                    m_curve->setPen(next_colour, 2);
+                    m_curve->setData(algp.indicator()->get_outputs()[i]);
+                    m_curve->attach(algp.plot);
+                    curve = m_curve;
+                  }
+                }
                 else
                   std::tie(algp.plot, curve) =
                       add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);

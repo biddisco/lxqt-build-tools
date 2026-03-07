@@ -19,9 +19,9 @@ namespace indicators {
   ///   Histogram   = MACD Line - Signal Line
   ///
   /// Outputs:
-  ///   [0] MACD line    (overlay: no_overlay)
-  ///   [1] Signal line  (overlay: no_overlay)
-  ///   [2] Histogram    (overlay: no_overlay)
+  ///   [0] MACD line    (overlay: shared_axis)
+  ///   [1] Signal line  (overlay: shared_axis)
+  ///   [2] Histogram    (overlay: shared_axis)
   class moving_average_convergence_divergence : public indicator_base
   {
 public:
@@ -35,7 +35,7 @@ public:
     moving_average_convergence_divergence(int fast_window = 12, int slow_window = 26,
         int signal_window = 9, ohlc_modes mode = ohlc_modes::close)
       : indicator_base("MACD", "Moving Average Convergence Divergence",
-            {overlay_type::no_overlay, overlay_type::no_overlay, overlay_type::no_overlay})
+            {overlay_type::shared_axis, overlay_type::shared_axis, overlay_type::shared_axis})
       , fast_window_(fast_window)
       , slow_window_(slow_window)
       , signal_window_(signal_window)

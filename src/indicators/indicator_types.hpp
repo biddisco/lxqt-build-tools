@@ -138,6 +138,8 @@ namespace indicators {
     minmax_limit,
     /// the data range from 0 to +/ some value to be found from the data
     relative_gain,
+    /// multiple outputs from the same indicator share a single axis/plot
+    shared_axis,
     /// TBD
     no_overlay,
   };

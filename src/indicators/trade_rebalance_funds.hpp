@@ -41,11 +41,10 @@ public:
         double ugap = 0.0035, double lgap = 0.0035)
       : indicator_base("Trade: Rebalance funds", "Trade: Rebalance funds",
             {
-                overlay_type::buy_sell,         //
-                overlay_type::buy_sell,         //
-                overlay_type::buy_sell,         //
-                overlay_type::relative_gain,    //
-                overlay_type::relative_gain     //
+                overlay_type::buy_sell,      //
+                overlay_type::buy_sell,      //
+                overlay_type::buy_sell,      //
+                overlay_type::shared_axis    //
             })
       , mode_(mode)
       , average_{}
