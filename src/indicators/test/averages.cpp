@@ -16,6 +16,7 @@
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
 #include "indicators/moving_average.hpp"
+#include "indicators/moving_average_cross.hpp"
 #include "indicators/moving_average_exponential.hpp"
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
 #include "indicators/moving_average_volume_weighted.hpp"
@@ -176,6 +177,51 @@ TEST(moving_averages, moving_average_exponential_volume_weighted)
       "0.27611, 0.27642, 0.27671, 0.27699, 0.27734, 0.27768, 0.27803, 0.27842, 0.27879, 0.27913, "
       "0.27943, 0.27969, 0.27992, 0.28012, 0.28029, 0.28040, 0.28050, 0.28057, ";
   EXPECT_EQ(expected, tmp.str());
+}
+
+//----------------------------------------------------------------------------
+TEST(moving_averages, moving_average_cross)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  // fast=9, slow=21 EMA crossover
+  indicators::moving_average_cross alg(9, 21, ohlc_modes::mid_open_close);
+
+  std::stringstream fast_str, slow_str, signal_str;
+  int bullish_count = 0;
+  int bearish_count = 0;
+
+  for (auto const& ohlc : result)
+  {
+    auto vals = alg(ohlc);
+    fast_str << fmt::format("{:7.05f}, ", vals[0]);
+    slow_str << fmt::format("{:7.05f}, ", vals[1]);
+    signal_str << fmt::format("{:+2.0f}, ", vals[2]);
+    if (vals[2] > 0.5f)
+      bullish_count++;
+    else if (vals[2] < -0.5f)
+      bearish_count++;
+  }
+
+  // Verify we detected at least one crossover event in the dataset
+  EXPECT_GT(bullish_count + bearish_count, 0)
+      << "Expected at least one crossover event in 128 XRP-USD samples";
+
+  // Verify fast and slow EMAs are producing valid (non-zero) output
+  auto last_vals = alg.getLastResult();
+  EXPECT_GT(last_vals, 0.0) << "Expected non-zero final EMA value";
+
+  // Output for visual inspection
+  std::cout << "Fast EMA(9):  " << fast_str.str() << std::endl;
+  std::cout << "Slow EMA(21): " << slow_str.str() << std::endl;
+  std::cout << "Signal:       " << signal_str.str() << std::endl;
+  std::cout << "Bullish crosses: " << bullish_count << ", Bearish crosses: " << bearish_count
+            << std::endl;
 }
 
 //----------------------------------------------------------------------------
