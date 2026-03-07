@@ -54,12 +54,13 @@ namespace net::ws {
     auto ws = websocket_.load();
     if (ws)
     {
-      GROX_LOG_ERROR(
-          qwebsocket_log, "{:>20} Client::destructor : websocket delete - out of order", id_);
+      // Websocket wasn't cleaned up in onDisconnected - force delete as fallback
+      GROX_LOG_ERROR(qwebsocket_log,
+          "{:>20} Client::destructor : websocket still alive - forcing delete", id_);
+      ws->disconnect();
       delete ws;
       websocket_.store(nullptr);
     }
-    else { GROX_LOG_ERROR(qwebsocket_log, "~qwebsocket_client after deletion"); }
   }
 
   // ------------------------------------------------------------------
@@ -122,10 +123,9 @@ namespace net::ws {
     {
       GROX_LOG_DEBUG(qwebsocket_log, "{:20s} stopConnection : invoking WebSocket close", id_);
       // Use QueuedConnection to ensure close happens on the websocket thread
-      bool result = QMetaObject::invokeMethod(
-          ws, "close", Qt::QueuedConnection, QWebSocketProtocol::CloseCodeNormal);
+      QMetaObject::invokeMethod(ws, "close", Qt::QueuedConnection);
     }
-    else { GROX_LOG_ERROR(qwebsocket_log, "stopConnection after deletion"); }
+    else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} stopConnection : already closed", id_); }
   }
 
   // ------------------------------------------------------------------
@@ -146,10 +146,24 @@ namespace net::ws {
     auto ws = websocket_.load();
     if (ws)
     {
-      GROX_LOG_ERROR(qwebsocket_log, "{:20s} Disconnected : Unexpected : CloseCode is : {} {}", id_,
-          QVariant::fromValue(ws->closeCode()).toString(), ws->errorString());
+      auto code = ws->closeCode();
+      if (code != QWebSocketProtocol::CloseCodeNormal)
+      {
+        GROX_LOG_ERROR(qwebsocket_log, "{:20s} Disconnected : CloseCode is : {} {}", id_,
+            QVariant::fromValue(code).toString(), ws->errorString());
+      }
+      else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} Disconnected : CloseCode Normal", id_); }
+      // Disconnect all signals to prevent any further callbacks during destruction
+      ws->disconnect();
+      // Must use deleteLater() - we are inside the QWebSocket's own 'disconnected'
+      // signal dispatch; deleting the sender synchronously here would crash when
+      // Qt's QMetaObject::activate returns. Qt processes pending deleteLater objects
+      // when the event loop exits, so the websocket will be cleaned up before the
+      // thread finishes.
+      websocket_.store(nullptr);
+      ws->deleteLater();
     }
-    else { GROX_LOG_ERROR(qwebsocket_log, "onDisconnected after deletion"); }
+    else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} onDisconnected : already cleaned up", id_); }
     emit finished();
   }
 
@@ -169,16 +183,17 @@ namespace net::ws {
       auto code = ws->closeCode();
       if (code != QWebSocketProtocol::CloseCodeNormal)
       {
-        auto reason = ws->closeReason();
         GROX_LOG_ERROR(qwebsocket_log,
             "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
             QVariant::fromValue(code).toString(), ws->errorString());
       }
       else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} AboutToClose : CloseCode Normal", id_); }
-      ws->deleteLater();
-      websocket_.store(nullptr);
+      // Do NOT delete or null the websocket here - the close handshake has not
+      // completed yet. Premature deletion prevents the 'disconnected' signal from
+      // firing, which causes the thread to never quit and forces a 5s timeout.
+      // Cleanup happens in onDisconnected() after the connection is fully closed.
     }
-    else { GROX_LOG_ERROR(qwebsocket_log, "onAboutToClose after deletion"); }
+    else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} onAboutToClose : already cleaned up", id_); }
   }
 
   // ------------------------------------------------------------------

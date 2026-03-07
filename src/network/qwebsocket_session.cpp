@@ -68,13 +68,12 @@ namespace net::ws {
 
     QObject::connect(
         thread_, &QThread::finished, client_,
-        [this, thread = thread_, client = client_]() {
-          // note that "this" might already have destructed, it is not safe to call members
-          // we copy the thread and client pointers just in case they are invalid
+        [this]() {
+          // Do NOT delete client_ or thread_ here - the destructor owns their
+          // lifetime and is blocked in thread_->wait(). Deleting them here would
+          // cause use-after-free in the destructor.
           GROX_LOG_DEBUG(
-              qsession_log, "{:20s} {} {}", client->id(), fmt::ptr(this), "QThread:finished");
-          delete client;
-          delete thread;
+              qsession_log, "{:20s} {} {}", client_->id(), fmt::ptr(this), "QThread:finished");
         },
         Qt::DirectConnection);
 
@@ -104,20 +103,23 @@ namespace net::ws {
     GROX_LOG_INFO(qsession_log, "{:20s} {} Destructor starting", client_->id(), fmt::ptr(this));
     // Stop the connection (queued on the thread)
     client_->stopConnection();
-    // Wait for thread to finish cleanly - this ensures the QThread::finished
-    // signal has been processed and the cleanup lambda has run
+    // Wait for thread to finish cleanly
     if (!thread_->wait(5000))
     {
       GROX_LOG_ERROR(qsession_log, "{:20s} {} Destructor: thread_->wait() TIMEOUT!", client_->id(),
           fmt::ptr(this));
+      // Force-terminate the thread if it didn't quit in time
+      thread_->terminate();
+      thread_->wait();
     }
     else
     {
       GROX_LOG_INFO(qsession_log, "{:20s} {} Destructor: thread_->wait() completed", client_->id(),
           fmt::ptr(this));
     }
-    // DO NOT delete client_ or thread_ here - the QThread::finished signal
-    // lambda handles cleanup to avoid double-delete
+    // Clean up - the thread has finished so it's safe to delete both
+    delete client_;
+    delete thread_;
   }
 
 }    // namespace net::ws
