@@ -15,12 +15,16 @@
 #include "currency/currency.hpp"
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
+#include "indicators/average_true_range.hpp"
+#include "indicators/commodity_channel_index.hpp"
 #include "indicators/moving_average.hpp"
 #include "indicators/moving_average_convergence_divergence.hpp"
 #include "indicators/moving_average_cross.hpp"
 #include "indicators/moving_average_exponential.hpp"
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
 #include "indicators/moving_average_volume_weighted.hpp"
+#include "indicators/rate_of_change.hpp"
+#include "indicators/williams_percent_r.hpp"
 #include "io/hdf5_ohlc_manager.hpp"
 
 // default : "/home/biddisco/.local/share/grox"
@@ -273,6 +277,140 @@ TEST(moving_averages, macd)
   std::cout << "Signal line: " << signal_str.str() << std::endl;
   std::cout << "Histogram:   " << hist_str.str() << std::endl;
   std::cout << "Histogram sign changes: " << histogram_sign_changes << std::endl;
+}
+
+//----------------------------------------------------------------------------
+TEST(technical_indicators, average_true_range)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  // ATR with 14-period window (default)
+  indicators::average_true_range alg(14);
+
+  std::stringstream atr_str;
+  for (auto const& ohlc : result)
+  {
+    double val = alg(ohlc);
+    atr_str << fmt::format("{:9.07f}, ", val);
+  }
+
+  // ATR should always be non-negative (it measures volatility magnitude)
+  double final_atr = alg.getLastResult();
+  EXPECT_GT(final_atr, 0.0) << "ATR should be positive after 128 samples";
+
+  std::cout << "ATR(14): " << atr_str.str() << std::endl;
+  std::cout << "Final ATR: " << final_atr << std::endl;
+}
+
+//----------------------------------------------------------------------------
+TEST(technical_indicators, commodity_channel_index)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  // CCI with 20-period window (default)
+  indicators::commodity_channel_index alg(20);
+
+  std::stringstream cci_str;
+  int above_100 = 0;
+  int below_minus100 = 0;
+
+  for (auto const& ohlc : result)
+  {
+    double val = alg(ohlc);
+    cci_str << fmt::format("{:9.04f}, ", val);
+    if (val > 100.0) above_100++;
+    if (val < -100.0) below_minus100++;
+  }
+
+  // CCI should produce non-zero values after the warmup period
+  double final_cci = alg.getLastResult();
+  EXPECT_NE(final_cci, 0.0) << "CCI should be non-zero after 128 samples";
+
+  std::cout << "CCI(20):  " << cci_str.str() << std::endl;
+  std::cout << "Final CCI: " << final_cci << std::endl;
+  std::cout << "Above +100: " << above_100 << ", Below -100: " << below_minus100 << std::endl;
+}
+
+//----------------------------------------------------------------------------
+TEST(technical_indicators, rate_of_change)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  // ROC with 14-period lookback (default)
+  indicators::rate_of_change alg(14, ohlc_modes::close);
+
+  std::stringstream roc_str;
+  int positive_count = 0;
+  int negative_count = 0;
+
+  for (auto const& ohlc : result)
+  {
+    double val = alg(ohlc);
+    roc_str << fmt::format("{:9.05f}, ", val);
+    if (val > 0.0) positive_count++;
+    if (val < 0.0) negative_count++;
+  }
+
+  // ROC should have both positive and negative values in real market data
+  EXPECT_GT(positive_count + negative_count, 0) << "ROC should produce non-zero values";
+
+  double final_roc = alg.getLastResult();
+  std::cout << "ROC(14):  " << roc_str.str() << std::endl;
+  std::cout << "Final ROC: " << final_roc << "%" << std::endl;
+  std::cout << "Positive: " << positive_count << ", Negative: " << negative_count << std::endl;
+}
+
+//----------------------------------------------------------------------------
+TEST(technical_indicators, williams_percent_r)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  // Williams %R with 14-period window (default)
+  indicators::williams_percent_r alg(14);
+
+  std::stringstream wpr_str;
+  int overbought = 0;    // near 0
+  int oversold = 0;      // near -100
+
+  for (auto const& ohlc : result)
+  {
+    double val = alg(ohlc);
+    wpr_str << fmt::format("{:9.04f}, ", val);
+
+    // Count overbought (above -20) and oversold (below -80) readings
+    if (val > -20.0 && val <= 0.0) overbought++;
+    if (val < -80.0 && val >= -100.0) oversold++;
+  }
+
+  // Williams %R should be in range [-100, 0]
+  double final_wpr = alg.getLastResult();
+  EXPECT_LE(final_wpr, 0.0) << "Williams %R should be <= 0";
+  EXPECT_GE(final_wpr, -100.0) << "Williams %R should be >= -100";
+
+  std::cout << "Williams %R(14): " << wpr_str.str() << std::endl;
+  std::cout << "Final %R: " << final_wpr << std::endl;
+  std::cout << "Overbought (> -20): " << overbought << ", Oversold (< -80): " << oversold
+            << std::endl;
 }
 
 //----------------------------------------------------------------------------

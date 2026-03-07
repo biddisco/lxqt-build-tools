@@ -86,7 +86,7 @@ add_indicator_plugin(
 add_indicator_plugin(
   grox_plugin_technical_indicators
   plugins/technical_indicators_plugin.cpp
-  "relative_strength_indicator.hpp;stochastic_oscillator.hpp;stochastic_relative_strength_indicator.hpp"
+  "average_true_range.hpp;commodity_channel_index.hpp;rate_of_change.hpp;relative_strength_indicator.hpp;stochastic_oscillator.hpp;stochastic_relative_strength_indicator.hpp;williams_percent_r.hpp"
   technical_indicators
 )
 
