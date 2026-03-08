@@ -15,15 +15,20 @@
 #include "currency/currency.hpp"
 #include "data/ohlc_dataset.hpp"
 #include "data/ohlc_utils.hpp"
+#include "indicators/average_directional_index.hpp"
 #include "indicators/average_true_range.hpp"
 #include "indicators/commodity_channel_index.hpp"
+#include "indicators/ichimoku_cloud.hpp"
 #include "indicators/moving_average.hpp"
 #include "indicators/moving_average_convergence_divergence.hpp"
 #include "indicators/moving_average_cross.hpp"
 #include "indicators/moving_average_exponential.hpp"
 #include "indicators/moving_average_exponential_volume_weighted.hpp"
 #include "indicators/moving_average_volume_weighted.hpp"
+#include "indicators/on_balance_volume.hpp"
+#include "indicators/parabolic_sar.hpp"
 #include "indicators/rate_of_change.hpp"
+#include "indicators/volume_weighted_average_price.hpp"
 #include "indicators/williams_percent_r.hpp"
 #include "io/hdf5_ohlc_manager.hpp"
 
@@ -411,6 +416,155 @@ TEST(technical_indicators, williams_percent_r)
   std::cout << "Final %R: " << final_wpr << std::endl;
   std::cout << "Overbought (> -20): " << overbought << ", Oversold (< -80): " << oversold
             << std::endl;
+}
+
+//----------------------------------------------------------------------------
+TEST(technical_indicators, on_balance_volume)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  indicators::on_balance_volume alg;
+
+  std::stringstream obv_str;
+  for (auto const& ohlc : result)
+  {
+    double val = alg(ohlc);
+    obv_str << fmt::format("{:.0f}, ", val);
+  }
+
+  // OBV should be non-zero after processing real market data
+  double final_obv = alg.getLastResult();
+  EXPECT_NE(final_obv, 0.0) << "OBV should be non-zero after 128 samples";
+
+  std::cout << "OBV: " << obv_str.str() << std::endl;
+  std::cout << "Final OBV: " << final_obv << std::endl;
+}
+
+//----------------------------------------------------------------------------
+TEST(technical_indicators, average_directional_index)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  indicators::average_directional_index alg(14);
+
+  std::stringstream adx_str;
+  for (auto const& ohlc : result)
+  {
+    auto vals = alg(ohlc);
+    adx_str << fmt::format("[ADX:{:.2f} +DI:{:.2f} -DI:{:.2f}], ", vals[0], vals[1], vals[2]);
+  }
+
+  // ADX should be between 0 and 100
+  double final_adx = alg.getADX();
+  EXPECT_GE(final_adx, 0.0) << "ADX should be >= 0";
+  EXPECT_LE(final_adx, 100.0) << "ADX should be <= 100";
+
+  std::cout << "ADX(14): " << adx_str.str() << std::endl;
+  std::cout << "Final +DI: " << alg.getPlusDI() << ", -DI: " << alg.getMinusDI()
+            << ", ADX: " << final_adx << std::endl;
+}
+
+//----------------------------------------------------------------------------
+TEST(technical_indicators, parabolic_sar)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  indicators::parabolic_sar alg(0.02, 0.02, 0.20);
+
+  std::stringstream sar_str;
+  int reversals = 0;
+  bool prev_uptrend = true;
+
+  for (int i = 0; i < result.size(); ++i)
+  {
+    double val = alg(result[i]);
+    sar_str << fmt::format("{:9.07f}, ", val);
+    if (i > 0 && alg.isUptrend() != prev_uptrend) { reversals++; }
+    prev_uptrend = alg.isUptrend();
+  }
+
+  // SAR should be positive and produce some reversals in 128 bars of real data
+  double final_sar = alg.getLastResult();
+  EXPECT_GT(final_sar, 0.0) << "SAR should be positive";
+  EXPECT_GT(reversals, 0) << "SAR should detect at least one reversal";
+
+  std::cout << "PSAR(0.02/0.02/0.20): " << sar_str.str() << std::endl;
+  std::cout << "Final SAR: " << final_sar << ", Reversals: " << reversals
+            << ", Trend: " << (alg.isUptrend() ? "UP" : "DOWN") << std::endl;
+}
+
+//----------------------------------------------------------------------------
+TEST(technical_indicators, ichimoku_cloud)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  indicators::ichimoku_cloud alg(9, 26, 52);
+
+  std::stringstream ichi_str;
+  for (auto const& ohlc : result)
+  {
+    auto vals = alg(ohlc);
+    ichi_str << fmt::format(
+        "[T:{:.5f} K:{:.5f} A:{:.5f} B:{:.5f}], ", vals[0], vals[1], vals[2], vals[3]);
+  }
+
+  // All Ichimoku lines should be positive for XRP-USD
+  EXPECT_GT(alg.getTenkan(), 0.0) << "Tenkan-sen should be positive";
+  EXPECT_GT(alg.getKijun(), 0.0) << "Kijun-sen should be positive";
+  EXPECT_GT(alg.getSenkouA(), 0.0) << "Senkou Span A should be positive";
+  EXPECT_GT(alg.getSenkouB(), 0.0) << "Senkou Span B should be positive";
+
+  std::cout << "Ichimoku(9/26/52): " << ichi_str.str() << std::endl;
+  std::cout << "Tenkan: " << alg.getTenkan() << ", Kijun: " << alg.getKijun()
+            << ", Senkou A: " << alg.getSenkouA() << ", Senkou B: " << alg.getSenkouB()
+            << std::endl;
+}
+
+//----------------------------------------------------------------------------
+TEST(technical_indicators, volume_weighted_average_price)
+{
+  hdf5_ohlc_manager data_manager;
+  data_manager.init(data_dir, filename);
+
+  int const N_samples = 128;
+  QVector<ohlctv_sample> result;
+  data_manager.read_file("bitstamp", "XRP-USD", result, N_samples);
+
+  indicators::volume_weighted_average_price alg(20);    // 20-bar rolling VWAP
+
+  std::stringstream vwap_str;
+  for (auto const& ohlc : result)
+  {
+    double val = alg(ohlc);
+    vwap_str << fmt::format("{:9.07f}, ", val);
+  }
+
+  // VWAP should be positive and roughly in the range of XRP prices
+  double final_vwap = alg.getLastResult();
+  EXPECT_GT(final_vwap, 0.0) << "VWAP should be positive";
+
+  std::cout << "VWAP(20): " << vwap_str.str() << std::endl;
+  std::cout << "Final VWAP: " << final_vwap << std::endl;
 }
 
 //----------------------------------------------------------------------------

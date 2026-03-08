@@ -1,19 +1,25 @@
 // Technical Indicators Plugin
-// Relative Strength Index, Stochastic Oscillator, Stochastic RSI,
-// Average True Range, Commodity Channel Index, Rate of Change, Williams %R
+// RSI, Stochastic, Stochastic RSI, ATR, CCI, ROC, Williams %R,
+// OBV, ADX, Parabolic SAR, Ichimoku Cloud, VWAP
 
+#include "indicators/average_directional_index.hpp"
 #include "indicators/average_true_range.hpp"
 #include "indicators/commodity_channel_index.hpp"
+#include "indicators/ichimoku_cloud.hpp"
 #include "indicators/indicator_registry.hpp"
+#include "indicators/on_balance_volume.hpp"
+#include "indicators/parabolic_sar.hpp"
 #include "indicators/plugin_api.hpp"
 #include "indicators/rate_of_change.hpp"
 #include "indicators/relative_strength_indicator.hpp"
 #include "indicators/stochastic_oscillator.hpp"
 #include "indicators/stochastic_relative_strength_indicator.hpp"
+#include "indicators/volume_weighted_average_price.hpp"
 #include "indicators/williams_percent_r.hpp"
 
 GROX_DEFINE_PLUGIN_INFO("Technical Indicators", "1.0.0",
-    "RSI, Stochastic, Stochastic RSI, ATR, CCI, ROC, and Williams %R indicators", "technical")
+    "RSI, Stochastic, StochRSI, ATR, CCI, ROC, Williams%R, OBV, ADX, PSAR, Ichimoku, VWAP",
+    "technical")
 
 GROX_BEGIN_PLUGIN_REGISTRATION()
 {
@@ -44,5 +50,25 @@ GROX_BEGIN_PLUGIN_REGISTRATION()
   auto wpr = std::make_shared<indicators::williams_percent_r>();
   wpr->init_params();
   registry->register_indicator(wpr);
+
+  auto obv = std::make_shared<indicators::on_balance_volume>();
+  obv->init_params();
+  registry->register_indicator(obv);
+
+  auto adx = std::make_shared<indicators::average_directional_index>();
+  adx->init_params();
+  registry->register_indicator(adx);
+
+  auto psar = std::make_shared<indicators::parabolic_sar>();
+  psar->init_params();
+  registry->register_indicator(psar);
+
+  auto ichimoku = std::make_shared<indicators::ichimoku_cloud>();
+  ichimoku->init_params();
+  registry->register_indicator(ichimoku);
+
+  auto vwap = std::make_shared<indicators::volume_weighted_average_price>();
+  vwap->init_params();
+  registry->register_indicator(vwap);
 }
 GROX_END_PLUGIN_REGISTRATION()

@@ -266,11 +266,11 @@ void price_chart_widget::connect_gui()
             })                                                      //
           | stdexec::continues_on(QtStdExec::QThreadScheduler())    //
           | stdexec::then([this](indicators::indicator_ptr algp) {
-              auto colour = chart_colours[colour_count++ % 10];
               QString name = QString(algp.indicator()->get_name().c_str());
 
               for (int i = 0; i < algp.indicator()->num_outputs(); ++i)
               {
+                auto colour = chart_colours[colour_count++ % 10];
                 auto ot = algp.indicator()->get_overlay(i);
                 QwtPlotCurve* curve;
                 if (ot == indicators::overlay_type::price)
@@ -317,8 +317,7 @@ void price_chart_widget::connect_gui()
                     m_curve->setRenderHint(QwtPlotItem::RenderAntialiased);
                     m_curve->setStyle(QwtPlotCurve::Lines);
                     m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
-                    auto next_colour = chart_colours[colour_count++ % 10];
-                    m_curve->setPen(next_colour, 2);
+                    m_curve->setPen(colour, 2);
                     m_curve->setData(algp.indicator()->get_outputs()[i]);
                     m_curve->attach(algp.plot);
                     curve = m_curve;
