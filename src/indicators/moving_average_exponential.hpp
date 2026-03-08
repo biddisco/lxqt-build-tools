@@ -38,10 +38,10 @@ public:
     {
       params_ = {
           param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}},    // 0
-          param<int>{"Window size", 14},                                       // 1
-          param<ohlc_modes>{"mode", ohlc_modes::close},                        // 2
-          param<bool>{"User-defined alpha", false},                            // 3
-          param<double>{"Decay (1 - alpha)", 0.1},                             // 4
+          param<int>{"Window size", window_size_},                             // 1
+          param<ohlc_modes>{"mode", mode_},                                    // 2
+          param<bool>{"User-defined alpha", user_alpha_},                      // 3
+          param<double>{"Decay (1 - alpha)", decay_factor_},                   // 4
       };
     }
 
