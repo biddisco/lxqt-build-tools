@@ -2,6 +2,7 @@
 
 #include "data/ohlc_data_resolutions.hpp"
 #include "indicators/indicator_base.hpp"
+#include "indicators/indicator_ref.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/moving_average_exponential.hpp"
 
@@ -11,6 +12,11 @@ namespace indicators {
   /// Moving Average Crossover indicator.
   /// Monitors two exponential moving averages (fast and slow) and generates
   /// a crossover signal when the fast EMA crosses above or below the slow EMA.
+  ///
+  /// Sub-indicators are exposed as indicator_ref parameters, so the GUI
+  /// automatically shows the EMA params (window size, mode, etc.) in nested
+  /// group boxes — no manual param duplication required.
+  ///
   /// Outputs:
   ///   [0] fast EMA value   (overlay: price)
   ///   [1] slow EMA value   (overlay: price)
@@ -32,9 +38,6 @@ public:
         int fast_window = 9, int slow_window = 21, ohlc_modes mode = ohlc_modes::close)
       : indicator_base("Moving Average Cross", "Moving Average Crossover Signal",
             {overlay_type::price, overlay_type::price, overlay_type::no_overlay})
-      , fast_window_(fast_window)
-      , slow_window_(slow_window)
-      , mode_(mode)
       , ema_fast_(fast_window, mode)
       , ema_slow_(slow_window, mode)
       , fast_above_slow_(false)
@@ -46,11 +49,19 @@ public:
     /// fields required for auto gui generation
     void init_params() override
     {
+      // Create independent EMA prototypes with different default window sizes.
+      // Each indicator_ref holds its own copy, so the GUI shows separate
+      // parameter groups for "Fast EMA" and "Slow EMA".
+      auto fast_proto = std::make_shared<moving_average_exponential>(9, ohlc_modes::close);
+      fast_proto->init_params();
+
+      auto slow_proto = std::make_shared<moving_average_exponential>(21, ohlc_modes::close);
+      slow_proto->init_params();
+
       params_ = {
-          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}},    // 0
-          param<int>{"Fast window", 9},                                        // 1
-          param<int>{"Slow window", 21},                                       // 2
-          param<ohlc_modes>{"mode", ohlc_modes::close},                        // 3
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}},                  // 0
+          param<indicator_ref>{"Fast EMA", {"Moving Average (Exponential)", fast_proto}},    // 1
+          param<indicator_ref>{"Slow EMA", {"Moving Average (Exponential)", slow_proto}},    // 2
       };
     }
 
@@ -59,15 +70,24 @@ public:
     int num_outputs() const override { return 3; }
 
     // ---------------------------------------
-    /// initialize internals from a parameter list
+    /// initialize internals from the indicator_ref parameters
     void initialize() override
     {
-      fast_window_ = get<int>(params_, 1);
-      slow_window_ = get<int>(params_, 2);
-      mode_ = get<ohlc_modes>(params_, 3);
-      //
-      ema_fast_ = moving_average_exponential(fast_window_, mode_);
-      ema_slow_ = moving_average_exponential(slow_window_, mode_);
+      // Read sub-indicator params and configure internal EMAs
+      auto const& fast_ref = get<indicator_ref>(params_, 1);
+      if (fast_ref.prototype_)
+      {
+        ema_fast_.set_params(fast_ref.prototype_->get_params());
+        ema_fast_.initialize();
+      }
+
+      auto const& slow_ref = get<indicator_ref>(params_, 2);
+      if (slow_ref.prototype_)
+      {
+        ema_slow_.set_params(slow_ref.prototype_->get_params());
+        ema_slow_.initialize();
+      }
+
       fast_above_slow_ = false;
       first_ = true;
     }
@@ -109,10 +129,6 @@ public:
     inline double getLastResult() { return ema_fast_.getLastResult(); }
 
 private:
-    int fast_window_;
-    int slow_window_;
-    ohlc_modes mode_;
-    //
     moving_average_exponential ema_fast_;
     moving_average_exponential ema_slow_;
     bool fast_above_slow_;

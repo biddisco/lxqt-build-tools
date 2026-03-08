@@ -16,6 +16,7 @@
 #include "debug/demangle_helper.hpp"
 #include "exchange/bitstamp.hpp"
 #include "indicators/indicator_ptr.hpp"
+#include "indicators/indicator_ref.hpp"
 #include "indicators/indicator_registry.hpp"
 #include "util/stringutils.hpp"
 #include "widgets_control/control_builder.hpp"
@@ -107,6 +108,16 @@ namespace indicators {
     return json;
   }
 
+  // ----------------------------------------------------------------------------
+  template <>
+  inline nlohmann::ordered_json to_json(indicators::param<indicator_ref> const& p)
+  {
+    nlohmann::ordered_json json;
+    auto name = p.name_.toStdString();
+    json[name]["indicator_name"] = p.get().indicator_name_;
+    return json;
+  }
+
 }    // namespace indicators
 
 // ----------------------------------------------------------------------------
@@ -118,8 +129,34 @@ inline nlohmann::ordered_json get_json_layout_indicator(indicators::shared_algor
     // extract name and type from params and put it into field data
     std::visit(
         [&](auto const& v) {
-          std::string type = grox::debug::print_type<typeof(v.val_)>();
-          json[v.name().toStdString()] = type;
+          using T = std::decay_t<decltype(v.val_)>;
+          if constexpr (std::is_same_v<T, indicator_ref>)
+          {
+            // Emit sub-indicator params as nested JSON layout
+            if (v.val_.prototype_)
+            {
+              nlohmann::ordered_json sub;
+              for (auto const& sp : v.val_.prototype_->get_params())
+              {
+                std::visit(
+                    [&](auto const& sv) {
+                      using ST = std::decay_t<decltype(sv.val_)>;
+                      // Skip candle_data — sub-indicators inherit from parent
+                      if constexpr (!std::is_same_v<ST, candle_data>)
+                      {
+                        sub[sv.name().toStdString()] = grox::debug::print_type<typeof(sv.val_)>();
+                      }
+                    },
+                    sp);
+              }
+              json[v.name().toStdString()] = sub;
+            }
+          }
+          else
+          {
+            std::string type = grox::debug::print_type<typeof(v.val_)>();
+            json[v.name().toStdString()] = type;
+          }
         },
         param);
   }
@@ -134,8 +171,34 @@ inline nlohmann::json get_json_values_indicator(indicators::shared_algorithm alg
   {
     std::visit(
         [&](auto const& v) {
-          auto name = v.name().toStdString();
-          json[name] = indicators::to_json(v)[name];
+          using T = std::decay_t<decltype(v.val_)>;
+          if constexpr (std::is_same_v<T, indicator_ref>)
+          {
+            // Emit sub-indicator param values as nested JSON
+            if (v.val_.prototype_)
+            {
+              nlohmann::ordered_json sub;
+              for (auto const& sp : v.val_.prototype_->get_params())
+              {
+                std::visit(
+                    [&](auto const& sv) {
+                      using ST = std::decay_t<decltype(sv.val_)>;
+                      if constexpr (!std::is_same_v<ST, candle_data>)
+                      {
+                        auto sn = sv.name().toStdString();
+                        sub[sn] = indicators::to_json(sv)[sn];
+                      }
+                    },
+                    sp);
+              }
+              json[v.name().toStdString()] = sub;
+            }
+          }
+          else
+          {
+            auto name = v.name().toStdString();
+            json[name] = indicators::to_json(v)[name];
+          }
         },
         param);
   }

@@ -214,15 +214,59 @@ void indicator_widget::update_parameters()
     // get the name of the param
     std::string ptype;
     QString pname;
+    bool is_indicator_ref = false;
     std::visit(
         [&](auto const& v) {
           pname = v.name_;
           ptype = grox::debug::print_type<typeof(v.val_)>();
+          if constexpr (std::is_same_v<std::decay_t<decltype(v.val_)>, indicator_ref>)
+            is_indicator_ref = true;
         },
         new_params[i]);
-    // get the widget that represents the param
-    QWidget* param_widget = static_cast<QWidget*>(widget_map[pname].value<void*>());
-    new_params[i] = factory.get_value_from_control(to_qstring(ptype), param_widget);
+
+    if (is_indicator_ref)
+    {
+      // Read sub-indicator params from nested form widget
+      QWidget* nested = static_cast<QWidget*>(widget_map[pname].value<void*>());
+      if (nested)
+      {
+        QMap<QString, QVariant> sub_map =
+            nested->property("ParamWidgets").value<QMap<QString, QVariant>>();
+        auto& ref = std::get<indicators::param<indicator_ref>>(new_params[i]);
+        if (ref.get_ref().prototype_)
+        {
+          auto sub_params = ref.get_ref().prototype_->get_params();
+          for (int j = 0; j < sub_params.size(); ++j)
+          {
+            std::string sub_ptype;
+            QString sub_pname;
+            bool is_candle = false;
+            std::visit(
+                [&](auto const& sv) {
+                  sub_pname = sv.name_;
+                  sub_ptype = grox::debug::print_type<typeof(sv.val_)>();
+                  if constexpr (std::is_same_v<std::decay_t<decltype(sv.val_)>, candle_data>)
+                    is_candle = true;
+                },
+                sub_params[j]);
+            // Skip candle_data — sub-indicators inherit from parent
+            if (is_candle) continue;
+            if (sub_map.contains(sub_pname))
+            {
+              QWidget* sw = static_cast<QWidget*>(sub_map[sub_pname].value<void*>());
+              sub_params[j] = factory.get_value_from_control(to_qstring(sub_ptype), sw);
+            }
+          }
+          ref.get_ref().prototype_->set_params(sub_params);
+        }
+      }
+    }
+    else
+    {
+      // get the widget that represents the param
+      QWidget* param_widget = static_cast<QWidget*>(widget_map[pname].value<void*>());
+      new_params[i] = factory.get_value_from_control(to_qstring(ptype), param_widget);
+    }
   }
 
   // update the param value from the widget

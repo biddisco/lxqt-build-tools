@@ -15,6 +15,7 @@
 #include "data/order_book.hpp"
 #include "data/timebased_chart_data.hpp"
 #include "debug/logging.hpp"
+#include "indicators/indicator_ref.hpp"
 
 // ----------------------------------------------------------------------------
 inline auto indicator_log = grox::log::create("Indicate");
@@ -39,8 +40,8 @@ namespace indicators {
   template <typename... Ts>
   struct typelist;
 
-  using supported_types =
-      typelist<double, int, std::string, ohlc_modes, bool, candle_data, order_book_param>;
+  using supported_types = typelist<double, int, std::string, ohlc_modes, bool, candle_data,
+      order_book_param, indicator_ref>;
 
   // ---------------------------------------
   template <typename T>

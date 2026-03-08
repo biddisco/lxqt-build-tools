@@ -83,6 +83,8 @@ static QWidget* build_control(nlohmann::ordered_json const& json, nlohmann::json
       auto* groupLayout = new QVBoxLayout(group);
       groupLayout->addWidget(nestedForm);
       layout->addRow(group);
+      // Store the nested form so update_parameters can read sub-indicator values
+      param_widgets[qname] = QVariant::fromValue<void*>(nestedForm);
     }
     else
     {
