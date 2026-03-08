@@ -39,10 +39,10 @@ public:
     void init_params() override
     {
       params_ = {
-          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 1000}},    // 0
-          param<int>{"Window size", 3},                                              // 1
-          param<double>{"Scale factor", 1.0},                                        // 2
-          param<int>{QString("Num Bands (each 1") + sigma + ")", 1},                 // 3
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}},    // 0
+          param<int>{"Window size", 3},                                        // 1
+          param<double>{"Scale factor", 1.0},                                  // 2
+          param<int>{QString("Num Bands (each 1") + sigma + ")", 1},           // 3
       };
     }
 

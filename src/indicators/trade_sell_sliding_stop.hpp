@@ -70,16 +70,16 @@ public:
     void init_params() override
     {
       params_ = {
-          param<candle_data>{"Samples", {ohlc_data_resolutions::hour4, 1000}},    // 0
-          param<int>{"Window size", 3},                                           // 1
-          param<ohlc_modes>{"mode", ohlc_modes::mid_high_low},                    // 2
-          param<double>{"Percentage fee Buy", 0.2},                               // 3
-          param<double>{"Percentage fee Sell", 0.2},                              // 4
-          param<double>{"Sliding Gap Upper %", 1.0},                              // 5
-          param<double>{"Sliding Gap Lower %", 1.0},                              // 6
-          param<double>("RSI length multiplier", 1.0),                            // 7
-          param<double>{"Gradient Threshold Upper", 0.0},                         // 8
-          param<double>{"Gradient Threshold Lower", 0.1},                         // 9
+          param<candle_data>{"Samples", {ohlc_data_resolutions::hour4}},    // 0
+          param<int>{"Window size", 3},                                     // 1
+          param<ohlc_modes>{"mode", ohlc_modes::mid_high_low},              // 2
+          param<double>{"Percentage fee Buy", 0.2},                         // 3
+          param<double>{"Percentage fee Sell", 0.2},                        // 4
+          param<double>{"Sliding Gap Upper %", 1.0},                        // 5
+          param<double>{"Sliding Gap Lower %", 1.0},                        // 6
+          param<double>("RSI length multiplier", 1.0),                      // 7
+          param<double>{"Gradient Threshold Upper", 0.0},                   // 8
+          param<double>{"Gradient Threshold Lower", 0.1},                   // 9
       };
     }
 

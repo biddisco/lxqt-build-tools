@@ -90,8 +90,6 @@ namespace indicators {
     }
     json[name]["resolutions"] = resolutions;
     json[name]["resolution"] = fmt::format("{}", p.get().res_.name_);
-    json[name]["durations"] = candle_data::durations;
-    json[name]["duration"] = p.get().as_string();
     return json;
   }
 

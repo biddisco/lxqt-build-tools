@@ -162,7 +162,8 @@ public:
 
     // ----------------------------------------------------------------------------
     // iterate over the parameters returned from an indicator selection dialog and
-    // find the datasets of the right resolution in the datasets view
+    // find the datasets of the right resolution in the datasets view.
+    // Duration comes from algorithm_base::duration_, not from the candle_data param.
     std::vector<candle_input_data> connect_candle_input_datasets(
         std::shared_ptr<ohlc_dataset_view> view)
     {
@@ -172,7 +173,7 @@ public:
         if (param<candle_data> const* d = std::get_if<param<candle_data>>(&p))
         {
           auto dataset = view->get_dataset(d->get().res_);
-          result.push_back({view, dataset, d->get().duration_});
+          result.push_back({view, dataset, get_duration()});
         }
       }
       return result;

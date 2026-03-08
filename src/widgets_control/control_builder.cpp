@@ -191,7 +191,7 @@ indicators::variant_type control_builder_ohlc_mode::get_value(QWidget* widget)
 }
 
 // ----------------------------------------------------------------------------
-// candle_data
+// candle_data — only shows resolution (duration is handled by indicator_widget)
 // ----------------------------------------------------------------------------
 QWidget* control_builder_candle_data::build(
     QWidget* parent, QString name, nlohmann::json const& defaults)
@@ -213,19 +213,6 @@ QWidget* control_builder_candle_data::build(
   if (defaults.contains("resolution"))
     combo->setCurrentText(to_qstring(defaults["resolution"].get<std::string>()));
   layout->addWidget(combo);
-
-  // combo box of time ranges to choose from
-  QComboBox* const duration = new QComboBox(widget);
-  QStringList durations;
-  if (defaults.contains("durations"))
-    durations = to_qstringlist(defaults["durations"].get<std::vector<std::string>>());
-  else
-    for (auto const& s : candle_data::durations) { durations.push_back(s); }
-  duration->setObjectName("duration");
-  duration->addItems(durations);
-  if (defaults.contains("durations"))
-    duration->setCurrentText(to_qstring(defaults["duration"].get<std::string>()));
-  layout->addWidget(duration);
   return widget;
 }
 
@@ -234,11 +221,7 @@ indicators::variant_type control_builder_candle_data::get_value(QWidget* widget)
 {
   QComboBox* resolution = widget->findChild<QComboBox*>("resolution");
   candle_res res = ohlc_data_resolutions::available_resolutions()[resolution->currentIndex()];
-
-  QComboBox* duration = widget->findChild<QComboBox*>("duration");
-  std::string s = duration->currentText().toStdString();
-  std::uint64_t samples = candle_data::duration(res, s);
-  return indicators::param<candle_data>(widget->objectName(), {res, samples});
+  return indicators::param<candle_data>(widget->objectName(), {res});
 }
 
 // ----------------------------------------------------------------------------

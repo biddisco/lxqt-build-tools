@@ -1007,7 +1007,7 @@ private:
 
     // First param MUST be candle_data so that connect_candle_input_datasets()
     // can find the input dataset (same convention as all C++ indicators)
-    params_.push_back(param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}});
+    params_.push_back(param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}});
     python_attr_names_.push_back("");    // No Python attribute for candle_data
 
     // Try to get the Python class to access param_specs

@@ -379,7 +379,7 @@ namespace {
     alg_template.init_params();
     auto params = alg_template.get_params();
 
-    set_named_param<candle_data>(params, "Samples", {*res, count});
+    set_named_param<candle_data>(params, "Samples", {*res});
     set_named_param<int>(params, "Window size", opts.window_size);
     set_named_param<ohlc_modes>(params, "mode", *mode);
     set_named_param<double>(params, "Percentage fee Buy", opts.fee_buy);
@@ -391,6 +391,7 @@ namespace {
     set_named_param<double>(params, "Gradient Threshold Lower", opts.gradient_lower);
 
     alg_template.set_params(params);
+    alg_template.set_duration(count);
 
     auto alg = std::dynamic_pointer_cast<Algorithm>(alg_template.create(&alg_template, view));
     if (!alg)

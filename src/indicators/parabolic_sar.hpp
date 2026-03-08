@@ -53,10 +53,10 @@ public:
     void init_params() override
     {
       params_ = {
-          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}},    // 0
-          param<double>{"AF start", 0.02},                                           // 1
-          param<double>{"AF step", 0.02},                                            // 2
-          param<double>{"AF max", 0.20},                                             // 3
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}},    // 0
+          param<double>{"AF start", 0.02},                                     // 1
+          param<double>{"AF step", 0.02},                                      // 2
+          param<double>{"AF max", 0.20},                                       // 3
       };
     }
 

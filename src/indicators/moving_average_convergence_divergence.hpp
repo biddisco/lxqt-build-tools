@@ -55,11 +55,11 @@ public:
     void init_params() override
     {
       params_ = {
-          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}},    // 0
-          param<int>{"Fast window", 12},                                             // 1
-          param<int>{"Slow window", 26},                                             // 2
-          param<int>{"Signal window", 9},                                            // 3
-          param<ohlc_modes>{"mode", ohlc_modes::close},                              // 4
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}},    // 0
+          param<int>{"Fast window", 12},                                       // 1
+          param<int>{"Slow window", 26},                                       // 2
+          param<int>{"Signal window", 9},                                      // 3
+          param<ohlc_modes>{"mode", ohlc_modes::close},                        // 4
       };
     }
 

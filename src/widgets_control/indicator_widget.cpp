@@ -5,8 +5,10 @@
 #include <vector>
 // Qt
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QFormLayout>
 #include <QLineEdit>
 #include <QString>
 #include <QVBoxLayout>
@@ -166,6 +168,27 @@ void indicator_widget::refresh_gui(indicators::shared_algorithm alg, nlohmann::j
   // get the currently selected algorithm
   indicator_widget_ = create_indicator_control(alg, values);
   layout->addWidget(indicator_widget_);
+
+  // add a duration combo — this is an execution property, not an indicator parameter
+  auto* duration_layout = new QFormLayout();
+  duration_combo_ = new QComboBox(ui->algo_params);
+  duration_combo_->setObjectName("duration");
+  for (auto const& s : sample_duration::durations) { duration_combo_->addItem(s); }
+  // find the resolution from the candle_data param and convert current duration to string
+  candle_res res = ohlc_data_resolutions::minute15;
+  for (auto const& p : alg->get_params())
+  {
+    if (auto const* d = std::get_if<indicators::param<candle_data>>(&p))
+    {
+      res = d->get().res_;
+      break;
+    }
+  }
+  duration_combo_->setCurrentText(
+      QString::fromStdString(sample_duration::to_string(res, alg->get_duration())));
+  duration_layout->addRow("Duration:", duration_combo_);
+  layout->addLayout(duration_layout);
+
   // compute the new best guess size
   adjustSize();
   // "layout takes responsibility to automatically resize when widgets are shown or hidden"
@@ -207,5 +230,22 @@ void indicator_widget::update_parameters()
 
   // overwrite the original params with the new default / updated values
   alg->set_params(new_params);
+
+  // update duration from the duration combo (execution property, not a param)
+  if (duration_combo_)
+  {
+    // find the resolution from the candle_data param
+    candle_res res = ohlc_data_resolutions::minute15;
+    for (auto const& p : new_params)
+    {
+      if (auto const* d = std::get_if<indicators::param<candle_data>>(&p))
+      {
+        res = d->get().res_;
+        break;
+      }
+    }
+    std::string dur_str = duration_combo_->currentText().toStdString();
+    alg->set_duration(sample_duration::to_samples(res, dur_str));
+  }
   // std::visit([&](auto& obj) { obj.set_params(new_params); }, alg);
 }

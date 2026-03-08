@@ -93,14 +93,27 @@ class ohlc_data_resolutions
 };
 
 // ----------------------------------------------------------------------------
+/// Represents the input data type for an indicator: just the candle resolution.
+/// Duration/sample count is an execution concern, not an indicator parameter.
 struct candle_data
+{
+  candle_res res_;
+
+  friend std::ostream& operator<<(std::ostream& os, candle_data const& data)
+  {
+    return os << data.res_.name_;
+  }
+};
+
+// ----------------------------------------------------------------------------
+/// Utility to convert between duration strings and sample counts.
+/// Used by the GUI and backtester to set how much history to process.
+struct sample_duration
 {
   static constexpr std::array<char const*, 10> durations = {
       "1h", "1d", "1w", "2w", "1m", "6m", "1y", "2y", "4y", "all"};
-  candle_res res_;
-  std::uint64_t duration_;
 
-  static std::uint64_t duration(candle_res res, std::string timestring)
+  static std::uint64_t to_samples(candle_res res, std::string const& timestring)
   {
     std::uint64_t samples = 0;
     if (timestring == "1h") { samples = (60 * 60 * 1000ll) / res; }
@@ -116,31 +129,26 @@ struct candle_data
     return samples;
   }
 
-  std::string as_string() const
+  static std::string to_string(candle_res res, std::uint64_t duration)
   {
-    if (duration_ <= (60 * 60 * 1000ll) / res_)
+    if (duration <= (60 * 60 * 1000ll) / res)
       return "1h";
-    else if (duration_ <= (24 * 60 * 60 * 1000ll) / res_)
+    else if (duration <= (24 * 60 * 60 * 1000ll) / res)
       return "1d";
-    else if (duration_ <= (7 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration <= (7 * 24 * 60 * 60 * 1000ll) / res)
       return "1w";
-    else if (duration_ <= (14 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration <= (14 * 24 * 60 * 60 * 1000ll) / res)
       return "2w";
-    else if (duration_ <= (30 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration <= (30 * 24 * 60 * 60 * 1000ll) / res)
       return "1m";
-    else if (duration_ <= (182 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration <= (182 * 24 * 60 * 60 * 1000ll) / res)
       return "6m";
-    else if (duration_ <= (365 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration <= (365 * 24 * 60 * 60 * 1000ll) / res)
       return "1y";
-    else if (duration_ <= (2 * 365 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration <= (2 * 365 * 24 * 60 * 60 * 1000ll) / res)
       return "2y";
-    else if (duration_ <= (4 * 365 * 24 * 60 * 60 * 1000ll) / res_)
+    else if (duration <= (4 * 365 * 24 * 60 * 60 * 1000ll) / res)
       return "4y";
     return "all";
-  }
-
-  friend std::ostream& operator<<(std::ostream& os, candle_data const& data)
-  {
-    return os << data.res_.name_;
   }
 };

@@ -38,11 +38,11 @@ public:
     void init_params() override
     {
       params_ = {
-          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}},    // 0
-          param<int>{"Window size", 14},                                             // 1
-          param<ohlc_modes>{"mode", ohlc_modes::close},                              // 2
-          param<bool>{"User-defined alpha", false},                                  // 3
-          param<double>{"Decay 1 - alpha", 0.1},                                     // 4
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}},    // 0
+          param<int>{"Window size", 14},                                       // 1
+          param<ohlc_modes>{"mode", ohlc_modes::close},                        // 2
+          param<bool>{"User-defined alpha", false},                            // 3
+          param<double>{"Decay 1 - alpha", 0.1},                               // 4
       };
     }
 

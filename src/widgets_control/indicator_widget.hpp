@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 //
+#include <QComboBox>
 #include <QDialog>
 #include <QVector>
 #include <QWidget>
@@ -50,4 +51,5 @@ class indicator_widget : public QDialog
   indicators::indicator_vector const* indicators_;
   indicators::shared_algorithm algorithm_;
   QWidget* indicator_widget_;
+  QComboBox* duration_combo_{nullptr};
 };

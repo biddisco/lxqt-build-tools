@@ -42,8 +42,8 @@ public:
     void init_params() override
     {
       params_ = {
-          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}},    // 0
-          param<int>{"Window size", 14},                                             // 1
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}},    // 0
+          param<int>{"Window size", 14},                                       // 1
       };
     }
 

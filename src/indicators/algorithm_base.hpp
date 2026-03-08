@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -34,6 +36,10 @@ protected:
     /// list of parameters/types that need to be supplied for GUI generation and execution
     param_list params_;
 
+    /// Duration (number of samples to process) — an execution concern, not an indicator parameter.
+    /// Default is 5000; the GUI or backtester sets this before execution.
+    std::uint64_t duration_{5000};
+
 public:
     // ----------------------------------------------------------------------------
     algorithm_base(std::string const& name, std::string const& desc)
@@ -66,6 +72,11 @@ public:
     // ----------------------------------------------------------------------------
     virtual int num_inputs() const { return 1; }
     virtual int num_outputs() const { return 1; }
+
+    // ----------------------------------------------------------------------------
+    /// Duration (sample count) is an execution property, not an indicator parameter
+    std::uint64_t get_duration() const { return duration_; }
+    void set_duration(std::uint64_t d) { duration_ = d; }
 
     // ----------------------------------------------------------------------------
     std::string subscription_name()

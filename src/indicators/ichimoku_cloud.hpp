@@ -60,10 +60,10 @@ public:
     void init_params() override
     {
       params_ = {
-          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15, 5000}},    // 0
-          param<int>{"Tenkan period", 9},                                            // 1
-          param<int>{"Kijun period", 26},                                            // 2
-          param<int>{"Senkou B period", 52},                                         // 3
+          param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}},    // 0
+          param<int>{"Tenkan period", 9},                                      // 1
+          param<int>{"Kijun period", 26},                                      // 2
+          param<int>{"Senkou B period", 52},                                   // 3
       };
     }
 
