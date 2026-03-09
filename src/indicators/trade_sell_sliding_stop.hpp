@@ -215,11 +215,11 @@ public:
       }
 #else
       using namespace indicators::kernels;
-      if (ha_event == heikin_ashi_transition::buy_sell_type::buy_event && (cash_total_ > 0))
+      if (ha_event == indicators::buy_sell_event_type::buy && (cash_total_ > 0))
       {    //
         buy(val.time);
       }
-      else if (ha_event == heikin_ashi_transition::buy_sell_type::sell_event && (xrp_total_ > 0))
+      else if (ha_event == indicators::buy_sell_event_type::sell && (xrp_total_ > 0))
       {    //
         sell(val.time);
       }

@@ -3,7 +3,8 @@
 #include <limits>
 //
 #include "currency/ohlctv_sample.hpp"
-#include "data/ohlc_data_resolutions.hpp"
+#include "indicators/indicator_types.hpp"
+// #include "data/ohlc_data_resolutions.hpp"
 
 namespace indicators::kernels {
 
@@ -15,21 +16,13 @@ namespace indicators::kernels {
     ohlctv_sample prev_sample_;
 
     // ------------------------------
-    enum buy_sell_type
-    {
-      no_event = 0,
-      buy_event = 1,
-      sell_event = 2,
-    };
-
-    // ------------------------------
     heikin_ashi_transition()
       : first_(true)
       , prev_green_(false)
     {
     }
 
-    buy_sell_type operator()(ohlctv_sample const& ohlc)
+    indicators::buy_sell_event_type operator()(ohlctv_sample const& ohlc)
     {
       // first point in plot needs a prev open/close
       if (first_)
@@ -49,11 +42,12 @@ namespace indicators::kernels {
         if (green != prev_green_)
         {
           prev_green_ = green;
-          return (green ? buy_sell_type::buy_event : buy_sell_type::sell_event);
+          return (
+              green ? indicators::buy_sell_event_type::buy : indicators::buy_sell_event_type::sell);
         }
         prev_green_ = green;
       }
-      return buy_sell_type::no_event;
+      return indicators::buy_sell_event_type::empty;
     }
   };
 
