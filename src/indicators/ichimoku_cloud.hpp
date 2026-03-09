@@ -43,7 +43,8 @@ public:
     // ---------------------------------------
     /// Default constructor
     ichimoku_cloud(int tenkan_period = 9, int kijun_period = 26, int senkou_b_period = 52)
-      : indicator_base("Ichimoku Cloud", "Ichimoku Kinko Hyo",
+      : indicator_base("Ichimoku Cloud",
+            "Ichimoku Kinko Hyo (Equilibrium chart at a glance in Japanese)",
             {overlay_type::price, overlay_type::price, overlay_type::price, overlay_type::price})
       , tenkan_period_(tenkan_period)
       , kijun_period_(kijun_period)
@@ -61,9 +62,9 @@ public:
     {
       params_ = {
           param<candle_data>{"Samples", {ohlc_data_resolutions::minute15}},    // 0
-          param<int>{"Tenkan period", 9},                                      // 1
-          param<int>{"Kijun period", 26},                                      // 2
-          param<int>{"Senkou B period", 52},                                   // 3
+          param<int>{"Tenkan period (Conversion Line)", 9},                    // 1
+          param<int>{"Kijun period (Base Line)", 26},                          // 2
+          param<int>{"Senkou B period (Leading Span B)", 52},                  // 3
       };
     }
 
