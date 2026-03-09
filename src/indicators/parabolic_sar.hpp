@@ -112,10 +112,6 @@ public:
 
       if (is_uptrend_)
       {
-        // In uptrend, SAR must not be above the prior two lows
-        // (we approximate with current low)
-        next_sar = std::min(next_sar, ohlc.low);
-
         // Check for reversal: if price falls below SAR
         if (ohlc.low < next_sar)
         {
@@ -127,6 +123,9 @@ public:
         }
         else
         {
+          // In uptrend, SAR must not be above the current low
+          next_sar = std::min(next_sar, ohlc.low);
+
           // Continue uptrend
           if (ohlc.high > ep_)
           {
@@ -137,9 +136,6 @@ public:
       }
       else
       {
-        // In downtrend, SAR must not be below the prior two highs
-        next_sar = std::max(next_sar, ohlc.high);
-
         // Check for reversal: if price rises above SAR
         if (ohlc.high > next_sar)
         {
@@ -151,6 +147,9 @@ public:
         }
         else
         {
+          // In downtrend, SAR must not be below the current high
+          next_sar = std::max(next_sar, ohlc.high);
+
           // Continue downtrend
           if (ohlc.low < ep_)
           {
