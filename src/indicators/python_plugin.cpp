@@ -400,11 +400,11 @@ private:
 
   std::size_t python_indicator_registry::load_indicators_from_directory(fs::path const& directory)
   {
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} load_indicators_from_directory dir={}", "registry",
+    GROX_LOG_TRACE(py_plug_log, "{:>20} load_indicators_from_directory dir={}", "registry",
         directory.string());
     if (!fs::is_directory(directory))
     {
-      GROX_LOG_DEBUG(py_plug_log, "{:>20} not a directory dir={}", "registry", directory.string());
+      GROX_LOG_TRACE(py_plug_log, "{:>20} not a directory dir={}", "registry", directory.string());
       return 0;
     }
 
@@ -424,7 +424,7 @@ private:
       if (load_module(path)) { count++; }
     }
 
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} load_indicators_from_directory done dir={} count={}",
+    GROX_LOG_TRACE(py_plug_log, "{:>20} load_indicators_from_directory done dir={} count={}",
         "registry", directory.string(), count);
 
     return count;

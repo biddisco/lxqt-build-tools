@@ -42,15 +42,27 @@ target_link_libraries(
 # ==============================================================================
 # Macro for creating indicator plugins
 # ==============================================================================
-macro(add_indicator_plugin plugin_name plugin_source plugin_headers)
-  add_library(${plugin_name} SHARED ${plugin_source} ${plugin_headers})
-  target_include_directories(${plugin_name} PRIVATE ${GROX_INCLUDE_ROOT})
-  target_link_libraries(${plugin_name} PRIVATE grox_indicators qwt grox_data Qt::Core fmt::fmt)
+function(add_indicator_plugin)
+  set(options)
+  set(oneValueArgs NAME OUTPUT_NAME)
+  set(multiValueArgs SOURCES HEADERS)
+  cmake_parse_arguments(PLUGIN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+  if(NOT PLUGIN_NAME)
+    message(FATAL_ERROR "add_indicator_plugin: NAME is required")
+  endif()
+  if(NOT PLUGIN_SOURCES)
+    message(FATAL_ERROR "add_indicator_plugin: SOURCES is required")
+  endif()
+
+  add_library(${PLUGIN_NAME} SHARED ${PLUGIN_SOURCES} ${PLUGIN_HEADERS})
+  target_include_directories(${PLUGIN_NAME} PRIVATE ${GROX_INCLUDE_ROOT})
+  target_link_libraries(${PLUGIN_NAME} PRIVATE grox_indicators qwt grox_data Qt::Core fmt::fmt)
 
   set_target_properties(
-    ${plugin_name}
+    ${PLUGIN_NAME}
     PROPERTIES PREFIX ""
-               OUTPUT_NAME "${ARGV3}"
+               OUTPUT_NAME "${PLUGIN_OUTPUT_NAME}"
                SUFFIX ".so"
                VERSION "1.0.0"
                SOVERSION "1"
@@ -58,16 +70,26 @@ macro(add_indicator_plugin plugin_name plugin_source plugin_headers)
                LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/grox/plugins"
   )
 
-  install(TARGETS ${plugin_name} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/grox/plugins)
-endmacro()
+  install(TARGETS ${PLUGIN_NAME} LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/grox/plugins)
+endfunction()
 
 # ==============================================================================
 # Plugin: Moving Averages
 # ==============================================================================
 add_indicator_plugin(
+  NAME
   grox_plugin_moving_averages
+  SOURCES
   plugins/moving_averages_plugin.cpp
-  "moving_average.hpp;moving_average_convergence_divergence.hpp;moving_average_cross.hpp;moving_average_exponential.hpp;moving_average_exponential_volume_weighted.hpp;moving_average_hull.hpp;moving_average_volume_weighted.hpp"
+  HEADERS
+  moving_average.hpp
+  moving_average_convergence_divergence.hpp
+  moving_average_cross.hpp
+  moving_average_exponential.hpp
+  moving_average_exponential_volume_weighted.hpp
+  moving_average_hull.hpp
+  moving_average_volume_weighted.hpp
+  OUTPUT_NAME
   moving_averages
 )
 
@@ -75,8 +97,15 @@ add_indicator_plugin(
 # Plugin: Volatility Indicators
 # ==============================================================================
 add_indicator_plugin(
-  grox_plugin_volatility plugins/volatility_plugin.cpp
-  "volatility_bollinger_bands.hpp;volatility_garman_klass.hpp;volatility_rogers_satchell.hpp"
+  NAME
+  grox_plugin_volatility
+  SOURCES
+  plugins/volatility_plugin.cpp
+  HEADERS
+  volatility_bollinger_bands.hpp
+  volatility_garman_klass.hpp
+  volatility_rogers_satchell.hpp
+  OUTPUT_NAME
   volatility
 )
 
@@ -84,9 +113,24 @@ add_indicator_plugin(
 # Plugin: Technical Indicators
 # ==============================================================================
 add_indicator_plugin(
+  NAME
   grox_plugin_technical_indicators
+  SOURCES
   plugins/technical_indicators_plugin.cpp
-  "average_directional_index.hpp;average_true_range.hpp;commodity_channel_index.hpp;ichimoku_cloud.hpp;on_balance_volume.hpp;parabolic_sar.hpp;rate_of_change.hpp;relative_strength_indicator.hpp;stochastic_oscillator.hpp;stochastic_relative_strength_indicator.hpp;volume_weighted_average_price.hpp;williams_percent_r.hpp"
+  HEADERS
+  average_directional_index.hpp
+  average_true_range.hpp
+  commodity_channel_index.hpp
+  ichimoku_cloud.hpp
+  on_balance_volume.hpp
+  parabolic_sar.hpp
+  rate_of_change.hpp
+  relative_strength_indicator.hpp
+  stochastic_oscillator.hpp
+  stochastic_relative_strength_indicator.hpp
+  volume_weighted_average_price.hpp
+  williams_percent_r.hpp
+  OUTPUT_NAME
   technical_indicators
 )
 
@@ -94,9 +138,17 @@ add_indicator_plugin(
 # Plugin: Trading Algorithms
 # ==============================================================================
 add_indicator_plugin(
+  NAME
   grox_plugin_trading
+  SOURCES
   plugins/trading_plugin.cpp
-  "trade_arbitrage_2_way.hpp;trade_currency_exchange.hpp;trade_market_maker.hpp;trade_sell_sliding_stop.hpp;trade_rebalance_funds.hpp"
+  HEADERS
+  trade_arbitrage_2_way.hpp
+  trade_currency_exchange.hpp
+  trade_market_maker.hpp
+  trade_sell_sliding_stop.hpp
+  trade_rebalance_funds.hpp
+  OUTPUT_NAME
   trading
 )
 

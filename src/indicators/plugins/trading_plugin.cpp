@@ -28,10 +28,10 @@ GROX_BEGIN_PLUGIN_REGISTRATION()
 
   auto sell_stop = std::make_shared<indicators::trade_sell_sliding_stop>();
   sell_stop->init_params();
-  registry->register_arbitrage(sell_stop);
+  registry->register_indicator(sell_stop);
 
   auto rebalance = std::make_shared<indicators::trade_rebalance_funds>();
   rebalance->init_params();
-  registry->register_arbitrage(rebalance);
+  registry->register_indicator(rebalance);
 }
 GROX_END_PLUGIN_REGISTRATION()
