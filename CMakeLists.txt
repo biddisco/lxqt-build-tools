@@ -382,6 +382,7 @@ add_subdirectory(src/apps)
 # ------------------------------------------------------------------------------
 add_config_define_namespace(NAMESPACE ALL DEFINE GROX_SOURCE_DIR VALUE "\"${GROX_SOURCE_DIR}\"")
 add_config_define_namespace(NAMESPACE ALL DEFINE GROX_BINARY_DIR VALUE "\"${GROX_BINARY_DIR}\"")
+add_config_define_namespace(NAMESPACE ALL DEFINE QT_NO_PRIVATE_MODULE_WARNING "1")
 
 write_config_defines_file(
   NAMESPACE ALL FILENAME "${PROJECT_BINARY_DIR}/src/grox/config-defines.hpp"
