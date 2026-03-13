@@ -1,19 +1,14 @@
 #pragma once
 
-#include <iostream>
-#include <limits>
-#include <sstream>
-//
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
-#include "debug/logging.hpp"
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/kernels/gradient.hpp"
 #include "indicators/kernels/heikin_ashi.hpp"
 #include "indicators/kernels/sliding_stop.hpp"
-#include "indicators/moving_average_hull.hpp"
+#include "indicators/moving_average_exponential_volume_weighted.hpp"
 #include "indicators/stochastic_relative_strength_indicator.hpp"
 
 namespace indicators {
@@ -41,10 +36,10 @@ public:
         double ugap = 0.0035, double lgap = 0.0035)
       : indicator_base("Trade: Sliding Stop", "Trade: Sliding Stop",
             {
-                overlay_type::buy_sell,      //
-                overlay_type::buy_sell,      //
-                overlay_type::buy_sell,      //
-                overlay_type::shared_axis    //
+                overlay_type::buy_sell,        //
+                overlay_type::buy_sell,        //
+                overlay_type::buy_sell,        //
+                overlay_type::relative_gain    //
             })
       , mode_(mode)
       , average_{}
@@ -75,9 +70,9 @@ public:
           param<ohlc_modes>{"mode", ohlc_modes::mid_high_low},              // 2
           param<double>{"Percentage fee Buy", 0.2},                         // 3
           param<double>{"Percentage fee Sell", 0.2},                        // 4
-          param<double>{"Sliding Gap Upper %", 1.0},                        // 5
-          param<double>{"Sliding Gap Lower %", 1.0},                        // 6
-          param<double>("RSI length multiplier", 1.0),                      // 7
+          param<double>{"Sliding Gap Upper %", 22.0},                       // 5
+          param<double>{"Sliding Gap Lower %", 0.0},                        // 6
+          param<double>{"RSI length multiplier", 10.0},                     // 7
           param<double>{"Gradient Threshold Upper", 0.0},                   // 8
           param<double>{"Gradient Threshold Lower", 0.1},                   // 9
       };
@@ -103,7 +98,7 @@ public:
       //
       buffer1_ = boost::circular_buffer<float>(window_size_);
       srsi_ = stochastic_relative_strength_indicator();
-      average_ = moving_average_hull(window_size_, mode_);
+      average_ = moving_average_exponential_volume_weighted(window_size_, mode_);
       upper_stop_ = kernels::sliding_limit(kernels::sliding_limit::up, gap_upper_);
       lower_stop_ = kernels::sliding_limit(kernels::sliding_limit::down, gap_lower_);
       //
@@ -125,41 +120,70 @@ public:
     }
 
     // ---------------------------------------
-    void buy(double time)
+    void buy(double time, double cash_amount)
     {
-      double fee = 0.01 * fee_percent_buy_ * cash_total_;
-      double taker_pay = cash_total_ - fee;
+      double p = hdf5_ohlc_->get_estimated_buy_price_value(cash_amount, time + time_res_, 2.0);
+      double initial_value = (p * xrp_total_) + cash_total_;
       //
-      auto p = hdf5_ohlc_->get_trade_data_by_value(taker_pay, time + time_res_, 2.0);
-      xrp_total_ = taker_pay / p.open;
-      cash_total_ = 0;
-      // pay the open price, (value by low price?)
+      double fee = 0.01 * fee_percent_buy_ * cash_amount;
+      double taker_pay = cash_amount - fee;
+      double xrp_bought = taker_pay / p;
+      //
+      xrp_total_ += xrp_bought;
+      cash_total_ -= cash_amount;
+      //
+      GROX_LOG_DEBUG(indicator_log,
+          "{:>20} bought {:.2f} XRP at price {:.2f} for total {:.2f} with fee {:.2f}", "buy",
+          xrp_bought, p, taker_pay, fee);
+      GROX_LOG_DEBUG(indicator_log,
+          "{:>20} initial_value {:.2f} final_value {:.2f} cash_total_ {:.2f} xrp_total {:.2f}",
+          "buy", initial_value, last_result_.value_, cash_total_, xrp_total_);
+
       last_result_ = {//
           .event_type_ = buy_sell_event_type::buy,
-          .price_ = last_result_.price_,
-          .event_price_ = p.open,
-          .value_ = (p.open * xrp_total_) + cash_total_,
-          .tokens_ = xrp_total_,
-          .cash_ = cash_total_};
-    }
-
-    // ---------------------------------------
-    void sell(double time)
-    {
-      double fee = 0.01 * fee_percent_sell_ * xrp_total_;
-      double maker_pay = xrp_total_ - fee;
-      //
-      double p = hdf5_ohlc_->get_estimated_sell_price_value(maker_pay, time + time_res_, 2.0);
-      cash_total_ = maker_pay * p;
-      xrp_total_ = 0;
-      // note we output the actual sell price and not the current running average
-      last_result_ = {//
-          .event_type_ = buy_sell_event_type::sell,
+          .event_time_ = time + time_res_,
           .price_ = last_result_.price_,
           .event_price_ = p,
           .value_ = (p * xrp_total_) + cash_total_,
           .tokens_ = xrp_total_,
           .cash_ = cash_total_};
+      //
+      assert(xrp_total_ >= 0);
+      assert(cash_total_ >= 0);
+      assert(initial_value >= last_result_.value_);
+    }
+
+    // ---------------------------------------
+    void sell(double time, double xrp_amount)
+    {
+      double p = hdf5_ohlc_->get_estimated_sell_price_volume(xrp_amount, time + time_res_, 2.0);
+      double initial_value = (p * xrp_total_) + cash_total_;
+
+      double taker_pay = xrp_amount * p;
+      double fee = 0.01 * fee_percent_sell_ * taker_pay;
+      cash_total_ += taker_pay - fee;
+      xrp_total_ -= xrp_amount;
+      //
+      GROX_LOG_DEBUG(indicator_log,
+          "{:>20} sold {:.2f} XRP at price {:.2f} for total {:.2f} with fee {:.2f}", "sell",
+          xrp_amount, p, taker_pay, fee);
+      GROX_LOG_DEBUG(indicator_log,
+          "{:>20} initial_value {:.2f} final_value {:.2f} cash_total_ {:.2f} xrp_total {:.2f}",
+          "sell", initial_value, last_result_.value_, cash_total_, xrp_total_);
+
+      // note we output the actual sell price and not the current running average
+      last_result_ = {//
+          .event_type_ = buy_sell_event_type::sell,
+          .event_time_ = time + time_res_,
+          .price_ = last_result_.price_,
+          .event_price_ = p,
+          .value_ = (p * xrp_total_) + cash_total_,
+          .tokens_ = xrp_total_,
+          .cash_ = cash_total_};
+      //
+      assert(xrp_total_ >= 0);
+      assert(cash_total_ >= 0);
+      assert(initial_value >= last_result_.value_);
     }
 
     // ---------------------------------------
@@ -169,7 +193,9 @@ public:
       double current_average_ = average_(val);
       double rsi = srsi_(val);
 
-      auto ha_event = ha_transition_(val);
+      // set default output to value computed with current price (low for conservative est)
+      last_result_ = {buy_sell_event_type::value, val.time, current_average_, 0.0,
+          (val.low * xrp_total_) + cash_total_, xrp_total_, cash_total_};
 
       if (first_)
       {
@@ -183,10 +209,7 @@ public:
         rsi_gradient_(rsi, val.time);
       }
 
-      // set default output to value computed with current price (low for conservative est)
-      last_result_ = {buy_sell_event_type::value, current_average_, 0.0,
-          (val.low * xrp_total_) + cash_total_, xrp_total_, cash_total_};
-#if 0
+#if 1
       if (!upper_stop_.active_ && !lower_stop_.active_)
       {
         if (cash_total_ > 0) { lower_stop_.restart(current_average_); }
@@ -195,60 +218,49 @@ public:
 
       if (upper_stop_.active_ && !upper_stop_(current_average_))
       {
-        if ((rsi > 0.6) && (rsi_gradient_.value() <= 0.0))
+        if ((rsi > 0.6) && (rsi_gradient_.value() <= gradient_upper_))
         {
           // fallen out of the upper stop range
           upper_stop_.stop();
-          sell(val.time);
+          sell(val.time, xrp_total_);
           lower_stop_.restart(current_average_);
         }
       }
       else if (lower_stop_.active_ && !lower_stop_(current_average_))
       {
-        if ((rsi < 0.2) && (rsi_gradient_.value() > 0.0))
+        if ((rsi < 0.2) && (rsi_gradient_.value() > gradient_lower_))
         {
           // fallen out of the lower stop range
           lower_stop_.stop();
-          buy(val.time);
+          buy(val.time, cash_total_);
           upper_stop_.restart(current_average_);
         }
       }
 #else
-      using namespace indicators::kernels;
-      if (ha_event == indicators::buy_sell_event_type::buy && (cash_total_ > 0))
+      auto ha_event = ha_transition_(val);
+
+      if (ha_event == buy_sell_event_type::buy && (cash_total_ > 0))
       {    //
-        buy(val.time);
+        buy(val.time, cash_total_);
       }
-      else if (ha_event == indicators::buy_sell_event_type::sell && (xrp_total_ > 0))
+      else if (ha_event == buy_sell_event_type::sell && (xrp_total_ > 0))
       {    //
-        sell(val.time);
+        sell(val.time, xrp_total_);
       }
 #endif
       last_result_.price_ = current_average_;
-
-      // else if ((cash_total_ > 0) && (rsi_gradient_.value() >= 0.0) && (gradient_.value() > 0.05) &&
-      //     (rsi < 0.4))
-      // {
-      //   buy(val.time);
-      //   upper_stop_.restart(current_average_);
-      // }
-      // else if ((xrp_total_ > 0) && (rsi_gradient_.value() < 0.0) && (rsi > 0.6))
-      // {
-      //   sell(val.time);
-      //   lower_stop_.restart(current_average_);
-      // }
-      // last_result_.value_ = rsi;
       return last_result_;
     }
 
     // ---------------------------------------
     inline operator_type getLastResult() { return last_result_; }
 
+    // ---------------------------------------
     void set_time_resolution(double res) { time_res_ = res; }
 
 private:
     ohlc_modes mode_;
-    moving_average_hull average_;
+    moving_average_exponential_volume_weighted average_;
     stochastic_relative_strength_indicator srsi_;
     boost::circular_buffer<float> buffer1_;
     //

@@ -301,26 +301,22 @@ public:
           {
             auto const& ohlc = *it;
             auto vals = fn(ohlc);
-            QPointF xyval(ohlc.time, vals.price_);
+            QPointF av_price(ohlc.time, vals.price_);
             if (vals.event_type_ == buy_sell_event_type::buy)
             {
-              outputs[0]->data().push_back({ohlc.time, vals.event_price_});
-              outputs[2]->data().push_back(xyval);
+              // store a point for the buy event (output 0),
+              outputs[0]->data().push_back({vals.event_time_, vals.event_price_});
             }
             else if (vals.event_type_ == buy_sell_event_type::sell)
             {
-              outputs[1]->data().push_back({ohlc.time, vals.event_price_});
-              outputs[2]->data().push_back(xyval);
+              // store a point for the sell event (output 1),
+              outputs[1]->data().push_back({vals.event_time_, vals.event_price_});
             }
-            else if (vals.event_type_ == buy_sell_event_type::value)
-            {
-              outputs[2]->data().push_back(xyval);
-            }
-            else { outputs[2]->data().push_back(xyval); }
-            {
-              outputs[3]->data().push_back({ohlc.time, vals.value_});
-              // outputs[4]->data().push_back({ohlc.time, vals.tokens_});
-            }
+            // we always write out the av price and value so that we can see how the algorithm is
+            // performing even if there are no buy/sell events,
+            outputs[2]->data().push_back(av_price);
+            outputs[3]->data().push_back({ohlc.time, vals.value_});
+            // outputs[4]->data().push_back({ohlc.time, vals.tokens_});
             valid_index_++;
           }
           GROX_LOG_DEBUG(indicator_log, "{:>20} partition complete {}", "operator_buy_sell", p);

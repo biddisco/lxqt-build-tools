@@ -1,9 +1,5 @@
 #pragma once
 
-#include <iostream>
-#include <limits>
-#include <sstream>
-//
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
@@ -11,8 +7,6 @@
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/kernels/gradient.hpp"
-#include "indicators/kernels/heikin_ashi.hpp"
-#include "indicators/kernels/sliding_stop.hpp"
 #include "indicators/moving_average_hull.hpp"
 #include "indicators/stochastic_relative_strength_indicator.hpp"
 
@@ -123,18 +117,26 @@ public:
     // ---------------------------------------
     void buy(double time, double cash_amount)
     {
-      GROX_LOG_DEBUG(indicator_log, "{:>20} {} {}", "buy", time, cash_amount);
+      double p = hdf5_ohlc_->get_estimated_buy_price_value(cash_amount, time + time_res_, 2.0);
+      double initial_value = (p * xrp_total_) + cash_total_;
+      //
       double fee = 0.01 * fee_percent_buy_ * cash_amount;
       double taker_pay = cash_amount - fee;
+      double xrp_bought = taker_pay / p;
       //
-      // auto p = hdf5_ohlc_->get_trade_data_by_value(taker_pay, time + time_res_, 2.0);
-      double p = hdf5_ohlc_->get_estimated_buy_price_volume(taker_pay, time + time_res_, 2.0);
-      double initial_value = (p * xrp_total_) + cash_total_;
-      xrp_total_ += taker_pay / p;
+      xrp_total_ += xrp_bought;
       cash_total_ -= cash_amount;
-      // pay the open price, (value by low price?)
+      //
+      GROX_LOG_DEBUG(indicator_log,
+          "{:>20} bought {:.2f} XRP at price {:.2f} for total {:.2f} with fee {:.2f}", "buy",
+          xrp_bought, p, taker_pay, fee);
+      GROX_LOG_DEBUG(indicator_log,
+          "{:>20} initial_value {:.2f} final_value {:.2f} cash_total_ {:.2f} xrp_total {:.2f}",
+          "buy", initial_value, last_result_.value_, cash_total_, xrp_total_);
+
       last_result_ = {//
           .event_type_ = buy_sell_event_type::buy,
+          .event_time_ = time + time_res_,
           .price_ = last_result_.price_,
           .event_price_ = p,
           .value_ = (p * xrp_total_) + cash_total_,
@@ -149,31 +151,31 @@ public:
     // ---------------------------------------
     void sell(double time, double xrp_amount)
     {
-      GROX_LOG_DEBUG(indicator_log, "{:>20} {} {}", "sell", time, xrp_amount);
-      double fee = 0.01 * fee_percent_sell_ * xrp_amount;
-      double maker_pay = xrp_amount - fee;
-      //
-      double p = hdf5_ohlc_->get_estimated_sell_price_volume(maker_pay, time + time_res_, 2.0);
+      double p = hdf5_ohlc_->get_estimated_sell_price_volume(xrp_amount, time + time_res_, 2.0);
       double initial_value = (p * xrp_total_) + cash_total_;
 
-      GROX_LOG_DEBUG(indicator_log,
-          "{:>20} initial_value {} cash_total_ {} xrp_total {} sell_amount {} price {}", "sell",
-          initial_value, cash_total_, xrp_total_, xrp_amount, p);
-
-      cash_total_ += maker_pay * p;
+      double taker_pay = xrp_amount * p;
+      double fee = 0.01 * fee_percent_sell_ * taker_pay;
+      cash_total_ += taker_pay - fee;
       xrp_total_ -= xrp_amount;
+      //
+      GROX_LOG_DEBUG(indicator_log,
+          "{:>20} sold {:.2f} XRP at price {:.2f} for total {:.2f} with fee {:.2f}", "sell",
+          xrp_amount, p, taker_pay, fee);
+      GROX_LOG_DEBUG(indicator_log,
+          "{:>20} initial_value {:.2f} final_value {:.2f} cash_total_ {:.2f} xrp_total {:.2f}",
+          "sell", initial_value, last_result_.value_, cash_total_, xrp_total_);
+
       // note we output the actual sell price and not the current running average
       last_result_ = {//
           .event_type_ = buy_sell_event_type::sell,
+          .event_time_ = time + time_res_,
           .price_ = last_result_.price_,
           .event_price_ = p,
           .value_ = (p * xrp_total_) + cash_total_,
           .tokens_ = xrp_total_,
           .cash_ = cash_total_};
       //
-      GROX_LOG_DEBUG(indicator_log,
-          "{:>20} final_value {} cash_total_ {} xrp_total {} sell_amount {} price {}", "sell",
-          last_result_.value_, cash_total_, xrp_total_, xrp_amount, p);
       assert(xrp_total_ >= 0);
       assert(cash_total_ >= 0);
       assert(initial_value >= last_result_.value_);
@@ -235,7 +237,7 @@ public:
       double rsi = srsi_(val);
 
       // set default output to value computed with current price (low for conservative est)
-      last_result_ = {buy_sell_event_type::value, current_average_, 0.0,
+      last_result_ = {buy_sell_event_type::value, val.time, current_average_, 0.0,
           (val.low * xrp_total_) + cash_total_, xrp_total_, cash_total_};
 
       if (first_)

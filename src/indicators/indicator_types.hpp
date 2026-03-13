@@ -163,6 +163,8 @@ namespace indicators {
   struct buy_sell_point
   {
     buy_sell_event_type event_type_;
+    // the time of the event
+    double event_time_;
     // the current tracking price of the algorithm
     double price_;
     // the price the buy/sell/trade was computed at (nominally)
