@@ -355,7 +355,7 @@ private:
     }
 
     GROX_LOG_TRACE(py_plug_log, "{:>20} class object ptr={} type_check={}", "registry",
-        static_cast<PyObject*>(py_class),
+        static_cast<void*>(py_class),
         PyType_Check(static_cast<PyObject*>(py_class)) ? "YES" : "NO");
 
     // Verify the class is callable
