@@ -120,16 +120,17 @@ namespace {
       else if (schemes.contains(desired_light)) { chosen = desired_light; }
     }
     terminal->setColorScheme(chosen);
-#ifdef QT_DEBUG
     static bool logged_dirs_once = false;
     if (!logged_dirs_once)
     {
-      qDebug() << "qtermwidget color-scheme dirs:" << terminal_color_scheme_dirs;
-      qDebug() << "qtermwidget available schemes:" << schemes;
+      GROX_LOG_DEBUG(main_log, "{:>20} color_scheme_dirs {}", "qtermwidget",
+          terminal_color_scheme_dirs.join(", ").toStdString());
+      GROX_LOG_DEBUG(
+          main_log, "{:>20} available_schemes {}", "qtermwidget", schemes.join(", ").toStdString());
       logged_dirs_once = true;
     }
-    qDebug() << "qtermwidget applied scheme:" << chosen << "for dark_mode=" << dark_mode;
-#endif
+    GROX_LOG_DEBUG(main_log, "{:>20} applied_scheme {} for dark_mode={}", "qtermwidget",
+        chosen.toStdString(), dark_mode);
   }
 
   QTermWidget* create_terminal_widget(int dark_mode)
