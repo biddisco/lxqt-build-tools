@@ -114,12 +114,12 @@ namespace grox::senders {
                                        receiver = std::move(r.op_state.receiver_)](
                                        QByteArray data) {
                       // pass the result onto a new pika task and invoke the continuation
-                      auto snd0 = ex::just(std::move(data)) |
+                      auto snd0 =                        //
+                          ex::just(std::move(data)) |    //
                           ex::continues_on(default_pool_scheduler()) |
                           ex::then([receiver = std::move(receiver)](QByteArray byteArray) mutable {
                             std::string_view strv(byteArray.constData(), byteArray.length());
-                            GROX_LOG_TRACE(
-                                qt_trig_log, "{:>20} {}", "set_value_error_helper", strv);
+                            GROX_LOG_TRACE(qt_trig_log, "{:>20} {}", "qt->pika", strv);
                             ex::set_value(std::move(receiver), std::move(byteArray));
                           });
                       ex::start_detached(std::move(snd0));
