@@ -1,0 +1,53 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 31,
+    "patch": 11
+  },
+  "configurePresets": [
+    {
+      "name": "testing",
+      "hidden": true,
+      "cacheVariables": {
+        "BUILD_TESTING": "ON"
+      }
+    },
+    {
+      "name": "default",
+      "displayName": "Default",
+      "description": "Default build, release mode with most common options",
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "GROX_AUTHENTICATION_TESTS": "ON",
+        "GROX_LOG_LEVEL": "debug",
+        "CMAKE_CUDA_ARCHITECTURES": "89",
+        "Qt6_ROOT": "$env{Qt6_ROOT}"
+      }
+    },
+    {
+      "name": "release-testing",
+      "displayName": "Testing(Release)",
+      "description": "Enables building test in release mode",
+      "inherits": [
+        "testing",
+        "default"
+      ]
+    },
+    {
+      "name": "debug-testing",
+      "displayName": "Testing(Debug)",
+      "description": "Enables building test in debug mode",
+      "inherits": [
+        "testing",
+        "default"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    }
+  ]
+}
