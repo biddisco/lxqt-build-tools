@@ -93,7 +93,8 @@ int main(int argc, char** argv)
   // generated signature
   auto signed_hmac = encryptor.CalcHmacSHA256(api_secret, data_to_sign);
   assert(signed_hmac.size() == 32);
-  std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
+  std::string x_auth_signature =
+      b2a_hex(reinterpret_cast<unsigned char const*>(signed_hmac.data()), signed_hmac.size());
 
   http::request<http::string_body> request(http::verb::post, url_redirected, 11);
   request.set(http::field::host, url_host);

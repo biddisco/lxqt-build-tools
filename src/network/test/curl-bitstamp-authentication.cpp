@@ -83,7 +83,8 @@ int main(int argc, char** argv)
 
   auto signed_hmac = encyptor.CalcHmacSHA256(api_secret, data_to_sign);
   assert(signed_hmac.size() == 32);
-  std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
+  std::string x_auth_signature =
+      b2a_hex(reinterpret_cast<unsigned char const*>(signed_hmac.data()), signed_hmac.size());
 
   // send request
   CURL* curl;

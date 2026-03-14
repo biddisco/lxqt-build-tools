@@ -116,7 +116,7 @@ void aes_decrypt(byte const key[encryption::KEY_SIZE], byte const iv[encryption:
   rtext.resize(out_len1 + out_len2);
 }
 
-std::string b2a_hex(std::string_view byte_arr, int n)
+std::string b2a_hex(unsigned char const* byte_arr, int n)
 {
   static std::string const hex_codes = "0123456789abcdef";
   std::string hex_string;

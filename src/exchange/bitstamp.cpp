@@ -1177,7 +1177,8 @@ net::http::client_ptr bitstamp_network::signed_request(
   // generated signature
   auto signed_hmac = encryptor.CalcHmacSHA256(api_secret, string_to_sign);
   assert(signed_hmac.size() == 32);
-  std::string x_auth_signature = b2a_hex(signed_hmac.data(), signed_hmac.size());
+  std::string x_auth_signature =
+      b2a_hex(reinterpret_cast<unsigned char const*>(signed_hmac.data()), signed_hmac.size());
 
   std::string urlstring = fmt::format(
       "https://{}:{}{}{}", bitstamp_https_address, bitstamp_https_port, url_path, url_query);
