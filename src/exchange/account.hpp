@@ -98,7 +98,9 @@ struct basic_account
   {
     std::scoped_lock l(protection_);
     // remove if trade id matches passed in value
-    std::remove_if(offers_.begin(), offers_.end(), [&t](auto const& o) { return o.id_ == t.id_; });
+    auto it = std::remove_if(
+        offers_.begin(), offers_.end(), [&t](auto const& o) { return o.id_ == t.id_; });
+    offers_.erase(it, offers_.end());
   }
 };
 
