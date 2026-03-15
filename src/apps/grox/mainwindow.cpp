@@ -322,6 +322,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   , qs_password_(nullptr)
   , qs_terminal_(nullptr)
   , qs_arbitrage_(nullptr)
+  , qs_default_perspective_(nullptr)
   , dark_mode_(0)
 {
   ui.setupUi(this);
@@ -603,6 +604,7 @@ GroxMainWindow::~GroxMainWindow()
   delete qs_password_;
   delete qs_arbitrage_;
   delete qs_terminal_;
+  delete qs_default_perspective_;
   // dockmanager is deleted by gui destruction
   global_settings.dock_manager_ = nullptr;
   // release all networks
@@ -687,6 +689,19 @@ void GroxMainWindow::connect_gui_controls()
         if (toggle && !toggle->isChecked()) { toggle->trigger(); }
         terminal_dock_widget_->show();
         terminal_dock_widget_->raise();
+      });
+
+  qs_default_perspective_ =
+      new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_0)), this, [this]() {
+        QString const target_name = "Default";
+        for (QString const& name : global_settings.dock_manager_->perspectiveNames())
+        {
+          if (name.compare(target_name, Qt::CaseInsensitive) == 0)
+          {
+            openPerspective(name);
+            return;
+          }
+        }
       });
 }
 

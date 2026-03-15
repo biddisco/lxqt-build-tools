@@ -83,6 +83,7 @@ class GroxMainWindow : public QMainWindow
   QShortcut* qs_password_;
   QShortcut* qs_terminal_;
   QShortcut* qs_arbitrage_;
+  QShortcut* qs_default_perspective_;
   int dark_mode_;
 
   std::vector<QDialog*> trade_widgets_;
