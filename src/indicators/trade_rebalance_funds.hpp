@@ -15,14 +15,6 @@ namespace indicators {
   //----------------------------------------------------------------------------
   class trade_rebalance_funds : public indicator_base
   {
-    enum sliding_state
-    {
-      rising_active,
-      rising_inactive,
-      falling_active,
-      falling_inactive
-    };
-
 public:
     using operator_type = buy_sell_point;
 

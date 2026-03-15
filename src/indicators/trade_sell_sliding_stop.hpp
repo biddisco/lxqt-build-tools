@@ -3,6 +3,7 @@
 #include <boost/circular_buffer.hpp>
 //
 #include "data/ohlc_data_resolutions.hpp"
+#include "data/ohlc_heikin_ashi.hpp"
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 #include "indicators/kernels/gradient.hpp"
@@ -16,14 +17,6 @@ namespace indicators {
   //----------------------------------------------------------------------------
   class trade_sell_sliding_stop : public indicator_base
   {
-    enum sliding_state
-    {
-      rising_active,
-      rising_inactive,
-      falling_active,
-      falling_inactive
-    };
-
 public:
     using operator_type = buy_sell_point;
 
@@ -36,10 +29,11 @@ public:
         double ugap = 0.0035, double lgap = 0.0035)
       : indicator_base("Trade: Sliding Stop", "Trade: Sliding Stop",
             {
-                overlay_type::buy_sell,        //
-                overlay_type::buy_sell,        //
-                overlay_type::buy_sell,        //
-                overlay_type::relative_gain    //
+                overlay_type::buy_sell,         //
+                overlay_type::buy_sell,         //
+                overlay_type::buy_sell,         //
+                overlay_type::relative_gain,    //
+                overlay_type::shared_axis,      //
             })
       , mode_(mode)
       , average_{}
@@ -51,6 +45,8 @@ public:
       , upper_stop_(kernels::sliding_limit::up, ugap)
       , lower_stop_(kernels::sliding_limit::down, lgap)
       , rsi_multiplier_(1.0)
+      , rsi_upper_(0.6)
+      , rsi_lower_(0.2)
       , gradient_(0, 0)
       , rsi_gradient_(0, 0)
       , time_res_{0}
@@ -73,8 +69,10 @@ public:
           param<double>{"Sliding Gap Upper %", 22.0},                       // 5
           param<double>{"Sliding Gap Lower %", 0.0},                        // 6
           param<double>{"RSI length multiplier", 10.0},                     // 7
-          param<double>{"Gradient Threshold Upper", 0.0},                   // 8
-          param<double>{"Gradient Threshold Lower", 0.1},                   // 9
+          param<double>{"RSI Upper", 0.6},                                  // 8
+          param<double>{"RSI Lower", 0.2},                                  // 9
+          param<double>{"Gradient Threshold Upper", 0.0},                   // 10
+          param<double>{"Gradient Threshold Lower", 0.1},                   // 11
       };
     }
 
@@ -89,8 +87,10 @@ public:
       double gap_upper_ = get<double>(params_, 5);
       double gap_lower_ = get<double>(params_, 6);
       rsi_multiplier_ = get<double>(params_, 7);
-      gradient_upper_ = get<double>(params_, 8);
-      gradient_lower_ = get<double>(params_, 9);
+      rsi_upper_ = get<double>(params_, 8);
+      rsi_lower_ = get<double>(params_, 9);
+      gradient_upper_ = get<double>(params_, 10);
+      gradient_lower_ = get<double>(params_, 11);
       //
       first_ = true;
       xrp_total_ = 1;
@@ -190,6 +190,7 @@ public:
     operator_type operator()(ohlctv_sample const& val)
     {
       // update the moving average filter
+      // auto ha_ohlc = ha_(val);
       double current_average_ = average_(val);
       double rsi = srsi_(val);
 
@@ -218,7 +219,7 @@ public:
 
       if (upper_stop_.active_ && !upper_stop_(current_average_))
       {
-        if ((rsi > 0.6) && (rsi_gradient_.value() <= gradient_upper_))
+        if ((rsi > rsi_upper_) && (rsi_gradient_.value() <= gradient_upper_))
         {
           // fallen out of the upper stop range
           upper_stop_.stop();
@@ -228,7 +229,7 @@ public:
       }
       else if (lower_stop_.active_ && !lower_stop_(current_average_))
       {
-        if ((rsi < 0.2) && (rsi_gradient_.value() > gradient_lower_))
+        if ((rsi < rsi_lower_) && (rsi_gradient_.value() > gradient_lower_))
         {
           // fallen out of the lower stop range
           lower_stop_.stop();
@@ -269,10 +270,13 @@ private:
     kernels::gradient gradient_;
     kernels::gradient rsi_gradient_;
     kernels::heikin_ashi_transition ha_transition_;
+    ohlc_heikin_ashi ha_;
     //
     double gradient_upper_;
     double gradient_lower_;
     double rsi_multiplier_;
+    double rsi_upper_;
+    double rsi_lower_;
     double fee_percent_buy_;
     double fee_percent_sell_;
     int window_size_;

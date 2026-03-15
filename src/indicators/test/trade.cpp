@@ -87,8 +87,10 @@ TEST(trade, sliding_stop_fee_00)
       param<double>{"Sliding Gap Upper %", 22.0},                       // 5
       param<double>{"Sliding Gap Lower %", 0.0},                        // 6
       param<double>{"RSI length multiplier", 10.0},                     // 7
-      param<double>{"Gradient Threshold Upper", 0.0},                   // 8
-      param<double>{"Gradient Threshold Lower", 0.1},                   // 9
+      param<double>{"RSI Upper", 0.6},                                  // 8
+      param<double>{"RSI Lower", 0.2},                                  // 9
+      param<double>{"Gradient Threshold Upper", 0.0},                   // 10
+      param<double>{"Gradient Threshold Lower", 0.1},                   // 11
   };
   alg_.set_params(params);
   alg_.create_outputs(hdf5_ohlc);
@@ -117,6 +119,8 @@ TEST(trade, sliding_stop_fee_02)
       param<double>{"Sliding Gap Upper %", 22.0},                       // 5
       param<double>{"Sliding Gap Lower %", 0.0},                        // 6
       param<double>{"RSI length multiplier", 10.0},                     // 7
+      param<double>{"RSI Upper", 0.6},                                  // 8
+      param<double>{"RSI Lower", 0.2},                                  // 9
       param<double>{"Gradient Threshold Upper", 0.0},                   // 8
       param<double>{"Gradient Threshold Lower", 0.1},                   // 9
   };
