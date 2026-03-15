@@ -11,6 +11,7 @@
 #include <QwtPlotCurve>
 #include <QwtPlotItem>
 #include <QwtScaleMap>
+#include "qwt_plot.h"
 // Grox
 #include "OrderBookCurve.h"
 
@@ -89,5 +90,8 @@ void OrderBookCurve::setRawSamples_locked(
   //
   m_segStart.front() = 0;
   m_segFinish.front() = xData.size();
-  QwtPlotCurve::setRawSamples(&xData[0], &yData[0], xData.size());
+  if (xData.size() == 0)
+    QwtPlotCurve::setRawSamples(static_cast<float*>(nullptr), static_cast<float*>(nullptr), 0);
+  else
+    QwtPlotCurve::setRawSamples(&xData[0], &yData[0], xData.size());
 }
