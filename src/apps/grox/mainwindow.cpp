@@ -689,10 +689,14 @@ void GroxMainWindow::connect_gui_controls()
         if (toggle && !toggle->isChecked()) { toggle->trigger(); }
         terminal_dock_widget_->show();
         terminal_dock_widget_->raise();
+        terminal_dock_widget_->setFocus(Qt::ShortcutFocusReason);
+        if (terminal_widget_) { terminal_widget_->setFocus(Qt::ShortcutFocusReason); }
       });
 
   qs_default_perspective_ =
       new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_0)), this, [this]() {
+        GROX_LOG_INFO(main_log, "{:>20} Default perspective selected", "QShortcut");
+
         QString const target_name = "Default";
         for (QString const& name : global_settings.dock_manager_->perspectiveNames())
         {
@@ -703,6 +707,7 @@ void GroxMainWindow::connect_gui_controls()
           }
         }
       });
+  qs_default_perspective_->setContext(Qt::ApplicationShortcut);
 }
 
 // ----------------------------------------------------------------------------
