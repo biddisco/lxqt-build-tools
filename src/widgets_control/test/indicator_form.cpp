@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
   // execute a second time tom see if params are persisted
   alg_0 = indicators::indicator_registry::find_by_name("Trade: Sliding Stop");
   indicator_vec = {alg_0};
-  indicator_widget widget2 = indicator_widget(&indicator_vec, index);
+  indicator_widget widget2(&indicator_vec, index);
   auto_close_active_modal_dialog();
   result = widget2.execute_as_dialog();
 

@@ -25,7 +25,10 @@
         "GROX_AUTHENTICATION_TESTS": "ON",
         "GROX_LOG_LEVEL": "debug",
         "CMAKE_CUDA_ARCHITECTURES": "89",
-        "Qt6_ROOT": "$env{Qt6_ROOT}"
+        "Qt6_ROOT": "$env{Qt6_ROOT}",
+        "PIKA_USE_GUARD_PAGES": "1",
+        "PIKA_INSTALL_SIGNAL_HANDLERS": "1",
+        "PIKA_EXCEPTION_VERBOSITY" : "2"
       }
     },
     {

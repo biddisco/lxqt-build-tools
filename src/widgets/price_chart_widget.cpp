@@ -275,7 +275,7 @@ void price_chart_widget::connect_gui()
                 QwtPlotCurve* curve;
                 if (ot == indicators::overlay_type::price)
                   curve = price_plot_->add_overlay_curve(
-                      name, algp.indicator()->get_outputs()[i], colour);
+                      name, algp.indicator()->get_outputs()[i].get(), colour);
                 else if (ot == indicators::overlay_type::buy_sell)
                 {
                   if (i == 0)
@@ -286,20 +286,20 @@ void price_chart_widget::connect_gui()
                         "Sell", algp.indicator()->get_outputs()[i]->samples(), Qt::red);
                   else
                     curve = price_plot_->add_overlay_curve(
-                        name, algp.indicator()->get_outputs()[i], colour);
+                        name, algp.indicator()->get_outputs()[i].get(), colour);
                 }
                 else if (ot == indicators::overlay_type::mode_select)
                 {
                   ohlc_modes mode = get<ohlc_modes>(algp.indicator()->get_params(), 2);
                   if (mode == ohlc_modes::volume)
                     curve = price_plot_->add_overlay_volume_curve(
-                        name, algp.indicator()->get_outputs()[i], colour);
+                        name, algp.indicator()->get_outputs()[i].get(), colour);
                   else if (mode == ohlc_modes::value)
                     std::tie(algp.plot, curve) =
-                        add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);
+                        add_indicator_plot(name, algp.indicator()->get_outputs()[i].get(), colour);
                   else
                     curve = price_plot_->add_overlay_curve(
-                        name, algp.indicator()->get_outputs()[i], colour);
+                        name, algp.indicator()->get_outputs()[i].get(), colour);
                 }
                 else if (ot == indicators::overlay_type::shared_axis)
                 {
@@ -307,7 +307,7 @@ void price_chart_widget::connect_gui()
                   {
                     // first shared_axis output creates the plot
                     std::tie(algp.plot, curve) =
-                        add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);
+                        add_indicator_plot(name, algp.indicator()->get_outputs()[i].get(), colour);
                   }
                   else
                   {
@@ -318,14 +318,14 @@ void price_chart_widget::connect_gui()
                     m_curve->setStyle(QwtPlotCurve::Lines);
                     m_curve->setLegendAttribute(QwtPlotCurve::LegendShowSymbol);
                     m_curve->setPen(colour, 2);
-                    m_curve->setData(algp.indicator()->get_outputs()[i]);
+                    m_curve->setData(algp.indicator()->get_outputs()[i].get());
                     m_curve->attach(algp.plot);
                     curve = m_curve;
                   }
                 }
                 else
                   std::tie(algp.plot, curve) =
-                      add_indicator_plot(name, algp.indicator()->get_outputs()[i], colour);
+                      add_indicator_plot(name, algp.indicator()->get_outputs()[i].get(), colour);
                 algp.curves.push_back(curve);
               }
 

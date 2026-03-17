@@ -21,6 +21,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <utility>
@@ -56,7 +57,7 @@ namespace net {
     ssl::context ctx;
     // IO threads will terminate if there is no work, so we add a work_guard
     // to keep them alive until we want to exit.
-    asio::executor_work_guard<asio::io_context::executor_type>* work_guard_;
+    std::optional<asio::executor_work_guard<asio::io_context::executor_type>> work_guard_;
 
     // create the objects we need
     contexts()
@@ -79,11 +80,8 @@ namespace net {
       //                boost::asio::ssl::context::no_tlsv1_3 |
       //                boost::asio::ssl::context::no_compression
 
-      work_guard_ = new asio::executor_work_guard<asio::io_context::executor_type>{
-          boost::asio::make_work_guard(ioc)};
+      work_guard_.emplace(boost::asio::make_work_guard(ioc));
     }
-
-    ~contexts() { delete work_guard_; }
   };
 
   namespace ws {

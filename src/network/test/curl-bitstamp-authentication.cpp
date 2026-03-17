@@ -120,6 +120,7 @@ int main(int argc, char** argv)
 
     std::cout << "curl_easy_perform() response: " << read_buffer << std::endl;
 
+    curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
   }
 

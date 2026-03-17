@@ -62,6 +62,12 @@ ohlc_dataset_view::~ohlc_dataset_view()
     samples->new_data_subscribers_.clear();
     delete samples;
   }
+  for (auto const [res, samples] : live_samples_)
+  {
+    samples->new_data_subscribers_.clear();
+    delete samples;
+  }
+  live_samples_.clear();
   candles_.clear();
 }
 
@@ -175,8 +181,12 @@ ohlcv_minmax ohlc_dataset_view::get_min_max(
   //
   double t1 = std::max(view_t1, data_t1);
   double t2 = std::min(std::max(view_t1, view_t2), data_t2);
-  size_t sample1 = static_cast<size_t>((t1 - data_t1) / res);
-  size_t sample2 = static_cast<size_t>((t2 - data_t1) / res);
+
+  // prevent out of bounds/range for unsigned integer types
+  size_t sample1 = 0;
+  size_t sample2 = 0;
+  if (t1 >= data_t1) sample1 = static_cast<size_t>((t1 - data_t1) / res);
+  if (t2 >= data_t1) sample2 = static_cast<size_t>((t2 - data_t1) / res);
 
   ohlcv_minmax result;
   // if graph is too far right, show last point range, mark flags as invalid

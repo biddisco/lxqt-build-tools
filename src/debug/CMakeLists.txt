@@ -8,7 +8,7 @@ target_include_directories(
   grox_debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 target_include_directories(grox_debug PUBLIC ${GROX_INCLUDE_ROOT})
-target_link_libraries(grox_debug PUBLIC pika::pika)
+target_link_libraries(grox_debug PUBLIC pika::pika project_options)
 
 # ------------------------------------------------------------------------------
 # logging support

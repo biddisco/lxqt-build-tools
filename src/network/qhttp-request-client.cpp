@@ -101,6 +101,9 @@ namespace net::http {
     if (nullptr == reply)
     {
       GROX_LOG_ERROR(http_log, "{:>20} {} fail : nullptr", "attach_handler", fmt::ptr(this));
+      // Requests own this helper object; if Qt fails to create a reply, no callback
+      // will fire to release it, so we must clean up here.
+      delete this;
       return;
     }
     if (reply->isRunning())

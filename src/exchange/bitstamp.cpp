@@ -959,7 +959,7 @@ void bitstamp_network::handle_websocket_token(std::string_view data)
     //
     using namespace std::literals;
     auto valid_sec = jdata["valid_sec"].get<int>();
-    websocket_token_ = jdata["token"].get<std::string>();
+    websocket_token_ = JCHARP(jdata["token"]);
     websocket_user_id_ = std::to_string(jdata["user_id"].get<int>());
     token_expiry_ = std::chrono::system_clock::now() + valid_sec * 1s;
 

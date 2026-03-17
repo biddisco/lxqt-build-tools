@@ -110,9 +110,10 @@ int indicator_widget::execute_as_dialog()
 // add ok, cancel reset buttons to the dialog along with the controls
 void indicator_widget::add_indicator_to_dialog(QDialog* dlg)
 {
-  // add ok, cancel buttons
+  // add ok, cancel buttons - Pass dlg as parent immediately
   QDialogButtonBox* buttonBox = new QDialogButtonBox(
-      QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Reset);
+      QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Reset, dlg);
+
   connect(buttonBox, &QDialogButtonBox::accepted, dlg, &QDialog::accept);
   connect(buttonBox, &QDialogButtonBox::rejected, dlg, &QDialog::reject);
   connect(buttonBox, &QDialogButtonBox::clicked, this, [=, this](QAbstractButton* b) {
@@ -130,11 +131,14 @@ void indicator_widget::add_indicator_to_dialog(QDialog* dlg)
       dlg->reject();
     }
   });
+  // Keep the UI layout created by setupUi() so all controls resize together.
+  while (auto* item = ui->buttons_layout->takeAt(0))
+  {
+    if (item->widget()) item->widget()->deleteLater();
+    delete item;
+  }
+  ui->buttons_layout->addStretch(1);
   ui->buttons_layout->addWidget(buttonBox);
-  //
-  QVBoxLayout* VLayout = new QVBoxLayout(dlg);
-  VLayout->addWidget(this);
-  dlg->setLayout(VLayout);
 }
 
 // ----------------------------------------------------------------------------

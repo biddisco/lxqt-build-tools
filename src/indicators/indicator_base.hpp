@@ -83,7 +83,7 @@ protected:
 
     /// list of input datasets
     std::vector<input_type> in_datasets_;
-    std::vector<output_type*> out_datasets_;
+    std::vector<std::shared_ptr<output_type>> out_datasets_;
     std::shared_ptr<ohlc_dataset_view> hdf5_ohlc_;
     // once the algorithm begins executing, the valid index stores the
     // next(input) index for which an output needs to be generated
@@ -114,6 +114,7 @@ public:
         std::string id = subscription_name();
         d.dataset_->new_data_subscribers_.unsubscribe(id);
       }
+      out_datasets_.clear();
     }
 
     // ----------------------------------------------------------------------------
@@ -135,9 +136,12 @@ public:
       return in_datasets_[i];
     }
 
-    virtual std::vector<output_type*>& get_outputs() { return out_datasets_; }
+    virtual std::vector<std::shared_ptr<output_type>> const& get_outputs() const
+    {
+      return out_datasets_;
+    }
 
-    virtual output_type* get_output(std::size_t i) const
+    virtual std::shared_ptr<output_type> get_output(std::size_t i) const
     {
       if (i >= out_datasets_.size()) { throw std::runtime_error("Setup inputs/outputs"); }
       return out_datasets_[i];
@@ -154,7 +158,7 @@ public:
       std::size_t const size = in_datasets_[0].dataset_->data().size();
       for (int i = 0; i < num_outputs(); ++i)
       {
-        output_type* indicator_data = new output_type(res);
+        std::shared_ptr<output_type> indicator_data = std::make_shared<output_type>(res);
         indicator_data->data().reserve(size);
         out_datasets_.push_back(indicator_data);
       }

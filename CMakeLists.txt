@@ -129,6 +129,37 @@ if(GROX_WITH_IWYU)
 endif()
 
 # ------------------------------------------------------------------------------
+# Define an Interface Library for project options / flags we can carry to other targets
+# ------------------------------------------------------------------------------
+add_library(project_options INTERFACE)
+add_library(Project::Options ALIAS project_options)
+if(GROX_WITH_SANITIZER)
+  target_compile_options(
+    project_options
+    INTERFACE $<$<COMPILE_LANGUAGE:CXX>:
+              -fsanitize=address
+              -fsanitize=undefined
+              -fno-sanitize-recover=all
+              -fsanitize=float-divide-by-zero
+              -fsanitize=float-cast-overflow
+              -fno-sanitize=null
+              -fno-sanitize=alignment>
+  )
+  target_link_options(
+    project_options
+    INTERFACE
+    $<$<COMPILE_LANGUAGE:CXX>:
+    -fsanitize=address
+    -fsanitize=undefined
+    -fno-sanitize-recover=all
+    -fsanitize=float-divide-by-zero
+    -fsanitize=float-cast-overflow
+    -fno-sanitize=null
+    -fno-sanitize=alignment>
+  )
+endif()
+
+# ------------------------------------------------------------------------------
 # Find Qt6
 # ------------------------------------------------------------------------------
 # this line to force correct var so that Qt-AdvancedDocking uses Qt6 by default
@@ -310,7 +341,7 @@ get_external_project(
 set(PIKA_LOG_LEVEL ${GROX_LOG_LEVEL_UPPERCASE})
 set(PIKA_WITH_CXX_STANDARD ${GROX_CXX_STANDARD})
 set(PIKA_WITH_STDEXEC ON)
-set(PIKA_WITH_SANITIZERS=${GROX_WITH_SANITIZER})
+set(PIKA_WITH_SANITIZERS ${GROX_WITH_SANITIZER} CACHE BOOL "sanitizer" FORCE)
 get_external_project(
   PROJECT_NAME
   "pika"
