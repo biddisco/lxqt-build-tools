@@ -60,7 +60,7 @@ namespace net::ws {
     QObject::connect(
         thread_, &QThread::started, client_,
         [this]() {
-          GROX_LOG_TRACE(qsession_log, "{:20s} {} {} Starting websocket connection", client_->id(),
+          GROX_LOG_TRACE(qsession_log, "{:>20s} {} {} Starting websocket connection", client_->id(),
               fmt::ptr(this), "QThread:started");
           this->client_->startConnection();
         },
@@ -73,7 +73,7 @@ namespace net::ws {
           // lifetime and is blocked in thread_->wait(). Deleting them here would
           // cause use-after-free in the destructor.
           GROX_LOG_DEBUG(
-              qsession_log, "{:20s} {} {}", client_->id(), fmt::ptr(this), "QThread:finished");
+              qsession_log, "{:>20s} {} {}", client_->id(), fmt::ptr(this), "QThread:finished");
         },
         Qt::DirectConnection);
 
@@ -82,7 +82,7 @@ namespace net::ws {
         client_, &qwebsocket_client::finished, client_,
         [this]() {
           GROX_LOG_DEBUG(
-              qsession_log, "{:20s} {} invoking thread quit", client_->id(), "Qclient::finished");
+              qsession_log, "{:>20s} {} invoking thread quit", client_->id(), "Qclient::finished");
           QMetaObject::invokeMethod(this->thread_, "quit", Qt::DirectConnection);
         },
         Qt::DirectConnection);
@@ -91,7 +91,7 @@ namespace net::ws {
     QObject::connect(
         thread_, &QThread::destroyed, thread_,
         [id = client_->id()]() {
-          GROX_LOG_DEBUG(qsession_log, "{:20s} {}", id, "QThread::destroyed");
+          GROX_LOG_DEBUG(qsession_log, "{:>20s} {}", id, "QThread::destroyed");
         },
         Qt::DirectConnection);
     thread_->start();
@@ -100,13 +100,13 @@ namespace net::ws {
   // ----------------------------------------------------------------------------
   qwebsocket_session::~qwebsocket_session()
   {
-    GROX_LOG_INFO(qsession_log, "{:20s} {} Destructor starting", client_->id(), fmt::ptr(this));
+    GROX_LOG_INFO(qsession_log, "{:>20s} {} Destructor starting", client_->id(), fmt::ptr(this));
     // Stop the connection (queued on the thread)
     client_->stopConnection();
     // Wait for thread to finish cleanly
     if (!thread_->wait(5000))
     {
-      GROX_LOG_ERROR(qsession_log, "{:20s} {} Destructor: thread_->wait() TIMEOUT!", client_->id(),
+      GROX_LOG_ERROR(qsession_log, "{:>20s} {} Destructor: thread_->wait() TIMEOUT!", client_->id(),
           fmt::ptr(this));
       // Force-terminate the thread if it didn't quit in time
       thread_->terminate();
@@ -114,7 +114,7 @@ namespace net::ws {
     }
     else
     {
-      GROX_LOG_INFO(qsession_log, "{:20s} {} Destructor: thread_->wait() completed", client_->id(),
+      GROX_LOG_INFO(qsession_log, "{:>20s} {} Destructor: thread_->wait() completed", client_->id(),
           fmt::ptr(this));
     }
     // Clean up - the thread has finished so it's safe to delete both

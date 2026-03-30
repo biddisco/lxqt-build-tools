@@ -66,7 +66,7 @@ namespace net::ws {
   // ------------------------------------------------------------------
   void qwebsocket_client::startConnection()
   {
-    GROX_LOG_TRACE(qwebsocket_log, "{:20s} startConnection {}", id_, url_);
+    GROX_LOG_TRACE(qwebsocket_log, "{:>20s} startConnection {}", id_, url_);
     //
     auto ws = new QWebSocket;
     ws->setPauseMode(QAbstractSocket::PauseNever);    // @todo PauseOnSslErrors
@@ -110,7 +110,7 @@ namespace net::ws {
     connect(ws, &QWebSocket::bytesWritten, this, &qwebsocket_client::onBytesWritten,
         Qt::DirectConnection);
 
-    GROX_LOG_TRACE(qwebsocket_log, "{:20s} openConnection {}", id_, url_);
+    GROX_LOG_TRACE(qwebsocket_log, "{:>20s} openConnection {}", id_, url_);
     QNetworkRequest request = QNetworkRequest(QUrl(url_));
     ws->open(request);
   }
@@ -121,11 +121,11 @@ namespace net::ws {
     auto ws = websocket_.load();
     if (ws)
     {
-      GROX_LOG_DEBUG(qwebsocket_log, "{:20s} stopConnection : invoking WebSocket close", id_);
+      GROX_LOG_DEBUG(qwebsocket_log, "{:>20s} stopConnection : invoking WebSocket close", id_);
       // Use QueuedConnection to ensure close happens on the websocket thread
       QMetaObject::invokeMethod(ws, "close", Qt::QueuedConnection);
     }
-    else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} stopConnection : already closed", id_); }
+    else { GROX_LOG_DEBUG(qwebsocket_log, "{:>20s} stopConnection : already closed", id_); }
   }
 
   // ------------------------------------------------------------------
@@ -134,7 +134,7 @@ namespace net::ws {
     auto ws = websocket_.load();
     if (ws)
     {
-      GROX_LOG_TRACE(qwebsocket_log, "{:20s} Connected : sending subscribe", id_);
+      GROX_LOG_TRACE(qwebsocket_log, "{:>20s} Connected : sending subscribe", id_);
       ws->sendTextMessage(subscribe_);
     }
     else { GROX_LOG_ERROR(qwebsocket_log, "onConnected after deletion"); }
@@ -149,10 +149,10 @@ namespace net::ws {
       auto code = ws->closeCode();
       if (code != QWebSocketProtocol::CloseCodeNormal)
       {
-        GROX_LOG_ERROR(qwebsocket_log, "{:20s} Disconnected : CloseCode is : {} {}", id_,
+        GROX_LOG_ERROR(qwebsocket_log, "{:>20s} Disconnected : CloseCode is : {} {}", id_,
             QVariant::fromValue(code).toString(), ws->errorString());
       }
-      else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} Disconnected : CloseCode Normal", id_); }
+      else { GROX_LOG_DEBUG(qwebsocket_log, "{:>20s} Disconnected : CloseCode Normal", id_); }
       // Disconnect all signals to prevent any further callbacks during destruction
       ws->disconnect();
       // Must use deleteLater() - we are inside the QWebSocket's own 'disconnected'
@@ -163,15 +163,15 @@ namespace net::ws {
       websocket_.store(nullptr);
       ws->deleteLater();
     }
-    else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} onDisconnected : already cleaned up", id_); }
+    else { GROX_LOG_DEBUG(qwebsocket_log, "{:>20s} onDisconnected : already cleaned up", id_); }
     emit finished();
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onStateChanged(QAbstractSocket::SocketState socketState)
   {
-    GROX_LOG_DEBUG(
-        qwebsocket_log, "{:20s} StateChanged {}", id_, QVariant::fromValue(socketState).toString());
+    GROX_LOG_DEBUG(qwebsocket_log, "{:>20s} StateChanged {}", id_,
+        QVariant::fromValue(socketState).toString());
   }
 
   // ------------------------------------------------------------------
@@ -184,16 +184,16 @@ namespace net::ws {
       if (code != QWebSocketProtocol::CloseCodeNormal)
       {
         GROX_LOG_ERROR(qwebsocket_log,
-            "{:20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
+            "{:>20s} AboutToClose : Unexpected CloseCode is : {} {} : reconnect after time T", id_,
             QVariant::fromValue(code).toString(), ws->errorString());
       }
-      else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} AboutToClose : CloseCode Normal", id_); }
+      else { GROX_LOG_DEBUG(qwebsocket_log, "{:>20s} AboutToClose : CloseCode Normal", id_); }
       // Do NOT delete or null the websocket here - the close handshake has not
       // completed yet. Premature deletion prevents the 'disconnected' signal from
       // firing, which causes the thread to never quit and forces a 5s timeout.
       // Cleanup happens in onDisconnected() after the connection is fully closed.
     }
-    else { GROX_LOG_DEBUG(qwebsocket_log, "{:20s} onAboutToClose : already cleaned up", id_); }
+    else { GROX_LOG_DEBUG(qwebsocket_log, "{:>20s} onAboutToClose : already cleaned up", id_); }
   }
 
   // ------------------------------------------------------------------
@@ -201,9 +201,9 @@ namespace net::ws {
   {
     for (auto const& err : errors)
     {
-      GROX_LOG_ERROR(qwebsocket_log, "{:20s} SslError : {}", id_, err.errorString());
+      GROX_LOG_ERROR(qwebsocket_log, "{:>20s} SslError : {}", id_, err.errorString());
     }
-    // qwebsocket_dbg<2>.error(fmt::format("{:20s} SslErrors", id_));
+    // qwebsocket_dbg<2>.error(fmt::format("{:>20s} SslErrors", id_));
     // Q_UNUSED(errors);
 
     // WARNING: Never ignore SSL errors in production code.
@@ -220,50 +220,50 @@ namespace net::ws {
     auto ws = websocket_.load();
     if (ws)
     {
-      GROX_LOG_ERROR(qwebsocket_log, "{:20s} SslErrors : Error :{}", id_, ws->errorString());
+      GROX_LOG_ERROR(qwebsocket_log, "{:>20s} SslErrors : Error :{}", id_, ws->errorString());
     }
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onTextFrameReceived(QString const& frame, bool isLastFrame)
   {
-    // GROX_LOG_ERROR(qwebsocket_log, "{:20s} TextFrameReceived - this should be overriden", id_);
+    // GROX_LOG_ERROR(qwebsocket_log, "{:>20s} TextFrameReceived - this should be overriden", id_);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onTextMessageReceived(QString message)
   {
-    GROX_LOG_ERROR(qwebsocket_log, "{:20s} TextMessageReceived - this should be overriden", id_);
+    GROX_LOG_ERROR(qwebsocket_log, "{:>20s} TextMessageReceived - this should be overriden", id_);
     emit processIncomingMessage(message);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onBinaryFrameReceived(QByteArray const& frame, bool isLastFrame)
   {
-    GROX_LOG_ERROR(qwebsocket_log, "{:20s} BinaryFrameReceived", id_);
+    GROX_LOG_ERROR(qwebsocket_log, "{:>20s} BinaryFrameReceived", id_);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onBinaryMessageReceived(QByteArray const& message)
   {
-    GROX_LOG_ERROR(qwebsocket_log, "{:20s} BinaryMessageReceived", id_);
+    GROX_LOG_ERROR(qwebsocket_log, "{:>20s} BinaryMessageReceived", id_);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onReadChannelFinished()
   {
-    GROX_LOG_DEBUG(qwebsocket_log, "{:20s} ReadChannelFinished", id_);
+    GROX_LOG_DEBUG(qwebsocket_log, "{:>20s} ReadChannelFinished", id_);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onPong(quint64 elapsedTime, QByteArray const& payload)
   {
-    GROX_LOG_ERROR(qwebsocket_log, "{:20s} Pong", id_);
+    GROX_LOG_ERROR(qwebsocket_log, "{:>20s} Pong", id_);
   }
 
   // ------------------------------------------------------------------
   void qwebsocket_client::onBytesWritten(qint64 bytes)
   {
-    // GROX_LOG_ERROR(qwebsocket_log, "{:20s} BytesWritten {}", id_, bytes);
+    // GROX_LOG_ERROR(qwebsocket_log, "{:>20s} BytesWritten {}", id_, bytes);
   }
 }    // namespace net::ws
