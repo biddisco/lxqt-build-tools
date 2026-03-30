@@ -225,7 +225,7 @@ ohlc_price_plot::ohlc_price_plot(QWidget* parent, std::shared_ptr<ohlc_dataset_v
 }
 
 // ----------------------------------------------------------------------------
-ohlc_price_plot::~ohlc_price_plot() {}
+ohlc_price_plot::~ohlc_price_plot() { GROX_LOG_DEBUG(plot_log, "{:>20}", "ohlc_price_plot dtor"); }
 
 // ----------------------------------------------------------------------------
 void ohlc_price_plot::bind_graphs()

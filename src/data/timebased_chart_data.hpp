@@ -7,6 +7,10 @@
 //
 #include "data/ohlc_data_resolutions.hpp"
 #include "data/ohlc_utils.hpp"
+#include "debug/logging.hpp"
+
+// ----------------------------------------------------------------------------
+static auto cdata_log = grox::log::create("chartdata");
 
 // ----------------------------------------------------------------------------
 template <typename DataType>

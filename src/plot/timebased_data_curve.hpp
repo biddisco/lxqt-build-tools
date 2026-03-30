@@ -15,7 +15,7 @@ template <typename T>
 bool compute_time_limits(timebased_chart_data<T> const* time_data, QwtScaleMap const& xMap,
     QwtScaleMap const& yMap, QRectF const& canvasRect, int& from, int& to)
 {
-  const QRectF tr = QwtScaleMap::invTransform(xMap, yMap, canvasRect);
+  QRectF const tr = QwtScaleMap::invTransform(xMap, yMap, canvasRect);
   double time_Min = tr.left();
   double time_Max = tr.right();
   from = std::max(int64_t(0), time_data->sample_index(time_Min) + 1);
@@ -31,6 +31,8 @@ class timebased_data_curve : public QwtPlotCurve
 {
   public:
   explicit timebased_data_curve(QString const& title = QString());
+
+  ~timebased_data_curve() { GROX_LOG_DEBUG(cdata_log, "{:<20}", "timebased_data_curve dtor"); }
 
   void drawSeries(QPainter*, QwtScaleMap const& xMap, QwtScaleMap const& yMap,
       QRectF const& canvasRect, int from, int to) const QWT_OVERRIDE;

@@ -38,3 +38,9 @@ target_link_libraries(
          range-v3
          Qt::Core
 )
+
+if(BUILD_TESTING)
+  pika_add_pseudo_target(tests.plot)
+  pika_add_pseudo_dependencies(tests tests.plot)
+  add_subdirectory(test)
+endif()
