@@ -13,10 +13,13 @@ foreach(test ${TEST_SRCS})
     ${testname}
     PUBLIC grox_util
            grox_plot
+           grox_data
+           grox_debug
+           grox_currency
+           grox_io
            GTest::gtest
            OpenSSL::SSL
            Threads::Threads
-           tests_plot_util
   )
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
     target_compile_options(${testname} PRIVATE -Wno-deprecated-declarations)
