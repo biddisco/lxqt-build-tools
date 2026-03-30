@@ -52,7 +52,7 @@ namespace grox {
           stdexec::sender auto snd =
               stdexec::starts_on(grox::senders::default_pool_scheduler(), stdexec::just()) |
               stdexec::then([=]() { subscriber.second(message...); });
-          stdexec::start_detached(std::move(snd));
+          pika::execution::experimental::start_detached(std::move(snd));
         }
       }
     }
