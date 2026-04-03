@@ -37,7 +37,7 @@ cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 # ------------------------------------------------------------------------------
 # Project declaration
 # ------------------------------------------------------------------------------
-project(GROX VERSION 0.1 LANGUAGES CXX C CUDA)
+project(GROX VERSION 0.1 LANGUAGES CXX C)
 
 # ------------------------------------------------------------------------------
 # CMake configuration

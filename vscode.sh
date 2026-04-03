@@ -43,5 +43,10 @@ if [[ $1 == "python" ]]; then
 fi
 
 echo Launching vscode in $SCRIPT_DIR
+
 # launch vscode in our dir
-code $SCRIPT_DIR
+if [ "${VSCODE_WAIT:-0}" -eq "1" ]; then
+  code --wait $SCRIPT_DIR
+else
+  code $SCRIPT_DIR
+fi
