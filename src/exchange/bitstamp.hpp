@@ -186,32 +186,40 @@ class bitstamp_network : public abstract_exchange
   // https: get new websocket token to subscribe to streams
   any_bytearray_sender request_websocket_token();
 
+  // ---------------------------------------
   // https: get account info/data
   any_bytearray_sender request_account_info(bitstamp_account const& acct);
   // get account info for all accounts
   any_void_sender request_all_account_infos();
 
+  // ---------------------------------------
   // https: get open order data
   any_bytearray_sender request_account_orders(bitstamp_account const& acct);
   // get orders for all accounts
   any_void_sender request_all_account_orders();
 
+  // ---------------------------------------
   // https: get token deposit/withdrawal type crypto transactions
+  // not used currently as we prefer request_account_transactions
   any_bytearray_sender request_crypto_transactions(bitstamp_account const& acct);
   // get all token transactions
   any_void_sender request_all_crypto_transactions();
 
+  // ---------------------------------------
   // https: get usertransactions
-  any_bytearray_sender request_account_transactions(bitstamp_account const& acct);
-  // get all token transactions
-  any_void_sender request_all_account_transactions();
-
-  // https: get usertransactions
+  // not used currently as we prefer request_account_transactions
   any_bytearray_sender request_market_transactions(
       bitstamp_account const& acct, currency_pair const&);
   // get all token transactions
   any_void_sender request_all_market_transactions();
 
+  // ---------------------------------------
+  // https: get usertransactions
+  any_bytearray_sender request_account_transactions(bitstamp_account const& acct);
+  // get all token transactions
+  any_void_sender request_all_account_transactions();
+
+  // ---------------------------------------
   // https: place a limit order
   any_bytearray_sender request_limit_order(bitstamp_account const& acct, trade_data const& t);
   // https: place an order cancel

@@ -4,6 +4,7 @@
 #include <exception>
 #include <iostream>
 #include <memory>
+#include <qsettings.h>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -25,6 +26,7 @@
 #include <pika/execution/algorithms/transfer_just.hpp>
 #include <pika/execution_base/any_sender.hpp>
 //
+#include "config/config.hpp"
 #include "debug/demangle_helper.hpp"
 #include "debug/logging.hpp"
 #include "exchange/bitstamp.hpp"
@@ -169,6 +171,7 @@ void bitstamp_network::initialize()
           std::lock_guard<std::mutex> l(candlestick_mutex_);
           GROX_LOG_ERROR(bitstamp_log, "{:>20} {}", "Bitstamp initilize failed", what(e));
         });
+  // @TODO - also need to handle open orders for each account
   // @TODO - add flag to network_initialized to signal, finished, but errors/other problems
 
   // bitstamp_dbg<0>.debug(ffmt<s20>("SENDER"), "\n", grox::debug::print_type<decltype(snd0)>());
@@ -324,7 +327,7 @@ bool bitstamp_network::stream_subscribe(
           if (closing_down_.load()) return stdexec::just();
           GROX_LOG_TRACE(bitstamp_log, "{:>20} WebsocketToken already up-to-date", "Stopped");
           return stdexec::just();
-        })    //
+        })                                                        //
       |
       stdexec::then([this, keepalive, cp, stream, enabled]() {    //
         if (closing_down_.load()) return;
@@ -555,7 +558,7 @@ any_void_sender bitstamp_network::read_transaction_logs(std::string ini_name)
       if (last_orderId > 0)
       {
         acct.last_order_ID = std::max(acct.last_order_ID, last_orderId);
-        GROX_LOG_TRACE(bitstamp_log, "{:>20} last_Id {} {}", "TransactionLogs",
+        GROX_LOG_DEBUG(bitstamp_log, "{:>20} last_Id {} {}", "TransactionLogs",
             fmt::format("ID_{}_{}", suffix, acct.name_), last_orderId);
       }
     }
@@ -578,14 +581,15 @@ any_void_sender bitstamp_network::update_transaction_logs(std::string ini_name)
       "--grox_data_dir={} "                                  //
       "--grox_json_dir={} "                                  //
       "--accounts {} "                                       //
-      "--delete_files "                                      //
+      "{} "                                                  //
       ,
       GROX_SOURCE_DIR, GROX_SOURCE_DIR, global_settings.appDataLocation,
-      global_settings.appDataLocation, accountnames);
+      global_settings.appDataLocation, accountnames,
+      global_settings.extra_debug ? "" : "--delete_files");
   //
-  GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "Execute", cmd_str);
+  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Execute", cmd_str);
   std::string result = execute_os_command(cmd_str.c_str(), false);
-  GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "Execute result", result);
+  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Execute result", result);
 
   return any_void_sender{stdexec::just()};
 }
@@ -769,21 +773,41 @@ any_void_sender bitstamp_network::request_all_account_transactions()
         nlohmann::json jdata = nlohmann::json::parse(data);
         if (jdata.size() > 0)
         {
-          std::string name = fmt::format("{}/transactions-user-{}-{}.json",
-              global_settings.appDataLocation, acct.name_, getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
+          std::uint64_t first_id = jdata[0]["id"].get<std::uint64_t>();
+          std::uint64_t last_id = jdata[jdata.size() - 1]["id"].get<std::uint64_t>();
+          acct.last_order_ID = std::max(acct.last_order_ID, last_id);
+          std::string name = fmt::format("{}/transactions-user-{}-{}-{}.json",
+              global_settings.appDataLocation, acct.name_, first_id, last_id);
           std::ofstream transactions(name);
           transactions << jdata.dump(4);
-          GROX_LOG_TRACE(
+          GROX_LOG_DEBUG(
               bitstamp_log, "{:>20} {} Written {}", "Transactions_User", acct.name_, name);
-
-          // handle_open_orders(acct, data);
+          return jdata.size() >= 1000;
         }
-        else { GROX_LOG_TRACE(bitstamp_log, "{:>20} {} Empty", "Transactions_User", acct.name_); }
+        else
+        {
+          GROX_LOG_TRACE(bitstamp_log, "{:>20} {} Empty", "Transactions_User", acct.name_);
+          return false;
+        }
       };
 
-      auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())                //
-          | ex::let_value([&, this]() { return request_account_transactions(acct); })    //
-          | ex::then(handle_data);                                                       //
+      auto fetch_all_pages = [this, &acct, handle_data](auto&& self) -> any_void_sender {
+        auto page = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())               //
+            | ex::let_value([&, this]() { return request_account_transactions(acct); })    //
+            | ex::then(handle_data)                                                        //
+            | ex::let_value([self](bool again) mutable -> any_void_sender {
+                if (again)
+                {
+                  // if we got data, there may be more, so fetch another page
+                  return self(self);
+                }
+                // no more rows for this account
+                return any_void_sender{ex::just()};
+              });
+        return any_void_sender{std::move(page)};
+      };
+
+      auto snd = fetch_all_pages(fetch_all_pages);
 
       scope.spawn(std::move(snd));
     }

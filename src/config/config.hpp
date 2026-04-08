@@ -33,6 +33,8 @@ struct app_settings
   secure_string grox_password;
   secure_string randomBytes;
   //
+  bool extra_debug = false;
+  //
   std::vector<std::shared_ptr<abstract_exchange>> networks_;
   //
   // std::shared_ptr<ads::CDockManager> dock_manager_;

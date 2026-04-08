@@ -127,7 +127,7 @@ void generate_encrypted_ini_data(password_dialog& npw)
     settings.setValue("API_xrpaddress", to_qstring(base64_encode(API_public_).toStdString()));
     settings.endGroup();    // account
   }
-  settings.endGroup();    // bitstamp
+  settings.endGroup();      // bitstamp
 
   // -------------------------------------
   // Write XRPL accounts
@@ -153,7 +153,7 @@ void generate_encrypted_ini_data(password_dialog& npw)
       settings.setValue("secret", to_qstring(base64_encode(private_).toStdString()));
       settings.endGroup();    // wallet
     }
-    settings.endGroup();    // main/test network
+    settings.endGroup();      // main/test network
   }
 }
 
@@ -179,6 +179,9 @@ int qt_main(pika::program_options::variables_map& vm)
 
   // open the Qt application ini file and start reading state
   QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
+
+  // set a global flat to enable extra debug stuff
+  if (vm["python-debug"].as<bool>()) { global_settings.extra_debug = true; }
 
   //
   bool authenticated = false;
@@ -284,7 +287,7 @@ int qt_main(pika::program_options::variables_map& vm)
         xrpl->add_wallet(w);
         settings.endGroup();    // wallet
       }
-      settings.endGroup();    // main/test network
+      settings.endGroup();      // main/test network
     }
   }
 
@@ -481,9 +484,9 @@ int main(int argc, char* argv[])
     pika::program_options::bool_switch(),
     "shortcut");
 
-  cmdline.add_options()("disable something",
-    po::value<bool>()->default_value(false),
-    "placeholder for disabling some functionality");
+  cmdline.add_options()("python-debug",
+     pika::program_options::bool_switch(),
+     "Enable debug mode for Python scripts");
 
   // po::variables_map vm;
   // po::store(po::command_line_parser(argc, argv)
