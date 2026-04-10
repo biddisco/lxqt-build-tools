@@ -66,6 +66,7 @@ class abstract_exchange
   exchange_map tickers_subscribed_;
 
   std::string exchange_name_;
+  std::string exchange_data_directory_;
   QTimer* timer_;
 
   public:
@@ -98,6 +99,12 @@ class abstract_exchange
   // ---------------------------------------
   void register_factory(std::string name, factory_function f);
   factory_function get_factory(std::string name);
+
+  // ---------------------------------------
+  // exchange specific data directory
+  // ---------------------------------------
+  virtual std::string get_data_directory() const { return exchange_data_directory_; }
+  virtual void set_data_directory(std::string const& dir) { exchange_data_directory_ = dir; }
 
   // ---------------------------------------
   // websocket/stream connection management

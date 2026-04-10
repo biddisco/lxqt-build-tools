@@ -149,6 +149,16 @@ void bitstamp_network::initialize()
 {
   std::string ini_name = global_settings.iniFileName.toStdString();
   read_transaction_logs(ini_name);
+
+  // if the "bitstamp-data" directory doesn't exist, create it, inside the appDataLocation
+  QDir dir(to_qstring(global_settings.appDataLocation + "/bitstamp-data"));
+  set_data_directory(dir.absolutePath().toStdString());
+  if (!dir.exists())
+  {
+    GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Directory", get_data_directory());
+    dir.mkpath(".");
+  }
+
   //
   auto web = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())        //
       | stdexec::let_value([this]() { return request_tickers_available(); })           // Qt -> pika
@@ -583,9 +593,8 @@ any_void_sender bitstamp_network::update_transaction_logs(std::string ini_name)
       "--accounts {} "                                       //
       "{} "                                                  //
       ,
-      GROX_SOURCE_DIR, GROX_SOURCE_DIR, global_settings.appDataLocation,
-      global_settings.appDataLocation, accountnames,
-      global_settings.extra_debug ? "" : "--delete_files");
+      GROX_SOURCE_DIR, GROX_SOURCE_DIR, global_settings.appDataLocation, get_data_directory(),
+      accountnames, global_settings.extra_debug ? "" : "--delete_files");
   //
   GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Execute", cmd_str);
   std::string result = execute_os_command(cmd_str.c_str(), false);
@@ -617,18 +626,17 @@ any_void_sender bitstamp_network::request_all_crypto_transactions()
     auto& acct = get_account_by_name("Main");
     // for (auto& acct : accounts())
     {
-      auto handle_data = [this, &acct](QByteArray byteArray) {
+      auto handle_data = [this](QByteArray byteArray) {
         std::string_view data(byteArray.constData(), byteArray.length());
         GROX_LOG_TRACE(bitstamp_log, "{:>20} Handler {}", "Transactions_Crypto", data);
         nlohmann::json jdata = nlohmann::json::parse(data);
         if (jdata.size() > 0)
         {
-          std::string name = fmt::format("{}/transactions-crypto-{}.json",
-              global_settings.appDataLocation, getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
+          std::string name = fmt::format("{}/transactions-crypto-{}.json", get_data_directory(),
+              getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
           std::ofstream transactions(name);
           transactions << jdata.dump(4);
           GROX_LOG_TRACE(bitstamp_log, "{:>20} Written {}", "Transactions_Crypto", name);
-          // handle_open_orders(acct, data);
         }
         else { GROX_LOG_TRACE(bitstamp_log, "{:>20} Empty", "Transactions_Crypto"); }
       };
@@ -701,7 +709,7 @@ any_void_sender bitstamp_network::request_all_market_transactions()
           if (jdata.size() > 0)
           {
             std::string name =
-                fmt::format("{}/transactions-market-{}-{}-{}.json", global_settings.appDataLocation,
+                fmt::format("{}/transactions-market-{}-{}-{}.json", get_data_directory(),
                     acct.name_, currency_pair_string(cp), getCurrentUtcTime("%Y-%m-%d.%H_%M_%S"));
             std::ofstream transactions(name);
             transactions << jdata.dump(4);
@@ -776,8 +784,8 @@ any_void_sender bitstamp_network::request_all_account_transactions()
           std::uint64_t first_id = jdata[0]["id"].get<std::uint64_t>();
           std::uint64_t last_id = jdata[jdata.size() - 1]["id"].get<std::uint64_t>();
           acct.last_order_ID = std::max(acct.last_order_ID, last_id);
-          std::string name = fmt::format("{}/transactions-user-{}-{}-{}.json",
-              global_settings.appDataLocation, acct.name_, first_id, last_id);
+          std::string name = fmt::format("{}/transactions-user-{}-{:010}-{:010}.json",
+              get_data_directory(), acct.name_, first_id, last_id);
           std::ofstream transactions(name);
           transactions << jdata.dump(4);
           GROX_LOG_DEBUG(
