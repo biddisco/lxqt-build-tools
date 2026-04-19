@@ -9,6 +9,8 @@ set(grox_widgets_SRCS
     currency_widget.hpp
     digital_clock.cpp
     digital_clock.hpp
+    indicators_model.cpp
+    indicators_model.hpp
     password_dialog.cpp
     password_dialog.hpp
     price_chart_widget.cpp

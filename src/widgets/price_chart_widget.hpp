@@ -5,16 +5,14 @@
 #include <tuple>
 #include <vector>
 //
-#include <QAbstractTableModel>
 #include <QComboBox>
 #include <QPushButton>
 #include <QTableView>
 #include <QWidget>
 //
 #include "exchange/abstract_exchange.hpp"
-#include "indicators/indicator_params.hpp"
-#include "indicators/indicator_ptr.hpp"
 #include "indicators/indicator_types.hpp"
+#include "indicators_model.hpp"
 #include "plot/indicator_plot.hpp"
 #include "plot/ohlc_picker.hpp"
 #include "plot/ohlc_price_plot.hpp"
@@ -24,32 +22,6 @@ class ohlc_dataset_view;
 namespace Ui {
   class price_chart_widget;
 }
-
-// ----------------------------------------------------------------------------
-class indicators_model : public QAbstractTableModel
-{
-  Q_OBJECT
-  public:
-  explicit indicators_model(QObject* parent = nullptr);
-
-  int rowCount(QModelIndex const& parent = QModelIndex()) const override;
-  int columnCount(QModelIndex const& parent = QModelIndex()) const override;
-  QVariant data(QModelIndex const& index, int role = Qt::DisplayRole) const override;
-  //
-  void dataAdded();
-  //    QModelIndex index(int row, int column,
-  //                              const QModelIndex &parent = QModelIndex()) const = 0;
-  //    QModelIndex parent(const QModelIndex &child) const = 0;
-
-  //    QModelIndex sibling(int row, int column, const QModelIndex &idx) const;
-  //    int rowCount(const QModelIndex &parent = QModelIndex()) const = 0;
-  //    int columnCount(const QModelIndex &parent = QModelIndex()) const = 0;
-  //    bool hasChildren(const QModelIndex &parent = QModelIndex()) const;
-
-  //    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const = 0;
-
-  std::vector<indicators::indicator_ptr> indicators_;
-};
 
 // ----------------------------------------------------------------------------
 class price_chart_widget : public QWidget
