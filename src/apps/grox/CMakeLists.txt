@@ -3,6 +3,11 @@ set(GROX_SRC # main application
 )
 
 # -----------------------------------------------------------------------------
+# Find Fontconfig (FcInit font config bug fix)
+# -----------------------------------------------------------------------------
+find_package(Fontconfig REQUIRED)
+
+# -----------------------------------------------------------------------------
 # Qt resource files
 # -----------------------------------------------------------------------------
 set(GROX_QRC_SRC ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
@@ -67,4 +72,5 @@ target_link_libraries(
          uuid
          Threads::Threads
          pika::pika
+         Fontconfig::Fontconfig
 )

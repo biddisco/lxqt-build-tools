@@ -43,7 +43,29 @@ namespace indicators {
     }
 
     // ----------------------------------------------------------------------------
-    ~indicator_ptr() { std::cout << "~indicator_ptr " << algorithm_->get_name() << std::endl; }
+    ~indicator_ptr()
+    {
+      // Explicitly unsubscribe from pub/sub callbacks BEFORE destroying algorithm_.
+      // This prevents "empty/cleared std::function" errors if the dataset's pub/sub
+      // is destroyed before indicator_base::~indicator_base() runs (which also unsubscribes,
+      // but as a safety net we do it here too). If unsubscribe fails due to dataset destruction,
+      // we catch and ignore to allow graceful shutdown even with destroyed data sources.
+      if (auto* ip = indicator())
+      {
+        try
+        {
+          for (auto d : ip->get_inputs())
+          {
+            std::string id = ip->subscription_name();
+            d.dataset_->new_data_subscribers_.unsubscribe(id);
+          }
+        }
+        catch (std::exception const& e)
+        {
+          // Dataset may already be destroyed during widget shutdown, that's okay
+        }
+      }
+    }
 
     // ----------------------------------------------------------------------------
     shared_algorithm algorithm_;

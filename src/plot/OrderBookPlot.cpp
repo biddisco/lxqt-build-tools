@@ -151,6 +151,7 @@ OrderBookPlot::~OrderBookPlot()
 // ----------------------------------------------------------------------------
 void OrderBookPlot::clearPlot()
 {
+  GROX_LOG_TRACE(book_log, "{:>20} Clear plot", "");
   // Detach and delete any existing plot curves
   this->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
   this->detachItems(QwtPlotItem::Rtti_PlotMarker, true);

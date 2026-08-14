@@ -12,13 +12,14 @@ else
 fi
 echo script dir is $SCRIPT_DIR
 
+SPACK_ENV=home
 # ----------------------------------------------------------------------------
 # source spack environment (which also sets python version)
 # ----------------------------------------------------------------------------
-echo checking for opal environment
-#if spack env list | grep -q 'opal'; then
+echo checking for $SPACK_ENV environment
+#if spack env list | grep -q '$SPACK_ENV'; then
   echo Activating spack environment in $SCRIPT_DIR
-  spack env activate --prompt opal
+  spack env activate --prompt $SPACK_ENV
 #fi
 
 # ----------------------------------------------------------------------------

@@ -112,7 +112,16 @@ public:
       for (auto d : get_inputs())
       {
         std::string id = subscription_name();
-        d.dataset_->new_data_subscribers_.unsubscribe(id);
+        try
+        {
+          d.dataset_->new_data_subscribers_.unsubscribe(id);
+        }
+        catch (std::exception const&)
+        {
+          std::cout << "ERROR: Dataset already destroyed during indicator_base destruction, id: "
+                    << id << std::endl;
+          // May already be unsubscribed (by indicator_ptr) or dataset may be destroyed
+        }
       }
       out_datasets_.clear();
     }

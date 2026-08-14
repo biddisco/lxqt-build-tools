@@ -98,13 +98,33 @@ price_chart_widget::price_chart_widget(QWidget* parent, std::shared_ptr<ohlc_dat
 // ----------------------------------------------------------------------------
 price_chart_widget::~price_chart_widget()
 {
+  // Explicitly detach and delete every indicator curve before any plot widget is destroyed.
+  // This avoids QwtPlot::~QwtPlot() trying to auto-detach the same curve objects later.
+  for (auto& indicator : ind_model_.indicators_)
+  {
+    for (auto* curve : indicator.curves)
+    {
+      curve->detach();
+
+      // delete curve;
+    }
+    indicator.curves.clear();
+    indicator.plot = nullptr;
+  }
+
+  // Destroy indicator objects while the underlying data sources are still alive so any
+  // pub/sub unsubscribe logic runs against valid state.
   ind_model_.indicators_.clear();
+
+  // Plot widgets can now be torn down safely because they no longer own any indicator curves.
+  for (auto p : filter_plots_) { delete p; }
+  delete price_plot_;
+  filter_plots_.clear();
+
   hdf5_ohlc_.reset();
   exchange_.reset();
   GROX_LOG_DEBUG(pplot_log, "{:>20}", "~price_chart_widget");
   delete ui;
-  delete price_plot_;
-  for (auto p : filter_plots_) { delete p; }
 }
 
 // ----------------------------------------------------------------------------
@@ -448,6 +468,7 @@ std::tuple<indicator_plot*, timebased_data_curve*> price_chart_widget::add_indic
 void price_chart_widget::remove_indicator_plot(indicator_plot* filter_plot, QwtPlotCurve* curve)
 {
   // detach curves and autodelete them
+  GROX_LOG_DEBUG(pplot_log, "{:>20} {}", "Remove plot", curve->title().text().toStdString());
   curve->detach();
   delete curve;
   //

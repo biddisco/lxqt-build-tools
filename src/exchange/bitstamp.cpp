@@ -964,7 +964,7 @@ void bitstamp_network::handle_account_info(bitstamp_account& acct, std::string_v
           // bitstamp (so far) always quotes fees as token_fiat not fiat_token
           std::string utoken = uppercase(mtch[1]);
           currency_pair cp = split_token_string(utoken);
-          take_readwrite_lock();
+          auto l = take_readwrite_lock();
           transaction_fee_map_[cp] = value;
           GROX_LOG_TRACE(bitstamp_log, "{:>20} transaction fee {} {} {}", "account info",
               fmt::streamed(cp.c1_), fmt::streamed(cp.c2_), value);

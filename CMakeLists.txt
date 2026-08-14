@@ -47,7 +47,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${PROJECT_SOURCE_DIR}/cmake")
 # ------------------------------------------------------------------------------
 # CXX standard 20
 # ------------------------------------------------------------------------------
-set(GROX_CXX_STANDARD 20)
+set(GROX_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD ${GROX_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

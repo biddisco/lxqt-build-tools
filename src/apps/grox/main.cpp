@@ -9,6 +9,8 @@
 #include <range/v3/view.hpp>
 #include <fmt/format.h>
 //
+#include <fontconfig/fontconfig.h>
+//
 #include <QApplication>
 #include <QNetworkAccessManager>
 #include <QObject>
@@ -459,11 +461,14 @@ void init_resource_partitioner_handler(
 
 int main(int argc, char* argv[])
 {
-  // fix: Qt depends on a UTF-8 locale, and has switched to "C.UTF-8" instead
+  // FIX: Force standard, native OS thread initialization of fontconfig
+  FcInit();
+
+  // FIX: Qt depends on a UTF-8 locale, and has switched to "C.UTF-8" instead
   // TODO: Find a real fix
   setenv("LC_ALL", "C.UTF-8", 1);
 
-  // fix: Qt: Session management error: Could not open network socket
+  // FIX: Qt: Session management error: Could not open network socket
   // TODO: Find a real fix
   unsetenv("SESSION_MANAGER");
   //

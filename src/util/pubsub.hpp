@@ -80,7 +80,9 @@ namespace grox {
       {
         if (subscriptions.empty())
         {
-          GROX_LOG_ERROR(pubsub_log, "{:>20} {} {} {}", "unsubscribe", id, "empty/cleared",
+          // During shutdown, it's normal for pub/sub to be cleared before all unsubscribe calls complete.
+          // This is not an error condition, so log at DEBUG level instead of ERROR.
+          GROX_LOG_DEBUG(pubsub_log, "{:>20} {} {} {}", "unsubscribe", id, "already_cleared",
               print_type<Signature>());
         }
         else

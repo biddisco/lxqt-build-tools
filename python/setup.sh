@@ -1,4 +1,4 @@
-spack env activate opal
+spack env activate home
 
 # create venv using sme python as in spack env
 uv venv --python $(which python) --prompt grox .venv
