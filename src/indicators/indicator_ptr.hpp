@@ -47,22 +47,28 @@ namespace indicators {
     {
       // Explicitly unsubscribe from pub/sub callbacks BEFORE destroying algorithm_.
       // This prevents "empty/cleared std::function" errors if the dataset's pub/sub
-      // is destroyed before indicator_base::~indicator_base() runs (which also unsubscribes,
-      // but as a safety net we do it here too). If unsubscribe fails due to dataset destruction,
-      // we catch and ignore to allow graceful shutdown even with destroyed data sources.
+      // is destroyed before indicator_base::~indicator_base() runs. After we unsubscribe,
+      // clear callbacks_registered_ so indicator_base::~indicator_base() does not try
+      // to unsubscribe again.
       if (auto* ip = indicator())
       {
-        try
+        if (ip->callbacks_registered())
         {
-          for (auto d : ip->get_inputs())
+          try
           {
-            std::string id = ip->subscription_name();
-            d.dataset_->new_data_subscribers_.unsubscribe(id);
+            for (auto d : ip->get_inputs())
+            {
+              std::string id = ip->subscription_name();
+              d.dataset_->new_data_subscribers_.unsubscribe(id);
+            }
           }
-        }
-        catch (std::exception const& e)
-        {
-          // Dataset may already be destroyed during widget shutdown, that's okay
+          catch (std::exception const& e)
+          {
+            // Dataset may already be destroyed (dangling raw pointer) - best effort cleanup
+            std::cout << "ERROR: Exception during indicator_ptr destruction unsubscribe, id: "
+                      << ip->subscription_name() << " what: " << e.what() << std::endl;
+          }
+          ip->set_callbacks_registered(false);
         }
       }
     }

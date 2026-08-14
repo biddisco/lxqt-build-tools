@@ -78,22 +78,11 @@ namespace grox {
       if (subscriptions.contains(id)) { subscriptions.erase(id); }
       else
       {
-        if (subscriptions.empty())
-        {
-          // During shutdown, it's normal for pub/sub to be cleared before all unsubscribe calls complete.
-          // This is not an error condition, so log at DEBUG level instead of ERROR.
-          GROX_LOG_DEBUG(pubsub_log, "{:>20} {} {} {}", "unsubscribe", id, "already_cleared",
-              print_type<Signature>());
-        }
-        else
-        {
-          for ([[maybe_unused]] auto const& subscriber : subscriptions)
-          {
-            GROX_LOG_ERROR(pubsub_log, "{:>20} {} {} {}", "unsubscribe", id, subscriber.first,
-                print_type<Signature>());
-          }
-          throw std::runtime_error("Incorrect Id given to unsubscribe");
-        }
+        // During shutdown, indicators may unsubscribe twice (once explicitly from
+        // indicator_ptr, once from indicator_base), or the pub/sub may already be
+        // cleared. Treat a missing id as a no-op rather than an error.
+        GROX_LOG_DEBUG(
+            pubsub_log, "{:>20} {} {} {}", "unsubscribe", id, "not_found", print_type<Signature>());
       }
     }
 

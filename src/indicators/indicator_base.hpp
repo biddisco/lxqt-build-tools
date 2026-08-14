@@ -90,6 +90,7 @@ protected:
     // (if 100 values are computed, {0..99} valid index will be 100, the next start point)
     std::uint64_t valid_index_;
     bool executing_;
+    bool callbacks_registered_{false};
 
 public:
     using algorithm_base::create;
@@ -109,18 +110,21 @@ public:
     {
       // NOTE: No logging in destructor - may be called during static destruction
       // when logging system is already destroyed
-      for (auto d : get_inputs())
+      if (callbacks_registered_)
       {
-        std::string id = subscription_name();
-        try
+        for (auto d : get_inputs())
         {
-          d.dataset_->new_data_subscribers_.unsubscribe(id);
-        }
-        catch (std::exception const&)
-        {
-          std::cout << "ERROR: Dataset already destroyed during indicator_base destruction, id: "
-                    << id << std::endl;
-          // May already be unsubscribed (by indicator_ptr) or dataset may be destroyed
+          std::string id = subscription_name();
+          try
+          {
+            d.dataset_->new_data_subscribers_.unsubscribe(id);
+          }
+          catch (std::exception const& e)
+          {
+            // Dataset may already be destroyed (dangling raw pointer) - best effort cleanup
+            std::cout << "ERROR: Exception during indicator_base destruction unsubscribe, id: "
+                      << id << " what: " << e.what() << std::endl;
+          }
         }
       }
       out_datasets_.clear();
@@ -155,6 +159,10 @@ public:
       if (i >= out_datasets_.size()) { throw std::runtime_error("Setup inputs/outputs"); }
       return out_datasets_[i];
     }
+
+    // ----------------------------------------------------------------------------
+    bool callbacks_registered() const { return callbacks_registered_; }
+    void set_callbacks_registered(bool registered) { callbacks_registered_ = registered; }
 
     // ----------------------------------------------------------------------------
     // create a dataset for each indicator output
@@ -208,6 +216,7 @@ public:
           execute_continue();
         });
       }
+      callbacks_registered_ = true;
     }
 
     // ----------------------------------------------------------------------------
