@@ -1,0 +1,4 @@
+# Suppress all leaks coming from the Fontconfig library
+leak:libfontconfig.so.1
+# Alternatively, suppress the specific internal function from your log
+leak:FcFontRenderPrepare
