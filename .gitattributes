@@ -1,1 +1,9 @@
-*.ipynb filter=strip-notebook-output
+# Clean output from python notebooks
+# Add the following to ~/.gitconfig
+# 
+# [filter "nbstripout"]
+#   clean = /home/biddisco/.venv-pyhome/bin/nbstripout
+#   smudge = cat
+#   required = false
+
+*.ipynb filter=nbstripout
