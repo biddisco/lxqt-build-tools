@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[5]:
+# In[2]:
 
 
-# activate .venv in grox/python dir : source ~/src/grox/python/.venv/bin/activate
+# spack env activate home
+# source ~/.venv-pyhome/bin/activate
+
 import pandas as pd
 import os
 import sys
@@ -45,7 +47,7 @@ debug = True
 # 
 # ---
 
-# In[6]:
+# In[3]:
 
 
 # The directory where grox will store new json files downloaded from exchanges
@@ -65,7 +67,7 @@ print(f"grox_ini_file: {grox_ini_file}")
 # 
 # ---
 
-# In[7]:
+# In[4]:
 
 
 # these are officil transaction types as defined by the bitstamp API
@@ -91,7 +93,7 @@ transaction_types_dict = {
 account_names = ['Main', 'Currency', 'Test']
 
 
-# In[8]:
+# In[ ]:
 
 
 if 'ipykernel' in sys.modules:
@@ -123,7 +125,7 @@ else:
 pd.options.display.float_format = '{:.8f}'.format
 
 
-# In[9]:
+# In[ ]:
 
 
 # we must handle "2021-02-23 08:59:14.652000" and "2021-02-23 08:59:14" and unix timestamps
@@ -197,7 +199,7 @@ def cleanup_dataframe(df, message, debug=False):
 # 
 # ---
 
-# In[10]:
+# In[ ]:
 
 
 account_files = {}
@@ -223,7 +225,7 @@ else:
 # 
 # ---
 
-# In[11]:
+# In[ ]:
 
 
 # load previously generated csv files into pandas dataframes
@@ -247,7 +249,7 @@ for account in account_names:
 # 
 # ---
 
-# In[12]:
+# In[ ]:
 
 
 json_files_read = []
@@ -301,7 +303,7 @@ if all(data is None for data in account_data.values()):
     sys.exit(0)
 
 
-# In[13]:
+# In[ ]:
 
 
 if success:
@@ -359,7 +361,7 @@ else:
 # ## Find which transactions in the "official" bitstamp export are not present in our API exports 
 # ---
 
-# In[14]:
+# In[ ]:
 
 
 if not validation_file:

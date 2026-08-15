@@ -21,7 +21,9 @@ AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignEscapedNewlines: Right
 AlignOperands: false
-AlignTrailingComments: true
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 2
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortBlocksOnASingleLine: Always
 AllowShortCaseLabelsOnASingleLine: true
@@ -37,17 +39,17 @@ AlwaysBreakTemplateDeclarations: true
 BinPackArguments: true
 BinPackParameters: true
 BraceWrapping:
-    AfterCaseLabel: true
-    AfterClass: true
-    AfterControlStatement: true
-    AfterEnum: true
-    AfterFunction: true
-    AfterNamespace: false
-    AfterStruct: true
-    AfterUnion: true
-    BeforeCatch: true
-    BeforeElse: true
-    IndentBraces: false
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  IndentBraces: false
 BreakAfterAttributes: Leave
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Custom
@@ -68,16 +70,16 @@ DerivePointerAlignment: false
 FixNamespaceComments: true
 # ForEachMacros: ['']
 IncludeCategories:
-  - Regex:           '^<Q.*\.hpp>'
-    Priority:        1
-  - Regex:           '^<range/.*\.hpp>'
-    Priority:        2
-  - Regex:           '^<.*'
-    Priority:        3
-  - Regex:           '^\".*'
-    Priority:        4
-  - Regex:           '.*'
-    Priority:        5
+  - Regex: '^<Q.*\.hpp>'
+    Priority: 1
+  - Regex: '^<range/.*\.hpp>'
+    Priority: 2
+  - Regex: "^<.*"
+    Priority: 3
+  - Regex: '^\".*'
+    Priority: 4
+  - Regex: ".*"
+    Priority: 5
 # IncludeIsMainRegex: ''
 IndentCaseLabels: false
 IndentWidth: 2
@@ -106,7 +108,7 @@ QualifierAlignment: Right
 ReflowComments: false
 RequiresClausePosition: OwnLine
 RequiresExpressionIndentation: OuterScope
-SortIncludes:    true
+SortIncludes: true
 SpaceAfterCStyleCast: true
 SpaceAfterTemplateKeyword: true
 SpaceBeforeAssignmentOperators: true

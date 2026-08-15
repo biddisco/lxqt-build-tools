@@ -20,7 +20,6 @@
             "args": []
         },
         {
-            // Debug the active CMake target using CMake Tools extension
             "name": "Debug Active CMake Target",
             "type": "cppdbg",
             "request": "launch",
@@ -28,8 +27,13 @@
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "/home/biddisco/build/grox/lib:/usr/local/lib:${env:LD_LIBRARY_PATH}"
+                }
+            ],
+            "externalConsole": true,
             "MIMode": "gdb",
             "setupCommands": [
                 {
@@ -37,7 +41,8 @@
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ]
+            ],
+            "visualizerFile": "/home/biddisco/.local/x86_64/config/Code/User/workspaceStorage/e176b59e3b294a02bf3a5933ee962988/tonka3000.qtvsctools/qt.natvis.xml"
         },
         {
             "name": "Debug grox",
@@ -48,7 +53,7 @@
             "stopAtEntry": false,
             "cwd": "/home/biddisco/build/grox",
             "environment": [],
-            "externalConsole": false,
+            "externalConsole": true,
             "MIMode": "gdb",
             "setupCommands": [
                 {
@@ -56,48 +61,8 @@
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ]
-        },
-        {
-            "name": "Debug LandauDamping",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "/home/biddisco/build/grox",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "Debug PenningTrap",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "args": [
-                "--particles",
-                "10000"
             ],
-            "stopAtEntry": false,
-            "cwd": "/home/biddisco/build/grox",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "visualizerFile": "/home/biddisco/.local/x86_64/config/Code/User/workspaceStorage/e176b59e3b294a02bf3a5933ee962988/tonka3000.qtvsctools/qt.natvis.xml"
         }
     ],
     "inputs": [

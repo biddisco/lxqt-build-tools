@@ -79,4 +79,8 @@
             "color": "foldercolorizer.color_00ccff"
         }
     ],
+    "editor.wordWrapColumn": 100,
+    "qt-core.additionalQtPaths": [],
+    "qt-ui.customWidgetsDesignerExePath": "/opt/Qt/6.10.1/gcc_64/bin/designer",
+    "qt-core.qtInstallationRoot": "/opt/Qt/6.10.1/gcc_64/",
 }
