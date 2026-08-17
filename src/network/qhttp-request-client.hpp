@@ -22,6 +22,7 @@ namespace net::http {
     std::string url_;
     std::string content_;
     rx_req_handler_type handler_;
+    int timeout_ms_ = 0;
     static std::atomic<int> debug_count_;
 
 public:
@@ -48,6 +49,7 @@ public:
 
     void get_request(rx_req_handler_type&& handler);
     void post_request(rx_req_handler_type&& handler);
+    void set_timeout(int ms);
     void attach_handler(QNetworkReply* reply);
 
     static void reply_finished(client_ptr self, QNetworkReply* reply);

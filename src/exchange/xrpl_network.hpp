@@ -22,10 +22,6 @@
 #include "senders/sender_defs.hpp"
 
 // ----------------------------------------------------------------------------
-#define GROX_USE_LOCAL_SERVER
-#define GROX_USE_RIPPLE_MAINNET_SERVER
-
-// ----------------------------------------------------------------------------
 class xrpl_network : public abstract_exchange
 {
   Q_OBJECT
@@ -42,42 +38,30 @@ class xrpl_network : public abstract_exchange
   std::map<std::string, double> currency_fees_;
 
   // ---------------------------------------
-  // MainNet : rippled server
+  // Configurable rippled server endpoints
   // ---------------------------------------
-#if defined(GROX_USE_LOCAL_SERVER)
-// for ssl certificates, we must use oryx, rather thaan 192.168.1.10
-# define LOCAL_SERVER "oryx"
-  static inline std::string const ripple_websocket_address = LOCAL_SERVER;
-  static inline int const ripple_websocket_port = 6006;
+  public:
+  struct server_config
+  {
+    std::string name;
+    std::string ws_host;
+    int ws_port = 0;
+    std::string rpc_host;
+    int rpc_port = 0;
+  };
 
-  static inline std::string const ripple_jsonrpc_address = LOCAL_SERVER;
-  static inline int const ripple_jsonrpc_port = 5005;
+  private:
+  std::vector<server_config> servers_;
+  std::size_t selected_server_ = 0;
 
-#elif defined(GROX_USE_RIPPLE_MAINNET_SERVER)
-  static inline std::string const ripple_websocket_address = "s1.ripple.com";
-  static inline int const ripple_websocket_port = 443;
+  std::string websocket_address_;
+  int websocket_port_ = 0;
+  std::string jsonrpc_address_;
+  int jsonrpc_port_ = 0;
 
-  static inline std::string const ripple_jsonrpc_address = "s1.ripple.com";
-  static inline int const ripple_jsonrpc_port = 51234;
-
-#else
-  static inline std::string const ripple_websocket_address = "xrplcluster.com";
-  static inline int const ripple_websocket_port = 443;
-
-  static inline std::string const ripple_jsonrpc_address = "xrplcluster.com";
-  static inline int const ripple_jsonrpc_port = 443;
-#endif
-
-  // ---------------------------------------
-  // TestNet rippled server
-  // ---------------------------------------
-  // TestNet websocket
-  static inline std::string const testnet_websocket_address = "s.altnet.rippletest.net";
-  static inline int const testnet_websocket_port = 51233;
-
-  // TestNet JSON RPC server
-  static inline std::string const testnet_json_rpc_address = "s.altnet.rippletest.net";
-  static inline int const testnet_json_rpc_port = 51234;
+  static std::vector<server_config> default_servers(bool testnet);
+  void load_server_settings();
+  void apply_selected_server();
 
   private:
   // ---------------------------------------
@@ -123,6 +107,12 @@ class xrpl_network : public abstract_exchange
   //
   std::string jsonrpc_address() const;
   int jsonrpc_port() const;
+  //
+  std::vector<server_config> const& server_list() const { return servers_; }
+  std::size_t selected_server_index() const { return selected_server_; }
+  void set_server_list(std::vector<server_config> servers, std::size_t selected);
+  void reconnect();
+  static std::string settings_group(bool testnet);
   //
   bool can_send(currency_code const& /*c*/, abstract_exchange* dest) override;
   //

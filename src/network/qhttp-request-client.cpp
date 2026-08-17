@@ -6,6 +6,7 @@
 //
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QTimer>
 //
 #include "debug/logging.hpp"
 #include "network/qhttp-request-client.hpp"
@@ -95,6 +96,9 @@ namespace net::http {
   }
 
   // ----------------------------------------------------------------------------
+  void qhttp_request_client::set_timeout(int ms) { timeout_ms_ = ms; }
+
+  // ----------------------------------------------------------------------------
   void qhttp_request_client::attach_handler(QNetworkReply* reply)
   {
     using namespace std::placeholders;
@@ -121,6 +125,24 @@ namespace net::http {
 
       QObject::connect(reply, &QNetworkReply::sslErrors, this,
           std::bind(&qhttp_request_client::onSslErrors, this, reply, _1), Qt::DirectConnection);
+
+      if (timeout_ms_ > 0)
+      {
+        auto* timer = new QTimer(this);
+        timer->setSingleShot(true);
+        QObject::connect(
+            timer, &QTimer::timeout, this,
+            [this, reply]() {
+              if (reply && reply->isRunning())
+              {
+                GROX_LOG_ERROR(http_log, "{:>20} {} ms {}, aborting", "timeout", timeout_ms_, url_);
+                reply->abort();
+              }
+            },
+            Qt::DirectConnection);
+        QObject::connect(reply, &QNetworkReply::finished, timer, &QObject::deleteLater);
+        timer->start(timeout_ms_);
+      }
     }
     else
     {    // if already finished

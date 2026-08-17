@@ -25,6 +25,8 @@ set(grox_widgets_SRCS
     wallet_widget.hpp
     xrp_functions.cpp
     xrp_functions.hpp
+    xrpl_settings_dialog.cpp
+    xrpl_settings_dialog.hpp
 )
 
 set(grox_widgets_SRCS

@@ -11,6 +11,7 @@
 #include <QMenu>
 #include <QObject>
 #include <QPlainTextEdit>
+#include <QSettings>
 #include <QString>
 // extern
 #include <fmt/format.h>
@@ -44,10 +45,151 @@ using namespace nlohmann;
 static auto xrpnet_log = grox::log::create("XRP-legr");
 
 // ----------------------------------------------------------------------------
+std::string xrpl_network::settings_group(bool testnet)
+{
+  return testnet ? "XRPL-Testnet-Servers" : "XRPL-Mainnet-Servers";
+}
+
+// ----------------------------------------------------------------------------
+std::vector<xrpl_network::server_config> xrpl_network::default_servers(bool testnet)
+{
+  if (testnet)
+  {
+    return {server_config{
+        "Ripple Testnet", "s.altnet.rippletest.net", 51233, "s.altnet.rippletest.net", 51234}};
+  }
+  return {
+      server_config{"Local (oryx)", "oryx", 6006, "oryx", 5005},
+      server_config{"Ripple Mainnet (s1)", "s1.ripple.com", 443, "s1.ripple.com", 51234},
+      server_config{"Ripple Mainnet (cluster)", "xrplcluster.com", 443, "xrplcluster.com", 443},
+  };
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::load_server_settings()
+{
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
+  settings.beginGroup(QString::fromStdString(settings_group(testnet_)));
+
+  int selected = settings.value("selected", 0).toInt();
+  QStringList encoded = settings.value("servers").toStringList();
+
+  servers_.clear();
+  if (encoded.empty()) { servers_ = default_servers(testnet_); }
+  else
+  {
+    for (auto const& e : encoded)
+    {
+      auto parts = e.split('|');
+      if (parts.size() == 5)
+      {
+        server_config cfg;
+        cfg.name = parts[0].toStdString();
+        cfg.ws_host = parts[1].toStdString();
+        cfg.ws_port = parts[2].toInt();
+        cfg.rpc_host = parts[3].toStdString();
+        cfg.rpc_port = parts[4].toInt();
+        servers_.push_back(cfg);
+      }
+    }
+    if (servers_.empty()) { servers_ = default_servers(testnet_); }
+  }
+
+  selected_server_ = static_cast<std::size_t>(
+      std::max(0, std::min(selected, static_cast<int>(servers_.size()) - 1)));
+  apply_selected_server();
+
+  settings.endGroup();
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::apply_selected_server()
+{
+  if (selected_server_ >= servers_.size()) { selected_server_ = 0; }
+  if (servers_.empty()) { servers_ = default_servers(testnet_); }
+  auto const& s = servers_[selected_server_];
+  websocket_address_ = s.ws_host;
+  websocket_port_ = s.ws_port;
+  jsonrpc_address_ = s.rpc_host;
+  jsonrpc_port_ = s.rpc_port;
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::set_server_list(std::vector<server_config> servers, std::size_t selected)
+{
+  servers_ = std::move(servers);
+  selected_server_ = selected;
+  if (selected_server_ >= servers_.size() && !servers_.empty())
+  {
+    selected_server_ = servers_.size() - 1;
+  }
+  apply_selected_server();
+
+  QSettings settings(global_settings.iniFileName, QSettings::IniFormat);
+  settings.beginGroup(QString::fromStdString(settings_group(testnet_)));
+  settings.setValue("selected", static_cast<int>(selected_server_));
+
+  QStringList encoded;
+  for (auto const& s : servers_)
+  {
+    encoded << QString("%1|%2|%3|%4|%5")
+                   .arg(QString::fromStdString(s.name))
+                   .arg(QString::fromStdString(s.ws_host))
+                   .arg(s.ws_port)
+                   .arg(QString::fromStdString(s.rpc_host))
+                   .arg(s.rpc_port);
+  }
+  settings.setValue("servers", encoded);
+  settings.sync();
+  settings.endGroup();
+
+  GROX_LOG_INFO(xrpnet_log, "{:>20} {} servers, selected {}", "XRPL server list updated",
+      servers_.size(), selected_server_);
+}
+
+// ----------------------------------------------------------------------------
+void xrpl_network::reconnect()
+{
+  GROX_LOG_INFO(
+      xrpnet_log, "{:>20} {}:{}", "Reconnecting XRPL to", websocket_address(), websocket_port());
+
+  // These are QObjects, so reset them on the Qt thread.
+  ws_orderbook.reset();
+  ws_accounts.reset();
+
+  // Re-subscribe any streams that were enabled, using the new endpoint.
+  std::vector<currency_pair> orderbook_pairs;
+  {
+    subscription_lock_type lock;
+    auto const& tickers = tickers_subscribed(lock);
+    for (auto const& [cp, data] : tickers)
+    {
+      if (is_stream_subscribed(cp, ticker::streams::order_book)) { orderbook_pairs.push_back(cp); }
+    }
+  }
+  for (auto const& cp : orderbook_pairs) { subscribe_order_book(cp, true); }
+
+  if (!subscribed_wallets_.empty()) { subscribe_accounts(); }
+
+  // Re-fetch account state. The HTTP requests are handled by Qt networking, so
+  // run the blocking sync_wait on a pika worker to keep the Qt event loop alive.
+  auto snd =
+      stdexec::starts_on(default_pool_scheduler(), stdexec::just()) | stdexec::then([this]() {
+        exec::async_scope scope;
+        get_all_account_infos(scope);
+        get_all_account_lines(scope);
+        get_all_account_offers(scope);
+        stdexec::sync_wait(scope.on_empty());
+      });
+  stdexec::start_detached(std::move(snd));
+}
+
+// ----------------------------------------------------------------------------
 xrpl_network::xrpl_network(bool testnet)
   : testnet_(testnet)
 {
   exchange_name_ = testnet_ ? "XRPL Testnet" : "XRPL Mainnet";
+  load_server_settings();
 }
 
 // ----------------------------------------------------------------------------
@@ -90,27 +232,11 @@ void xrpl_network::initialize()
 bool xrpl_network::testnet() const { return testnet_; }
 
 // ----------------------------------------------------------------------------
-std::string xrpl_network::websocket_address() const
-{
-  if (testnet_) return testnet_websocket_address;
-  return ripple_websocket_address;
-}
-int xrpl_network::websocket_port() const
-{
-  if (testnet_) return testnet_websocket_port;
-  return ripple_websocket_port;
-}
+std::string xrpl_network::websocket_address() const { return websocket_address_; }
+int xrpl_network::websocket_port() const { return websocket_port_; }
 
-std::string xrpl_network::jsonrpc_address() const
-{
-  if (testnet_) return testnet_json_rpc_address;
-  return ripple_jsonrpc_address;
-}
-int xrpl_network::jsonrpc_port() const
-{
-  if (testnet_) return testnet_json_rpc_port;
-  return ripple_jsonrpc_port;
-}
+std::string xrpl_network::jsonrpc_address() const { return jsonrpc_address_; }
+int xrpl_network::jsonrpc_port() const { return jsonrpc_port_; }
 
 // ----------------------------------------------------------------------------
 bool xrpl_network::can_send(currency_code const& c, abstract_exchange* dest)
@@ -560,6 +686,7 @@ any_bytearray_sender xrpl_network::get_account_lines(std::string addr)
   GROX_LOG_TRACE(xrpnet_log, "{:>20} {}", "account_lines", url);
   auto* client = net::http::qhttp_request_client::create(
       *global_settings.networkmanager_, url, content.dump());
+  client->set_timeout(10000);
   return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
@@ -655,6 +782,7 @@ any_bytearray_sender xrpl_network::get_account_info(std::string addr)
   GROX_LOG_TRACE(xrpnet_log, "{:>20} {}", "account_info", url);
   auto* client = net::http::qhttp_request_client::create(
       *global_settings.networkmanager_, url, content.dump());
+  client->set_timeout(10000);
   return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 
@@ -724,6 +852,7 @@ any_bytearray_sender xrpl_network::get_account_offers(std::string addr)
   GROX_LOG_TRACE(xrpnet_log, "{:>20} {}", "account_offers", url);
   auto* client = net::http::qhttp_request_client::create(
       *global_settings.networkmanager_, url, content.dump());
+  client->set_timeout(10000);
   return any_bytearray_sender{stdexec::just(client) | qhttp_post()};
 }
 

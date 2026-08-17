@@ -3,14 +3,17 @@
 #include <range/v3/view.hpp>
 //
 #include <QCheckBox>
+#include <QPushButton>
 #include <QRegularExpression>
 #include <QStandardItemModel>
 //
 #include "config/config.hpp"
 #include "debug/logging.hpp"
+#include "exchange/xrpl_network.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/collapsible_groupbox.hpp"
 #include "widgets/connection_widget.hpp"
+#include "widgets/xrpl_settings_dialog.hpp"
 //
 #include "ui_connection_widget.h"
 
@@ -26,6 +29,19 @@ connection_widget::connection_widget(QWidget* parent, abstract_exchange* ex)
   ui->setupUi(this);
   connect(
       ui->filter, SIGNAL(textChanged(QString const&)), this, SLOT(filter_changed(QString const&)));
+
+  if (dynamic_cast<xrpl_network*>(exchange_) != nullptr)
+  {
+    auto* settings_btn = new QPushButton("Server settings...", this);
+    ui->verticalLayout->insertWidget(0, settings_btn);
+    connect(settings_btn, &QPushButton::clicked, this, [this]() {
+      if (auto* xrpl = dynamic_cast<xrpl_network*>(exchange_))
+      {
+        xrpl_settings_dialog dialog(this, xrpl);
+        dialog.exec();
+      }
+    });
+  }
 }
 
 // ----------------------------------------------------------------------------
