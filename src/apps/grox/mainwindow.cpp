@@ -8,26 +8,38 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 // Qt
 #include <QAction>
 #include <QApplication>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QCoreApplication>
+#include <QDateEdit>
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
 #include <QDockWidget>
+#include <QFont>
+#include <QFontDatabase>
 #include <QFrame>
+#include <QHBoxLayout>
+#include <QHeaderView>
 #include <QInputDialog>
 #include <QKeyCombination>
 #include <QKeySequence>
+#include <QLabel>
+#include <QLineEdit>
 #include <QListView>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QScrollBar>
 #include <QShortcut>
+#include <QSortFilterProxyModel>
+#include <QTableView>
+#include <QTimeZone>
 // Qwt
 #include <QwtAxis>
 #include <QwtScaleDraw>
@@ -42,6 +54,7 @@
 #include "io/hdf5_ohlc_manager.hpp"
 #include "mainwindow.hpp"
 #include "network/evp-encrypt.hpp"
+#include "senders/pika_stdexec.hpp"
 #include "senders/qtstdexec.hpp"
 #include "util/datetime_utils.hpp"
 #include "util/stringutils.hpp"
@@ -313,6 +326,15 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   : QMainWindow(parent)
   , orders_frame_(nullptr)
   , accounts_frame_(nullptr)
+  , transactions_frame_(nullptr)
+  , transactions_view_(nullptr)
+  , transactions_model_(nullptr)
+  , transactions_proxy_(nullptr)
+  , transactions_filter_(nullptr)
+  , transactions_range_combo_(nullptr)
+  , transactions_start_date_(nullptr)
+  , transactions_end_date_(nullptr)
+  , transactions_volume_label_(nullptr)
   , terminal_widget_(nullptr)
   , terminal_dock_widget_(nullptr)
   , net_layout_(nullptr)
@@ -401,6 +423,91 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   global_settings.dockwindows_menu_->addAction(OrdersDockWidget->toggleViewAction());
 
   // ----------------------------------
+  // create a dock widget for recent transactions
+  transactions_frame_ = new QFrame();
+  transactions_frame_->setLayout(new QVBoxLayout());
+
+  transactions_volume_label_ = new QLabel("30d volume: --");
+  transactions_frame_->layout()->addWidget(transactions_volume_label_);
+
+  auto* range_layout = new QHBoxLayout();
+  transactions_range_combo_ = new QComboBox();
+  transactions_range_combo_->addItem("Last 30 days");
+  transactions_range_combo_->addItem("This month");
+  transactions_range_combo_->addItem("Last year");
+  transactions_range_combo_->addItem("All time");
+  transactions_range_combo_->addItem("Custom range");
+  transactions_range_combo_->setCurrentIndex(0);
+  range_layout->addWidget(transactions_range_combo_);
+
+  transactions_start_date_ = new QDateEdit(QDate::currentDate().addDays(-30));
+  transactions_start_date_->setCalendarPopup(true);
+  transactions_start_date_->setDisplayFormat("yyyy-MM-dd");
+  transactions_start_date_->setVisible(false);
+  range_layout->addWidget(transactions_start_date_);
+
+  transactions_end_date_ = new QDateEdit(QDate::currentDate());
+  transactions_end_date_->setCalendarPopup(true);
+  transactions_end_date_->setDisplayFormat("yyyy-MM-dd");
+  transactions_end_date_->setVisible(false);
+  range_layout->addWidget(transactions_end_date_);
+
+  range_layout->addStretch();
+  if (auto* vl = qobject_cast<QVBoxLayout*>(transactions_frame_->layout()))
+  {
+    vl->addLayout(range_layout);
+  }
+
+  transactions_filter_ = new QLineEdit();
+  transactions_filter_->setPlaceholderText("Filter by account or market ...");
+  transactions_frame_->layout()->addWidget(transactions_filter_);
+
+  transactions_model_ = new grox::transactions_model(this);
+  transactions_proxy_ = new QSortFilterProxyModel(this);
+  transactions_proxy_->setSourceModel(transactions_model_);
+  transactions_proxy_->setFilterCaseSensitivity(Qt::CaseInsensitive);
+  transactions_proxy_->setFilterKeyColumn(-1);
+
+  transactions_view_ = new QTableView();
+  transactions_view_->setModel(transactions_proxy_);
+  transactions_view_->setSortingEnabled(true);
+  transactions_view_->horizontalHeader()->setStretchLastSection(true);
+  transactions_view_->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+  transactions_view_->verticalHeader()->setVisible(false);
+  transactions_view_->setSelectionBehavior(QAbstractItemView::SelectRows);
+  transactions_view_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+  transactions_frame_->layout()->addWidget(transactions_view_);
+
+  CDockWidget* TransactionsDockWidget =
+      new CDockWidget(global_settings.dock_manager_, "Transactions");
+  TransactionsDockWidget->setWidget(transactions_frame_, CDockWidget::AutoScrollArea);
+  TransactionsDockWidget->setMinimumSizeHintMode(CDockWidget::MinimumSizeHintFromContent);
+  TransactionsDockWidget->setMinimumSize(128, 196);
+  auto const TransactionsautoHideContainer = global_settings.dock_manager_->addAutoHideDockWidget(
+      SideBarLocation::SideBarRight, TransactionsDockWidget);
+  TransactionsautoHideContainer->setSize(384);
+  global_settings.dockwindows_menu_->addAction(TransactionsDockWidget->toggleViewAction());
+
+  connect(transactions_filter_, &QLineEdit::textChanged, this,
+      [this](QString const& text) { transactions_proxy_->setFilterFixedString(text); });
+
+  connect(transactions_range_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+      [this](int) {
+        GROX_LOG_DEBUG(main_log, "Transactions range combo changed");
+        update_transactions_range();
+      });
+  connect(transactions_start_date_, &QDateEdit::dateChanged, this, [this](QDate const&) {
+    GROX_LOG_DEBUG(main_log, "Transactions start date changed");
+    update_transactions_range();
+  });
+  connect(transactions_end_date_, &QDateEdit::dateChanged, this, [this](QDate const&) {
+    GROX_LOG_DEBUG(main_log, "Transactions end date changed");
+    update_transactions_range();
+  });
+
+  update_transactions_range();
+
+  // ----------------------------------
   // create a dock widget for terminal
   terminal_widget_ = create_terminal_widget(dark_mode_);
   terminal_dock_widget_ = new CDockWidget(global_settings.dock_manager_, "Terminal");
@@ -427,6 +534,9 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       },
       Qt::QueuedConnection);
 
+  // Populate the transactions view now that the store exists.
+  update_transactions_range();
+
   connect(bitstamp_network_.get(), SIGNAL(wallet_changed(ledger_wallet*)), this,
       SLOT(wallet_changed(ledger_wallet*)), Qt::QueuedConnection);
 
@@ -444,6 +554,13 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
         global_settings.dock_manager_->openPerspective(active_perspective_);
       },
       Qt::QueuedConnection);
+
+  // Refresh live trading fees periodically because the 30-day rolling volume
+  // changes with every trade.
+  auto* fee_timer = new QTimer(this);
+  connect(
+      fee_timer, &QTimer::timeout, this, [this]() { bitstamp_network_->refresh_trading_fees(); });
+  fee_timer->start(std::chrono::hours(1));
 #endif
 
 #ifdef GROX_HAVE_XRPL
@@ -725,9 +842,110 @@ void GroxMainWindow::wallet_changed(ledger_wallet* w)
 }
 
 // ----------------------------------------------------------------------------
+void GroxMainWindow::update_transactions_range()
+{
+  if (!bitstamp_network_ || !bitstamp_network_->transaction_store()) { return; }
+
+  bool const custom = transactions_range_combo_->currentIndex() == 4;
+  transactions_start_date_->setVisible(custom);
+  transactions_end_date_->setVisible(custom);
+
+  auto const now = QDateTime::currentDateTimeUtc();
+  auto format = [](QDateTime const& dt) {
+    return dt.toString("yyyy-MM-dd HH:mm:ss").toStdString();
+  };
+
+  std::string start;
+  std::string end;
+  switch (transactions_range_combo_->currentIndex())
+  {
+  case 0:    // Last 30 days
+    start = format(now.addDays(-30));
+    end = format(now);
+    break;
+  case 1:    // This month
+  {
+    QDate first = now.date();
+    first.setDate(first.year(), first.month(), 1);
+    start = format(QDateTime(first, QTime(0, 0, 0), QTimeZone::utc()));
+    end = format(now);
+    break;
+  }
+  case 2:    // Last year
+    start = format(now.addYears(-1));
+    end = format(now);
+    break;
+  case 3:    // All time
+    // leave start/end empty
+    break;
+  case 4:    // Custom range
+  default:
+    start = format(QDateTime(transactions_start_date_->date(), QTime(0, 0, 0), QTimeZone::utc()));
+    end = format(QDateTime(transactions_end_date_->date(), QTime(23, 59, 59), QTimeZone::utc()));
+    break;
+  }
+
+  int const range_index = transactions_range_combo_->currentIndex();
+  auto store = bitstamp_network_->transaction_store();
+
+  // Run the SQLite query on a pika worker thread; only the model update and
+  // label text change happen back on the Qt event thread.
+  auto snd = stdexec::just(std::move(start), std::move(end), store) |
+      stdexec::continues_on(grox::senders::default_pool_scheduler()) |
+      stdexec::then([](std::string s, std::string e, std::shared_ptr<grox::transaction_store> st) {
+        auto records = st->transactions_in_range(s, e, 10000);
+        auto total = st->total_rolling_volume();
+        return std::make_tuple(std::move(records), total, std::move(s), std::move(e));
+      }) |
+      stdexec::continues_on(QtStdExec::QThreadScheduler()) |
+      stdexec::then([this, range_index](std::tuple<std::vector<grox::transaction_record>,
+                        grox::volume_summary, std::string, std::string>
+                            result) {
+        auto& [records, total, s, e] = result;
+        GROX_LOG_DEBUG(main_log, "update_transactions_range: idx={} start={} end={} records={}",
+            range_index, s, e, records.size());
+        transactions_model_->set_records(std::move(records));
+        transactions_proxy_->invalidate();
+        transactions_volume_label_->setText(QString("30d volume (USD, where convertible): %1")
+                                                .arg(QString::number(total.volume_usd, 'f', 2)));
+      }) |
+      stdexec::upon_error([](std::exception_ptr const& ep) {
+        try
+        {
+          std::rethrow_exception(ep);
+        }
+        catch (std::exception const& e)
+        {
+          GROX_LOG_ERROR(main_log, "update_transactions_range async exception: {}", e.what());
+        }
+      });
+  stdexec::start_detached(std::move(snd));
+}
+
+// ----------------------------------------------------------------------------
 void GroxMainWindow::transaction_event()
 {
-  GROX_LOG_DEBUG(main_log, "transaction_event : update balances?");
+  GROX_LOG_DEBUG(main_log, "transaction_event : update transactions view");
+
+  try
+  {
+    if (bitstamp_network_ && bitstamp_network_->transaction_store())
+    {
+      update_transactions_range();
+
+      // A new transaction may have changed our fee tier, so refresh the live
+      // fee cache from Bitstamp.
+      bitstamp_network_->refresh_trading_fees();
+    }
+  }
+  catch (std::exception const& e)
+  {
+    GROX_LOG_ERROR(main_log, "transaction_event exception: {}", e.what());
+  }
+  catch (...)
+  {
+    GROX_LOG_ERROR(main_log, "transaction_event exception: unknown");
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -898,9 +1116,9 @@ void GroxMainWindow::saveConnectionSetups()
       }
       settings.endGroup();    // ticker
     }
-    settings.endGroup();    // abstract_exchange
+    settings.endGroup();      // abstract_exchange
   }
-  settings.endGroup();    // streams
+  settings.endGroup();        // streams
   GROX_LOG_DEBUG(main_log, "{:>20} {}", "Connections saved", settings.fileName().toStdString());
 }
 

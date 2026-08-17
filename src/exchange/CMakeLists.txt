@@ -27,6 +27,7 @@ target_link_libraries(
          grox_util
          grox_currency
          grox_data
+         grox_io
          grox_network
          grox_util
          nlohmann_json::nlohmann_json

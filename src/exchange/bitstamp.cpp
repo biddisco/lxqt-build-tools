@@ -4,7 +4,6 @@
 #include <exception>
 #include <iostream>
 #include <memory>
-#include <qsettings.h>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -147,8 +146,18 @@ bool token_valid(std::atomic<std::chrono::time_point<std::chrono::system_clock>>
 // ----------------------------------------------------------------------------
 void bitstamp_network::initialize()
 {
-  std::string ini_name = global_settings.iniFileName.toStdString();
-  read_transaction_logs(ini_name);
+  // Open the canonical SQLite transaction store before doing anything that
+  // might read or write transaction data.
+  transaction_store_ = std::make_shared<grox::transaction_store>(
+      fmt::format("{}/grox_transactions.db", global_settings.appDataLocation));
+
+  // The SQLite store is the authoritative source for the last fetched id.
+  for (auto& acct : accounts_)
+  {
+    acct.last_order_ID = transaction_store_->last_transaction_id(acct.name_);
+    GROX_LOG_DEBUG(
+        bitstamp_log, "{:>20} {} last id {}", "TransactionLogs", acct.name_, acct.last_order_ID);
+  }
 
   // if the "bitstamp-data" directory doesn't exist, create it, inside the appDataLocation
   QDir dir(to_qstring(global_settings.appDataLocation + "/bitstamp-data"));
@@ -171,11 +180,11 @@ void bitstamp_network::initialize()
       | stdexec::continues_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
       | stdexec::let_value([this]() { return request_all_account_infos(); })           // Qt -> pika
       | stdexec::continues_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
+      | stdexec::let_value([this]() { return request_all_trading_fees(); })            // Qt -> pika
+      | stdexec::continues_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
       | stdexec::let_value([this]() { return request_all_account_orders(); })          // Qt -> pika
       | stdexec::continues_on(QtStdExec::QThreadScheduler())                           // pika -> Qt
       | stdexec::let_value([this]() { return request_all_account_transactions(); })    // Qt -> pika
-      | stdexec::then([=, this]() { update_transaction_logs(ini_name); })              //
-      | stdexec::then([=, this]() { read_transaction_logs(ini_name); })                //
       | stdexec::then([this]() { emit network_initialized(this); })                    //
       | stdexec::upon_error([this](std::exception_ptr const& e) {
           std::lock_guard<std::mutex> l(candlestick_mutex_);
@@ -389,6 +398,9 @@ bool bitstamp_network::can_send(currency_code const& c, abstract_exchange* dest)
 // ----------------------------------------------------------------------------
 ticker::transaction_fees bitstamp_network::get_fees(currency_pair const& cp) const
 {
+  // Prefer live fee cache from /api/v2/fees/trading/ if available.
+  if (auto cached = get_cached_trading_fees(cp); cached.has_value()) { return *cached; }
+
   take_readonly_lock();
   if (transaction_fee_map_.contains(cp))
     return {transaction_fee_map_.at(cp), transaction_fee_map_.at(cp), 0, 0};
@@ -551,56 +563,6 @@ any_void_sender bitstamp_network::request_all_account_orders()
       | stdexec::then(get_all_orders);
 
   return any_void_sender{std::move(snd)};
-}
-
-// ----------------------------------------------------------------------------
-any_void_sender bitstamp_network::read_transaction_logs(std::string ini_name)
-{
-  QSettings settings(ini_name.c_str(), QSettings::IniFormat);
-  settings.beginGroup("TransactionLogs");
-  settings.beginGroup("Bitstamp");
-  for (auto suffix : {"crypto", "market", "user"})
-  {
-    for (auto& acct : accounts_)
-    {
-      std::uint64_t last_orderId =
-          settings.value(fmt::format("ID_{}_{}", suffix, acct.name_)).toULongLong();
-      if (last_orderId > 0)
-      {
-        acct.last_order_ID = std::max(acct.last_order_ID, last_orderId);
-        GROX_LOG_DEBUG(bitstamp_log, "{:>20} last_Id {} {}", "TransactionLogs",
-            fmt::format("ID_{}_{}", suffix, acct.name_), last_orderId);
-      }
-    }
-  }
-  settings.endGroup();
-  settings.endGroup();
-  return any_void_sender{stdexec::just()};
-}
-
-// ----------------------------------------------------------------------------
-any_void_sender bitstamp_network::update_transaction_logs(std::string ini_name)
-{
-  // build a list of accounts to pass to python script
-  std::string accountnames;
-  for (auto& acct : accounts()) accountnames += acct.name_ + " ";
-
-  std::string cmd_str = fmt::format(                         //
-      "{}/python/run-script.sh python3 "                     //
-      "{}/python/transactions/transactions-grox-json.py "    //
-      "--grox_data_dir={} "                                  //
-      "--grox_json_dir={} "                                  //
-      "--accounts {} "                                       //
-      "{} "                                                  //
-      ,
-      GROX_SOURCE_DIR, GROX_SOURCE_DIR, global_settings.appDataLocation, get_data_directory(),
-      accountnames, global_settings.extra_debug ? "" : "--delete_files");
-  //
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Execute", cmd_str);
-  std::string result = execute_os_command(cmd_str.c_str(), false);
-  GROX_LOG_DEBUG(bitstamp_log, "{:>20} {}", "Execute result", result);
-
-  return any_void_sender{stdexec::just()};
 }
 
 // ----------------------------------------------------------------------------
@@ -784,6 +746,9 @@ any_void_sender bitstamp_network::request_all_account_transactions()
           std::uint64_t first_id = jdata[0]["id"].get<std::uint64_t>();
           std::uint64_t last_id = jdata[jdata.size() - 1]["id"].get<std::uint64_t>();
           acct.last_order_ID = std::max(acct.last_order_ID, last_id);
+
+          transaction_store_->insert_bitstamp_transactions(acct.name_, jdata);
+
           std::string name = fmt::format("{}/transactions-user-{}-{:010}-{:010}.json",
               get_data_directory(), acct.name_, first_id, last_id);
           std::ofstream transactions(name);
@@ -823,6 +788,7 @@ any_void_sender bitstamp_network::request_all_account_transactions()
     GROX_LOG_TRACE(bitstamp_log, "{:>20} scope Transactions_User", "SYNC_WAIT");
     tt::sync_wait(scope.on_empty());
     GROX_LOG_TRACE(bitstamp_log, "{:>20} scope Transactions_User", "COMPLETE");
+    emit transaction_event();
   };
 
   // must be on a pika thread if we are using sync_wait
@@ -831,6 +797,144 @@ any_void_sender bitstamp_network::request_all_account_transactions()
       | stdexec::then(get_all_transactions);
 
   return any_void_sender{std::move(snd)};
+}
+
+// ----------------------------------------------------------------------------
+any_bytearray_sender bitstamp_network::request_trading_fees(bitstamp_account& acct)
+{
+  auto* client = signed_request(acct, "/api/v2/fees/trading/", "", true);
+  return stdexec::just(client) | qhttp_post();
+}
+
+// ----------------------------------------------------------------------------
+any_void_sender bitstamp_network::request_all_trading_fees()
+{
+  namespace tt = pika::this_thread::experimental;
+  GROX_LOG_TRACE(bitstamp_log, "{:>20}", "Request_Trading_Fees");
+
+  auto get_all_fees = [this]() {
+    exec::async_scope scope;
+    for (auto& acct : accounts())
+    {
+      auto handle_data = [this, &acct](QByteArray byteArray) {
+        std::string_view data(byteArray.constData(), byteArray.length());
+        GROX_LOG_TRACE(
+            bitstamp_log, "{:>20} {} Handler {}", "Trading_Fees", acct.name_, data.length());
+        handle_trading_fees(acct, data);
+      };
+
+      auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())        //
+          | ex::let_value([&, this]() { return request_trading_fees(acct); })    //
+          | ex::then(handle_data);                                               //
+
+      scope.spawn(std::move(snd));
+    }
+
+    tt::sync_wait(scope.on_empty());
+    GROX_LOG_DEBUG(bitstamp_log, "{:>20}", "Trading_Fees COMPLETE");
+  };
+
+  auto snd = stdexec::just()                               //
+      | stdexec::continues_on(default_pool_scheduler())    //
+      | stdexec::then(get_all_fees);
+
+  return any_void_sender{std::move(snd)};
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::refresh_trading_fees()
+{
+  GROX_LOG_DEBUG(bitstamp_log, "{:>20}", "Refresh trading fees");
+  // Ensure the refresh is started from a pika worker thread even when called
+  // from the Qt event loop.
+  ex::start_detached(stdexec::starts_on(default_pool_scheduler(), request_all_trading_fees()));
+}
+
+// ----------------------------------------------------------------------------
+void bitstamp_network::handle_trading_fees(bitstamp_account& acct, std::string_view data)
+{
+  try
+  {
+    nlohmann::json jdata = nlohmann::json::parse(data);
+    GROX_LOG_TRACE(bitstamp_log, "{:>20} {}", "Trading_Fees", jdata.dump(4));
+
+    std::map<currency_pair, ticker::transaction_fees> fees;
+    for (auto const& item : jdata)
+    {
+      if (!item.is_object())
+      {
+        GROX_LOG_TRACE(bitstamp_log, "{:>20} {} skipping non-object item {}", "Trading_Fees",
+            acct.name_, item.dump());
+        continue;
+      }
+
+      std::string market = item.value("market", item.value("currency_pair", ""));
+      if (market.empty()) { continue; }
+
+      currency_pair cp;
+      if (market.find('/') != std::string::npos) { cp = string_to_pair(market, "/"); }
+      else if (market.find('-') != std::string::npos) { cp = string_to_pair(market, "-"); }
+      else { cp = split_token_string(uppercase(market)); }
+
+      if (cp.c1_.code_.empty() || cp.c2_.code_.empty())
+      {
+        GROX_LOG_TRACE(
+            bitstamp_log, "{:>20} {} unknown market {}", "Trading_Fees", acct.name_, market);
+        continue;
+      }
+
+      double maker = 0.0;
+      double taker = 0.0;
+      if (item.contains("fees") && item["fees"].is_object())
+      {
+        auto const& fees_node = item["fees"];
+        if (fees_node.contains("maker"))
+        {
+          auto const& m = fees_node["maker"];
+          maker = m.is_number() ? m.get<double>() : std::stod(m.get<std::string>());
+        }
+        if (fees_node.contains("taker"))
+        {
+          auto const& t = fees_node["taker"];
+          taker = t.is_number() ? t.get<double>() : std::stod(t.get<std::string>());
+        }
+      }
+
+      fees[cp] = {maker, taker, 0.0, 0.0};
+      GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {} maker {} taker {}", "Trading_Fees", acct.name_,
+          market, maker, taker);
+    }
+
+    auto l = take_readwrite_lock();
+    account_trading_fees_[acct.name_] = std::move(fees);
+  }
+  catch (std::exception const& e)
+  {
+    GROX_LOG_ERROR(bitstamp_log, "{:>20} {} {}", "Trading_Fees failed", acct.name_, e.what());
+  }
+}
+
+// ----------------------------------------------------------------------------
+std::optional<ticker::transaction_fees> bitstamp_network::get_cached_trading_fees(
+    std::string const& account, currency_pair const& cp) const
+{
+  auto l = take_readonly_lock();
+  auto it = account_trading_fees_.find(account);
+  if (it == account_trading_fees_.end()) { return std::nullopt; }
+  auto fit = it->second.find(cp);
+  if (fit != it->second.end()) { return fit->second; }
+  currency_pair cp2 = reverse_pair(cp);
+  fit = it->second.find(cp2);
+  if (fit != it->second.end()) { return fit->second; }
+  return std::nullopt;
+}
+
+// ----------------------------------------------------------------------------
+std::optional<ticker::transaction_fees> bitstamp_network::get_cached_trading_fees(
+    currency_pair const& cp) const
+{
+  // For callers that don't specify an account we default to the Main account.
+  return get_cached_trading_fees("Main", cp);
 }
 
 // ----------------------------------------------------------------------------
@@ -1154,8 +1258,8 @@ void bitstamp_network::process_order(bitstamp_account& acct, json& jdata, std::s
 */
 
 // ----------------------------------------------------------------------------
-net::http::client_ptr bitstamp_network::signed_request(
-    bitstamp_account const& acct, std::string const& url_path, std::string const& url_query)
+net::http::client_ptr bitstamp_network::signed_request(bitstamp_account const& acct,
+    std::string const& url_path, std::string const& url_query, bool empty_body)
 {
   assert(acct.API_key.size() > 0 && acct.API_secret.size() > 0);
   //
@@ -1170,7 +1274,9 @@ net::http::client_ptr bitstamp_network::signed_request(
   // setup REST request fields
   std::string url_host = bitstamp_https_address;
   std::string content_type = "application/x-www-form-urlencoded";
-  std::string payload = url_query.size() > 0 ? url_query : url_encode("{offset:1}");
+  std::string payload = empty_body ? std::string{} :
+      url_query.size() > 0         ? url_query :
+                                     url_encode("{offset:1}");
   std::string http_method = "POST";
   std::string x_auth = "BITSTAMP " + api_key;
   std::string x_auth_nonce = encryptor.generate_uuid_string();
@@ -1217,7 +1323,10 @@ net::http::client_ptr bitstamp_network::signed_request(
   GROX_LOG_TRACE(bitstamp_log, "{:>20} {} {}", "account_request", urlstring, string_to_sign);
 
   QNetworkRequest request(QUrl(to_qstring(urlstring)));
-  request.setRawHeader("Content-Type", content_type.c_str());
+  // Bitstamp's signature scheme requires that Content-Type is omitted entirely
+  // when the request body is empty. Sending the header without a body causes a
+  // 403 on endpoints such as /api/v2/fees/trading/.
+  if (!payload.empty()) { request.setRawHeader("Content-Type", content_type.c_str()); }
   request.setRawHeader("User-Agent", "mystery");
   request.setRawHeader("Accept", "application/json");
   request.setRawHeader("Connection", "close");

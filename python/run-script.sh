@@ -19,7 +19,7 @@ fi
 unset PYTHONPATH
 
 # activate python env
-source $SCRIPT_DIR/.venv/bin/activate
+source ~/.venv-pyhome/bin/activate
 
 unset SESSION_MANAGER
 export LC_ALL=C.UTF-8

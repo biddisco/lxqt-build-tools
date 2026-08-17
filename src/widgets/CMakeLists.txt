@@ -11,6 +11,8 @@ set(grox_widgets_SRCS
     digital_clock.hpp
     indicators_model.cpp
     indicators_model.hpp
+    transactions_model.cpp
+    transactions_model.hpp
     password_dialog.cpp
     password_dialog.hpp
     price_chart_widget.cpp
@@ -58,6 +60,7 @@ target_link_libraries(
          grox_debug
          grox_exchange
          grox_indicators
+         grox_io
          grox_plot
          grox_util
          grox_widgets_control

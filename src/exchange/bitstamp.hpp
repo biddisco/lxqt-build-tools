@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -21,6 +22,7 @@
 #include "exchange/abstract_exchange.hpp"
 #include "exchange/account.hpp"
 #include "exchange/order_book_bitstamp.hpp"
+#include "io/transaction_store.hpp"
 #include "network/evp-encrypt.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "senders/sender_defs.hpp"
@@ -43,10 +45,16 @@ class bitstamp_network : public abstract_exchange
   // usually only one present, but allow for more
   std::vector<bitstamp_account> accounts_;
 
+  // persistent store for user transactions
+  std::shared_ptr<grox::transaction_store> transaction_store_;
+
   // map of fees for trading of currency pairs
   // @TODO add read/write lock for these maps
   std::map<currency_pair, double> transaction_fee_map_;
   std::map<currency_code, double> withdrawal_fee_map_;
+
+  // per-account live trading fee cache populated from /api/v2/fees/trading/
+  std::map<std::string, std::map<currency_pair, ticker::transaction_fees>> account_trading_fees_;
   using mutex_type = std::shared_mutex;
   mutable mutex_type fee_mutex_;
 
@@ -122,6 +130,8 @@ class bitstamp_network : public abstract_exchange
 
   std::vector<bitstamp_account>& accounts() { return accounts_; }
 
+  std::shared_ptr<grox::transaction_store> transaction_store() const { return transaction_store_; }
+
   bitstamp_account& get_account_by_name(std::string_view name);
 
   // Is sending this currency to the destination abstract_exchange supported
@@ -176,10 +186,6 @@ class bitstamp_network : public abstract_exchange
   void shut_down() override;
 
   // ---------------------------------------
-  any_void_sender read_transaction_logs(std::string ini_name);
-  any_void_sender update_transaction_logs(std::string ini_name);
-
-  // ---------------------------------------
   // https: get currency tickers available
   any_bytearray_sender request_tickers_available();
 
@@ -220,6 +226,16 @@ class bitstamp_network : public abstract_exchange
   any_void_sender request_all_account_transactions();
 
   // ---------------------------------------
+  // https: get live trading fees per account
+  any_bytearray_sender request_trading_fees(bitstamp_account& acct);
+  any_void_sender request_all_trading_fees();
+  void refresh_trading_fees();
+  void handle_trading_fees(bitstamp_account& acct, std::string_view data);
+  std::optional<ticker::transaction_fees> get_cached_trading_fees(
+      std::string const& account, currency_pair const& cp) const;
+  std::optional<ticker::transaction_fees> get_cached_trading_fees(currency_pair const& cp) const;
+
+  // ---------------------------------------
   // https: place a limit order
   any_bytearray_sender request_limit_order(bitstamp_account const& acct, trade_data const& t);
   // https: place an order cancel
@@ -245,8 +261,8 @@ class bitstamp_network : public abstract_exchange
   void handle_buy_sell_order(std::string_view data);
 
   // ----------------------------------------------------------------------------
-  net::http::client_ptr signed_request(
-      bitstamp_account const& acct, std::string const& url_path, std::string const& url_query);
+  net::http::client_ptr signed_request(bitstamp_account const& acct, std::string const& url_path,
+      std::string const& url_query, bool empty_body = false);
 
   // ----------------------------------------------------------------------------
   // OHLC candlestick updating

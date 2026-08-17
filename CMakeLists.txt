@@ -204,7 +204,7 @@ endif()
 # ------------------------------------------------------------------------------
 # Boost
 # ------------------------------------------------------------------------------
-find_package(Boost NO_MODULE REQUIRED COMPONENTS headers program_options)
+find_package(Boost NO_MODULE REQUIRED COMPONENTS headers program_options date_time)
 
 # ------------------------------------------------------------------------------
 # system thread libs

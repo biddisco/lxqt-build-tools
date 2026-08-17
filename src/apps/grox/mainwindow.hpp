@@ -19,8 +19,16 @@
 #include "data/order_book.hpp"
 #include "exchange/bitstamp.hpp"
 #include "exchange/xrpl_network.hpp"
+#include "io/transaction_store.hpp"
+#include "widgets/transactions_model.hpp"
 
 // Forward declarations
+class QComboBox;
+class QDateEdit;
+class QLabel;
+class QLineEdit;
+class QSortFilterProxyModel;
+class QTableView;
 class QTermWidget;
 namespace ads {
   class CDockWidget;
@@ -62,6 +70,15 @@ class GroxMainWindow : public QMainWindow
   // widgets
   QFrame* orders_frame_;
   QFrame* accounts_frame_;
+  QFrame* transactions_frame_;
+  QTableView* transactions_view_;
+  grox::transactions_model* transactions_model_;
+  QSortFilterProxyModel* transactions_proxy_;
+  QLineEdit* transactions_filter_;
+  QComboBox* transactions_range_combo_;
+  QDateEdit* transactions_start_date_;
+  QDateEdit* transactions_end_date_;
+  QLabel* transactions_volume_label_;
   QTermWidget* terminal_widget_;
   ads::CDockWidget* terminal_dock_widget_;
 
@@ -122,6 +139,7 @@ class GroxMainWindow : public QMainWindow
   public slots:
   void appExitCleanupHandler();
   void transaction_event();
+  void update_transactions_range();
 
   // to connect to xrpl ledger signals
   void wallet_changed(ledger_wallet*);
