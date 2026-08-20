@@ -284,8 +284,7 @@ get_external_project(
   GIT_TAG
   "master"
 )
-set(lxqt2-build-tools_DIR "${lxqt2-build-tools_BINARY_DIR}/install")
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" "${CMAKE_BINARY_DIR}")
+set(lxqt2-build-tools_DIR "${CMAKE_BINARY_DIR}")
 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" "${lxqt2-build-tools_DIR}")
 message("lxqt2-build-tools_DIR ${lxqt2-build-tools_DIR}")
 
