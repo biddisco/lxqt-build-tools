@@ -1,10 +1,8 @@
-find_package(Qt6 REQUIRED COMPONENTS Core)
-
 set(grox_util_SRCS datetime_utils.hpp execute_os_command.hpp json_qstring.hpp json_qstring.cpp
                    stringutils.hpp
 )
 
-add_library(grox_util ${grox_util_SRCS})
+qt_add_library(grox_util STATIC ${grox_util_SRCS})
 
 target_include_directories(grox_util PUBLIC ${GROX_INCLUDE_ROOT})
 target_link_libraries(

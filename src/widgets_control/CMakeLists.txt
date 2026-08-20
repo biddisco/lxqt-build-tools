@@ -6,14 +6,7 @@ set(grox_widgets_control_SRCS ${grox_widgets_control_SRCS} indicator_widget.ui
     # trade_algorithm_arbitrage.ui
 )
 
-add_library(
-  grox_widgets_control ${grox_widgets_control_SRCS} ${grox_widgets_control_ui_SRC}
-                       ${grox_widgets_control_QRCS} ${grox_widgets_control_UI}
-)
-
-set_property(TARGET grox_widgets_control PROPERTY AUTOMOC ON)
-set_property(TARGET grox_widgets_control PROPERTY AUTOUIC ON)
-set_property(TARGET grox_widgets_control PROPERTY AUTORCC ON)
+qt_add_library(grox_widgets_control STATIC ${grox_widgets_control_SRCS})
 
 target_include_directories(grox_widgets_control PUBLIC ${GROX_INCLUDE_ROOT})
 

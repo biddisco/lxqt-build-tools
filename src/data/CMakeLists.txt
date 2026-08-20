@@ -14,7 +14,7 @@ set(grox_data_SRCS
     timebased_chart_data.hpp
 )
 
-add_library(grox_data ${grox_data_SRCS})
+qt_add_library(grox_data STATIC ${grox_data_SRCS})
 target_include_directories(grox_data PUBLIC ${GROX_INCLUDE_ROOT})
 
 target_link_libraries(

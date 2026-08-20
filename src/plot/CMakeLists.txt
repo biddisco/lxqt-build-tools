@@ -20,9 +20,7 @@ set(grox_plot_SRCS
     timebased_data_curve.hpp
 )
 
-add_library(grox_plot ${grox_plot_SRCS})
-
-set_property(TARGET grox_plot PROPERTY AUTOMOC ON)
+qt_add_library(grox_plot STATIC ${grox_plot_SRCS})
 
 target_include_directories(grox_plot PUBLIC ${GROX_INCLUDE_ROOT})
 

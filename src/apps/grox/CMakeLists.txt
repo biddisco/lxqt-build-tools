@@ -14,19 +14,11 @@ set(GROX_QRC_SRC ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/dark/darkstyle.qrc
                  ${qdarkstylesheet_SOURCE_DIR}/qdarkstyle/light/lightstyle.qrc
 )
 
-add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC})
-
-# c++ properties
-set_property(TARGET grox PROPERTY CXX_STANDARD ${GROX_CXX_STANDARD})
-
-# Qt properties
-set_property(TARGET grox PROPERTY AUTOMOC ON)
-set_property(TARGET grox PROPERTY AUTOUIC ON)
-set_property(TARGET grox PROPERTY AUTORCC ON)
+qt_add_executable(grox ${GROX_SRC} ${GROX_QRC_SRC})
 
 target_include_directories(
-  grox PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
-              ${CMAKE_CURRENT_SOURCE_DIR}/src
+  grox PRIVATE ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
+               ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 if(CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
@@ -45,32 +37,32 @@ target_compile_definitions(
 
 target_link_libraries(
   grox
-  PUBLIC grox_currency
-         grox_data
-         grox_debug
-         grox_exchange
-         grox_indicators
-         grox_io
-         grox_network
-         grox_plot
-         grox_util
-         grox_widgets
-         qwt
-         Qt::Core
-         Qt::Gui
-         Qt::OpenGL
-         Qt::Svg
-         Qt::Widgets
-         Qt::OpenGLWidgets
-         qtadvanceddocking-qt${QT_VERSION_MAJOR}
-         qtermwidget6
-         nlohmann_json::nlohmann_json
-         STDEXEC::stdexec
-         fmt::fmt
-         range-v3
-         xrpl.libxrpl
-         uuid
-         Threads::Threads
-         pika::pika
-         Fontconfig::Fontconfig
+  PRIVATE grox_currency
+          grox_data
+          grox_debug
+          grox_exchange
+          grox_indicators
+          grox_io
+          grox_network
+          grox_plot
+          grox_util
+          grox_widgets
+          qwt
+          Qt::Core
+          Qt::Gui
+          Qt::OpenGL
+          Qt::Svg
+          Qt::Widgets
+          Qt::OpenGLWidgets
+          qtadvanceddocking-qt${QT_VERSION_MAJOR}
+          qtermwidget6
+          nlohmann_json::nlohmann_json
+          STDEXEC::stdexec
+          fmt::fmt
+          range-v3
+          xrpl.libxrpl
+          uuid
+          Threads::Threads
+          pika::pika
+          Fontconfig::Fontconfig
 )

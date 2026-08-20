@@ -1,5 +1,3 @@
-find_package(Qt6 REQUIRED COMPONENTS Core Network)
-
 set(grox_exchange_SRCS
     account.hpp
     bitstamp.hpp
@@ -16,10 +14,8 @@ set(grox_exchange_SRCS
     xrpl_network.cpp
 )
 
-add_library(grox_exchange ${grox_exchange_SRCS} ticker_data.hpp)
+qt_add_library(grox_exchange STATIC ${grox_exchange_SRCS} ticker_data.hpp)
 target_include_directories(grox_exchange PUBLIC ${GROX_INCLUDE_ROOT})
-
-set_property(TARGET grox_exchange PROPERTY AUTOMOC ON)
 
 target_link_libraries(
   grox_exchange
@@ -29,7 +25,6 @@ target_link_libraries(
          grox_data
          grox_io
          grox_network
-         grox_util
          nlohmann_json::nlohmann_json
          xrpl.libxrpl
          range-v3

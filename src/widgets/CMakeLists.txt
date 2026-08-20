@@ -45,13 +45,7 @@ set(grox_widgets_SRCS
 
 set(grox_widgets_QRCS images.qrc)
 
-add_library(
-  grox_widgets ${grox_widgets_SRCS} ${grox_widgets_ui_SRC} ${grox_widgets_QRCS} ${grox_widgets_UI}
-)
-
-set_property(TARGET grox_widgets PROPERTY AUTOMOC ON)
-set_property(TARGET grox_widgets PROPERTY AUTOUIC ON)
-set_property(TARGET grox_widgets PROPERTY AUTORCC ON)
+qt_add_library(grox_widgets STATIC ${grox_widgets_SRCS} ${grox_widgets_QRCS})
 
 target_include_directories(grox_widgets PUBLIC ${GROX_INCLUDE_ROOT})
 

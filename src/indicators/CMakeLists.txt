@@ -1,5 +1,3 @@
-find_package(Qt6 REQUIRED COMPONENTS Core)
-
 # Core indicator library (static) Contains only base classes and plugin infrastructure
 set(grox_indicators_SRCS
     # basic definitions
@@ -25,7 +23,7 @@ if(GROX_WITH_PYTHON_INDICATORS)
   )
 endif()
 
-add_library(grox_indicators ${grox_indicators_SRCS})
+qt_add_library(grox_indicators STATIC ${grox_indicators_SRCS})
 target_include_directories(grox_indicators PUBLIC ${GROX_INCLUDE_ROOT})
 
 target_link_libraries(

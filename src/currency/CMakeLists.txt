@@ -1,4 +1,4 @@
-set(grox_data_SRCS
+set(grox_currency_SRCS
     currency_code.cpp
     currency_code.hpp
     currency.cpp
@@ -11,7 +11,7 @@ set(grox_data_SRCS
     trade_data.hpp
 )
 
-add_library(grox_currency ${grox_data_SRCS})
+qt_add_library(grox_currency STATIC ${grox_currency_SRCS})
 target_include_directories(grox_currency PUBLIC ${GROX_INCLUDE_ROOT})
 
 target_link_libraries(

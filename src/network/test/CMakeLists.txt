@@ -125,15 +125,15 @@ set(boost-bitstamp-authentication_PARAMETERS ARGS "/api/v2/user_transactions/" "
 
 foreach(test ${TEST_SRCS})
   cmake_path(GET test STEM testname)
-  add_executable(${testname} ${test})
+  qt_add_executable(${testname} ${test})
   target_link_libraries(
     ${testname}
-    PUBLIC grox_util
-           grox_network
-           GTest::gtest
-           OpenSSL::SSL
-           Threads::Threads
-           tests_network_util
+    PRIVATE grox_util
+            grox_network
+            GTest::gtest
+            OpenSSL::SSL
+            Threads::Threads
+            tests_network_util
   )
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
     target_compile_options(${testname} PRIVATE -Wno-deprecated-declarations)
@@ -144,11 +144,11 @@ foreach(test ${TEST_SRCS})
 
   if(testname MATCHES "pika")
     set(${testname}_PARAMETERS "${${testname}_PARAMETERS}" THREADS 4)
-    target_link_libraries(${testname} PUBLIC pika::pika)
+    target_link_libraries(${testname} PRIVATE pika::pika)
   endif()
 
   if(testname MATCHES "curl-bitstamp-authentication")
-    target_link_libraries(${testname} PUBLIC curl)
+    target_link_libraries(${testname} PRIVATE curl)
   endif()
 
   grox_add_test_and_deps("network" ${testname} EXECUTABLE ${testname} ${${testname}_PARAMETERS})
@@ -170,4 +170,4 @@ foreach(test ${TEST_SRCS})
 
 endforeach()
 
-target_link_libraries(ripple-sign PUBLIC xrpl.libxrpl)
+target_link_libraries(ripple-sign PRIVATE xrpl.libxrpl)

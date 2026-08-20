@@ -163,7 +163,7 @@ endif()
 # Find Qt6
 # ------------------------------------------------------------------------------
 # this line to force correct var so that Qt-AdvancedDocking uses Qt6 by default
-find_package(QT NAMES Qt6 COMPONENTS Core REQUIRED)
+find_package(QT 6.3 NAMES Qt6 COMPONENTS Core REQUIRED)
 #
 set(qtcomponents
     Core
@@ -174,9 +174,15 @@ set(qtcomponents
     PrintSupport
     Svg
     Concurrent
+    Network
+    WebSockets
 )
 
-find_package(Qt6 REQUIRED COMPONENTS ${qtcomponents})
+find_package(Qt6 6.3 REQUIRED COMPONENTS ${qtcomponents})
+
+qt_standard_project_setup()
+
+set(CMAKE_AUTORCC ON)
 
 # ------------------------------------------------------------------------------
 # c++26 std::execution

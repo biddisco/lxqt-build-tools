@@ -2,7 +2,7 @@
 set(grox_debug_SRCS demangle_helper.hpp logging.hpp print.cpp print.hpp)
 
 # debug library
-add_library(grox_debug ${grox_debug_SRCS})
+qt_add_library(grox_debug STATIC ${grox_debug_SRCS})
 
 target_include_directories(
   grox_debug INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/..

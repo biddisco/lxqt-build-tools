@@ -5,7 +5,7 @@ set(grox_io_SRCS hdf5_ohlc_manager.hpp hdf5_ohlc_manager.cpp transaction_store.h
                  transaction_store.cpp
 )
 
-add_library(grox_io ${grox_io_SRCS})
+qt_add_library(grox_io STATIC ${grox_io_SRCS})
 
 target_include_directories(grox_io PUBLIC ${SQLite3_INCLUDE_DIRS})
 
@@ -17,7 +17,7 @@ target_link_libraries(
          HighFive::HighFive
          SOCI::soci_core
          SOCI::soci_sqlite3
-         SQLite3::SQLite3
+         SQLite::SQLite3
          Qt::Core
          fmt::fmt
 )
