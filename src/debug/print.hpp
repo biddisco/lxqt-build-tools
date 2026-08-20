@@ -1,35 +1,22 @@
 #pragma once
 
-#if __has_include(<pika/debugging/print.hpp>)
-# include <pika/debugging/print.hpp>
-
-namespace grox::debug {
-  using namespace pika::debug;
-}    // namespace grox::debug
-
-namespace grox::debug::detail {
-  using namespace pika::debug::detail;
-}
-
-#elif __has_include(<fmt/format.h>)
-ad asd sda asd sda
-
-# include <array>
-# include <atomic>
-# include <chrono>
-# include <cstddef>
-# include <cstdint>
-# include <iomanip>
-# include <iostream>
-# include <sstream>
-# include <string>
-# include <tuple>
-# include <type_traits>
-# include <utility>
-# include <vector>
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <vector>
 //
-# include <fmt/format.h>
-# include "config/export_definitions.hpp"
+#include <fmt/format.h>
+#include "config/export_definitions.hpp"
+#include "debug/demangle_helper.hpp"
 
 // ------------------------------------------------------------
 // This file provides a simple to use printf style debugging
@@ -66,20 +53,19 @@ ad asd sda asd sda
 
 // Used to wrap function call parameters to prevent evaluation
 // when debugging is disabled
-# define GROX_DETAIL_DP_LAZY(printer, Expr) printer.eval([&] { return Expr; })
-# define GROX_DETAIL_DP(printer, Expr)                                                             \
-   /*if constexpr (printer.is_enabled())*/ {                                                       \
-     using namespace grox::debug::detail;                                                          \
-     printer.Expr;                                                                                 \
-   };
+#define GROX_DETAIL_DP_LAZY(printer, Expr) printer.eval([&] { return Expr; })
+#define GROX_DETAIL_DP(printer, Expr)                                                              \
+  /*if constexpr (printer.is_enabled())*/ {                                                        \
+    using namespace grox::debug::detail;                                                           \
+    printer.Expr;                                                                                  \
+  };
 
-# define GROX_DETAIL_NS_DEBUG grox::debug::detail
+#define GROX_DETAIL_NS_DEBUG grox::debug::detail
 
-    // ------------------------------------------------------------
-    /// \cond NODETAIL
-    // NOLINTNEXTLINE(modernize-concat-nested-namespaces)
-    namespace GROX_DETAIL_NS_DEBUG
-{
+// ------------------------------------------------------------
+/// \cond NODETAIL
+// NOLINTNEXTLINE(modernize-concat-nested-namespaces)
+namespace GROX_DETAIL_NS_DEBUG {
   // common formats that are used with acceptable alignment
   constexpr char bin8[] = "{:08b}";
   constexpr char bin16[] = "{:016b}";
@@ -98,6 +84,7 @@ ad asd sda asd sda
   constexpr char fp12_8[] = "{:12.8f}";    // a commmon layout
   constexpr char strl[] = "{:<{}}";
   constexpr char strr[] = "{:>{}}";
+  constexpr char s12[] = "{:>12}";
   constexpr char s20[] = "{:>20}";
 
   // ------------------------------------------------------------------
@@ -114,9 +101,9 @@ ad asd sda asd sda
   template <char const* fmt_str>
   struct ffmt
   {
-    template <typename T>
-    ffmt(T const& val)
-      : fmt_(fmt::format(fmt_str, val))
+    template <typename... T>
+    ffmt(T const&... vals)
+      : fmt_(fmt::format(fmt_str, vals...))
     {
     }
 
@@ -194,13 +181,13 @@ ad asd sda asd sda
   };
 
   template <typename TupleType, std::size_t... I>
-  void tuple_print(std::ostream & os, TupleType const& t, std::index_sequence<I...>)
+  void tuple_print(std::ostream& os, TupleType const& t, std::index_sequence<I...>)
   {
     (..., (os << (I == 0 ? "" : " ") << std::get<I>(t)));
   }
 
   template <typename... Args>
-  void tuple_print(std::ostream & os, std::tuple<Args...> const& t)
+  void tuple_print(std::ostream& os, std::tuple<Args...> const& t)
   {
     tuple_print(os, t, std::make_index_sequence<sizeof...(Args)>());
   }
@@ -219,7 +206,7 @@ ad asd sda asd sda
 
   ///////////////////////////////////////////////////////////////////////
   GROX_EXPORT void register_print_info(void (*)(std::ostream&));
-  GROX_EXPORT void generate_prefix(std::ostream & os);
+  GROX_EXPORT void generate_prefix(std::ostream& os);
 
   ///////////////////////////////////////////////////////////////////////
   template <typename... Args>
@@ -538,4 +525,3 @@ public:
   };
 }    // namespace GROX_DETAIL_NS_DEBUG
 /// \endcond
-#endif

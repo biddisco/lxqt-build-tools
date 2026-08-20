@@ -5,37 +5,34 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 #include "debug/print.hpp"
-#if __has_include(<pika/debugging/print.hpp>)
-// everythihg should be setup by pika
-#else
 //
-# include <boost/crc.hpp>
-# include <fmt/format.h>
+#include <boost/crc.hpp>
+#include <fmt/format.h>
 //
-# include <algorithm>
-# include <array>
-# include <atomic>
-# include <bitset>
-# include <chrono>
-# include <climits>
-# include <cmath>
-# include <cstddef>
-# include <cstdint>
-# include <cstring>
-# include <functional>
-# include <iomanip>
-# include <iostream>
-# include <iterator>
-# include <sstream>
-# include <string>
-# include <thread>
-# include <type_traits>
-# include <utility>
-# include <vector>
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <bitset>
+#include <chrono>
+#include <climits>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
-# if defined(__FreeBSD__)
+#if defined(__FreeBSD__)
 PIKA_EXPORT char** freebsd_environ = nullptr;
-# endif
+#endif
 
 // ------------------------------------------------------------
 /// \cond NODETAIL
@@ -89,9 +86,9 @@ namespace GROX_DETAIL_NS_DEBUG {
 
   void generate_prefix(std::ostream& os)
   {
-# ifdef PIKA_DEBUG_PRINT_SHOW_TIME
+#ifdef PIKA_DEBUG_PRINT_SHOW_TIME
     os << detail::current_time_print_helper();
-# endif
+#endif
     if (auto& f = get_print_info()) { f(os); }
     os << detail::hostname_print_helper();
   }
@@ -142,9 +139,9 @@ namespace GROX_DETAIL_NS_DEBUG {
     if (!initialized)
     {
       initialized = true;
-# if !defined(__FreeBSD__)
+#if !defined(__FreeBSD__)
       gethostname(hostname_, std::size_t(12));
-# endif
+#endif
       std::ostringstream temp;
       temp << '(' << std::to_string(guess_rank()) << ')';
       std::strcat(hostname_, temp.str().c_str());
@@ -159,20 +156,20 @@ namespace GROX_DETAIL_NS_DEBUG {
     if (!initialized)
     {
       initialized = true;
-# if !defined(__FreeBSD__)
+#if !defined(__FreeBSD__)
       gethostname(hostname_, std::size_t(12));
-# endif
+#endif
     }
     return hostname_;
   }
 
   int hostname_print_helper::guess_rank() const
   {
-# if defined(__FreeBSD__)
+#if defined(__FreeBSD__)
     char** env = freebsd_environ;
-# else
+#else
     char** env = environ;
-# endif
+#endif
     std::vector<std::string_view> env_strings{"_PROCID=", "_WORLD_RANK=", "_RANK="};
 
     for (auto s : env_strings)
@@ -209,4 +206,3 @@ namespace GROX_DETAIL_NS_DEBUG {
   template GROX_EXPORT void print_array(std::string const&, std::size_t const*, std::size_t);
 }    // namespace GROX_DETAIL_NS_DEBUG
 /// \endcond
-#endif
