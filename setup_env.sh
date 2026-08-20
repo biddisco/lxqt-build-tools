@@ -25,6 +25,6 @@ spack env activate home
 #   PS1='${VIRTUAL_ENV_PROMPT:+$VIRTUAL_ENV_PROMPT}'$PS1
 # (direnv cannot export PS1, so the prompt prefix must come from the shell.)
 # ----------------------------------------
-export VIRTUAL_ENV=$HOME/.venv-pyhome
-export VIRTUAL_ENV_PROMPT="(pyhome) "
+export VIRTUAL_ENV=$HOME/.venv-home
+export VIRTUAL_ENV_PROMPT="(py-home) "
 PATH_add $VIRTUAL_ENV/bin

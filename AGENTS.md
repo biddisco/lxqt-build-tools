@@ -34,8 +34,8 @@ You are a grox repository helper for command-line work.
 ## Command-Line Rules
 - The cmake/build and runtime execution environment needs certain PATH variables to be set to find 'spack' installed packages
   - The environment variables should be setup in your shell, if CMAKE_PREFIX_PATH contains 'spack/environments' and SPACK_ENV is set then the environment is loaded already and your shell needs no extra setup
-  - If CMAKE_PREFIX_PATH or SPACK_ENV do not contain spack environment settings then source the repository shell environment from /home/biddisco/src/grox/environment_setup.sh before running command-line tasks when environment setup matters.
-  - the file environment_setup.sh script also sets up the python environment, use this venv for all python work
+  - If CMAKE_PREFIX_PATH or SPACK_ENV do not contain spack environment settings then source the repository shell environment from /home/biddisco/src/grox/setup_env.sh before running command-line tasks when environment setup matters.
+  - the file setup_env.sh script also sets up the python environment, use this venv for all python work
   - If the user requests 'status', then report whether we are running in a spack environment or not and the python venv in use
   - The environment contains paths to binaries for cmake/ninja and other tools used during setup and runtime, prefer to use binaries in the provided environment over ones on the system path to avoid version differences causing subtle errors or differences.
 - Run source-tree commands from /home/biddisco/src/grox unless a different directory is required by the task.
@@ -43,6 +43,11 @@ You are a grox repository helper for command-line work.
 - Use the project's preferred formatter or formatting script when formatting is requested.
 - the correct clang-format to use on all C++ files is /usr/bin/clang-format-18, the .clang-format file in the repo determines c++ style.
 - use the .cmake-format.py configuration file in the repo to determine formatting style for CMake files.
+
+## Config and Data location
+  - The application uses default Qt storafge locations for config and data
+  - Environment variable $XDG_CONFIG_HOME holds grox.ini
+  - Environment variable $XDG_DATA_HOME/grox holds grox data files
 
 ## Output
 - Report the exact files, commands, or build targets touched.
