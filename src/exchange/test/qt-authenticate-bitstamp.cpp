@@ -27,6 +27,7 @@
 #include "senders/pika_stdexec.hpp"
 #include "senders/qhttp-post-sender.hpp"
 #include "senders/qtstdexec.hpp"
+#include "senders/start_detached.hpp"
 //
 namespace ex = stdexec;
 namespace tt = pika::this_thread::experimental;
@@ -141,7 +142,7 @@ TEST(abstract_exchange, cancel_order)
           EXPECT_TRUE(jdata.size() == 2);
           finished = true;
         });
-  ex::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "qt-authenticate-bitstamp cancel_order test");
   pika::util::yield_while([&]() { return !finished; });
 }
 
@@ -172,7 +173,7 @@ int qt_main(int argc, char* argv[])
           test_result = RUN_ALL_TESTS();
           QCoreApplication::instance()->quit();
         });
-  ex::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "qt-authenticate-bitstamp qt_main startup");
 
   // start the Qt messaging/processing loop, returns only when exits
   a.exec();

@@ -23,6 +23,7 @@
 #include "plot/timebased_data_curve.hpp"
 #include "senders/pika_stdexec.hpp"
 #include "senders/qtstdexec.hpp"
+#include "senders/start_detached.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/digital_clock.hpp"
 #include "widgets/price_chart_widget.hpp"
@@ -352,7 +353,7 @@ void price_chart_widget::connect_gui()
               ind_model_.dataAdded();
               this->replot();
             });
-      stdexec::start_detached(std::move(snd));
+      grox::senders::start_detached(std::move(snd), "price_chart_widget add indicator");
     }
   });
 }

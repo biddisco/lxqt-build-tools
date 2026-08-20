@@ -8,6 +8,7 @@
 #include "exchange/bitstamp.hpp"
 #include "nlohmann/json.hpp"
 #include "senders/qtstdexec.hpp"
+#include "senders/start_detached.hpp"
 
 // ----------------------------------------------------------------------------
 static auto trade_log = grox::log::create("TradeWgt");
@@ -118,6 +119,6 @@ void trade_widget::connect_events()
               }
             }
           });
-    stdexec::start_detached(std::move(web));
+    grox::senders::start_detached(std::move(web), "trade_widget cancel_order");
   });
 }

@@ -17,6 +17,7 @@
 #include "debug/demangle_helper.hpp"
 #include "debug/logging.hpp"
 #include "senders/pika_stdexec.hpp"
+#include "senders/start_detached.hpp"
 
 // ----------------------------------------------------------------------------
 inline auto pubsub_log = grox::log::create("Pub__Sub");
@@ -52,7 +53,7 @@ namespace grox {
           stdexec::sender auto snd =
               stdexec::starts_on(grox::senders::default_pool_scheduler(), stdexec::just()) |
               stdexec::then([=]() { subscriber.second(message...); });
-          pika::execution::experimental::start_detached(std::move(snd));
+          grox::senders::start_detached(std::move(snd), "PublishSubscribe publish");
         }
       }
     }

@@ -34,6 +34,7 @@
 #include "exchange/xrpl_network.hpp"
 #include "senders/qhttp-post-sender.hpp"
 #include "senders/qtstdexec.hpp"
+#include "senders/start_detached.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/xrp_functions.hpp"
 
@@ -181,7 +182,7 @@ void xrpl_network::reconnect()
         get_all_account_offers(scope);
         stdexec::sync_wait(scope.on_empty());
       });
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "XRPL reconnect account refresh");
 }
 
 // ----------------------------------------------------------------------------
@@ -225,7 +226,7 @@ void xrpl_network::initialize()
 
   stdexec::sender auto snd = stdexec::starts_on(default_pool_scheduler(), stdexec::just())    //
       | stdexec::then(wait_for_init);
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "XRPL initialization");
 }
 
 // ----------------------------------------------------------------------------
@@ -287,7 +288,7 @@ bool xrpl_network::stream_subscribe(
       | stdexec::then([this, cp, stream, f]() {    //
           f(cp, get_subscribed_ticker_data(cp), stream);
         });
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "XRPL stream subscribe");
   // @todo : must return a sender here
   return true;
 }
@@ -483,7 +484,7 @@ void xrpl_network::new_orderbook_data_q(
 
   stdexec::sender auto snd = stdexec::starts_on(default_pool_scheduler(), stdexec::just())    //
       | stdexec::then(process);
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "XRPL orderbook data processing");
 }
 
 // ----------------------------------------------------------------------------
@@ -1000,7 +1001,7 @@ bool xrpl_network::make_payment(currency_amount const& c, basic_account* src, ba
           GROX_LOG_TRACE(xrpnet_log, "{:>20} {}", "make_payment", data);
           emit transaction_event();
         });
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "XRPL make payment");
   return true;
 }
 
@@ -1134,7 +1135,7 @@ void xrpl_network::query_iou_fee(currency_code const& c1)
           }
         });
 
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "XRPL query IOU fee");
 }
 
 // ----------------------------------------------------------------------------
@@ -1158,7 +1159,7 @@ void xrpl_network::trustline(
           GROX_LOG_TRACE(xrpnet_log, "{:>20} {}", "trustline", data);
           emit transaction_event();
         });
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "XRPL trustline");
 }
 
 // ----------------------------------------------------------------------------

@@ -19,6 +19,7 @@
 #include "debug/logging.hpp"
 #include "network/qhttp-request-client.hpp"
 #include "senders/pika_stdexec.hpp"
+#include "senders/start_detached.hpp"
 
 // @TODO: This code is built on top of the pika implementation of stdexec
 // it ought to be rewritten to use 'pure' stdexec and reduce pika dependencies
@@ -61,11 +62,11 @@ namespace grox::senders {
     template <typename Sender>
     struct qhttp_post_sender_impl<Sender>::qhttp_post_sender_type
     {
-      using is_sender = void;
+      using sender_concept = ex::sender_t;
       std::decay_t<Sender> sender;
       http_request_type req_type{http_request_type::http_unset};
 
-      // stexec requires set_value_t to match the signature of what we call set_value on
+      // stdexec requires set_value_t to match the signature of what we call set_value on
       // when we are finished.
       using completion_signatures = ex::completion_signatures<ex::set_value_t(QByteArray),
           ex::set_error_t(std::exception_ptr)>;
@@ -80,39 +81,33 @@ namespace grox::senders {
         // invokes the request with a callback on the signal/slot
         struct qhttp_post_receiver
         {
-          using is_receiver = void;
+          using receiver_concept = ex::receiver_t;
           operation_state& op_state;
 
           template <typename Error>
-          friend constexpr void
-          tag_invoke(ex::set_error_t, qhttp_post_receiver r, Error&& error) noexcept
+          void set_error(Error&& error) && noexcept
           {
-            ex::set_error(std::move(r.op_state.receiver_), std::forward<Error>(error));
+            ex::set_error(std::move(op_state.receiver_), std::forward<Error>(error));
           }
 
-          friend constexpr void tag_invoke(ex::set_stopped_t, qhttp_post_receiver r) noexcept
-          {
-            ex::set_stopped(std::move(r.op_state.receiver_));
-          }
+          void set_stopped() && noexcept { ex::set_stopped(std::move(op_state.receiver_)); }
 
           // receive the client and set a callback to be triggered when the request completes
-          friend constexpr void tag_invoke(
-              ex::set_value_t, qhttp_post_receiver r, net::http::client_ptr client) noexcept
+          void set_value(net::http::client_ptr client) && noexcept
           {
-            r.op_state.client_ = client;
-            assert(r.op_state.client_ != nullptr);
+            op_state.client_ = client;
+            assert(op_state.client_ != nullptr);
 
             GROX_LOG_TRACE(qt_trig_log, "{:>20} set_value_t req {}", "qhttp_post_recv",
-                fmt::ptr(r.op_state.client_));
+                fmt::ptr(op_state.client_));
 
             pika::detail::try_catch_exception_ptr(
                 [&]() mutable {
                   {
                     // The callback will call set_value/set_error inside a new task
                     // and execution will continue on that thread
-                    auto handler = [client = r.op_state.client_,
-                                       receiver = std::move(r.op_state.receiver_)](
-                                       QByteArray data) {
+                    auto handler = [client = op_state.client_,
+                                       receiver = std::move(op_state.receiver_)](QByteArray data) {
                       // pass the result onto a new pika task and invoke the continuation
                       auto snd0 =                        //
                           ex::just(std::move(data)) |    //
@@ -122,13 +117,13 @@ namespace grox::senders {
                             GROX_LOG_TRACE(qt_trig_log, "{:>20} {}", "qt->pika", strv);
                             ex::set_value(std::move(receiver), std::move(byteArray));
                           });
-                      ex::start_detached(std::move(snd0));
+                      grox::senders::start_detached(std::move(snd0), "qhttp_post response handler");
                     };
-                    if (r.op_state.req_type_ == http_request_type::http_get)
+                    if (op_state.req_type_ == http_request_type::http_get)
                     {
                       client->get_request(std::move(handler));
                     }
-                    else if (r.op_state.req_type_ == http_request_type::http_post)
+                    else if (op_state.req_type_ == http_request_type::http_post)
                     {
                       client->post_request(std::move(handler));
                     }
@@ -136,14 +131,11 @@ namespace grox::senders {
                   }
                 },
                 [&](std::exception_ptr ep) {
-                  ex::set_error(std::move(r.op_state.receiver_), std::move(ep));
+                  ex::set_error(std::move(op_state.receiver_), std::move(ep));
                 });
           }
 
-          friend constexpr ex::env<> tag_invoke(ex::get_env_t, qhttp_post_receiver const&) noexcept
-          {
-            return {};
-          }
+          ex::env<> get_env() const& noexcept { return {}; }
         };
 
         // -----------------------------------------------------------------
@@ -171,26 +163,23 @@ namespace grox::senders {
           GROX_LOG_TRACE(qt_trig_log, "{:>20} {}", "destroy", fmt::ptr(client_));
         }
 
-        friend constexpr auto tag_invoke(ex::start_t, operation_state& os) noexcept
-        {
-          return ex::start(os.op_state);
-        }
+        void start() & noexcept { ex::start(op_state); }
       };
 
       template <typename Receiver>
-      friend constexpr auto
-      tag_invoke(ex::connect_t, qhttp_post_sender_type const& s, Receiver&& receiver)
+      operation_state<Receiver> connect(Receiver&& receiver) &&
       {
-        return operation_state<Receiver>(std::forward<Receiver>(receiver), s.sender);
+        return operation_state<Receiver>(
+            std::forward<Receiver>(receiver), std::move(sender), req_type);
       }
 
       template <typename Receiver>
-      friend constexpr auto
-      tag_invoke(ex::connect_t, qhttp_post_sender_type&& s, Receiver&& receiver)
+      operation_state<Receiver> connect(Receiver&& receiver) const&
       {
-        return operation_state<Receiver>(
-            std::forward<Receiver>(receiver), std::move(s.sender), s.req_type);
+        return operation_state<Receiver>(std::forward<Receiver>(receiver), sender, req_type);
       }
+
+      decltype(auto) get_env() const& noexcept { return ex::get_env(sender); }
     };
 
   }    // namespace detail

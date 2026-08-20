@@ -36,6 +36,7 @@
 #include "network/qhttp-request-client.hpp"
 #include "senders/qhttp-post-sender.hpp"
 #include "senders/qtstdexec.hpp"
+#include "senders/start_detached.hpp"
 #include "util/datetime_utils.hpp"
 #include "util/execute_os_command.hpp"
 #include "util/json_qstring.hpp"
@@ -194,7 +195,7 @@ void bitstamp_network::initialize()
   // @TODO - add flag to network_initialized to signal, finished, but errors/other problems
 
   // bitstamp_dbg<0>.debug(ffmt<s20>("SENDER"), "\n", grox::debug::print_type<decltype(snd0)>());
-  stdexec::start_detached(std::move(web));
+  grox::senders::start_detached(std::move(web), "Bitstamp initialization");
 }
 
 // ----------------------------------------------------------------------------
@@ -377,7 +378,7 @@ bool bitstamp_network::stream_subscribe(
           if (closing_down_.load()) return;
           f(cp, get_subscribed_ticker_data(cp), stream);
         });
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "Bitstamp stream subscribe");
   // @todo : must return a sender here
   return true;
 }
@@ -847,7 +848,9 @@ void bitstamp_network::refresh_trading_fees()
   GROX_LOG_DEBUG(bitstamp_log, "{:>20}", "Refresh trading fees");
   // Ensure the refresh is started from a pika worker thread even when called
   // from the Qt event loop.
-  ex::start_detached(stdexec::starts_on(default_pool_scheduler(), request_all_trading_fees()));
+  grox::senders::start_detached(
+      stdexec::starts_on(default_pool_scheduler(), request_all_trading_fees()),
+      "Bitstamp refresh trading fees");
 }
 
 // ----------------------------------------------------------------------------
@@ -1384,7 +1387,7 @@ void bitstamp_network::new_orderbook_data_q(
 
   stdexec::sender auto snd =
       stdexec::starts_on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "Bitstamp orderbook data processing");
 }
 
 // ----------------------------------------------------------------------------
@@ -1425,7 +1428,7 @@ void bitstamp_network::new_live_trade_data_q(
 
   stdexec::sender auto snd =
       stdexec::starts_on(default_pool_scheduler(), stdexec::just()) | stdexec::then(process);
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "Bitstamp live trade data processing");
 }
 
 // ----------------------------------------------------------------------------
@@ -1541,7 +1544,7 @@ void bitstamp_network::update_ohlc_data(currency_pair cp, ticker::data tdata)
           GROX_LOG_ERROR(bitstamp_log, "{:>20} {}", "OHLC", what(e));
         });
 
-  stdexec::start_detached(std::move(snd2));
+  grox::senders::start_detached(std::move(snd2), "Bitstamp OHLC update");
 }
 
 // ----------------------------------------------------------------------------
@@ -1636,7 +1639,7 @@ void bitstamp_network::place_buy_sell_orders(
     return snd;
   });
 
-  ex::start_detached(std::move(all_done));
+  grox::senders::start_detached(std::move(all_done), "Bitstamp place buy/sell orders");
 }
 
 // ----------------------------------------------------------------------------

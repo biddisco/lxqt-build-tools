@@ -45,13 +45,15 @@ public:
     struct default_env
     {
       QThread* thread;
+
+      // Newer stdexec queries environments through a member query() function.
       template <typename CPO>
-      friend QThreadScheduler
-      tag_invoke(stdexec::get_completion_scheduler_t<CPO>, default_env env) noexcept
+      QThreadScheduler query(stdexec::get_completion_scheduler_t<CPO>) const noexcept
       {
-        return QThreadScheduler(env.thread);
+        return QThreadScheduler(thread);
       }
     };
+
     class QThreadSender
     {
   public:
@@ -65,10 +67,7 @@ public:
       }
       QThread* thread() { return m_thread; }
 
-      friend default_env tag_invoke(stdexec::get_env_t, QThreadSender const& snd) noexcept
-      {
-        return {snd.m_thread};
-      }
+      default_env get_env() const& noexcept { return {m_thread}; }
 
       template <class Recv>
       QThreadOperationState<Recv> connect(Recv&& receiver)
@@ -80,10 +79,10 @@ public:
       QThread* m_thread;
     };
 
-    friend QThreadSender tag_invoke(stdexec::schedule_t, QThreadScheduler sched)
-    {
-      return QThreadSender(sched.thread());
-    }
+    QThreadSender schedule() const { return QThreadSender(m_thread); }
+
+    default_env get_env() const& noexcept { return {m_thread}; }
+
     friend bool operator==(QThreadScheduler const& a, QThreadScheduler const& b) noexcept
     {
       return a.m_thread == b.m_thread;
@@ -133,17 +132,13 @@ private:
     struct default_env
     {
       QThread* thread;
+
       template <typename CPO>
-      friend QThreadScheduler
-      tag_invoke(stdexec::get_completion_scheduler_t<CPO>, default_env env) noexcept
+      QThreadScheduler query(stdexec::get_completion_scheduler_t<CPO>) const noexcept
       {
-        return QThreadScheduler(env.thread);
+        return QThreadScheduler(thread);
       }
     };
-    friend default_env tag_invoke(stdexec::get_env_t, QObjectSender const& snd) noexcept
-    {
-      return {snd.m_obj->thread()};
-    }
 
 public:
     using sender_concept = stdexec::sender_t;
@@ -158,6 +153,9 @@ public:
     }
     QObj* object() { return m_obj; }
     m_ptr_type member_ptr() { return m_ptr; }
+
+    default_env get_env() const& noexcept { return {m_obj->thread()}; }
+
     template <class Recv>
     QObjectOperationState<Recv, QObj, Ret, Args...> connect(Recv&& receiver)
     {

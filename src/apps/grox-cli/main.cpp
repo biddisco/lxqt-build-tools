@@ -23,6 +23,7 @@
 #include "exchange/bitstamp.hpp"
 #include "senders/qhttp-post-sender.hpp"
 #include "senders/qtstdexec.hpp"
+#include "senders/start_detached.hpp"
 //
 namespace ex = stdexec;
 namespace tt = pika::this_thread::experimental;
@@ -52,7 +53,7 @@ int request_account_info()
   std::atomic<bool> finished{false};
 
   bitstamp_account& acct = bitstamp_exchange->accounts()[0];
-  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())    //
+  auto snd = ex::starts_on(QtStdExec::QThreadScheduler(), ex::just())               //
       | ex::let_value(
             [&acct]() { return bitstamp_exchange->request_account_info(acct); })    // Qt -> pika
       | ex::then([&](QByteArray byteArray) {
@@ -63,7 +64,7 @@ int request_account_info()
           assert(jdata["eur_available"] != "");
           finished = true;
         });
-  ex::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "grox-cli request_account_info");
   pika::util::yield_while([&]() { return !finished; });
   return 1;
 }
@@ -95,7 +96,7 @@ int qt_main(int argc, char* argv[])
           test_result = request_account_info();
           QCoreApplication::instance()->quit();
         });
-  ex::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "grox-cli qt_main startup");
 
   // start the Qt messaging/processing loop, returns only when exits
   a.exec();

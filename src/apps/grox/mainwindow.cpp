@@ -56,6 +56,7 @@
 #include "network/evp-encrypt.hpp"
 #include "senders/pika_stdexec.hpp"
 #include "senders/qtstdexec.hpp"
+#include "senders/start_detached.hpp"
 #include "util/datetime_utils.hpp"
 #include "util/stringutils.hpp"
 #include "widgets/check_trades_dialog.hpp"
@@ -919,7 +920,7 @@ void GroxMainWindow::update_transactions_range()
           GROX_LOG_ERROR(main_log, "update_transactions_range async exception: {}", e.what());
         }
       });
-  stdexec::start_detached(std::move(snd));
+  grox::senders::start_detached(std::move(snd), "GroxMainWindow update transactions range");
 }
 
 // ----------------------------------------------------------------------------
@@ -1007,7 +1008,7 @@ void GroxMainWindow::closeEvent(QCloseEvent* event)
             GROX_LOG_DEBUG(main_log, "{:>20}", "Close");
             close();
           });
-    stdexec::start_detached(std::move(snd));
+    grox::senders::start_detached(std::move(snd), "GroxMainWindow async closeEvent shutdown");
     // we need to asynchronously shut down,
     // close all network connections, these need the application messaging loop
     // to correctly process everything (because they use Qt Networking/threads),
@@ -1041,7 +1042,7 @@ void GroxMainWindow::showEvent(QShowEvent* event)
     auto snd = stdexec::starts_on(QtStdExec::QThreadScheduler(), stdexec::just())    //
         | stdexec::then([this]() { loadConnectionSetups(); })                        //
         | stdexec::then([this]() { loadWindowSettings(); });                         //
-    stdexec::start_detached(std::move(snd));
+    grox::senders::start_detached(std::move(snd), "GroxMainWindow showEvent load settings");
   }
 }
 
