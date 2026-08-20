@@ -1376,7 +1376,7 @@ void bitstamp_network::new_orderbook_data_q(
     catch (...)
     {
       GROX_LOG_ERROR(bitstamp_log, "{:>20} {} {} {}", "Orderbook error", currency_pair_string(cp),
-          fmt::ptr(tdata->orderbook_), data.toStdString());
+          fmt::ptr(tdata->orderbook_.get()), data.toStdString());
     }
     //
     tdata->orderbook_subscribers_.publish(cp);

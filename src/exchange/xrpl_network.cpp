@@ -477,7 +477,7 @@ void xrpl_network::new_orderbook_data_q(
     catch (...)
     {
       GROX_LOG_ERROR(xrpnet_log, "{:>20} {} {} {}", "Orderbook error", currency_pair_string(cp),
-          fmt::ptr(tdata->orderbook_), data.toStdString());
+          fmt::ptr(tdata->orderbook_.get()), data.toStdString());
     }
   };
 
