@@ -8,6 +8,7 @@
 #include <QScrollArea>
 #include <QShortcut>
 #include <QTimer>
+#include <QTreeView>
 #include <QWidgetAction>
 //
 #include "plot/OrderBookPlot.h"
@@ -71,7 +72,7 @@ class GroxMainWindow : public QMainWindow
   QFrame* orders_frame_;
   QFrame* accounts_frame_;
   QFrame* transactions_frame_;
-  QTableView* transactions_view_;
+  QTreeView* transactions_view_;
   grox::transactions_model* transactions_model_;
   QSortFilterProxyModel* transactions_proxy_;
   QLineEdit* transactions_filter_;

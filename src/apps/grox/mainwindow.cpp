@@ -40,6 +40,7 @@
 #include <QSortFilterProxyModel>
 #include <QTableView>
 #include <QTimeZone>
+#include <QTreeView>
 // Qwt
 #include <QwtAxis>
 #include <QwtScaleDraw>
@@ -468,13 +469,17 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   transactions_proxy_->setSourceModel(transactions_model_);
   transactions_proxy_->setFilterCaseSensitivity(Qt::CaseInsensitive);
   transactions_proxy_->setFilterKeyColumn(-1);
+  transactions_proxy_->setRecursiveFilteringEnabled(true);
 
-  transactions_view_ = new QTableView();
+  transactions_view_ = new QTreeView();
   transactions_view_->setModel(transactions_proxy_);
   transactions_view_->setSortingEnabled(true);
-  transactions_view_->horizontalHeader()->setStretchLastSection(true);
-  transactions_view_->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-  transactions_view_->verticalHeader()->setVisible(false);
+  transactions_view_->setUniformRowHeights(true);
+  transactions_view_->setRootIsDecorated(true);
+  transactions_view_->setItemsExpandable(true);
+  transactions_view_->setAnimated(false);
+  transactions_view_->header()->setStretchLastSection(true);
+  transactions_view_->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
   transactions_view_->setSelectionBehavior(QAbstractItemView::SelectRows);
   transactions_view_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
   transactions_frame_->layout()->addWidget(transactions_view_);
@@ -907,6 +912,7 @@ void GroxMainWindow::update_transactions_range()
             range_index, s, e, records.size());
         transactions_model_->set_records(std::move(records));
         transactions_proxy_->invalidate();
+        transactions_view_->collapseAll();
         transactions_volume_label_->setText(QString("30d volume (USD, where convertible): %1")
                                                 .arg(QString::number(total.volume_usd, 'f', 2)));
       }) |
