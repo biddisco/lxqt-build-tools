@@ -1,5 +1,7 @@
 #include "widgets/transactions_model.hpp"
 
+#include <QBrush>
+#include <QColor>
 #include <QString>
 
 #include <algorithm>
@@ -33,6 +35,56 @@ namespace {
   QString format_optional_double(std::optional<double> value)
   {
     return value.has_value() ? format_double(*value) : QString{};
+  }
+
+  QString transaction_type_name(int type)
+  {
+    switch (type)
+    {
+    case 0: return QString("Deposit");
+    case 1: return QString("Withdrawal");
+    case 2: return QString("Trade");
+    case 14: return QString("Sub Account Transfer");
+    case 25: return QString("Credited Staked");
+    case 26: return QString("Sent To Staking");
+    case 27: return QString("Staking Reward");
+    case 32: return QString("Referral Reward");
+    case 33: return QString("Settlement Transfer");
+    case 35: return QString("Inter Account Transfer");
+    case 58: return QString("Derivatives Settlement");
+    case 59: return QString("Insurance Fund Claim");
+    case 60: return QString("Insurance Fund Premium");
+    case 61: return QString("Collateral Liquidation");
+    default: return QString("Type %1").arg(type);
+    }
+  }
+
+  QColor transaction_type_color(int type)
+  {
+    switch (type)
+    {
+    case 0: return QColor{34, 139, 34};     // Deposit -> forest green
+    case 1: return QColor{178, 34, 34};     // Withdrawal -> firebrick red
+    case 14: return QColor{128, 0, 128};    // Sub account transfer -> purple
+    case 25:
+    case 26:
+    case 27: return QColor{0, 128, 128};    // Staking -> teal
+    case 32: return QColor{255, 140, 0};    // Referral reward -> dark orange
+    case 33:
+    case 35: return QColor{128, 0, 128};    // Settlement/inter account -> purple
+    case 58:
+    case 59:
+    case 60:
+    case 61: return QColor{105, 105, 105};    // Derivatives/insurance -> dim gray
+    default: return QColor{};
+    }
+  }
+
+  QColor trade_side_color(std::string const& side)
+  {
+    if (side == "buy") { return QColor{0, 100, 200}; }       // Buy -> dark blue
+    if (side == "sell") { return QColor{100, 180, 255}; }    // Sell -> light blue
+    return QColor{};
   }
 
 }    // namespace
@@ -112,10 +164,15 @@ namespace grox {
       return 2;
     }
 
-    [[nodiscard]] QString side_display() const
+    [[nodiscard]] QString type_name_display() const
     {
-      if (!is_order && record != nullptr) { return QString::fromStdString(record->side); }
-      return QString::fromStdString(side);
+      if (!is_order && record != nullptr)
+      {
+        if (record->type == 2) { return QString::fromStdString(record->side); }
+        return transaction_type_name(record->type);
+      }
+      if (is_order && type_display() == 2) { return QString::fromStdString(side); }
+      return transaction_type_name(type_display());
     }
 
     [[nodiscard]] double amount_value() const
@@ -164,6 +221,18 @@ namespace grox {
     {
       if (is_order) { return fill_count; }
       return 0;
+    }
+
+    [[nodiscard]] QColor type_color() const
+    {
+      // For market trades, let the side decide the foreground color.
+      if (type_display() == 2)
+      {
+        if (!is_order && record != nullptr) { return trade_side_color(record->side); }
+        return trade_side_color(side);
+      }
+      if (!is_order && record != nullptr) { return transaction_type_color(record->type); }
+      return transaction_type_color(type_display());
     }
   };
 
@@ -247,7 +316,7 @@ namespace grox {
       case account: return n->account_display();
       case market: return n->market_display();
       case type: return n->type_display();
-      case side: return n->side_display();
+      case side: return n->type_name_display();
       case amount:
       {
         double const v = n->amount_value();
@@ -271,6 +340,12 @@ namespace grox {
       return Qt::AlignRight;
     }
 
+    if (role == Qt::ForegroundRole)
+    {
+      auto const color = n->type_color();
+      if (color.isValid()) { return QBrush{color}; }
+    }
+
     return QVariant{};
   }
 
@@ -287,7 +362,7 @@ namespace grox {
     case account: return QString("Account");
     case market: return QString("Market");
     case type: return QString("Type");
-    case side: return QString("Side");
+    case side: return QString("Type Name");
     case amount: return QString("Amount");
     case price: return QString("Price");
     case fee: return QString("Fee");

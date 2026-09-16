@@ -482,6 +482,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   transactions_view_->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
   transactions_view_->setSelectionBehavior(QAbstractItemView::SelectRows);
   transactions_view_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+  transactions_view_->sortByColumn(2, Qt::DescendingOrder);
   transactions_frame_->layout()->addWidget(transactions_view_);
 
   CDockWidget* TransactionsDockWidget =
