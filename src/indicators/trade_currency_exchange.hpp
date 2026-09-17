@@ -8,30 +8,30 @@
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 
-// Macro for trading algorithm factory creation
-// Note: Registration is handled by plugins, not via static initializers
-#define FACTORY_ARBITRAGE_CREATE(type) FACTORY_ALGORITHM_CREATE(type)
-
 // ----------------------------------------------------------------------------
 namespace indicators {
 
   //----------------------------------------------------------------------------
-  class trade_currency_exchange : public algorithm_base
+  class trade_currency_exchange : public indicator_base
   {
 public:
     using operator_type = arbitrage_decision;
 
     // ---------------------------------------
-    FACTORY_ARBITRAGE_CREATE(trade_currency_exchange);
+    FACTORY_INDICATOR_V2(trade_currency_exchange)
 
     // ---------------------------------------
     /// Default constructor
     trade_currency_exchange(std::string abstract_exchange = "Bistamp", currency_pair ticker = {})
-      : algorithm_base("Currency-Exchange", "Currency-Exchange using live orderbooks")
+      : indicator_base("Currency-Exchange", "Currency-Exchange using live orderbooks",
+            {overlay_type::no_overlay})
       , exchange_(abstract_exchange)
       , ticker1_(ticker)
     {
     }
+
+    // ---------------------------------------
+    indicator_kind kind() const override { return indicator_kind::orderbook; }
 
     // ---------------------------------------
     /// fields required for auto gui generation
@@ -48,7 +48,11 @@ public:
     void initialize() override {}
 
     // ---------------------------------------
-    double operator()(ohlctv_sample const& ohlc) { return 0.0; }
+    sample_result process_sample(market_sample const& /*sample*/) override
+    {
+      // Stub: currency exchange logic will be implemented in a future phase
+      return 0.0;
+    }
 
 private:
     std::string exchange_;

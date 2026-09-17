@@ -8,6 +8,7 @@
 #include "indicators/indicator_types.hpp"
 #include "indicators/kernels/gradient.hpp"
 #include "indicators/moving_average_hull.hpp"
+#include "indicators/portfolio.hpp"
 #include "indicators/stochastic_relative_strength_indicator.hpp"
 
 namespace indicators {
@@ -19,7 +20,7 @@ public:
     using operator_type = buy_sell_point;
 
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(trade_rebalance_funds, operator_type);
+    FACTORY_INDICATOR_V2(trade_rebalance_funds)
 
     // ---------------------------------------
     /// Default constructor
@@ -37,8 +38,6 @@ public:
       , srsi_{}
       , buffer1_(window_size)
       , window_size_(window_size)
-      , fee_percent_buy_(0.2)
-      , fee_percent_sell_(0.2)
       , rsi_multiplier_(1.0)
       , gradient_(0, 0)
       , rsi_gradient_(0, 0)
@@ -47,7 +46,22 @@ public:
     }
 
     // ---------------------------------------
+    indicator_kind kind() const override { return indicator_kind::strategy; }
+
+    // ---------------------------------------
     int num_outputs() const override { return 4; }
+
+    // ---------------------------------------
+    /// Named outputs: "buy", "sell", "price", "value"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {
+          {"buy", overlay_type::buy_sell},
+          {"sell", overlay_type::buy_sell},
+          {"price", overlay_type::buy_sell},
+          {"value", overlay_type::shared_axis},
+      };
+    }
 
     // ---------------------------------------
     /// fields required for auto gui generation
@@ -71,23 +85,17 @@ public:
     {
       window_size_ = get<int>(params_, 1);
       mode_ = get<ohlc_modes>(params_, 2);
-      fee_percent_buy_ = get<double>(params_, 3);
-      fee_percent_sell_ = get<double>(params_, 4);
-      double gap_upper_ = get<double>(params_, 5);
-      double gap_lower_ = get<double>(params_, 6);
+      portfolio_.set_fees(get<double>(params_, 3), get<double>(params_, 4));
       rsi_multiplier_ = get<double>(params_, 7);
       gradient_last_ = 0;
       gradient_this_ = 0;
       //
       first_ = true;
-      xrp_total_ = 1;
-      cash_total_ = 0;
+      portfolio_.reset(1.0, 0.0);
       //
       buffer1_ = boost::circular_buffer<float>(window_size_);
       srsi_ = stochastic_relative_strength_indicator();
       average_ = moving_average_hull(window_size_, mode_);
-      // upper_stop_ = kernels::sliding_limit(kernels::sliding_limit::up, gap_upper_);
-      // lower_stop_ = kernels::sliding_limit(kernels::sliding_limit::down, gap_lower_);
       //
       param_list rsi_params_ = {                                                          //
           params_[0],                                                                     // 0
@@ -102,123 +110,59 @@ public:
       indicator_base::create_outputs(view);
       auto d1 = get_input(0);
       set_time_resolution(d1.dataset_->get_resolution());
+      portfolio_.set_time_resolution(d1.dataset_->get_resolution());
       GROX_LOG_DEBUG(indicator_log, "{:>20} {} {}", "set_time_resolution", get_name(),
           d1.dataset_->get_resolution().name_);
     }
 
-    // ---------------------------------------
-    void buy(double time, double cash_amount)
-    {
-      double p = hdf5_ohlc_->get_estimated_buy_price_value(cash_amount, time + time_res_, 2.0);
-      double initial_value = (p * xrp_total_) + cash_total_;
-      //
-      double fee = 0.01 * fee_percent_buy_ * cash_amount;
-      double taker_pay = cash_amount - fee;
-      double xrp_bought = taker_pay / p;
-      //
-      xrp_total_ += xrp_bought;
-      cash_total_ -= cash_amount;
-      //
-      GROX_LOG_DEBUG(indicator_log,
-          "{:>20} bought {:.2f} XRP at price {:.2f} for total {:.2f} with fee {:.2f}", "buy",
-          xrp_bought, p, taker_pay, fee);
-      GROX_LOG_DEBUG(indicator_log,
-          "{:>20} initial_value {:.2f} final_value {:.2f} cash_total_ {:.2f} xrp_total {:.2f}",
-          "buy", initial_value, last_result_.value_, cash_total_, xrp_total_);
-
-      last_result_ = {//
-          .event_type_ = buy_sell_event_type::buy,
-          .event_time_ = time + time_res_,
-          .price_ = last_result_.price_,
-          .event_price_ = p,
-          .value_ = (p * xrp_total_) + cash_total_,
-          .tokens_ = xrp_total_,
-          .cash_ = cash_total_};
-      //
-      assert(xrp_total_ >= 0);
-      assert(cash_total_ >= 0);
-      assert(initial_value >= last_result_.value_);
-    }
-
-    // ---------------------------------------
-    void sell(double time, double xrp_amount)
-    {
-      double p = hdf5_ohlc_->get_estimated_sell_price_volume(xrp_amount, time + time_res_, 2.0);
-      double initial_value = (p * xrp_total_) + cash_total_;
-
-      double taker_pay = xrp_amount * p;
-      double fee = 0.01 * fee_percent_sell_ * taker_pay;
-      cash_total_ += taker_pay - fee;
-      xrp_total_ -= xrp_amount;
-      //
-      GROX_LOG_DEBUG(indicator_log,
-          "{:>20} sold {:.2f} XRP at price {:.2f} for total {:.2f} with fee {:.2f}", "sell",
-          xrp_amount, p, taker_pay, fee);
-      GROX_LOG_DEBUG(indicator_log,
-          "{:>20} initial_value {:.2f} final_value {:.2f} cash_total_ {:.2f} xrp_total {:.2f}",
-          "sell", initial_value, last_result_.value_, cash_total_, xrp_total_);
-
-      // note we output the actual sell price and not the current running average
-      last_result_ = {//
-          .event_type_ = buy_sell_event_type::sell,
-          .event_time_ = time + time_res_,
-          .price_ = last_result_.price_,
-          .event_price_ = p,
-          .value_ = (p * xrp_total_) + cash_total_,
-          .tokens_ = xrp_total_,
-          .cash_ = cash_total_};
-      //
-      assert(xrp_total_ >= 0);
-      assert(cash_total_ >= 0);
-      assert(initial_value >= last_result_.value_);
-    }
-
-    double round_n(double value, int n)
-    {
-      double factor = std::pow(10.0, n);
-      return std::round(value * factor) / factor;
-    }
-
-    // ---------------------------------------
+    // ----------------------------------------------------------------------------
     void rebalance(double time, double cash_fraction)
     {
-      double xrp_total_initial = xrp_total_;
-      double cash_total_initial = cash_total_;
+      double token_total_initial = portfolio_.token_total();
+      double cash_total_initial = portfolio_.cash_total();
       double sell_price_est =
-          hdf5_ohlc_->get_estimated_sell_price_volume(xrp_total_initial, time + time_res_, 1.0);
+          hdf5_ohlc_->get_estimated_sell_price_volume(token_total_initial, time + time_res_, 1.0);
       double buy_price_est =
-          hdf5_ohlc_->get_estimated_buy_price_volume(xrp_total_initial, time + time_res_, 1.0);
+          hdf5_ohlc_->get_estimated_buy_price_volume(token_total_initial, time + time_res_, 1.0);
       assert(sell_price_est <= buy_price_est);
       //
-      double xrp_value_sell = (sell_price_est * xrp_total_initial);
+      double xrp_value_sell = (sell_price_est * token_total_initial);
       double initial_value_est = xrp_value_sell + cash_total_initial;
       //
-      if (cash_total_ < (cash_fraction * initial_value_est))
+      if (portfolio_.cash_total() < (cash_fraction * initial_value_est))
       {
-        // rebalance by selling some XRP
-        double excess_cash = (cash_fraction * initial_value_est) - cash_total_;
-        double excess_xrp_est = excess_cash / sell_price_est;
+        // rebalance by selling some tokens
+        double excess_cash = (cash_fraction * initial_value_est) - portfolio_.cash_total();
+        double excess_tokens_est = excess_cash / sell_price_est;
         GROX_LOG_DEBUG(indicator_log, "{:>20} {} {} {} {}", "rebalance-sell", time,
-            initial_value_est, cash_total_, excess_xrp_est);
-        sell(time, excess_xrp_est);
+            initial_value_est, portfolio_.cash_total(), excess_tokens_est);
+        last_result_ = portfolio_.sell(*hdf5_ohlc_, time, excess_tokens_est);
         if (last_result_.event_price_ < sell_price_est) sell_price_est = last_result_.event_price_;
       }
-      else if (cash_total_ > cash_fraction * initial_value_est)
+      else if (portfolio_.cash_total() > cash_fraction * initial_value_est)
       {
-        // rebalance by buying some XRP
+        // rebalance by buying some tokens
         double target_cash = cash_fraction * initial_value_est;
-        double excess_cash = cash_total_ - target_cash;
+        double excess_cash = portfolio_.cash_total() - target_cash;
         GROX_LOG_DEBUG(indicator_log, "{:>20} {} {} {} {}", "rebalance-buy", time,
-            initial_value_est, cash_total_, excess_cash);
-        buy(time, excess_cash);
+            initial_value_est, portfolio_.cash_total(), excess_cash);
+        last_result_ = portfolio_.buy(*hdf5_ohlc_, time, excess_cash);
         if (last_result_.event_price_ > buy_price_est) buy_price_est = last_result_.event_price_;
       }
       //
-      initial_value_est = round_n((sell_price_est * xrp_total_initial + cash_total_initial), 6);
-      double final_value_total = round_n((sell_price_est * xrp_total_) + cash_total_, 6);
+      initial_value_est = round_n((sell_price_est * token_total_initial + cash_total_initial), 6);
+      double final_value_total =
+          round_n((sell_price_est * portfolio_.token_total()) + portfolio_.cash_total(), 6);
       GROX_LOG_DEBUG(
           indicator_log, "{:>20} {} {}", "rebalance-value", initial_value_est, final_value_total);
       assert(final_value_total <= initial_value_est);
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& val = std::get<ohlctv_sample>(sample);
+      return operator()(val);
     }
 
     // ---------------------------------------
@@ -230,7 +174,8 @@ public:
 
       // set default output to value computed with current price (low for conservative est)
       last_result_ = {buy_sell_event_type::value, val.time, current_average_, 0.0,
-          (val.low * xrp_total_) + cash_total_, xrp_total_, cash_total_};
+          (val.low * portfolio_.token_total()) + portfolio_.cash_total(), portfolio_.token_total(),
+          portfolio_.cash_total()};
 
       if (first_)
       {
@@ -261,27 +206,28 @@ public:
     void set_time_resolution(double res) { time_res_ = res; }
 
 private:
+    double round_n(double value, int n)
+    {
+      double factor = std::pow(10.0, n);
+      return std::round(value * factor) / factor;
+    }
+
     ohlc_modes mode_;
     moving_average_hull average_;
     stochastic_relative_strength_indicator srsi_;
     boost::circular_buffer<float> buffer1_;
+    portfolio portfolio_;
     //
-    // kernels::sliding_limit upper_stop_;
-    // kernels::sliding_limit lower_stop_;
     kernels::gradient gradient_;
     kernels::gradient rsi_gradient_;
     //
     double gradient_last_;
     double gradient_this_;
     double rsi_multiplier_;
-    double fee_percent_buy_;
-    double fee_percent_sell_;
     int window_size_;
     //
     bool first_;
     buy_sell_point last_result_;
-    double xrp_total_;
-    double cash_total_;
     double time_res_;
   };
 

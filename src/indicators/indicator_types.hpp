@@ -216,6 +216,13 @@ namespace indicators {
   };
 
   // ----------------------------------------------------------------------------
+  /// Placeholder for arbitrage/orderbook strategy decisions. Will be expanded
+  /// when the orderbook indicators are fully implemented.
+  struct arbitrage_decision
+  {
+  };
+
+  // ----------------------------------------------------------------------------
   /// The single input type that flows into process_sample(). Every indicator
   /// handles exactly one arm; the base executes the streaming lifecycle and
   /// fans results into named outputs.

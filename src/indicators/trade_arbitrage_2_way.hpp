@@ -8,34 +8,29 @@
 #include "indicators/indicator_base.hpp"
 #include "indicators/indicator_types.hpp"
 
-// Macro for arbitrage algorithm factory creation
-// Note: Registration is handled by plugins, not via static initializers
-#define FACTORY_ARBITRAGE_CREATE(type) FACTORY_ALGORITHM_CREATE(type)
-
 // ----------------------------------------------------------------------------
 namespace indicators {
 
-  struct arbitrage_decision
-  {
-  };
-
   //----------------------------------------------------------------------------
-  class trade_arbitrage_2_way : public algorithm_base
+  class trade_arbitrage_2_way : public indicator_base
   {
 public:
     using operator_type = arbitrage_decision;
 
     // ---------------------------------------
-    FACTORY_ARBITRAGE_CREATE(trade_arbitrage_2_way);
+    FACTORY_INDICATOR_V2(trade_arbitrage_2_way)
 
     // ---------------------------------------
     /// Default constructor
     trade_arbitrage_2_way(std::string abstract_exchange = "Bistamp", currency_pair ticker = {})
-      : algorithm_base("Arbitrage 2-way", "Arbitrage 2-way")
+      : indicator_base("Arbitrage 2-way", "Arbitrage 2-way", {overlay_type::no_overlay})
       , exchange_(abstract_exchange)
       , ticker_(ticker)
     {
     }
+
+    // ---------------------------------------
+    indicator_kind kind() const override { return indicator_kind::orderbook; }
 
     // ---------------------------------------
     /// fields required for auto gui generation
@@ -55,7 +50,11 @@ public:
     void initialize() override {}
 
     // ---------------------------------------
-    double operator()(ohlctv_sample const& ohlc) { return 0.0; }
+    sample_result process_sample(market_sample const& /*sample*/) override
+    {
+      // Stub: arbitrage logic will be implemented in a future phase
+      return 0.0;
+    }
 
 private:
     std::string exchange_;
