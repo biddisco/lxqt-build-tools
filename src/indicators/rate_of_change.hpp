@@ -23,7 +23,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(rate_of_change, operator_type);
+    FACTORY_INDICATOR_V2(rate_of_change)
 
     // ---------------------------------------
     /// Default constructor
@@ -55,6 +55,20 @@ public:
       mode_ = get<ohlc_modes>(params_, 2);
       buffer_ = boost::circular_buffer<double>(window_size_ + 1);
       roc_ = 0;
+    }
+
+    // ---------------------------------------
+    /// Named output: "roc"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"roc", overlay_type::no_overlay}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      return operator()(ohlc);
     }
 
     // ---------------------------------------

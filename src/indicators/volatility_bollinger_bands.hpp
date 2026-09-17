@@ -18,7 +18,7 @@ public:
     using operator_type = std::vector<float>;
 
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(volatility_bollinger_bands, operator_type);
+    FACTORY_INDICATOR_V2(volatility_bollinger_bands)
 
     // ---------------------------------------
     /// Default constructor
@@ -60,6 +60,29 @@ public:
       overlay_ = overlay_vector(1 + (2 * num_bands_), overlay_type::price);
       average_ = moving_average(window_size_, mode_);
       buffer_ = boost::circular_buffer<float>(window_size_);
+    }
+
+    // ---------------------------------------
+    /// Named outputs: "lower_N", "mean", "upper_N" (N = 1..num_bands_)
+    output_descriptors get_output_descriptors() const override
+    {
+      output_descriptors result;
+      for (int i = 0; i < num_bands_; ++i)
+        result.push_back({"lower_" + std::to_string(i + 1), overlay_type::price});
+      result.push_back({"mean", overlay_type::price});
+      for (int i = 0; i < num_bands_; ++i)
+        result.push_back({"upper_" + std::to_string(i + 1), overlay_type::price});
+      return result;
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& val = std::get<ohlctv_sample>(sample);
+      double price = ohlc_mode_extract(mode_, val);
+      auto vals = operator()(price);
+      output_buffer_ = std::move(vals);
+      return std::span<float const>(output_buffer_);
     }
 
     // ---------------------------------------

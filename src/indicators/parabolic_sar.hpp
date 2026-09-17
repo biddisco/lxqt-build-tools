@@ -30,7 +30,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(parabolic_sar, operator_type);
+    FACTORY_INDICATOR_V2(parabolic_sar)
 
     // ---------------------------------------
     /// Default constructor
@@ -72,6 +72,20 @@ public:
       ep_ = 0;
       is_uptrend_ = true;
       count_ = 0;
+    }
+
+    // ---------------------------------------
+    /// Named output: "sar"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"sar", overlay_type::price}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      return operator()(ohlc);
     }
 
     // ---------------------------------------

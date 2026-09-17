@@ -34,7 +34,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(on_balance_volume, operator_type);
+    FACTORY_INDICATOR_V2(on_balance_volume)
 
     // ---------------------------------------
     /// Default constructor
@@ -76,6 +76,20 @@ public:
       first_ = true;
       first_smooth_ = true;
       gradient_ = kernels::gradient(0, 0);
+    }
+
+    // ---------------------------------------
+    /// Named output: "obv"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"obv", overlay_type::volume}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      return operator()(ohlc);
     }
 
     // ---------------------------------------

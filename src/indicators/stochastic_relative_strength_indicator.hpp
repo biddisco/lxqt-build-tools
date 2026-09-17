@@ -22,7 +22,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(stochastic_relative_strength_indicator, operator_type);
+    FACTORY_INDICATOR_V2(stochastic_relative_strength_indicator)
 
     // ---------------------------------------
     /// Default constructor
@@ -65,6 +65,20 @@ public:
       //
       osc_.set_params(params_);
       osc_.initialize();
+    }
+
+    // ---------------------------------------
+    /// Named output: "stoch-rsi"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"stoch-rsi", overlay_type::minmax_limit}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& val = std::get<ohlctv_sample>(sample);
+      return operator()(val);
     }
 
     // ---------------------------------------

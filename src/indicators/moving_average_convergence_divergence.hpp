@@ -28,7 +28,7 @@ public:
     using operator_type = std::vector<float>;
 
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(moving_average_convergence_divergence, operator_type);
+    FACTORY_INDICATOR_V2(moving_average_convergence_divergence)
 
     // ---------------------------------------
     /// Default constructor
@@ -83,6 +83,40 @@ public:
       signal_line_ = 0;
       histogram_ = 0;
       first_ = true;
+    }
+
+    // ---------------------------------------
+    /// Named outputs: "macd", "signal", "histogram"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {
+          {"macd", overlay_type::shared_axis},
+          {"signal", overlay_type::shared_axis},
+          {"histogram", overlay_type::shared_axis},
+      };
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      double fast_val = ema_fast_(ohlc);
+      double slow_val = ema_slow_(ohlc);
+
+      macd_line_ = fast_val - slow_val;
+
+      if (first_)
+      {
+        signal_line_ = macd_line_;
+        first_ = false;
+      }
+      else { signal_line_ = (signal_alpha_ * macd_line_) + ((1.0 - signal_alpha_) * signal_line_); }
+
+      histogram_ = macd_line_ - signal_line_;
+
+      output_buffer_ = {static_cast<float>(macd_line_), static_cast<float>(signal_line_),
+          static_cast<float>(histogram_)};
+      return std::span<float const>(output_buffer_);
     }
 
     // ---------------------------------------

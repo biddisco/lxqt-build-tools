@@ -28,7 +28,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(commodity_channel_index, operator_type);
+    FACTORY_INDICATOR_V2(commodity_channel_index)
 
     // ---------------------------------------
     /// Default constructor
@@ -58,6 +58,20 @@ public:
       window_size_ = get<int>(params_, 1);
       buffer_ = boost::circular_buffer<double>(window_size_);
       cci_ = 0;
+    }
+
+    // ---------------------------------------
+    /// Named output: "cci"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"cci", overlay_type::no_overlay}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      return operator()(ohlc);
     }
 
     // ---------------------------------------

@@ -15,7 +15,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(stochastic_oscillator, operator_type);
+    FACTORY_INDICATOR_V2(stochastic_oscillator)
 
     // ---------------------------------------
     /// Default constructor
@@ -47,6 +47,21 @@ public:
       mode_ = get<ohlc_modes>(params_, 2);
       //
       buffer_ = boost::circular_buffer<double>(window_size);
+    }
+
+    // ---------------------------------------
+    /// Named output: "stoch"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"stoch", overlay_type::minmax_limit}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& val = std::get<ohlctv_sample>(sample);
+      double price = ohlc_mode_extract(mode_, val);
+      return operator()(price);
     }
 
     // ---------------------------------------

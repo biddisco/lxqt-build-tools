@@ -27,7 +27,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(volume_weighted_average_price, operator_type);
+    FACTORY_INDICATOR_V2(volume_weighted_average_price)
 
     // ---------------------------------------
     /// Default constructor
@@ -58,6 +58,20 @@ public:
       tp_vol_buf_ = boost::circular_buffer<double>(window_size_);
       vol_buf_ = boost::circular_buffer<double>(window_size_);
       vwap_ = 0;
+    }
+
+    // ---------------------------------------
+    /// Named output: "vwap"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"vwap", overlay_type::price}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      return operator()(ohlc);
     }
 
     // ---------------------------------------

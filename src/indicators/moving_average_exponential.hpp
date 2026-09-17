@@ -15,7 +15,7 @@ namespace indicators {
 
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(moving_average_exponential, operator_type);
+    FACTORY_INDICATOR_V2(moving_average_exponential)
 
     // ---------------------------------------
     /// Default constructor
@@ -55,6 +55,27 @@ public:
       decay_factor_ = get<double>(params_, 4);
       mean_ = 0.0;
       first_ = true;
+    }
+
+    // ---------------------------------------
+    /// Named output: "ema"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"ema", overlay_type::mode_select}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      double alpha = user_alpha_ ? decay_factor_ : 2.0 / (window_size_ + 1.0);
+      if (first_)
+      {
+        mean_ = ohlc_mode_extract(mode_, ohlc);
+        first_ = false;
+      }
+      mean_ = (alpha * ohlc_mode_extract(mode_, ohlc)) + ((1.0 - alpha) * mean_);
+      return mean_;
     }
 
     // ---------------------------------------

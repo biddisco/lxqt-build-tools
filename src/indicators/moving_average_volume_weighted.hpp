@@ -19,7 +19,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(moving_average_volume_weighted, operator_type);
+    FACTORY_INDICATOR_V2(moving_average_volume_weighted)
 
     // ---------------------------------------
     /// Default constructor
@@ -68,6 +68,23 @@ public:
         wtot += val.weight_;
       }
       return (wtot > 0) ? (pwtot / wtot) : ptot / buffer_.size();
+    }
+
+    // ---------------------------------------
+    /// Named output: "vwap"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"vwap", overlay_type::mode_select}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& val = std::get<ohlctv_sample>(sample);
+      double price = ohlc_mode_extract(mode_, val);
+      buffer_.push_back({price, val.volume});
+      mean_ = compute();
+      return mean_;
     }
 
     // ---------------------------------------

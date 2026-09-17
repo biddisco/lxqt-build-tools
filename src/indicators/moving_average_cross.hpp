@@ -30,7 +30,7 @@ public:
     using operator_type = std::vector<float>;
 
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(moving_average_cross, operator_type);
+    FACTORY_INDICATOR_V2(moving_average_cross)
 
     // ---------------------------------------
     /// Default constructor
@@ -90,6 +90,52 @@ public:
 
       fast_above_slow_ = false;
       first_ = true;
+    }
+
+    // ---------------------------------------
+    /// Named outputs: "fast", "slow", "signal"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {
+          {"fast", overlay_type::price},
+          {"slow", overlay_type::price},
+          {"signal", overlay_type::no_overlay},
+      };
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      double fast_val = ema_fast_(ohlc);
+      double slow_val = ema_slow_(ohlc);
+
+      float signal = 0.0f;
+
+      bool currently_above = (fast_val > slow_val);
+      if (first_)
+      {
+        // establish initial state, no signal on first sample
+        fast_above_slow_ = currently_above;
+        first_ = false;
+      }
+      else
+      {
+        if (currently_above && !fast_above_slow_)
+        {
+          // bullish crossover: fast crossed above slow
+          signal = 1.0f;
+        }
+        else if (!currently_above && fast_above_slow_)
+        {
+          // bearish crossover: fast crossed below slow
+          signal = -1.0f;
+        }
+        fast_above_slow_ = currently_above;
+      }
+
+      output_buffer_ = {static_cast<float>(fast_val), static_cast<float>(slow_val), signal};
+      return std::span<float const>(output_buffer_);
     }
 
     // ---------------------------------------

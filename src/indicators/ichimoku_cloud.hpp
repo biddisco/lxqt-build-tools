@@ -38,7 +38,7 @@ public:
     using operator_type = std::vector<float>;
 
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(ichimoku_cloud, operator_type);
+    FACTORY_INDICATOR_V2(ichimoku_cloud)
 
     // ---------------------------------------
     /// Default constructor
@@ -85,6 +85,27 @@ public:
       kijun_ = 0;
       senkou_a_ = 0;
       senkou_b_ = 0;
+    }
+
+    // ---------------------------------------
+    /// Named outputs: "tenkan", "kijun", "senkou_a", "senkou_b"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {
+          {"tenkan", overlay_type::price},
+          {"kijun", overlay_type::price},
+          {"senkou_a", overlay_type::price},
+          {"senkou_b", overlay_type::price},
+      };
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      auto vals = operator()(ohlc);
+      output_buffer_ = std::move(vals);
+      return std::span<float const>(output_buffer_);
     }
 
     // ---------------------------------------

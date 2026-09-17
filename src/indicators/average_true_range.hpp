@@ -25,7 +25,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(average_true_range, operator_type);
+    FACTORY_INDICATOR_V2(average_true_range)
 
     // ---------------------------------------
     /// Default constructor
@@ -58,6 +58,20 @@ public:
       prev_close_ = 0;
       count_ = 0;
       first_ = true;
+    }
+
+    // ---------------------------------------
+    /// Named output: "atr"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"atr", overlay_type::no_overlay}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      return operator()(ohlc);
     }
 
     // ---------------------------------------

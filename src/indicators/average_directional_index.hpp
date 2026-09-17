@@ -38,7 +38,7 @@ public:
     using operator_type = std::vector<float>;
 
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(average_directional_index, operator_type);
+    FACTORY_INDICATOR_V2(average_directional_index)
 
     // ---------------------------------------
     /// Default constructor
@@ -90,6 +90,26 @@ public:
       prev_close_ = 0;
       count_ = 0;
       first_ = true;
+    }
+
+    // ---------------------------------------
+    /// Named outputs: "adx", "+di", "-di"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {
+          {"adx", overlay_type::shared_axis},
+          {"+di", overlay_type::shared_axis},
+          {"-di", overlay_type::shared_axis},
+      };
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      auto vals = operator()(ohlc);
+      output_buffer_ = std::move(vals);
+      return std::span<float const>(output_buffer_);
     }
 
     // ---------------------------------------

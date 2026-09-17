@@ -19,7 +19,7 @@ public:
     // HMA= WMA( 2*WMA(n/2) − WMA(n)), sqrt(n) )
 
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(moving_average_hull, operator_type);
+    FACTORY_INDICATOR_V2(moving_average_hull)
 
     // ---------------------------------------
     /// Default constructor
@@ -57,6 +57,24 @@ public:
       ema_1_ = moving_average_exponential(window_size_ / 2, mode_, false, 1.0);
       ema_2_ = moving_average_exponential(window_size_, mode_, false, 1.0);
       ema_3_ = moving_average_exponential(std::sqrt(window_size_), mode_, false, 1.0);
+    }
+
+    // ---------------------------------------
+    /// Named output: "hma"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"hma", overlay_type::mode_select}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& val = std::get<ohlctv_sample>(sample);
+      auto v1 = ema_1_(val);
+      auto v2 = ema_2_(val);
+      double vwma = (2 * v1) - v2;
+      hma_ = ema_3_(ohlctv_sample{val.time, vwma, vwma, vwma, vwma, val.volume});
+      return hma_;
     }
 
     // ---------------------------------------

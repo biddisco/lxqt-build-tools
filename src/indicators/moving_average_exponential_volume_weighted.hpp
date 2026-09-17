@@ -15,7 +15,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(moving_average_exponential_volume_weighted, operator_type);
+    FACTORY_INDICATOR_V2(moving_average_exponential_volume_weighted)
 
     // ---------------------------------------
     /// Default constructor
@@ -57,6 +57,24 @@ public:
       mean_ = 0.0;
       //      first_ = true;
       vwma_ = moving_average_volume_weighted(window_size_, mode_);
+    }
+
+    // ---------------------------------------
+    /// Named output: "ema-vw"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"ema-vw", overlay_type::mode_select}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      double vwma = vwma_(ohlc);
+      double alpha = user_alpha_ ? decay_factor_ : 2.0 / (vwma_.size() + 1.0);
+      //
+      mean_ = (alpha * vwma) + ((1.0 - alpha) * mean_);
+      return mean_;
     }
 
     // ---------------------------------------

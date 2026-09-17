@@ -13,7 +13,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(relative_strength_indicator, operator_type);
+    FACTORY_INDICATOR_V2(relative_strength_indicator)
 
     // ---------------------------------------
     /// Default constructor
@@ -52,6 +52,21 @@ public:
       pos_diff = 0;
       neg_diff = 0;
       count = 0;
+    }
+
+    // ---------------------------------------
+    /// Named output: "rsi"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"rsi", overlay_type::minmax_limit}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& val = std::get<ohlctv_sample>(sample);
+      double price = ohlc_mode_extract(ohlc_modes::close, val);
+      return operator()(price);
     }
 
     // ---------------------------------------

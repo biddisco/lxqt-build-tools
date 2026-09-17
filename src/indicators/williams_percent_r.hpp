@@ -24,7 +24,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(williams_percent_r, operator_type);
+    FACTORY_INDICATOR_V2(williams_percent_r)
 
     // ---------------------------------------
     /// Default constructor
@@ -55,6 +55,20 @@ public:
       highs_ = boost::circular_buffer<double>(window_size_);
       lows_ = boost::circular_buffer<double>(window_size_);
       williams_r_ = 0;
+    }
+
+    // ---------------------------------------
+    /// Named output: "wr"
+    output_descriptors get_output_descriptors() const override
+    {
+      return {{"wr", overlay_type::no_overlay}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      return operator()(ohlc);
     }
 
     // ---------------------------------------
