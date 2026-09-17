@@ -50,6 +50,9 @@ public:
     void execute_from(std::uint64_t N) override;
     void execute_continue() override;
 
+    /// Per-sample computation: delegates to the Python compute_sample method
+    sample_result process_sample(market_sample const& sample) override;
+
     void initialize() override;
     void init_params() override;
 

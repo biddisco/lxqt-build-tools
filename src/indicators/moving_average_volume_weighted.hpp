@@ -81,10 +81,7 @@ public:
     sample_result process_sample(market_sample const& sample) override
     {
       auto const& val = std::get<ohlctv_sample>(sample);
-      double price = ohlc_mode_extract(mode_, val);
-      buffer_.push_back({price, val.volume});
-      mean_ = compute();
-      return mean_;
+      return operator()(val);
     }
 
     // ---------------------------------------

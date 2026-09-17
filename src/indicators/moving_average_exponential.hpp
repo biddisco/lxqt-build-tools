@@ -68,14 +68,7 @@ public:
     sample_result process_sample(market_sample const& sample) override
     {
       auto const& ohlc = std::get<ohlctv_sample>(sample);
-      double alpha = user_alpha_ ? decay_factor_ : 2.0 / (window_size_ + 1.0);
-      if (first_)
-      {
-        mean_ = ohlc_mode_extract(mode_, ohlc);
-        first_ = false;
-      }
-      mean_ = (alpha * ohlc_mode_extract(mode_, ohlc)) + ((1.0 - alpha) * mean_);
-      return mean_;
+      return operator()(ohlc);
     }
 
     // ---------------------------------------

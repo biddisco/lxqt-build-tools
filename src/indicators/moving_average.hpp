@@ -68,9 +68,7 @@ public:
     {
       auto const& ohlc = std::get<ohlctv_sample>(sample);
       double price = ohlc_mode_extract(mode_, ohlc);
-      decay_acc_(price);
-      mean_ = ba::rolling_mean(decay_acc_);
-      return mean_;
+      return operator()(price);
     }
 
     // ---------------------------------------

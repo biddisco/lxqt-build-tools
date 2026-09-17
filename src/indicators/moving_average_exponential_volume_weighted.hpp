@@ -70,11 +70,7 @@ public:
     sample_result process_sample(market_sample const& sample) override
     {
       auto const& ohlc = std::get<ohlctv_sample>(sample);
-      double vwma = vwma_(ohlc);
-      double alpha = user_alpha_ ? decay_factor_ : 2.0 / (vwma_.size() + 1.0);
-      //
-      mean_ = (alpha * vwma) + ((1.0 - alpha) * mean_);
-      return mean_;
+      return operator()(ohlc);
     }
 
     // ---------------------------------------

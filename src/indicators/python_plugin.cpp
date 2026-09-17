@@ -890,8 +890,7 @@ private:
     {
       N = 0;
     }
-    call_helper<double> helper;
-    helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });
+    execute_streaming(N);
   }
 
   void python_indicator_wrapper::execute_continue()
@@ -899,8 +898,7 @@ private:
     std::uint64_t N = 1;
     if ((N == std::numeric_limits<std::uint64_t>::max()) || (N > get_input(0).dataset_->size()))
       N = 0;
-    call_helper<double> helper;
-    helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });
+    execute_streaming(N);
   }
 
   void python_indicator_wrapper::initialize()
@@ -1205,6 +1203,12 @@ private:
         sample.open, sample.high, sample.low, sample.close, sample.volume, sample.time);
 
     return last_result_;
+  }
+
+  sample_result python_indicator_wrapper::process_sample(market_sample const& sample)
+  {
+    auto const& ohlc = std::get<ohlctv_sample>(sample);
+    return operator()(ohlc);
   }
 
   // ============================================================================

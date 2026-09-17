@@ -70,11 +70,7 @@ public:
     sample_result process_sample(market_sample const& sample) override
     {
       auto const& val = std::get<ohlctv_sample>(sample);
-      auto v1 = ema_1_(val);
-      auto v2 = ema_2_(val);
-      double vwma = (2 * v1) - v2;
-      hma_ = ema_3_(ohlctv_sample{val.time, vwma, vwma, vwma, vwma, val.volume});
-      return hma_;
+      return operator()(val);
     }
 
     // ---------------------------------------
