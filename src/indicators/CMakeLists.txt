@@ -9,6 +9,7 @@ set(grox_indicators_SRCS
     indicator_registry.hpp
     indicator_registry.cpp
     indicator_types.hpp
+    portfolio.hpp
     # Plugin support
     plugin_api.hpp
     plugin_loader.hpp

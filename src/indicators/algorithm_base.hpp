@@ -74,6 +74,27 @@ public:
     virtual int num_outputs() const { return 1; }
 
     // ----------------------------------------------------------------------------
+    /// The kind of this algorithm. Drives registry partitioning and GUI
+    /// grouping. Defaults to graph; strategy and orderbook indicators override.
+    /// Independent from overlay_type (a per-output display hint).
+    virtual indicator_kind kind() const { return indicator_kind::graph; }
+
+    // ----------------------------------------------------------------------------
+    /// Describes each named output. Replaces the positional outputs[N]
+    /// convention. The default returns an empty vector; indicator_base
+    /// overrides to synthesize from num_outputs() + get_overlay(n) so existing
+    /// indicators work without changes. Converted indicators override with
+    /// explicit names.
+    virtual output_descriptors get_output_descriptors() const { return {}; }
+
+    // ----------------------------------------------------------------------------
+    /// Clones this algorithm from its prototype form into a ready-to-execute
+    /// instance. Replaces the create(alg*) + FACTORY_INDICATOR_CREATE macro
+    /// pair. Default returns nullptr; converted indicators override. Existing
+    /// indicators continue to use create(alg*) until converted in Phase 1.
+    virtual shared_algorithm clone() const { return nullptr; }
+
+    // ----------------------------------------------------------------------------
     /// Duration (sample count) is an execution property, not an indicator parameter
     std::uint64_t get_duration() const { return duration_; }
     void set_duration(std::uint64_t d) { duration_ = d; }

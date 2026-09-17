@@ -141,6 +141,20 @@ public:
     virtual overlay_type get_overlay(int n) const { return overlay_[n]; }
 
     // ----------------------------------------------------------------------------
+    /// Synthesizes output descriptors from num_outputs() + get_overlay(n) so
+    /// existing indicators get named outputs without changes. Converted
+    /// indicators override with explicit names.
+    output_descriptors get_output_descriptors() const override
+    {
+      output_descriptors result;
+      for (int i = 0; i < num_outputs(); ++i)
+      {
+        result.push_back({"output_" + std::to_string(i), get_overlay(i)});
+      }
+      return result;
+    }
+
+    // ----------------------------------------------------------------------------
     virtual std::vector<candle_input_data> const& get_inputs() const { return in_datasets_; }
 
     virtual candle_input_data const& get_input(std::size_t i) const

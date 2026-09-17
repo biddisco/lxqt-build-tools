@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <iostream>
+#include <span>
 #include <string>
 #include <variant>
 #include <vector>
@@ -184,4 +185,66 @@ namespace indicators {
     double min;
     double max;
   };
+
+  // ----------------------------------------------------------------------------
+  /// The kind of indicator, returned by algorithm_base::kind(). Drives registry
+  /// partitioning and GUI grouping. Independent from overlay_type, which is a
+  /// per-output display hint only.
+  enum class indicator_kind : int
+  {
+    /// Computes values (single or multi-series) from market samples and emits
+    /// them for plotting. No portfolio state. (RSI, MA, Bollinger, ...)
+    graph,
+    /// Computes buy/sell signals from market samples and maintains a
+    /// portfolio/paper account. (Sliding stop, rebalance funds, ...)
+    strategy,
+    /// Consumes order-book snapshots rather than candles. (Arbitrage, market
+    /// making, ...)
+    orderbook,
+  };
+
+  // ----------------------------------------------------------------------------
+  /// A point-in-time snapshot of an order book, used as the orderbook arm of
+  /// market_sample. Holds copies of the bid/ask offer data so consumers can
+  /// read them without holding the order book's mutex.
+  struct order_book_snapshot
+  {
+    std::string exchange_;
+    offer_data bids_;
+    offer_data asks_;
+    double time_;
+  };
+
+  // ----------------------------------------------------------------------------
+  /// The single input type that flows into process_sample(). Every indicator
+  /// handles exactly one arm; the base executes the streaming lifecycle and
+  /// fans results into named outputs.
+  using market_sample = std::variant<ohlctv_sample, order_book_snapshot>;
+
+  // ----------------------------------------------------------------------------
+  /// The per-sample result type returned by process_sample(). The base writes
+  /// it into the indicator's outputs according to get_output_descriptors().
+  ///   double             - single value per sample (RSI, MA, ...)
+  ///   std::span<float const> - multiple values per sample (Bollinger, MA
+  ///                        cross, ...). Points into a pre-allocated buffer
+  ///                        owned by the base (sized to num_outputs() at
+  ///                        initialize() time). No per-sample allocation.
+  ///   buy_sell_point     - trade event with portfolio state (strategies)
+  ///
+  /// TODO(emit-to-sink): In a later phase, process_sample will receive an
+  /// output_sink& and push named outputs directly, eliminating the return
+  /// value entirely and enabling variable/sparse output counts.
+  using sample_result = std::variant<double, std::span<float const>, buy_sell_point>;
+
+  // ----------------------------------------------------------------------------
+  /// Describes a single named output of an indicator. Replaces the positional
+  /// outputs[N] convention; the plot layer reads outputs by name and uses
+  /// overlay_type purely as a display hint.
+  struct output_descriptor
+  {
+    std::string name_;
+    overlay_type overlay_;
+  };
+
+  using output_descriptors = std::vector<output_descriptor>;
 }    // namespace indicators
