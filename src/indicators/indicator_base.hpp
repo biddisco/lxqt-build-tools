@@ -16,8 +16,10 @@
 #include "indicators/indicator_types.hpp"
 
 // ----------------------------------------------------------------------------
-// Macro to implement factory methods for indicator creation and execution
+// Macro to implement factory methods for indicator creation and execution.
+// Legacy: used by indicators not yet converted to process_sample.
 // Note: Registration is handled by plugins, not via static initializers
+// TODO: delete once all indicators are converted to process_sample.
 #define FACTORY_INDICATOR_CREATE(type, operator_type)                                              \
   public:                                                                                          \
   shared_indicator create(algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc)       \
@@ -48,6 +50,37 @@
     call_helper<operator_type> helper;                                                             \
     helper.execute(N, this, [this](ohlctv_sample const& sample) { return (*this)(sample); });      \
   }
+
+// ----------------------------------------------------------------------------
+// Macro for converted indicators: implements clone(), create(), execute_from,
+// and execute_continue via the new process_sample virtual.
+// process_sample must be implemented by the indicator.
+// The indicator must also implement output_descriptors() with explicit names.
+#define FACTORY_INDICATOR_V2(type)                                                                 \
+  public:                                                                                          \
+  shared_algorithm clone() const override                                                          \
+  {                                                                                                \
+    auto result = std::make_shared<type>(*this);                                                   \
+    result->initialize();                                                                          \
+    return result;                                                                                 \
+  }                                                                                                \
+  shared_indicator create(algorithm_base* alg, std::shared_ptr<ohlc_dataset_view> hdf5_ohlc)       \
+      const override                                                                               \
+  {                                                                                                \
+    auto result = std::make_shared<type>(*dynamic_cast<type*>(alg));                               \
+    result->hdf5_ohlc_ = hdf5_ohlc;                                                                \
+    result->initialize();                                                                          \
+    result->create_outputs(hdf5_ohlc);                                                             \
+    result->register_callbacks();                                                                  \
+    return result;                                                                                 \
+  }                                                                                                \
+  void execute_from(std::uint64_t N) override                                                      \
+  {                                                                                                \
+    if ((N == std::numeric_limits<std::uint64_t>::max()) || (N > get_input(0).dataset_->size()))   \
+      N = 0;                                                                                       \
+    execute_streaming(N);                                                                          \
+  }                                                                                                \
+  void execute_continue() override { execute_streaming(1); }
 
 // ----------------------------------------------------------------------------
 namespace indicators {
@@ -241,6 +274,112 @@ public:
     // execute the algorithm from wherever it last completed, until the end
     // (mmeaning if N new samples have been added to the input, execute them)
     virtual void execute_continue() = 0;
+
+    // ----------------------------------------------------------------------------
+    /// Per-sample computation. Converted indicators implement this; the base
+    /// fans the result into named outputs via execute_streaming.
+    ///   double                  -> single output (output 0)
+    ///   std::span<float const>  -> multiple outputs (must match num_outputs())
+    ///   buy_sell_point          -> strategy output (buy/sell/value/etc.)
+    ///
+    /// TODO(emit-to-sink): upgrade to pass an output_sink& so indicators push
+    /// named outputs directly, enabling variable/sparse output counts.
+    virtual sample_result process_sample(market_sample const& /*sample*/) { return 0.0; }
+
+    // ----------------------------------------------------------------------------
+    /// Pre-allocated buffer for multi-output indicators. Sized to
+    /// num_outputs() at initialize() time. process_sample returns a span into
+    /// this buffer; no per-sample allocation.
+    std::vector<float> output_buffer_;
+
+    // ----------------------------------------------------------------------------
+    /// Streaming execution engine. Iterates the last N samples of the input,
+    /// calling process_sample for each and fanning the result into named
+    /// outputs. Handles chunked locking for thread-safety (supports input
+    /// growth during iteration, aborts on shrink).
+    ///
+    /// This replaces call_operator_ohlc_1/v and call_operator_buy_sell.
+    /// Dispatch on sample_result variant arm:
+    ///   double           -> QPointF(time, val) into output 0
+    ///   span<float const>-> QPointF(time, vals[i]) into each output i
+    ///   buy_sell_point   -> buy into output 0, sell into output 1,
+    ///                       av_price into 2, value into 3 (per get_output_descriptors)
+    void execute_streaming(std::uint64_t N)
+    {
+      std::uint64_t const chunksize = 10000;
+      auto const input = get_input(0).dataset_;
+      auto origin_size = input->size();
+      auto outputs = get_outputs();
+      auto descriptors = get_output_descriptors();
+
+      {
+        auto l = get_input(0).view_->take_readonly_lock(name_, "execute_streaming", "start");
+        if (executing_) return;
+        executing_ = true;
+        std::uint64_t start_index;
+        if (valid_index_ == std::numeric_limits<std::uint64_t>::max())
+        {
+          start_index = (input->size() - N);
+          valid_index_ = start_index;
+        }
+        else { start_index = valid_index_; }
+        GROX_LOG_DEBUG(indicator_log, "{:>20} start_index {}", "execute_streaming", start_index);
+        auto partitioner = block_partitioner(input->data(), start_index, chunksize);
+        l.unlock();
+
+        for (std::uint64_t p = 0; p < partitioner.num_partitions_; p++)
+        {
+          auto l = get_input(0).view_->take_readonly_lock(name_, "execute_streaming", p);
+          if (input->size() < origin_size)
+          {
+            GROX_LOG_DEBUG(
+                indicator_log, "{:>20} Data reduced Aborting {}", "execute_streaming", p);
+            break;
+          }
+          partitioner = block_partitioner(input->data(), start_index, chunksize);
+          auto extent = partitioner.get_partition(p);
+          for (auto it = extent.begin; it != extent.end; ++it)
+          {
+            auto const& ohlc = *it;
+            auto result = process_sample(market_sample{ohlc});
+            //
+            if (std::holds_alternative<double>(result))
+            {
+              double val = std::get<double>(result);
+              outputs[0]->data().push_back({ohlc.time, val});
+            }
+            else if (std::holds_alternative<std::span<float const>>(result))
+            {
+              auto vals = std::get<std::span<float const>>(result);
+              for (int i = 0; i < num_outputs() && i < static_cast<int>(vals.size()); ++i)
+              {
+                outputs[i]->data().push_back({ohlc.time, vals[i]});
+              }
+            }
+            else if (std::holds_alternative<buy_sell_point>(result))
+            {
+              auto const& vals = std::get<buy_sell_point>(result);
+              // find outputs by name from descriptors
+              for (std::size_t i = 0; i < descriptors.size() && i < outputs.size(); ++i)
+              {
+                auto const& desc = descriptors[i];
+                if (desc.name_ == "buy" && vals.event_type_ == buy_sell_event_type::buy)
+                  outputs[i]->data().push_back({vals.event_time_, vals.event_price_});
+                else if (desc.name_ == "sell" && vals.event_type_ == buy_sell_event_type::sell)
+                  outputs[i]->data().push_back({vals.event_time_, vals.event_price_});
+                else if (desc.name_ == "price")
+                  outputs[i]->data().push_back({ohlc.time, vals.price_});
+                else if (desc.name_ == "value")
+                  outputs[i]->data().push_back({ohlc.time, vals.value_});
+              }
+            }
+            valid_index_++;
+          }
+          GROX_LOG_DEBUG(indicator_log, "{:>20} partition complete {}", "execute_streaming", p);
+        }
+      }
+      executing_ = false;
+    }
 
     // ----------------------------------------------------------------------------
     void call_operator_ohlc_1(std::uint64_t N, std::function<double(ohlctv_sample const&)> fn)

@@ -20,7 +20,7 @@ namespace indicators {
   {
 public:
     // ---------------------------------------
-    FACTORY_INDICATOR_CREATE(moving_average, operator_type);
+    FACTORY_INDICATOR_V2(moving_average)
 
     // ---------------------------------------
     // Default constructor
@@ -57,15 +57,31 @@ public:
     }
 
     // ---------------------------------------
-    double operator()(double const price)
+    /// Named output: "ma"
+    output_descriptors get_output_descriptors() const override
     {
-      // insert data into boost accumulator
+      return {{"ma", overlay_type::mode_select}};
+    }
+
+    // ---------------------------------------
+    sample_result process_sample(market_sample const& sample) override
+    {
+      auto const& ohlc = std::get<ohlctv_sample>(sample);
+      double price = ohlc_mode_extract(mode_, ohlc);
       decay_acc_(price);
       mean_ = ba::rolling_mean(decay_acc_);
       return mean_;
     }
 
     // ---------------------------------------
+    /// Legacy callable interface (used by unconverted indicators)
+    double operator()(double const price)
+    {
+      decay_acc_(price);
+      mean_ = ba::rolling_mean(decay_acc_);
+      return mean_;
+    }
+
     double operator()(ohlctv_sample const& ohlc)
     {
       double price = ohlc_mode_extract(mode_, ohlc);
