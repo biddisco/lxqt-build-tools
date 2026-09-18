@@ -12,8 +12,10 @@
 #include "indicators/indicator_base.hpp"
 
 class indicator_plot;
+class ohlc_price_plot;
 class timebased_data_curve;
 class QwtPlotCurve;
+class QwtPlot;
 
 namespace indicators {
 
@@ -77,6 +79,12 @@ namespace indicators {
     shared_algorithm algorithm_;
     indicator_plot* plot{nullptr};
     std::vector<QwtPlotCurve*> curves;
+    /// The plot each curve belongs to. Parallel to curves; needed because
+    /// some indicators create a separate plot per output (e.g. price overlay
+    /// outputs), but indicator_ptr::plot only retains the last one. Without
+    /// this, deletion passes the wrong plot to remove_indicator_plot and
+    /// double-frees it.
+    std::vector<QwtPlot*> curve_plots;
     bool visibility_{true};
   };
 }    // namespace indicators

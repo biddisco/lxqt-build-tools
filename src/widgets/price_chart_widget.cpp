@@ -257,7 +257,10 @@ void price_chart_widget::connect_gui()
     else if (col == 4)    // delete indicator
     {
       auto it = std::next(ind_model_.indicators_.begin(), row);
-      for (auto* curve : it->curves) { remove_indicator_plot(it->plot, curve); }
+      for (std::size_t i = 0; i < it->curves.size(); ++i)
+      {
+        remove_indicator_plot(it->curve_plots[i], it->curves[i]);
+      }
       ind_model_.indicators_.erase(it);
       ind_model_.dataAdded();
       this->replot();
@@ -293,9 +296,13 @@ void price_chart_widget::connect_gui()
                 auto colour = chart_colours[colour_count++ % 10];
                 auto ot = algp.indicator()->get_overlay(i);
                 QwtPlotCurve* curve;
+                QwtPlot* curve_plot = nullptr;
                 if (ot == indicators::overlay_type::price)
+                {
                   curve = price_plot_->add_overlay_curve(
                       name, algp.indicator()->get_outputs()[i].get(), colour);
+                  curve_plot = static_cast<QwtPlot*>(price_plot_);
+                }
                 else if (ot == indicators::overlay_type::buy_sell)
                 {
                   if (i == 0)
@@ -307,19 +314,29 @@ void price_chart_widget::connect_gui()
                   else
                     curve = price_plot_->add_overlay_curve(
                         name, algp.indicator()->get_outputs()[i].get(), colour);
+                  curve_plot = static_cast<QwtPlot*>(price_plot_);
                 }
                 else if (ot == indicators::overlay_type::mode_select)
                 {
                   ohlc_modes mode = get<ohlc_modes>(algp.indicator()->get_params(), 2);
                   if (mode == ohlc_modes::volume)
+                  {
                     curve = price_plot_->add_overlay_volume_curve(
                         name, algp.indicator()->get_outputs()[i].get(), colour);
+                    curve_plot = static_cast<QwtPlot*>(price_plot_);
+                  }
                   else if (mode == ohlc_modes::value)
+                  {
                     std::tie(algp.plot, curve) =
                         add_indicator_plot(name, algp.indicator()->get_outputs()[i].get(), colour);
+                    curve_plot = algp.plot;
+                  }
                   else
+                  {
                     curve = price_plot_->add_overlay_curve(
                         name, algp.indicator()->get_outputs()[i].get(), colour);
+                    curve_plot = static_cast<QwtPlot*>(price_plot_);
+                  }
                 }
                 else if (ot == indicators::overlay_type::shared_axis)
                 {
@@ -328,6 +345,7 @@ void price_chart_widget::connect_gui()
                     // first shared_axis output creates the plot
                     std::tie(algp.plot, curve) =
                         add_indicator_plot(name, algp.indicator()->get_outputs()[i].get(), colour);
+                    curve_plot = algp.plot;
                   }
                   else
                   {
@@ -341,13 +359,23 @@ void price_chart_widget::connect_gui()
                     m_curve->setData(algp.indicator()->get_outputs()[i].get());
                     m_curve->attach(algp.plot);
                     curve = m_curve;
+                    curve_plot = algp.plot;
                   }
                 }
                 else
+                {
                   std::tie(algp.plot, curve) =
                       add_indicator_plot(name, algp.indicator()->get_outputs()[i].get(), colour);
+                  curve_plot = algp.plot;
+                }
                 algp.curves.push_back(curve);
+                algp.curve_plots.push_back(curve_plot);
               }
+
+              // Qwt curves now own the raw point_chart_data* via setData().
+              // Release the shared_ptrs in out_datasets_ to prevent a
+              // double-free when the indicator is later destroyed.
+              algp.indicator()->release_outputs();
 
               ind_model_.indicators_.push_back(algp);
               ind_model_.dataAdded();
@@ -466,24 +494,26 @@ std::tuple<indicator_plot*, timebased_data_curve*> price_chart_widget::add_indic
 }
 
 // ----------------------------------------------------------------------------
-void price_chart_widget::remove_indicator_plot(indicator_plot* filter_plot, QwtPlotCurve* curve)
+void price_chart_widget::remove_indicator_plot(QwtPlot* plot, QwtPlotCurve* curve)
 {
   // detach curves and autodelete them
   GROX_LOG_DEBUG(pplot_log, "{:>20} {}", "Remove plot", curve->title().text().toStdString());
   curve->detach();
   delete curve;
   //
-  filter_plots_.erase(
-      std::remove(filter_plots_.begin(), filter_plots_.end(), filter_plot), filter_plots_.end());
-
-  // overlay curves don't have their own filter plot
-  if (filter_plot)
+  // Only indicator_plot instances are tracked in filter_plots_.
+  // Curves on the price plot (overlay/buy-sell) are not in filter_plots_.
+  auto* ind_plot = dynamic_cast<indicator_plot*>(plot);
+  if (ind_plot)
   {
+    filter_plots_.erase(
+        std::remove(filter_plots_.begin(), filter_plots_.end(), ind_plot), filter_plots_.end());
+
     // if there are no curves left, delete the plot and widget, the parent splitter will adjust
-    QwtPlotItemList const& items = filter_plot->itemList();
+    QwtPlotItemList const& items = ind_plot->itemList();
     int num_curves = std::count_if(items.constBegin(), items.constEnd(),
         [](auto const it) { return (it->rtti() == QwtPlotItem::Rtti_PlotCurve); });
-    if (num_curves == 0) { delete filter_plot; }
+    if (num_curves == 0) { delete ind_plot; }
   }
   show_plot_axes();
 }

@@ -90,6 +90,10 @@ protected:
     std::uint64_t valid_index_;
     bool executing_;
     bool callbacks_registered_{false};
+    /// Set to true once Qwt curves have taken ownership of the raw
+    /// point_chart_data* via setData(). When true, ~indicator_base()
+    /// skips deleting the output data to avoid a double-free.
+    bool outputs_released_{false};
 
 public:
     using algorithm_base::create;
@@ -124,6 +128,16 @@ public:
             std::cout << "ERROR: Exception during indicator_base destruction unsubscribe, id: "
                       << id << " what: " << e.what() << std::endl;
           }
+        }
+      }
+      // Output shared_ptrs have no-op deleters (see create_outputs). We must
+      // manually delete the raw pointers, but ONLY if this is the last
+      // reference (unique) AND Qwt curves haven't taken ownership.
+      if (!outputs_released_)
+      {
+        for (auto& d : out_datasets_)
+        {
+          if (d.unique()) { delete d.get(); }
         }
       }
       out_datasets_.clear();
@@ -173,6 +187,11 @@ public:
       return out_datasets_[i];
     }
 
+    /// Mark outputs as released to Qwt. After this call, ~indicator_base()
+    /// will not delete the output data, preventing a double-free: Qwt curves
+    /// own the raw point_chart_data* via setData().
+    void release_outputs() { outputs_released_ = true; }
+
     // ----------------------------------------------------------------------------
     bool callbacks_registered() const { return callbacks_registered_; }
     void set_callbacks_registered(bool registered) { callbacks_registered_ = registered; }
@@ -188,9 +207,12 @@ public:
       std::size_t const size = in_datasets_[0].dataset_->data().size();
       for (int i = 0; i < num_outputs(); ++i)
       {
-        std::shared_ptr<output_type> indicator_data = std::make_shared<output_type>(res);
-        indicator_data->data().reserve(size);
-        out_datasets_.push_back(indicator_data);
+        // Use a no-op custom deleter so that ~indicator_base() can
+        // selectively free the data (only when Qwt curves haven't
+        // taken ownership via setData()).
+        auto raw = new output_type(res);
+        raw->data().reserve(size);
+        out_datasets_.push_back(std::shared_ptr<output_type>(raw, [](output_type*) {}));
       }
     }
 
