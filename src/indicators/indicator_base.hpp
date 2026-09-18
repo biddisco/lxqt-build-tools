@@ -40,8 +40,10 @@
   }                                                                                                \
   void execute_from(std::uint64_t N) override                                                      \
   {                                                                                                \
-    if ((N == std::numeric_limits<std::uint64_t>::max()) || (N > get_input(0).dataset_->size()))   \
-      N = 0;                                                                                       \
+    if (N == std::numeric_limits<std::uint64_t>::max())                                            \
+      N = get_input(0).dataset_->size();                                                           \
+    else if (N > get_input(0).dataset_->size())                                                    \
+      N = get_input(0).dataset_->size();                                                           \
     execute_streaming(N);                                                                          \
   }                                                                                                \
   void execute_continue() override { execute_streaming(1); }
