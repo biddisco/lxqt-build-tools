@@ -16,15 +16,15 @@ GROX_BEGIN_PLUGIN_REGISTRATION()
 {
   auto arb_2way = std::make_shared<indicators::trade_arbitrage_2_way>();
   arb_2way->init_params();
-  registry->register_arbitrage(arb_2way);
+  registry->register_indicator(arb_2way);
 
   auto curr_ex = std::make_shared<indicators::trade_currency_exchange>();
   curr_ex->init_params();
-  registry->register_arbitrage(curr_ex);
+  registry->register_indicator(curr_ex);
 
   auto mm = std::make_shared<indicators::trade_market_maker>();
   mm->init_params();
-  registry->register_arbitrage(mm);
+  registry->register_indicator(mm);
 
   auto sell_stop = std::make_shared<indicators::trade_sell_sliding_stop>();
   sell_stop->init_params();

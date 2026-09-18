@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -18,12 +19,13 @@ namespace indicators {
   // ----------------------------------------------------------------------------
   using indicator_vector = std::vector<shared_algorithm>;
 
-  // Global vectors for registered indicators
-  extern indicator_vector available_indicators;
-  extern indicator_vector available_arbitragers;
+  // Number of indicator_kind values (graph, strategy, orderbook)
+  inline constexpr std::size_t num_kinds = 3;
 
   // Singleton registry for managing indicators and plugins
-  // All indicators are loaded dynamically as plugins at runtime
+  // All indicators are loaded dynamically as plugins at runtime.
+  // Internally partitioned by indicator_kind so consumers can request
+  // a kind-filtered view via by_kind().
   class indicator_registry
   {
 public:
@@ -33,21 +35,25 @@ public:
       return instance;
     }
 
-    // Register an indicator (called by plugins during initialization)
+    // Register an indicator (or arbitrage/strategy). Dispatches by kind().
     void register_indicator(shared_algorithm p)
     {
-      GROX_LOG_TRACE(indicator_log, "{:>20} Registering indicator: {}", "registry", p->get_name());
-      available_indicators.push_back(p);
+      auto k = static_cast<std::size_t>(p->kind());
+      GROX_LOG_TRACE(indicator_log, "{:>20} Registering [{}]: {}", "registry",
+          k == 0     ? "graph" :
+              k == 1 ? "strategy" :
+                       "orderbook",
+          p->get_name());
+      indicators_by_kind_[k].push_back(p);
     }
 
-    // Register a trading algorithm (called by plugins during initialization)
-    void register_arbitrage(shared_algorithm p)
+    // Return all indicators of a given kind (graph, strategy, or orderbook).
+    indicator_vector const& by_kind(indicator_kind k) const
     {
-      GROX_LOG_TRACE(indicator_log, "{:>20} Registering arbitrage: {}", "registry", p->get_name());
-      available_arbitragers.push_back(p);
+      return indicators_by_kind_[static_cast<std::size_t>(k)];
     }
 
-    // Find an indicator by name
+    // Find an indicator by name across all kinds
     static shared_algorithm find_by_name(std::string);
 
     // Plugin loading support - load all plugins from a directory
@@ -60,6 +66,7 @@ private:
     indicator_registry();
     ~indicator_registry();
 
+    std::array<indicator_vector, num_kinds> indicators_by_kind_;
     std::unique_ptr<plugin_loader> plugin_loader_;
   };
 

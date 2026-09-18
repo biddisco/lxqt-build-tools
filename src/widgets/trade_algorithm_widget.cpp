@@ -376,7 +376,9 @@ QDialog* create_trading_widget(
     // reuse whichever selection was previously set in the staic var
     static std::size_t available_arbitragers_index{0};
     // use the static lists and indices so that successive calls reuse the selection
-    widget = new indicator_widget(indicators::available_arbitragers, available_arbitragers_index);
+    auto const& trading_indicators = indicators::indicator_registry::getInstance()
+        .by_kind(indicators::indicator_kind::orderbook);
+    widget = new indicator_widget(&trading_indicators, available_arbitragers_index);
   }
   else
   {
@@ -401,7 +403,7 @@ QDialog* create_trading_widget(
     auto algowidget_ = trade_widget_factory(alg, exchange_list_);
     return dock_trading_widget(algowidget_, alg->get_name());
   }
-*/
+  */
   return nullptr;
 }
 

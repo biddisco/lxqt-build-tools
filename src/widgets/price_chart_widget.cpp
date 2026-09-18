@@ -274,8 +274,9 @@ void price_chart_widget::connect_gui()
 
     using namespace grox::senders;
 
-    indicator_widget* widget =
-        new indicator_widget(&indicators::available_indicators, available_indicators_index);
+    auto const& graph_indicators =
+        indicators::indicator_registry::getInstance().by_kind(indicators::indicator_kind::graph);
+    indicator_widget* widget = new indicator_widget(&graph_indicators, available_indicators_index);
     auto result = widget->execute_as_dialog();
 
     if (result == QDialog::Accepted)
