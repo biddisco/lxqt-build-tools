@@ -29,7 +29,7 @@ class timebased_chart_data : public QwtArraySeriesData<DataType>
   {
   }
 
-  ~timebased_chart_data() {}
+  virtual ~timebased_chart_data() {}
 
   minmax_data<DataType> minmax_limits(size_t from, size_t to) const
   {
