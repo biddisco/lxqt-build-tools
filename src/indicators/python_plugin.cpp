@@ -1297,6 +1297,12 @@ private:
       return 0.0;
     }
 
+    // Acquire GIL for the entire result-processing block. compute_sample_raw
+    // has its own PyGILGuard (a safe no-op when already held), but all
+    // Py_DECREF and type-check calls on the returned PyObject* must also
+    // be protected — they touch Python's thread-local freelists.
+    PyGILGuard gil;
+
     PyObject* result = static_cast<PyObject*>(instance_->compute_sample_raw(
         ohlc.open, ohlc.high, ohlc.low, ohlc.close, ohlc.volume, ohlc.time));
 
