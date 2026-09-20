@@ -108,8 +108,13 @@ private:
     char const* python_home_env = std::getenv("PYTHONHOME");
     if (python_home_env)
     {
-      python_home_ = std::wstring(python_home_env, python_home_env + strlen(python_home_env));
-      have_python_home = true;
+      wchar_t* decoded = Py_DecodeLocale(python_home_env, nullptr);
+      if (decoded)
+      {
+        python_home_ = std::wstring(decoded);
+        PyMem_RawFree(decoded);
+        have_python_home = true;
+      }
       GROX_LOG_DEBUG(
           py_plug_log, "{:>20} Using PYTHONHOME from environment: {}", "registry", python_home_env);
     }
@@ -119,8 +124,13 @@ private:
       std::string const configured_home = GROX_PYTHON_BASE_PREFIX;
       if (!configured_home.empty())
       {
-        python_home_ = std::wstring(configured_home.begin(), configured_home.end());
-        have_python_home = true;
+        wchar_t* decoded = Py_DecodeLocale(configured_home.c_str(), nullptr);
+        if (decoded)
+        {
+          python_home_ = std::wstring(decoded);
+          PyMem_RawFree(decoded);
+          have_python_home = true;
+        }
         GROX_LOG_DEBUG(
             py_plug_log, "{:>20} Using CMake Python home: {}", "registry", configured_home);
       }
@@ -143,7 +153,13 @@ private:
         if (lib_pos != std::string::npos)
         {
           std::string home = lib_path.substr(0, lib_pos);
-          python_home_ = std::wstring(home.begin(), home.end());
+          wchar_t* decoded = Py_DecodeLocale(home.c_str(), nullptr);
+          if (decoded)
+          {
+            python_home_ = std::wstring(decoded);
+            PyMem_RawFree(decoded);
+            have_python_home = true;
+          }
           GROX_LOG_DEBUG(py_plug_log, "{:>20} Auto-detected PYTHONHOME: {}", "registry", home);
         }
         else
@@ -268,6 +284,12 @@ private:
 
     // Add module directory to Python path
     PyObject* sys_path = PySys_GetObject("path");
+    if (!sys_path)
+    {
+      GROX_LOG_ERROR(py_plug_log, "{:>20} failed to get sys.path", "registry");
+      PyErr_Print();
+      return false;
+    }
     PyObject* py_dir = PyUnicode_FromString(module_dir.c_str());
     PyList_Append(sys_path, py_dir);
     Py_DECREF(py_dir);
@@ -483,6 +505,32 @@ private:
       return 0.0;
     }
 
+    PyObject* result =
+        static_cast<PyObject*>(compute_sample_raw(open, high, low, close, volume, time));
+    if (!result) return 0.0;
+
+    // Coerce any numeric type to double
+    double value = 0.0;
+    if (PyFloat_Check(result)) { value = PyFloat_AsDouble(result); }
+    else if (PyLong_Check(result)) { value = PyLong_AsDouble(result); }
+    else if (PyBool_Check(result)) { value = PyObject_IsTrue(result) ? 1.0 : 0.0; }
+    else
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} compute_sample returned non-numeric result", "py_indicator");
+    }
+    Py_DECREF(result);
+
+    GROX_LOG_DEBUG(py_plug_log, "{:>20} compute_sample result={}", "py_indicator", value);
+    return value;
+  }
+
+  // ----------------------------------------------------------------------------
+  void* py_indicator_instance::compute_sample_raw(
+      double open, double high, double low, double close, double volume, uint64_t time)
+  {
+    if (!py_object_) return nullptr;
+
     // Acquire GIL for all Python C API calls
     PyGILGuard gil;
 
@@ -491,7 +539,7 @@ private:
     if (!ohlcv_dict)
     {
       GROX_LOG_ERROR(py_plug_log, "{:>20} failed to create OHLCV dict", "py_indicator");
-      return 0.0;
+      return nullptr;
     }
 
 // Helper macro to safely add items to dict (manages reference counts)
@@ -503,7 +551,7 @@ private:
       GROX_LOG_ERROR(                                                                              \
           py_plug_log, "{:>20} failed to create float for key={}", "py_indicator", key);           \
       Py_DECREF(dict);                                                                             \
-      return 0.0;                                                                                  \
+      return nullptr;                                                                              \
     }                                                                                              \
     int ret = PyDict_SetItemString(dict, key, tmp);                                                \
     Py_DECREF(tmp);                                                                                \
@@ -511,7 +559,7 @@ private:
     {                                                                                              \
       GROX_LOG_ERROR(py_plug_log, "{:>20} failed to set dict key={}", "py_indicator", key);        \
       Py_DECREF(dict);                                                                             \
-      return 0.0;                                                                                  \
+      return nullptr;                                                                              \
     }                                                                                              \
   } while (0)
 
@@ -522,7 +570,7 @@ private:
     {                                                                                              \
       GROX_LOG_ERROR(py_plug_log, "{:>20} failed to create long for key={}", "py_indicator", key); \
       Py_DECREF(dict);                                                                             \
-      return 0.0;                                                                                  \
+      return nullptr;                                                                              \
     }                                                                                              \
     int ret = PyDict_SetItemString(dict, key, tmp);                                                \
     Py_DECREF(tmp);                                                                                \
@@ -530,7 +578,7 @@ private:
     {                                                                                              \
       GROX_LOG_ERROR(py_plug_log, "{:>20} failed to set dict key={}", "py_indicator", key);        \
       Py_DECREF(dict);                                                                             \
-      return 0.0;                                                                                  \
+      return nullptr;                                                                              \
     }                                                                                              \
   } while (0)
 
@@ -553,25 +601,12 @@ private:
     {
       PyErr_Print();
       GROX_LOG_ERROR(py_plug_log, "{:>20} compute_sample Python call failed", "py_indicator");
-      return 0.0;
+      return nullptr;
     }
-
-    if (!PyFloat_Check(result))
-    {
-      GROX_LOG_ERROR(
-          py_plug_log, "{:>20} compute_sample returned non-float result", "py_indicator");
-      Py_DECREF(result);
-      return 0.0;
-    }
-
-    double value = PyFloat_AsDouble(result);
-    Py_DECREF(result);
-
-    GROX_LOG_DEBUG(py_plug_log, "{:>20} compute_sample result={}", "py_indicator", value);
-    return value;
 
 #undef SAFE_DICT_SET_FLOAT
 #undef SAFE_DICT_SET_LONG
+    return result;
   }
 
   bool py_indicator_instance::set_parameter(std::string const& name, double value)
@@ -585,6 +620,8 @@ private:
           py_plug_log, "{:>20} set_parameter<double> failed: null py_object", "py_indicator");
       return false;
     }
+
+    PyGILGuard gil;
 
     // Convert parameter name for Python attribute lookup
     std::string attr_name = normalize_param_name(name);
@@ -703,6 +740,8 @@ private:
           py_plug_log, "{:>20} set_parameter<string> failed: null py_object", "py_indicator");
       return false;
     }
+
+    PyGILGuard gil;
 
     // Convert parameter name for Python attribute lookup
     std::string attr_name = normalize_param_name(name);
@@ -875,7 +914,13 @@ private:
   {
     GROX_LOG_DEBUG(py_plug_log, "{:>20} create method called", "py_indicator_wrapper");
     auto result = std::make_shared<python_indicator_wrapper>();
-    *result = *dynamic_cast<python_indicator_wrapper*>(alg);
+    auto* src = dynamic_cast<python_indicator_wrapper*>(alg);
+    if (!src)
+    {
+      GROX_LOG_ERROR(py_plug_log, "{:>20} create: dynamic_cast failed", "py_indicator_wrapper");
+      return result;
+    }
+    *result = *src;
     result->hdf5_ohlc_ = hdf5_ohlc;
 
     result->initialize();
@@ -1183,6 +1228,43 @@ private:
           py_plug_log, "{:>20} no param_specs found in Python class", "py_indicator_wrapper");
     }
 
+    // Read num_outputs from the Python class (default 1)
+    if (PyObject_HasAttrString(py_class, "num_outputs"))
+    {
+      PyObject* num_outputs_obj = PyObject_GetAttrString(py_class, "num_outputs");
+      if (num_outputs_obj && PyLong_Check(num_outputs_obj))
+      {
+        num_outputs_ = std::max(1, static_cast<int>(PyLong_AsLong(num_outputs_obj)));
+        GROX_LOG_DEBUG(py_plug_log, "{:>20} num_outputs from Python: {}", "py_indicator_wrapper",
+            num_outputs_);
+      }
+      Py_XDECREF(num_outputs_obj);
+    }
+
+    // Read kind from the Python class (default "graph")
+    if (PyObject_HasAttrString(py_class, "kind"))
+    {
+      PyObject* kind_obj = PyObject_GetAttrString(py_class, "kind");
+      if (kind_obj && PyUnicode_Check(kind_obj))
+      {
+        char const* kind_str = PyUnicode_AsUTF8(kind_obj);
+        if (kind_str)
+        {
+          std::string k(kind_str);
+          if (k == "strategy") { kind_ = indicator_kind::strategy; }
+          else if (k == "orderbook") { kind_ = indicator_kind::orderbook; }
+          else { kind_ = indicator_kind::graph; }
+          GROX_LOG_DEBUG(py_plug_log, "{:>20} kind from Python: {} -> {}", "py_indicator_wrapper",
+              k, static_cast<int>(kind_));
+        }
+      }
+      Py_XDECREF(kind_obj);
+    }
+
+    // Pre-allocate the multi-output buffer so process_sample can return
+    // a span into it without per-sample allocation.
+    if (num_outputs_ > 1) { multi_output_buffer_.resize(num_outputs_); }
+
     Py_DECREF(py_class);
 
     GROX_LOG_DEBUG(py_plug_log, "{:>20} init_params extracted {} parameters",
@@ -1208,7 +1290,59 @@ private:
   sample_result python_indicator_wrapper::process_sample(market_sample const& sample)
   {
     auto const& ohlc = std::get<ohlctv_sample>(sample);
-    return operator()(ohlc);
+
+    if (!instance_)
+    {
+      GROX_LOG_DEBUG(py_plug_log, "{:>20} no instance, returning 0.0", "py_indicator_wrapper");
+      return 0.0;
+    }
+
+    PyObject* result = static_cast<PyObject*>(instance_->compute_sample_raw(
+        ohlc.open, ohlc.high, ohlc.low, ohlc.close, ohlc.volume, ohlc.time));
+
+    if (!result) return 0.0;
+
+    // Multi-output: Python returned a list or tuple of floats
+    if (PyList_Check(result) || PyTuple_Check(result))
+    {
+      Py_ssize_t n = PySequence_Size(result);
+      int count = std::min(static_cast<int>(n), num_outputs_);
+      for (int i = 0; i < count; ++i)
+      {
+        PyObject* item = PySequence_GetItem(result, i);
+        if (PyFloat_Check(item))
+        {
+          multi_output_buffer_[i] = static_cast<float>(PyFloat_AsDouble(item));
+        }
+        else if (PyLong_Check(item))
+        {
+          multi_output_buffer_[i] = static_cast<float>(PyLong_AsDouble(item));
+        }
+        else if (PyBool_Check(item))
+        {
+          multi_output_buffer_[i] = PyObject_IsTrue(item) ? 1.0f : 0.0f;
+        }
+        else { multi_output_buffer_[i] = 0.0f; }
+        Py_XDECREF(item);
+      }
+      Py_DECREF(result);
+      return std::span<float const>(multi_output_buffer_.data(), count);
+    }
+
+    // Single output: coerce any numeric type to double
+    double value = 0.0;
+    if (PyFloat_Check(result)) { value = PyFloat_AsDouble(result); }
+    else if (PyLong_Check(result)) { value = PyLong_AsDouble(result); }
+    else if (PyBool_Check(result)) { value = PyObject_IsTrue(result) ? 1.0 : 0.0; }
+    else
+    {
+      GROX_LOG_ERROR(
+          py_plug_log, "{:>20} compute_sample returned non-numeric result", "py_indicator_wrapper");
+    }
+    Py_DECREF(result);
+
+    last_result_ = value;
+    return value;
   }
 
   // ============================================================================

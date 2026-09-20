@@ -29,6 +29,9 @@ class SimplePythonMovingAverage:
     num_inputs = 1
     num_outputs = 1
     category = "averages"
+    # Optional: declare indicator kind (graph, strategy, orderbook).
+    # Defaults to "graph" if omitted.
+    kind = "graph"
 
     # Parameter specifications for GUI display
     # Format: [(attribute_name, gui_label, type_name), ...]
@@ -114,6 +117,7 @@ class ExponentialPythonMovingAverage:
     num_inputs = 1
     num_outputs = 1
     category = "averages"
+    kind = "graph"
 
     # Parameter specifications for GUI display
     param_specs = [
@@ -177,6 +181,7 @@ class WeightedPythonMovingAverage:
     num_inputs = 1
     num_outputs = 1
     category = "averages"
+    kind = "graph"
 
     # Parameter specifications for GUI display
     param_specs = [
@@ -214,14 +219,8 @@ class WeightedPythonMovingAverage:
         self.prices.clear()
 
 
-# Export registry for grox plugin system
-# This list tells grox which Python classes are available as indicators
-GROX_PYTHON_INDICATORS = [
-    SimplePythonMovingAverage,
-    ExponentialPythonMovingAverage,
-    WeightedPythonMovingAverage,
-]
-
+# Note: Grox discovers Python indicators by scanning for classes with a
+# compute_sample method. No explicit export list is needed.
 __all__ = [
     "SimplePythonMovingAverage",
     "ExponentialPythonMovingAverage",

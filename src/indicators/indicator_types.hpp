@@ -204,6 +204,19 @@ namespace indicators {
   };
 
   // ----------------------------------------------------------------------------
+  /// The implementation source of an indicator, returned by
+  /// algorithm_base::source(). Orthogonal to kind() — kind is about behavior,
+  /// source is about implementation. Lets the GUI display an icon or filter
+  /// without affecting registry partitioning.
+  enum class indicator_source : int
+  {
+    /// Native C++ indicator, loaded as a .so plugin or built-in
+    cpp,
+    /// Python indicator, loaded and executed via the Python C API
+    python,
+  };
+
+  // ----------------------------------------------------------------------------
   /// A point-in-time snapshot of an order book, used as the orderbook arm of
   /// market_sample. Holds copies of the bid/ask offer data so consumers can
   /// read them without holding the order book's mutex.

@@ -25,6 +25,9 @@ class MinimalPythonIndicator:
     num_inputs = 1
     num_outputs = 1
     category = "custom"
+    # Optional: declare indicator kind (graph, strategy, orderbook).
+    # Defaults to "graph" if omitted.
+    kind = "graph"
 
     def __init__(self):
         """Initialize your indicator state here."""
@@ -91,6 +94,7 @@ class ParameterizedIndicator:
     num_inputs = 1
     num_outputs = 1
     category = "momentum"
+    kind = "graph"
 
     def __init__(self):
         self.period = 12  # Number of periods to look back
@@ -162,6 +166,7 @@ class AdvancedIndicator:
     num_inputs = 1
     num_outputs = 1
     category = "advanced"
+    kind = "graph"
 
     def __init__(self):
         self.fast_period = 10

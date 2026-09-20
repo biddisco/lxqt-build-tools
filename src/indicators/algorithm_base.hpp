@@ -80,6 +80,12 @@ public:
     virtual indicator_kind kind() const { return indicator_kind::graph; }
 
     // ----------------------------------------------------------------------------
+    /// The implementation source of this algorithm. Orthogonal to kind() —
+    /// kind is about behavior, source is about implementation. Defaults to
+    /// cpp; python_indicator_wrapper overrides to python.
+    virtual indicator_source source() const { return indicator_source::cpp; }
+
+    // ----------------------------------------------------------------------------
     /// Describes each named output. Replaces the positional outputs[N]
     /// convention. The default returns an empty vector; indicator_base
     /// overrides to synthesize from num_outputs() + get_overlay(n) so existing

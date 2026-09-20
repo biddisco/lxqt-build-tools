@@ -19,8 +19,8 @@ set(grox_indicators_SRCS
 if(GROX_WITH_PYTHON_INDICATORS)
   set(grox_indicators_SRCS
       ${grox_indicators_SRCS}
-      # Python support (headers included, implementation below)
-      python_bindings.hpp python_plugin.hpp python_plugin.cpp
+      # Python support (header + implementation)
+      python_plugin.hpp python_plugin.cpp
   )
 endif()
 
@@ -186,6 +186,21 @@ if(GROX_WITH_PYTHON_INDICATORS)
     message(WARNING "Python development headers not found, Python indicators disabled")
     set(GROX_WITH_PYTHON_INDICATORS OFF CACHE BOOL "Enable Python-based dynamic indicators" FORCE)
   endif()
+
+  # Copy Python indicator files to the build tree plugin directory so they are discovered by
+  # load_indicators_from_directory() at runtime.
+  set(GROX_PYTHON_PLUGIN_DIR "${CMAKE_BINARY_DIR}/lib/grox/plugins/python")
+  file(MAKE_DIRECTORY "${GROX_PYTHON_PLUGIN_DIR}")
+  file(GLOB GROX_PYTHON_INDICATOR_FILES "${CMAKE_CURRENT_SOURCE_DIR}/python/*.py")
+  foreach(py_file ${GROX_PYTHON_INDICATOR_FILES})
+    get_filename_component(py_name "${py_file}" NAME)
+    configure_file("${py_file}" "${GROX_PYTHON_PLUGIN_DIR}/${py_name}" COPYONLY)
+  endforeach()
+
+  # Install Python indicator files to the runtime plugin directory
+  install(FILES ${GROX_PYTHON_INDICATOR_FILES}
+          DESTINATION "${CMAKE_INSTALL_LIBDIR}/grox/plugins/python" COMPONENT python_indicators
+  )
 endif()
 
 # ==============================================================================

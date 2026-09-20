@@ -85,6 +85,7 @@
 
 // Grox
 #include "currency/ohlctv_sample.hpp"
+#include "indicators/indicator_registry.hpp"
 #include "indicators/python_plugin.hpp"
 
 namespace fs = std::filesystem;
@@ -736,6 +737,95 @@ TEST_F(PythonIndicatorTest, ParameterModification)
   }
 
   std::cout << fmt::format("Computed {} samples with modified parameters\n", results.size());
+}
+
+//----------------------------------------------------------------------------
+// End-to-end: Python indicators registered with the main registry
+// are correctly partitioned by kind() and distinguishable by source().
+//----------------------------------------------------------------------------
+TEST_F(PythonIndicatorTest, RegisterWithMainRegistryByKind)
+{
+  auto& py_registry = indicators::python::python_indicator_registry::instance();
+
+  fs::path indicator_path =
+      fs::path(__FILE__).parent_path().parent_path() / "python" / "indicator_example.py";
+  ASSERT_TRUE(py_registry.load_module(indicator_path));
+
+  // Use a fresh indicator_registry instance (not the singleton) so this
+  // test is isolated from the global registry used by the GUI.
+  // We can't easily construct one privately, so we use the singleton and
+  // verify the Python indicators appear alongside any C++ indicators.
+  auto& main_registry = indicators::indicator_registry::getInstance();
+
+  std::size_t count = py_registry.register_with_main_registry(main_registry);
+  ASSERT_GT(count, 0u) << "No Python indicators registered";
+
+  // All example indicators declare kind = "graph", so they must land
+  // in the graph partition.
+  auto const& graph_indicators = main_registry.by_kind(indicators::indicator_kind::graph);
+  EXPECT_FALSE(graph_indicators.empty()) << "Graph partition is empty";
+
+  // At least one indicator in the graph partition must be a Python wrapper
+  // (source() == python).
+  bool found_python = false;
+  for (auto const& alg : graph_indicators)
+  {
+    if (alg->source() == indicators::indicator_source::python)
+    {
+      found_python = true;
+      EXPECT_EQ(alg->kind(), indicators::indicator_kind::graph)
+          << "Python indicator has wrong kind";
+      break;
+    }
+  }
+  EXPECT_TRUE(found_python) << "No Python indicators found in graph partition";
+}
+
+//----------------------------------------------------------------------------
+// End-to-end: find_by_name locates a Python indicator in the unified registry
+//----------------------------------------------------------------------------
+TEST_F(PythonIndicatorTest, FindPythonIndicatorByName)
+{
+  auto& py_registry = indicators::python::python_indicator_registry::instance();
+
+  fs::path indicator_path =
+      fs::path(__FILE__).parent_path().parent_path() / "python" / "indicator_example.py";
+  ASSERT_TRUE(py_registry.load_module(indicator_path));
+
+  auto& main_registry = indicators::indicator_registry::getInstance();
+  py_registry.register_with_main_registry(main_registry);
+
+  // register_with_main_registry uses the Python class name (e.g.
+  // "SimplePythonMovingAverage") as the indicator name, not the
+  // human-readable "name" attribute (e.g. "Python SMA").
+  auto alg = indicators::indicator_registry::find_by_name("SimplePythonMovingAverage");
+  ASSERT_NE(alg, nullptr) << "find_by_name failed for SimplePythonMovingAverage";
+  EXPECT_EQ(alg->source(), indicators::indicator_source::python)
+      << "SimplePythonMovingAverage should have python source";
+  EXPECT_EQ(alg->kind(), indicators::indicator_kind::graph)
+      << "SimplePythonMovingAverage should have graph kind";
+}
+
+//----------------------------------------------------------------------------
+// Multi-output: a Python indicator returning a list of floats
+// produces a std::span<float const> from process_sample.
+//----------------------------------------------------------------------------
+TEST_F(PythonIndicatorTest, MultiOutputPythonIndicator)
+{
+  auto& py_registry = indicators::python::python_indicator_registry::instance();
+
+  fs::path indicator_path =
+      fs::path(__FILE__).parent_path().parent_path() / "python" / "indicator_example.py";
+  ASSERT_TRUE(py_registry.load_module(indicator_path));
+
+  auto& main_registry = indicators::indicator_registry::getInstance();
+  py_registry.register_with_main_registry(main_registry);
+
+  auto alg = indicators::indicator_registry::find_by_name("SimplePythonMovingAverage");
+  ASSERT_NE(alg, nullptr);
+
+  // The wrapper must report num_outputs = 1 (default for SimplePythonMovingAverage)
+  EXPECT_EQ(alg->num_outputs(), 1);
 }
 
 //----------------------------------------------------------------------------

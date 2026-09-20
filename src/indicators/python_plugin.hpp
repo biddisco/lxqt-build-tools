@@ -57,7 +57,9 @@ public:
     void init_params() override;
 
     int num_inputs() const override { return 1; }
-    int num_outputs() const override { return 1; }
+    int num_outputs() const override { return num_outputs_; }
+    indicator_kind kind() const override { return kind_; }
+    indicator_source source() const override { return indicator_source::python; }
 
     // Execute indicator on OHLCV sample
     double operator()(ohlctv_sample const& sample);
@@ -75,6 +77,12 @@ private:
     python_indicator_registry* registry_;
     std::shared_ptr<py_indicator_instance> instance_;
     double last_result_ = 0.0;
+    // Number of outputs declared by the Python class (default 1)
+    int num_outputs_ = 1;
+    // Kind declared by the Python class (default graph)
+    indicator_kind kind_ = indicator_kind::graph;
+    // Pre-allocated buffer for multi-output compute_sample returns
+    std::vector<float> multi_output_buffer_;
     // Maps param index to Python attribute name for set_parameter calls
     // (params_ stores GUI labels, but Python needs the actual attribute name)
     std::vector<std::string> python_attr_names_;
@@ -173,7 +181,6 @@ private:
 
     bool initialized_ = false;
     std::map<std::string, void*> registered_classes_;
-    void* py_main_module_ = nullptr;
     std::wstring python_home_;              // Persistent storage for Py_SetPythonHome
     void* saved_thread_state_ = nullptr;    // For PyEval_SaveThread/RestoreThread
   };
@@ -193,6 +200,14 @@ public:
      * Call Python's compute_sample method
      */
     double compute_sample(
+        double open, double high, double low, double close, double volume, uint64_t time);
+
+    /**
+     * Call Python's compute_sample and return the raw result object.
+     * The caller owns the reference (must Py_DECREF).
+     * Supports single float, int, bool, or list/tuple of floats.
+     */
+    void* compute_sample_raw(
         double open, double high, double low, double close, double volume, uint64_t time);
 
     /**
