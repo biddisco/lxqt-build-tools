@@ -268,13 +268,14 @@ full GUI → registry → execute → plot pipeline has gaps:
 - Ensure the build tree also has a copy for development
   (e.g. a custom target that copies to `${GROX_BINARY_DIR}/lib/grox/plugins/python/`)
 
-#### Step 9: Update documentation
-- Rewrite `PYTHON_INDICATORS.md` to reflect the actual API (duck-typed
-  Python classes, `compute_sample(self, ohlcv_dict) -> float | list[float]`,
-  `param_specs`, `kind`, `num_outputs`)
-- Mark `PYTHON_IMPLEMENTATION_SUMMARY.md` and
-  `PYTHON_INDICATORS_DELIVERY.md` as superseded or delete them
-- Update `PLUGIN_SYSTEM_GUIDE.md` with a Python indicators section
+#### Step 9: Documentation
+- Rewrote `docs/PYTHON_INDICATORS.md` as a single master doc covering
+  architecture, the Python indicator protocol, build configuration,
+  runtime lifecycle, examples, testing, and troubleshooting
+- Deleted `docs/PYTHON_IMPLEMENTATION_SUMMARY.md`,
+  `docs/PYTHON_INDICATORS_DELIVERY.md`, and `docs/ARCHITECTURE.md`
+  (all stale — described python_plugin.cpp as a "180-line stub",
+  referenced deleted files like python_bindings.hpp)
 
 #### Step 10: End-to-end test
 - Add a test that loads `indicator_example.py`, registers with the main
@@ -298,10 +299,11 @@ full GUI → registry → execute → plot pipeline has gaps:
 | `src/indicators/python/quick_start.py`       | Add `kind = "graph"` declarations         |
 | `src/indicators/CMakeLists.txt`             | Remove `python_bindings.hpp`, add install |
 | `src/indicators/test/python_indicators.cpp`  | Add end-to-end registry tests             |
-| `docs/PYTHON_INDICATORS.md`                  | Rewrite to reflect actual API             |
-| `docs/PYTHON_IMPLEMENTATION_SUMMARY.md`      | Mark superseded or delete                 |
-| `docs/PYTHON_INDICATORS_DELIVERY.md`         | Mark superseded or delete                 |
-| `docs/PLUGIN_SYSTEM_GUIDE.md`               | Add Python indicators section             |
+| `docs/PYTHON_INDICATORS.md`                  | Rewritten as master doc                  |
+| `docs/PYTHON_IMPLEMENTATION_SUMMARY.md`      | Deleted (stale)                           |
+| `docs/PYTHON_INDICATORS_DELIVERY.md`         | Deleted (stale)                           |
+| `docs/ARCHITECTURE.md`                       | Deleted (stale, folded into master doc)   |
+| `docs/PLUGIN_SYSTEM_GUIDE.md`               | Add Python indicators section (todo)      |
 
 ### Non-goals (future work)
 
