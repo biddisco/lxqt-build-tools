@@ -66,9 +66,9 @@
 #include "widgets/password_dialog.hpp"
 #include "widgets/price_chart_widget.hpp"
 #include "widgets/trade_algorithm_widget.hpp"
+#include "widgets/trading_launcher.hpp"
 #include "widgets/wallet_widget.hpp"
-#include "widgets_control/indicator_json.hpp"
-#include "widgets_control/indicator_widget.hpp"
+#include "widgets_control/control_builder.hpp"
 
 // Qt Advanced Docking System
 #include "AutoHideDockContainer.h"
@@ -345,7 +345,7 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
   , qs_darkmode_(nullptr)
   , qs_password_(nullptr)
   , qs_terminal_(nullptr)
-  , qs_arbitrage_(nullptr)
+  , qs_trading_(nullptr)
   , qs_default_perspective_(nullptr)
   , dark_mode_(0)
 {
@@ -631,68 +631,10 @@ GroxMainWindow::GroxMainWindow(QWidget* parent)
       if (startswith(network->get_name(), "XRPL")) widget->set_data(static_cast<ledger_wallet*>(w));
       accounts_frame_->layout()->addWidget(widget);
 
-      // ------------------------------------------------------------
-      // create a callback that constructs a currency exchange widget
-      auto callback1 = [this, network]() {
-        auto alg = indicators::indicator_registry::find_by_name("Currency-Exchange");
-        nlohmann::json defaults = {//
-            {"Order-Book-1",       // default values for widget controls
-                {
-                    {"label", "Currency pairs"},
-                    {"exchanges", std::vector<std::string>{network->get_name()}},
-                    {"tickers-0_value", currency_pair_string({{"XRP"}, {"USD"}}, "-", false)},
-                    {"tickers-1_value", currency_pair_string({{"XRP"}, {"GBP"}}, "-", false)},
-                }}};
-
-        indicator_widget widget(alg, defaults);
-        auto result = widget.execute_as_dialog();
-        if (result == QDialog::Accepted)
-        {
-          auto alg_copy = alg->create(alg.get());
-          auto algowidget_ = trade_widget_factory(alg_copy, exchange_list_);
-          trade_widgets_.push_back(dock_trading_widget(algowidget_, alg_copy->get_name()));
-        }
-      };
-
-      // ------------------------------------------------------------
-      // create a callback that constructs an arbitrage widget
-      auto callback2 = [this, network]() {
-        auto alg = indicators::indicator_registry::find_by_name("Arbitrage 2-way");
-        // QDialog* widget = create_trading_widget({network}, {alg});
-        // trade_widgets_.push_back(widget);
-
-        auto alg_copy = alg->create(alg.get());
-        auto algowidget_ = trade_widget_factory(alg_copy, exchange_list_);
-        trade_widgets_.push_back(dock_trading_widget(algowidget_, alg_copy->get_name()));
-      };
-
-      // ------------------------------------------------------------
-      // create a callback that constructs a market-maker widget
-      auto callback3 = [this, network]() {
-        auto alg = indicators::indicator_registry::find_by_name("Market-Maker");
-        // QDialog* widget = create_trading_widget({network}, {alg});
-        // trade_widgets_.push_back(widget);
-
-        auto alg_copy = alg->create(alg.get());
-        auto algowidget_ = trade_widget_factory(alg_copy, exchange_list_);
-        trade_widgets_.push_back(dock_trading_widget(algowidget_, alg_copy->get_name()));
-      };
-
-      for (auto algo : network->supported_trade_actions())
-      {
-        switch (algo)
-        {
-        case supported_trade_actions::currency_exchange:
-          widget->add_algorithm("Currency Exchange", callback1);
-          break;
-        case supported_trade_actions::arbitrage_2way:
-          widget->add_algorithm("Arbitrage(2)", callback2);
-          break;
-        case supported_trade_actions::market_maker:
-          widget->add_algorithm("Market Maker", callback3);
-          break;
-        }
-      }
+      // Trading widgets (Currency Exchange, Arbitrage, Market Maker) are no
+      // longer activated via per-account buttons. Use the global Ctrl+T
+      // shortcut to open the trading launcher dialog, which lets the user
+      // pick the algorithm, exchange, and currency pairs.
     }
   }
 
@@ -726,7 +668,7 @@ GroxMainWindow::~GroxMainWindow()
   delete qs_shutdown_;
   delete qs_darkmode_;
   delete qs_password_;
-  delete qs_arbitrage_;
+  delete qs_trading_;
   delete qs_terminal_;
   delete qs_default_perspective_;
   // dockmanager is deleted by gui destruction
@@ -782,10 +724,22 @@ void GroxMainWindow::connect_gui_controls()
         if (npw.exec() == QDialog::Accepted) { generate_encrypted_ini_data(npw); }
       });
 
-  qs_arbitrage_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_M)), this, [this]() {
-    QDialog* widget = create_trading_widget(exchange_list_);
-    trade_widgets_.push_back(widget);
+  // Ctrl+T opens the trading launcher dialog. The user picks an algorithm
+  // (Currency Exchange, Arbitrage 2-way, Market Maker), an exchange that
+  // supports it, and the currency pairs. On OK the launcher demand-
+  // subscribes the needed order book streams and returns a cloned algorithm
+  // which we turn into a docked trading widget.
+  qs_trading_ = new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::Key_T)), this, [this]() {
+    trading_launcher_dialog dlg(exchange_list_, this);
+    if (dlg.exec() == QDialog::Accepted)
+    {
+      auto alg = dlg.get_algorithm();
+      if (!alg) return;
+      auto qd = trade_widget_factory(alg, exchange_list_);
+      trade_widgets_.push_back(dock_trading_widget(qd, alg->get_name()));
+    }
   });
+  qs_trading_->setContext(Qt::ApplicationShortcut);
 
   qs_terminal_ =
       new QShortcut(QKeySequence(int(Qt::CTRL) + int(Qt::SHIFT) + int(Qt::Key_T)), this, [this]() {

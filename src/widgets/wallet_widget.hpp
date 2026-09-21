@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <memory>
 //
 #include <QWidget>
@@ -21,8 +20,6 @@ class wallet_widget : public QWidget
   public:
   explicit wallet_widget(QWidget* parent = nullptr);
   ~wallet_widget();
-
-  void add_algorithm(std::string name, std::function<void(void)> f);
 
   void set_data(ledger_wallet* w);
 

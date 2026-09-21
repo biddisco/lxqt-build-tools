@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 //
@@ -78,6 +79,14 @@ public:
     /// grouping. Defaults to graph; strategy and orderbook indicators override.
     /// Independent from overlay_type (a per-output display hint).
     virtual indicator_kind kind() const { return indicator_kind::graph; }
+
+    // ----------------------------------------------------------------------------
+    /// The trade action this algorithm performs, or std::nullopt if it is not
+    /// a trading algorithm (graph/strategy indicators return nullopt). The
+    /// trading launcher uses this to filter exchanges by capability via
+    /// exchange->supported_trade_actions(). Only meaningful when kind() ==
+    /// indicator_kind::orderbook.
+    virtual std::optional<supported_trade_actions> trade_action() const { return std::nullopt; }
 
     // ----------------------------------------------------------------------------
     /// The implementation source of this algorithm. Orthogonal to kind() —

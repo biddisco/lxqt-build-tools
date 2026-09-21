@@ -38,11 +38,18 @@ class indicator_widget : public QDialog
 
   int execute_as_dialog();
 
-  protected:
+  /// Copy user-edited params from the dialog controls back into the
+  /// algorithm prototype. Public so the trading_launcher_dialog can call
+  /// it after OK is accepted.
   void update_parameters();
+
+  /// Add OK/Cancel/Reset buttons to an existing dialog (so an
+  /// indicator_widget embedded in a larger dialog can drive its accept/
+  /// reject). Public so the trading_launcher_dialog can embed an
+  /// indicator_widget and let it own the button row.
   void add_indicator_to_dialog(QDialog* dlg);
 
-  private slots:
+  protected:
   void refresh_gui(indicators::shared_algorithm alg, nlohmann::json values = {});
 
   private:

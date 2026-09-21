@@ -34,6 +34,12 @@ public:
     indicator_kind kind() const override { return indicator_kind::orderbook; }
 
     // ---------------------------------------
+    std::optional<supported_trade_actions> trade_action() const override
+    {
+      return supported_trade_actions::currency_exchange;
+    }
+
+    // ---------------------------------------
     /// fields required for auto gui generation
     void init_params() override
     {

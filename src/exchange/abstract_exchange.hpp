@@ -18,20 +18,12 @@
 #include "currency/trade_data.hpp"
 #include "data/ohlc_dataset_view.hpp"
 #include "exchange/ticker_data.hpp"
+#include "indicators/indicator_types.hpp"
 #include "network/qwebsocket_session.hpp"
 #include "senders/sender_defs.hpp"
 #include "util/pubsub.hpp"
 
 struct basic_account;
-
-enum class supported_trade_actions : int
-{
-  currency_exchange = 1,
-  arbitrage_2way = 2,
-  market_maker = 3,
-};
-
-using trade_action_list = std::vector<supported_trade_actions>;
 
 // ----------------------------------------------------------------------------
 class abstract_exchange
@@ -143,6 +135,19 @@ class abstract_exchange
   exchange_map const& tickers_subscribed(subscription_lock_type& l) const;
   // exchange_map& tickers_subscribed();
   ticker::data get_subscribed_ticker_data(currency_pair cp) const;
+
+  // ---------------------------------------
+  /// Demand-subscribe the order-book stream for a currency pair. Used by the
+  /// trading launcher (and any future consumer) when an algorithm needs order
+  /// book data but the user has not pre-subscribed via the connection widget.
+  /// Idempotent: returns the existing ticker::data if already subscribed,
+  /// otherwise subscribes the ticker and the order_book stream with a no-op
+  /// GUI factory (no per-subscription dockwidget is created).
+  /// TODO: RAII unsubscribe — today subscriptions live for the exchange's
+  /// lifetime. When all consumers of a stream go out of scope, the exchange
+  /// should unsubscribe. Requires refcounting on the existing manual
+  /// subscriptions too.
+  ticker::data ensure_orderbook_subscribed(currency_pair const& cp);
 
   // ---------------------------------------
   // cosmetic

@@ -21,6 +21,8 @@ set(grox_widgets_SRCS
     trade_widget.hpp
     trade_algorithm_widget.cpp
     trade_algorithm_widget.hpp
+    trading_launcher.cpp
+    trading_launcher.hpp
     wallet_widget.cpp
     wallet_widget.hpp
     xrp_functions.cpp
@@ -39,6 +41,7 @@ set(grox_widgets_SRCS
     password_dialog.ui
     price_chart_widget.ui
     trade_widget.ui
+    trading_launcher.ui
     wallet_widget.ui
     xrp_functions.ui
 )

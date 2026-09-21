@@ -35,6 +35,22 @@ struct order_book_param
 };
 
 // ----------------------------------------------------------------------------
+// Trade actions an algorithm can perform. Used by algorithm_base::
+// trade_action() so the trading launcher can filter exchanges by capability
+// (exchange->supported_trade_actions()). Defined here, rather than in
+// exchange/abstract_exchange.hpp, so that algorithm_base can refer to it
+// without a circular include. Kept at global scope for back-compat with
+// the existing unqualified usages in abstract_exchange.hpp/bitstamp.hpp.
+enum class supported_trade_actions : int
+{
+  currency_exchange = 1,
+  arbitrage_2way = 2,
+  market_maker = 3,
+};
+
+using trade_action_list = std::vector<supported_trade_actions>;
+
+// ----------------------------------------------------------------------------
 namespace indicators {
 
   // ---------------------------------------

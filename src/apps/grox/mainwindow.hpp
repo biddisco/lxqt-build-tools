@@ -100,7 +100,7 @@ class GroxMainWindow : public QMainWindow
   QShortcut* qs_darkmode_;
   QShortcut* qs_password_;
   QShortcut* qs_terminal_;
-  QShortcut* qs_arbitrage_;
+  QShortcut* qs_trading_;
   QShortcut* qs_default_perspective_;
   int dark_mode_;
 

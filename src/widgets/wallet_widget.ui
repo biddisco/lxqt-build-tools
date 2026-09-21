@@ -70,9 +70,6 @@
        </layout>
       </item>
       <item>
-       <layout class="QGridLayout" name="algorithms_layout"/>
-      </item>
-      <item>
        <layout class="QVBoxLayout" name="currencies_layout"/>
       </item>
      </layout>

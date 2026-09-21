@@ -115,6 +115,25 @@ ticker::data abstract_exchange::get_subscribed_ticker_data(currency_pair cp) con
 }
 
 // ----------------------------------------------------------------------------
+ticker::data abstract_exchange::ensure_orderbook_subscribed(currency_pair const& cp)
+{
+  // Subscribe the ticker (idempotent — exchange impls early-return when
+  // already subscribed).
+  if (!ticker_subscribed(cp)) ticker_subscribe(cp);
+
+  // Subscribe the order_book stream if not already subscribed. We pass a
+  // no-op factory so no per-subscription GUI dockwidget is created — the
+  // trading widget built later owns its own UI.
+  if (!is_stream_subscribed(cp, ticker::streams::order_book))
+  {
+    factory_function noop = [](currency_pair, ticker::data, ticker::streams) {};
+    stream_subscribe(cp, ticker::streams::order_book, true, noop);
+  }
+
+  return get_subscribed_ticker_data(cp);
+}
+
+// ----------------------------------------------------------------------------
 abstract_exchange::exchange_map const& abstract_exchange::tickers_subscribed(
     subscription_lock_type& l) const
 {

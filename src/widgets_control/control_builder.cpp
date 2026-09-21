@@ -265,20 +265,32 @@ QWidget* control_builder_orderbook::build(
   qtickers.push_back(ticker1);
 
   // callback triggered when exchange combo is modified
-  // this lambda will set the ticker combo using the tickers available from the exchanges
+  // this lambda will set the ticker combo using the tickers available from the exchanges.
+  // We populate from get_currency_pairs() (all tickers the exchange can provide)
+  // rather than tickers_subscribed() so the user can pick a pair before it has
+  // been subscribed — the trading launcher demand-subscribes on OK. Any
+  // currently-subscribed pairs are kept and the current selection is restored.
   auto set_ticker_strings = [&](int /*index*/) {
     std::string text = exchanges->currentText().toStdString();
     auto ex =
         ranges::find_if(global_settings.networks_, [&](auto e) { return (e->get_name() == text); });
     if (ex == global_settings.networks_.end()) return;
     //
+    auto const& available = (*ex)->get_currency_pairs();
     abstract_exchange::subscription_lock_type l;
-    auto tickers = (*ex)->tickers_subscribed(l);
+    auto subscribed = (*ex)->tickers_subscribed(l);
     for (auto combo : qtickers)
     {
       QString currentText = combo->currentText();
       QStringList temp;
-      for (auto const& [cp, td] : tickers) { temp << currency_pair_qstring(cp); }
+      // subscribed tickers first (so current text is more likely to match)
+      for (auto const& [cp, td] : subscribed) { temp << currency_pair_qstring(cp); }
+      // then any available tickers not already listed
+      for (auto const& cp : available)
+      {
+        QString s = currency_pair_qstring(cp);
+        if (!temp.contains(s)) temp << s;
+      }
       combo->clear();
       combo->addItems(temp);
       // try to restore active selection if it is still there
