@@ -268,13 +268,16 @@ void trading_launcher_dialog::rebuild_indicator_panel()
     if (std::get_if<indicators::param<order_book_param>>(&p)) ++num_orderbook_params;
   }
 
-  nlohmann::json defaults;
+  // Build the exchange list to offer. The same list is passed to every
+  // order_book_param — each gets its own nested copy under its param name
+  // because build_control passes defaults[param_name] as the per-param
+  // config (see control_factory.hpp).
+  std::vector<std::string> exchange_names;
   if (num_orderbook_params > 1)
   {
     // Pass all exchanges that support this algorithm's trade_action().
     // If the algorithm has no trade_action(), pass all exchanges.
     auto action = current_algorithm_->trade_action();
-    std::vector<std::string> exchange_names;
     for (auto const& ex : exchanges_)
     {
       if (action)
@@ -284,16 +287,45 @@ void trading_launcher_dialog::rebuild_indicator_panel()
       }
       exchange_names.push_back(ex->get_name());
     }
-    defaults["exchanges"] = exchange_names;
   }
   else
   {
     // Single order_book_param: the exchange was chosen in our dialog's
     // combo above. Pass only that one so the per-param exchange picker
     // is hidden.
-    defaults["exchanges"] = std::vector<std::string>{current_exchange_->get_name()};
+    exchange_names.push_back(current_exchange_->get_name());
   }
-  defaults["exchange_index"] = 0;
+
+  // For each order_book_param, nest its defaults under its param name.
+  // control_builder_orderbook reads "exchanges", "exchange_index",
+  // "tickers-0", "tickers-1", "tickers-0_index", "tickers-1_index" from
+  // the per-param config. We seed both ticker combos with the param's
+  // own default tickers so the user sees something even before the
+  // exchange reports its available pairs.
+  nlohmann::json defaults;
+  for (auto const& p : current_algorithm_->get_params())
+  {
+    if (auto const* ob = std::get_if<indicators::param<order_book_param>>(&p))
+    {
+      std::string param_name = ob->name().toStdString();
+      defaults[param_name]["exchanges"] = exchange_names;
+      defaults[param_name]["exchange_index"] = 0;
+
+      std::vector<std::string> tickers;
+      for (auto const& cp : ob->get().tickers_)
+      {
+        tickers.push_back(currency_pair_string(cp, "-", false));
+      }
+      // Seed both ticker combos with the param's default tickers.
+      defaults[param_name]["tickers-0"] = tickers;
+      defaults[param_name]["tickers-1"] = tickers;
+      defaults[param_name]["tickers-0_index"] = 0;
+      if (tickers.size() > 1)
+        defaults[param_name]["tickers-1_index"] = 1;
+      else
+        defaults[param_name]["tickers-1_index"] = 0;
+    }
+  }
 
   // The indicator_widget single-algorithm constructor builds the full
   // parameter panel (with the algorithm combo hidden) and calls

@@ -100,7 +100,7 @@ namespace indicators {
   {
     nlohmann::ordered_json json;
     auto name = p.name_.toStdString();
-    json[name]["exchange"] = p.get().exchange_;
+    json[name]["exchanges"] = std::vector<std::string>{p.get().exchange_};
     auto vec = p.get().tickers_ |
         ranges::views::transform([](auto const& c) { return currency_pair_string(c, "-", true); });
     // for (auto const& s : p.get().tickers_) vec.push_back(currency_pair_string(s, "-", true));

@@ -1,6 +1,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <sstream>
 #include <string>
 //
 #include <range/v3/algorithm.hpp>
@@ -235,10 +236,15 @@ QWidget* control_builder_orderbook::build(
   QVBoxLayout* layout = new QVBoxLayout(widget);
   widget->setLayout(layout);
 
-  // put exchange names into the combox box
+  // Put exchange names into the combo box. defaults["exchanges"] is an
+  // array of exchange names. It is set either by the trading launcher
+  // dialog (to filter which exchanges are offered) or by
+  // get_json_values_indicator from the algorithm's own order_book_param
+  // default (as a single-element array).
   QComboBox* const exchanges = new QComboBox(widget);
   exchanges->setObjectName("exchange");
   layout->addWidget(exchanges);
+
   if (defaults.contains("exchanges"))
   {
     auto list = to_qstringlist(defaults["exchanges"].get<std::vector<std::string>>());
@@ -264,13 +270,55 @@ QWidget* control_builder_orderbook::build(
   layout->addWidget(ticker1);
   qtickers.push_back(ticker1);
 
+  // The default tickers from the algorithm's order_book_param. These are
+  // shown in the combos even when the exchange hasn't reported any
+  // available pairs yet, and are kept near the top (after subscribed
+  // pairs) so they're easy to find.
+  // Two sources:
+  //  - defaults["tickers"]: a comma-separated string produced by
+  //    get_json_values_indicator (e.g. "[\"XRP-USD\", \"XRP-EUR\"]").
+  //  - defaults["tickers-0"]: a JSON string array produced by the
+  //    trading launcher (e.g. ["XRP-USD", "XRP-EUR"]).
+  QStringList default_tickers;
+  if (defaults.contains("tickers"))
+  {
+    std::string tstr = defaults["tickers"].get<std::string>();
+    // The string is formatted as "[\"XRP-USD\", \"XRP-EUR\"]" — strip the
+    // brackets and split on commas, then trim each entry.
+    if (tstr.size() > 2 && tstr.front() == '[' && tstr.back() == ']')
+      tstr = tstr.substr(1, tstr.size() - 2);
+    std::stringstream ss(tstr);
+    std::string item;
+    while (std::getline(ss, item, ','))
+    {
+      // trim whitespace and quotes
+      auto start = item.find_first_not_of(" \t\"");
+      auto end = item.find_last_not_of(" \t\"");
+      if (start != std::string::npos && end != std::string::npos && end >= start)
+        default_tickers << QString::fromStdString(item.substr(start, end - start + 1));
+    }
+  }
+  if (defaults.contains("tickers-0"))
+  {
+    for (auto const& s : to_qstringlist(defaults["tickers-0"].get<std::vector<std::string>>()))
+    {
+      if (!default_tickers.contains(s)) default_tickers << s;
+    }
+  }
+
   // callback triggered when exchange combo is modified
   // this lambda will set the ticker combo using the tickers available from the exchanges.
   // We populate from get_currency_pairs() (all tickers the exchange can provide)
   // rather than tickers_subscribed() so the user can pick a pair before it has
   // been subscribed — the trading launcher demand-subscribes on OK. Any
-  // currently-subscribed pairs are kept and the current selection is restored.
-  auto set_ticker_strings = [&](int /*index*/) {
+  // currently-subscribed pairs and the algorithm's default tickers are kept
+  // near the top and the current selection is restored.
+  //
+  // The lambda captures exchanges, qtickers, and default_tickers by value
+  // (exchanges and qtickers are heap-allocated, parented to widget) so it
+  // remains valid after build() returns. global_settings is a global, so
+  // no capture is needed for it.
+  auto set_ticker_strings = [exchanges, qtickers, default_tickers](int /*index*/) {
     std::string text = exchanges->currentText().toStdString();
     auto ex =
         ranges::find_if(global_settings.networks_, [&](auto e) { return (e->get_name() == text); });
@@ -285,6 +333,11 @@ QWidget* control_builder_orderbook::build(
       QStringList temp;
       // subscribed tickers first (so current text is more likely to match)
       for (auto const& [cp, td] : subscribed) { temp << currency_pair_qstring(cp); }
+      // then the algorithm's default tickers (not already listed)
+      for (auto const& s : default_tickers)
+      {
+        if (!temp.contains(s)) temp << s;
+      }
       // then any available tickers not already listed
       for (auto const& cp : available)
       {
@@ -297,9 +350,6 @@ QWidget* control_builder_orderbook::build(
       if (currentText != "") combo->setCurrentText(currentText);
     }
   };
-
-  QWidget::connect(exchanges, &QComboBox::currentIndexChanged, widget,
-      [=](int index) { set_ticker_strings(index); });
 
   // fill tickers with user supplied strings if requested
   if (defaults.contains("tickers-0"))
@@ -316,9 +366,10 @@ QWidget* control_builder_orderbook::build(
     ticker1->addItems(tickers);
   }
 
-  // trigger the fill of combo boxes for currency pairs if possible
-  // trigger callback to initially setup combo items if user did not supply any
-  if (!defaults.contains("tickers-0") && !defaults.contains("tickers-1")) set_ticker_strings(0);
+  // Populate the ticker combos from the exchange's available and
+  // subscribed pairs (plus the algorithm's defaults). This must be called
+  // BEFORE the connect below moves the lambda.
+  set_ticker_strings(0);
 
   // if the user has requested initial values, set them up
   if (defaults.contains("tickers-0_index"))
@@ -336,6 +387,12 @@ QWidget* control_builder_orderbook::build(
     QString value = to_qstring(defaults["tickers-1_value"].get<std::string>());
     if (ticker1->findText(value) >= 0) ticker1->setCurrentText(value);
   }
+
+  // Connect the lambda for future exchange changes. This moves
+  // set_ticker_strings, so it must happen AFTER the final call above.
+  QWidget::connect(exchanges, &QComboBox::currentIndexChanged, widget,
+      [=, set_ticker_strings = std::move(set_ticker_strings)](
+          int index) { set_ticker_strings(index); });
 
   return widget;
 }
