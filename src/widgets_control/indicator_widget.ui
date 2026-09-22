@@ -22,7 +22,7 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <layout class="QVBoxLayout" name="main_layout">
    <property name="leftMargin">
     <number>2</number>
    </property>
@@ -35,60 +35,37 @@
    <property name="bottomMargin">
     <number>2</number>
    </property>
-   <item row="3" column="1">
-    <widget class="QFrame" name="controls_trade">
-     <property name="frameShape">
-      <enum>QFrame::Shape::Box</enum>
+   <item>
+    <widget class="QLabel" name="algorithm_label">
+     <property name="text">
+      <string>Algorithm</string>
      </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Sunken</enum>
-     </property>
-     <property name="lineWidth">
-      <number>3</number>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_5">
-      <item row="0" column="2">
-       <widget class="QToolButton" name="exec_trustline">
-        <property name="text">
-         <string>x</string>
-        </property>
-        <property name="toolButtonStyle">
-         <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0" colspan="3">
-       <widget class="QGroupBox" name="algo_params">
-        <property name="title">
-         <string>Parameters</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="algorithm"/>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Algorithm</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0" colspan="3">
-       <layout class="QHBoxLayout" name="buttons_layout"/>
-      </item>
-      <item row="1" column="0" colspan="3">
-       <widget class="QLabel" name="description">
-        <property name="text">
-         <string>Description</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
     </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="algorithm"/>
+   </item>
+   <item>
+    <widget class="QLabel" name="description">
+     <property name="text">
+      <string>Description</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="algo_params" native="true"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="buttons_layout"/>
    </item>
   </layout>
  </widget>

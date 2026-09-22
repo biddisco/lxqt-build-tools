@@ -74,7 +74,8 @@ indicator_widget::indicator_widget(indicators::shared_algorithm alg, nlohmann::j
   ui->setupUi(this);
   this->setWindowTitle("Indicator");
 
-  // hide algorithms combobox
+  // Hide the algorithm combo — this widget is dedicated to a single
+  // algorithm selected by the parent (e.g. trading_launcher).
   ui->algorithm->hide();
 
   // build gui for first/last used algorithm
@@ -163,6 +164,12 @@ void indicator_widget::refresh_gui(indicators::shared_algorithm alg, nlohmann::j
   // set the description field
   std::string desc = alg->get_description();
   ui->description->setText(QString(desc.c_str()));
+  // Style as a secondary caption: warm amber colour that stands out
+  // from regular grey/white text on dark themes.
+  QPalette caption_pal = ui->description->palette();
+  caption_pal.setColor(QPalette::Active, QPalette::WindowText, QColor("#E0A040"));
+  caption_pal.setColor(QPalette::Inactive, QPalette::WindowText, QColor("#E0A040"));
+  ui->description->setPalette(caption_pal);
 
   // wipe contents: transfer layout to temp widget and children will be deleted on destruction
   if (ui->algo_params->layout()) QWidget().setLayout(ui->algo_params->layout());
@@ -173,31 +180,43 @@ void indicator_widget::refresh_gui(indicators::shared_algorithm alg, nlohmann::j
   indicator_widget_ = create_indicator_control(alg, values);
   layout->addWidget(indicator_widget_);
 
-  // add a duration combo — this is an execution property, not an indicator parameter
-  auto* duration_layout = new QFormLayout();
-  duration_combo_ = new QComboBox(ui->algo_params);
-  duration_combo_->setObjectName("duration");
-  for (auto const& s : sample_duration::durations) { duration_combo_->addItem(s); }
-  // find the resolution from the candle_data param and convert current duration to string
+  // Add a duration combo — this is an execution property, not an indicator
+  // parameter. It is only relevant for algorithms that take a candle_data
+  // input (they iterate over historical bars). Trading algorithms
+  // (Currency Exchange, Arbitrage, Market Maker) only have order_book_param
+  // inputs, so the duration combo is not shown for them.
+  bool has_candle_data = false;
   candle_res res = ohlc_data_resolutions::minute15;
   for (auto const& p : alg->get_params())
   {
     if (auto const* d = std::get_if<indicators::param<candle_data>>(&p))
     {
+      has_candle_data = true;
       res = d->get().res_;
       break;
     }
   }
-  duration_combo_->setCurrentText(
-      QString::fromStdString(sample_duration::to_string(res, alg->get_duration())));
-  duration_layout->addRow("Duration:", duration_combo_);
-  layout->addLayout(duration_layout);
 
-  // compute the new best guess size
+  if (has_candle_data)
+  {
+    auto* duration_layout = new QFormLayout();
+    duration_combo_ = new QComboBox(ui->algo_params);
+    duration_combo_->setObjectName("duration");
+    for (auto const& s : sample_duration::durations) { duration_combo_->addItem(s); }
+    duration_combo_->setCurrentText(
+        QString::fromStdString(sample_duration::to_string(res, alg->get_duration())));
+    duration_layout->addRow("Duration:", duration_combo_);
+    layout->addLayout(duration_layout);
+  }
+
+  // adjustSize() makes the widget fit its content. When this widget is a
+  // standalone dialog (execute_as_dialog), that's all we need. When it is
+  // embedded in a parent (e.g. trading_launcher's scroll area), we leave
+  // the parent's layout alone — the parent is responsible for its own
+  // sizing. Previously we set SetFixedSize on the parent's layout, which
+  // prevented the scroll area from working and fought the parent's own
+  // size management.
   adjustSize();
-  // "layout takes responsibility to automatically resize when widgets are shown or hidden"
-  // SetFixedSize: The main widget's size is set to sizeHint(); it cannot be resized at all.
-  if (parentWidget()) { parentWidget()->layout()->setSizeConstraint(QLayout::SetFixedSize); }
 }
 
 // ----------------------------------------------------------------------------

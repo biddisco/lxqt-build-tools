@@ -77,19 +77,6 @@ trading_launcher_dialog::trading_launcher_dialog(
   ui_->setupUi(this);
   setWindowTitle("New Trading Widget");
 
-  // Style the description label as a secondary caption: slightly smaller
-  // font and the palette's disabled text colour, which is theme-aware
-  // (light in dark mode, grey in light mode). The intro label above
-  // remains the primary instruction; the description shows the algorithm's
-  // own description text as secondary context.
-  QFont caption_font = ui_->description->font();
-  if (caption_font.pointSize() > 0) { caption_font.setPointSize(caption_font.pointSize() - 1); }
-  ui_->description->setFont(caption_font);
-  QPalette caption_pal = ui_->description->palette();
-  caption_pal.setColor(QPalette::Active, QPalette::WindowText,
-      caption_pal.color(QPalette::Disabled, QPalette::WindowText));
-  ui_->description->setPalette(caption_pal);
-
   // Accessibility: name each combo so screen readers announce the label
   // when focus moves to it, and add tooltips for pointer users.
   ui_->algorithm->setAccessibleName(tr("Algorithm"));
@@ -148,7 +135,7 @@ trading_launcher_dialog::trading_launcher_dialog(
     // button, and show a message in the description label.
     ui_->algorithm->setEnabled(false);
     ui_->exchange->setEnabled(false);
-    ui_->description->setText(
+    ui_->status->setText(
         tr("No trading algorithms are registered. Check that the trading plugin is loaded."));
   }
 }
@@ -164,7 +151,6 @@ void trading_launcher_dialog::on_algorithm_changed(int index)
   if (index < 0 || index >= static_cast<int>(orderbook_algs.size())) return;
 
   current_algorithm_ = orderbook_algs[index];
-  ui_->description->setText(QString::fromStdString(current_algorithm_->get_description()));
   update_window_title();
 
   // Filter the exchange combo to those that support this algorithm's
@@ -225,13 +211,13 @@ std::shared_ptr<abstract_exchange> trading_launcher_dialog::repopulate_exchanges
   {
     current_exchange_.reset();
     ui_->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
-    ui_->description->setText(tr("No exchange supports this trading algorithm. "
-                                 "Subscribe to an exchange first."));
+    ui_->status->setText(tr("No exchange supports this trading algorithm. "
+                            "Subscribe to an exchange first."));
     rebuild_indicator_panel();
     return nullptr;
   }
 
-  ui_->description->setText(QString::fromStdString(current_algorithm_->get_description()));
+  ui_->status->clear();
 
   // Release the signal blocker. Call on_exchange_changed(0) directly
   // because addItem() already leaves the combo at index 0, so
@@ -334,11 +320,16 @@ void trading_launcher_dialog::rebuild_indicator_panel()
   indicator_panel_->setWindowTitle(QString::fromStdString(current_algorithm_->get_name()));
   ui_->indicator_panel_layout->addWidget(indicator_panel_);
 
-  // indicator_widget::refresh_gui() sets SetFixedSize on its parent's
-  // layout (i.e. our indicator_panel_layout), which would prevent the
-  // scroll area from scrolling. Override it back to the default so the
-  // panel can grow beyond the scroll area's viewport and scroll.
+  // Resize the dialog to fit the new content. QScrollArea will shrink to
+  // its content's sizeHint when the layout has no stretch forcing it
+  // larger, and the dialog's adjustSize() then shrinks the whole window
+  // so there's no empty gap when switching to an algorithm with fewer
+  // parameters. We cap at the current size so the dialog never grows
+  // beyond what the user has already stretched it to — only shrinking
+  // is automatic.
+  ui_->scrollArea->setMinimumHeight(0);
   ui_->indicator_panel_layout->setSizeConstraint(QLayout::SetDefaultConstraint);
+  adjustSize();
 }
 
 // ----------------------------------------------------------------------------
